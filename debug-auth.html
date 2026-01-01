@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Authentication</title>
+</head>
+<body>
+    <h1>Debug Authentication</h1>
+    <button onclick="testAuth()">Test Authentication</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAuth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:5001/api/admin/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password: 'cricket123' }),
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <h3>Response:</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>Data: ${JSON.stringify(data, null, 2)}</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>Error:</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

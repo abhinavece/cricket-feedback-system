@@ -1,0 +1,23 @@
+// MongoDB initialization script
+db = db.getSiblingDB('cricket-feedback');
+
+// Create user for the application
+db.createUser({
+  user: 'cricket-app',
+  pwd: 'cricket-app-password',
+  roles: [
+    {
+      role: 'readWrite',
+      db: 'cricket-feedback'
+    }
+  ]
+});
+
+// Create indexes for better performance
+db.feedbacks.createIndex({ "createdAt": -1 });
+db.feedbacks.createIndex({ "isDeleted": 1 });
+db.feedbacks.createIndex({ "email": 1 });
+db.users.createIndex({ "email": 1 }, { unique: true });
+db.users.createIndex({ "role": 1 });
+
+print('Database initialized successfully');
