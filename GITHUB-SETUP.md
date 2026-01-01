@@ -21,6 +21,7 @@ git remote add origin https://github.com/YOUR_USERNAME/cricket-feedback-system.g
 git push -u origin main
 ```
 
+
 ## 🔐 Security Notes
 
 ### What's NOT Included (Safe for GitHub):
