@@ -19,7 +19,7 @@ spec:
         - name: ocir-creds
       containers:
         - name: frontend
-          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v7
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v8
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
