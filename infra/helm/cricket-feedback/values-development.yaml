@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "v15"
+    tag: "v16"
   replicaCount: 1
   resources:
     limits:
@@ -16,7 +16,7 @@ backend:
 
 frontend:
   image:
-    tag: "v11"
+    tag: "v12"
   replicaCount: 1
   resources:
     limits:
