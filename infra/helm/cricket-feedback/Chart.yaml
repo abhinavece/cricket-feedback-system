@@ -1,0 +1,20 @@
+apiVersion: v2
+name: cricket-feedback
+description: A Helm chart for Mavericks XI Cricket Feedback System
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - cricket
+  - feedback
+  - react
+  - nodejs
+  - mongodb
+maintainers:
+  - name: Mavericks XI Team
+    email: admin@mavericksxi.com
+dependencies:
+  - name: mongodb
+    version: "18.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mongodb.enabled

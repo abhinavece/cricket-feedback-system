@@ -1,0 +1,53 @@
+# Development values for Mavericks XI Cricket Feedback System
+# Override default values.yaml for development deployment
+
+# Development image tags
+backend:
+  image:
+    tag: "v15"
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+frontend:
+  image:
+    tag: "v11"
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Development MongoDB settings
+mongodb:
+  auth:
+    password: "password123"
+  architecture: standalone
+  replicaCount: 1
+  persistence:
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Development ingress
+ingress:
+  host: 129.153.86.8.sslip.io
+  tls:
+    enabled: false
+
+# Development autoscaling disabled
+autoscaling:
+  enabled: false

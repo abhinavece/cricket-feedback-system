@@ -1,0 +1,46 @@
+# Infrastructure Git Ignore
+
+# Helm
+charts/
+*.tgz
+.lock
+
+# Backup directories
+backup-*/
+*.backup
+
+# Terraform state (if using Terraform in future)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Kubernetes secrets
+secrets/
+*.secret
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Helm values overrides with secrets
+values-local.yaml
+values-secrets.yaml

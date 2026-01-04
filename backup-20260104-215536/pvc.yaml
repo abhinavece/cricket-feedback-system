@@ -1,0 +1,38 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"annotations":{},"name":"mongodb-pvc","namespace":"cricket-feedback"},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"5Gi"}},"storageClassName":"oci-bv"}}
+      pv.kubernetes.io/bind-completed: "yes"
+      pv.kubernetes.io/bound-by-controller: "yes"
+      volume.beta.kubernetes.io/storage-provisioner: blockvolume.csi.oraclecloud.com
+      volume.kubernetes.io/selected-node: 10.0.10.99
+      volume.kubernetes.io/storage-provisioner: blockvolume.csi.oraclecloud.com
+    creationTimestamp: "2026-01-03T22:21:58Z"
+    finalizers:
+    - kubernetes.io/pvc-protection
+    name: mongodb-pvc
+    namespace: cricket-feedback
+    resourceVersion: "51050"
+    uid: 17bfded4-800b-4a2f-a5fe-dd9a4ae29282
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 5Gi
+    storageClassName: oci-bv
+    volumeMode: Filesystem
+    volumeName: csi-17bfded4-800b-4a2f-a5fe-dd9a4ae29282
+  status:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 50Gi
+    phase: Bound
+kind: List
+metadata:
+  resourceVersion: ""

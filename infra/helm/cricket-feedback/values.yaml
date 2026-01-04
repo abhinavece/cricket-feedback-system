@@ -1,0 +1,200 @@
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Common configuration
+imagePullSecrets:
+  - name: ocir-creds
+
+# Backend configuration
+backend:
+  enabled: true
+  image:
+    registry: phx.ocir.io
+    repository: axkw6whnjncs/cricket-feedback-backend
+    tag: "v15"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  
+  service:
+    type: ClusterIP
+    port: 5001
+    targetPort: 5001
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  env:
+    - name: NODE_ENV
+      value: "production"
+    - name: PORT
+      value: "5001"
+    - name: MONGODB_URI
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: mongodb-uri
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: jwt-secret
+    - name: GOOGLE_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: google-client-id
+    - name: GOOGLE_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: google-client-secret
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: admin-password
+    - name: WHATSAPP_ACCESS_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: whatsapp-credentials
+          key: WHATSAPP_ACCESS_TOKEN
+  
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Frontend configuration
+frontend:
+  enabled: true
+  image:
+    registry: phx.ocir.io
+    repository: axkw6whnjncs/cricket-feedback-frontend
+    tag: "v11"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  env:
+    - name: REACT_APP_API_URL
+      value: "https://129.153.86.8.sslip.io/api"
+    - name: REACT_APP_GOOGLE_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: google-client-id
+
+# MongoDB configuration
+mongodb:
+  enabled: true
+  auth:
+    enabled: true
+    rootUser: admin
+    rootPassword: "password123"
+    username: admin
+    password: "password123"
+    database: cricket-feedback
+  
+  architecture: standalone
+  replicaCount: 1
+  
+  persistence:
+    enabled: true
+    storageClass: "oci-bv"
+    size: 8Gi
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  
+  host: 129.153.86.8.sslip.io
+  tls:
+    enabled: false
+    secretName: cricket-feedback-tls
+  
+  paths:
+    - path: /api
+      pathType: Prefix
+      service: backend
+      port: 5001
+    - path: /
+      pathType: Prefix
+      service: frontend
+      port: 80
+
+# Secrets configuration
+secrets:
+  enabled: true
+  jwtSecret: "CHANGE_ME_JWT"
+  googleClientId: "CHANGE_ME_GOOGLE_CLIENT_ID"
+  googleClientSecret: "CHANGE_ME_GOOGLE_CLIENT_SECRET"
+  superAdminKey: "CHANGE_ME_SUPER_ADMIN_KEY"
+  whatsappAccessToken: "CHANGE_ME_WHATSAPP_TOKEN"
+
+# Namespace configuration
+namespace:
+  create: true
+  name: cricket-feedback
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: cricket-feedback
+  annotations: {}
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  backend:
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  frontend:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70

@@ -1,0 +1,22 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cricket-feedback.fullname" . }}-backend-service
+  namespace: {{ .Values.namespace.name | default "default" }}
+  labels:
+    app: {{ include "cricket-feedback.name" . }}-backend
+    chart: {{ include "cricket-feedback.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.backend.service.type }}
+  ports:
+    - port: {{ .Values.backend.service.port }}
+      targetPort: {{ .Values.backend.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "cricket-feedback.name" . }}-backend
+    release: {{ .Release.Name }}
+{{- end }}

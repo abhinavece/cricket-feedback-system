@@ -1,0 +1,3166 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-01-04T19:15:56+05:30"
+    creationTimestamp: "2026-01-04T13:45:57Z"
+    generateName: backend-5b4df67896-
+    generation: 1
+    labels:
+      app: backend
+      pod-template-hash: 5b4df67896
+    name: backend-5b4df67896-9f996
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: backend-5b4df67896
+      uid: 8607a9e4-6978-4c46-ad5e-3a2bd1d7e43f
+    resourceVersion: "312720"
+    uid: f5d3bb9a-bd47-49c6-a4b0-cb54cca8867d
+  spec:
+    containers:
+    - env:
+      - name: NODE_ENV
+        value: production
+      - name: PORT
+        value: "5001"
+      - name: MONGODB_URI
+        value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+      - name: WHATSAPP_PHONE_NUMBER_ID
+        value: "902819506256035"
+      - name: WHATSAPP_ACCESS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            key: WHATSAPP_ACCESS_TOKEN
+            name: whatsapp-credentials
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            key: jwt-secret
+            name: cricket-secrets
+      - name: GOOGLE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            key: google-client-id
+            name: cricket-secrets
+      - name: GOOGLE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            key: google-client-secret
+            name: cricket-secrets
+      - name: SUPER_ADMIN_KEY
+        valueFrom:
+          secretKeyRef:
+            key: super-admin-key
+            name: cricket-secrets
+      image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v15
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /api/health
+          port: 5001
+          scheme: HTTP
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      name: backend
+      ports:
+      - containerPort: 5001
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /api/health
+          port: 5001
+          scheme: HTTP
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 1
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-fvctq
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: ocir-creds
+    nodeName: 10.0.10.99
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-fvctq
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T13:46:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T13:45:57Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T13:46:07Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T13:46:07Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T13:45:57Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 200m
+        memory: 256Mi
+      containerID: cri-o://0664b0e659f3da605e0ff0730fcc53cd8d2118fa8a22f317ac1d4cf648bc71b3
+      image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v15
+      imageID: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend@sha256:8655b30d65bfdfc908380a71af86efc2c3a6d5dd012ae851648d9e44c6597f5e
+      lastState: {}
+      name: backend
+      ready: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-01-04T13:46:00Z"
+      user:
+        linux:
+          gid: 65533
+          supplementalGroups:
+          - 65533
+          uid: 1001
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-fvctq
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.99
+    hostIPs:
+    - ip: 10.0.10.99
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.29
+    podIPs:
+    - ip: 10.0.10.29
+    qosClass: Burstable
+    startTime: "2026-01-04T13:45:57Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-01-04T19:34:46+05:30"
+    creationTimestamp: "2026-01-04T14:04:46Z"
+    generateName: frontend-74bf47f64b-
+    generation: 1
+    labels:
+      app: frontend
+      pod-template-hash: 74bf47f64b
+    name: frontend-74bf47f64b-lw8t8
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: frontend-74bf47f64b
+      uid: f0c5dcb6-23b0-4008-9a3a-7e259f0b7252
+    resourceVersion: "318070"
+    uid: 232f26b6-4bb8-4174-9076-c53f97adcdd0
+  spec:
+    containers:
+    - env:
+      - name: REACT_APP_API_URL
+        value: https://129.153.86.8.sslip.io/api
+      - name: REACT_APP_GOOGLE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            key: google-client-id
+            name: cricket-secrets
+      image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v10
+      imagePullPolicy: IfNotPresent
+      name: frontend
+      ports:
+      - containerPort: 80
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-sw6fb
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: ocir-creds
+    nodeName: 10.0.10.195
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-sw6fb
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T14:04:49Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T14:04:46Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T14:04:49Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T14:04:49Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-04T14:04:46Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: cri-o://fe57c0c4051be7e5c8faf240b57ffc0bbd6b1269aa6c5ca9ecfe7739c0377ae4
+      image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v10
+      imageID: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend@sha256:468430f2891b82fa8fcc106fb2c6f28d3821896d196674cad7fdada8d1101ad2
+      lastState: {}
+      name: frontend
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-01-04T14:04:48Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-sw6fb
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.195
+    hostIPs:
+    - ip: 10.0.10.195
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.201
+    podIPs:
+    - ip: 10.0.10.201
+    qosClass: Burstable
+    startTime: "2026-01-04T14:04:46Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2026-01-03T22:22:11Z"
+    generateName: mongodb-64fcc7d889-
+    generation: 1
+    labels:
+      app: mongodb
+      pod-template-hash: 64fcc7d889
+    name: mongodb-64fcc7d889-kktrt
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: mongodb-64fcc7d889
+      uid: 9bdbfaea-ca89-48eb-8ddf-373e47df0984
+    resourceVersion: "51293"
+    uid: 5dfc172c-ce3d-471b-b017-f52b0d01150c
+  spec:
+    containers:
+    - env:
+      - name: MONGO_INITDB_ROOT_USERNAME
+        value: admin
+      - name: MONGO_INITDB_ROOT_PASSWORD
+        value: password123
+      - name: MONGO_INITDB_DATABASE
+        value: cricket-feedback
+      image: docker.io/library/mongo:6.0
+      imagePullPolicy: IfNotPresent
+      name: mongodb
+      ports:
+      - containerPort: 27017
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /data/db
+        name: mongodb-storage
+      - mountPath: /docker-entrypoint-initdb.d
+        name: mongodb-init
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kwrxh
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: 10.0.10.99
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: mongodb-storage
+      persistentVolumeClaim:
+        claimName: mongodb-pvc
+    - configMap:
+        defaultMode: 420
+        name: mongodb-init
+      name: mongodb-init
+    - name: kube-api-access-kwrxh
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-03T22:23:12Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-03T22:22:24Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-03T22:23:12Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-03T22:23:12Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-01-03T22:22:24Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 250m
+        memory: 256Mi
+      containerID: cri-o://3798c5c20e05aa6a337b545df65f18c24916e23be56891613815b5d827c49591
+      image: docker.io/library/mongo:6.0
+      imageID: docker.io/library/mongo@sha256:03cda579c8caad6573cb98c2b3d5ff5ead452a6450561129b89595b4b9c18de2
+      lastState: {}
+      name: mongodb
+      ready: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-01-03T22:23:11Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /data/db
+        name: mongodb-storage
+      - mountPath: /docker-entrypoint-initdb.d
+        name: mongodb-init
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kwrxh
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.99
+    hostIPs:
+    - ip: 10.0.10.99
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.122
+    podIPs:
+    - ip: 10.0.10.122
+    qosClass: Burstable
+    startTime: "2026-01-03T22:22:24Z"
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"backend-service","namespace":"cricket-feedback"},"spec":{"ports":[{"port":5001,"protocol":"TCP","targetPort":5001}],"selector":{"app":"backend"},"type":"ClusterIP"}}
+    creationTimestamp: "2026-01-03T20:15:03Z"
+    name: backend-service
+    namespace: cricket-feedback
+    resourceVersion: "15218"
+    uid: 93f3d513-d426-444b-a687-1c3d9ad67e50
+  spec:
+    clusterIP: 10.96.2.13
+    clusterIPs:
+    - 10.96.2.13
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 5001
+      protocol: TCP
+      targetPort: 5001
+    selector:
+      app: backend
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"frontend-service","namespace":"cricket-feedback"},"spec":{"ports":[{"port":80,"protocol":"TCP","targetPort":80}],"selector":{"app":"frontend"},"type":"ClusterIP"}}
+    creationTimestamp: "2026-01-03T21:18:58Z"
+    name: frontend-service
+    namespace: cricket-feedback
+    resourceVersion: "32793"
+    uid: 15502a7c-9f75-4761-a031-011f37a9c0ba
+  spec:
+    clusterIP: 10.96.78.180
+    clusterIPs:
+    - 10.96.78.180
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: frontend
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"mongodb-service","namespace":"cricket-feedback"},"spec":{"ports":[{"port":27017,"protocol":"TCP","targetPort":27017}],"selector":{"app":"mongodb"},"type":"ClusterIP"}}
+    creationTimestamp: "2026-01-03T22:04:27Z"
+    name: mongodb-service
+    namespace: cricket-feedback
+    resourceVersion: "45732"
+    uid: fbf504a3-78cb-472b-b062-1450a9c02c85
+  spec:
+    clusterIP: 10.96.67.159
+    clusterIPs:
+    - 10.96.67.159
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 27017
+      protocol: TCP
+      targetPort: 27017
+    selector:
+      app: mongodb
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "33"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"backend"},"name":"backend","namespace":"cricket-feedback"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"backend"}},"template":{"metadata":{"labels":{"app":"backend"}},"spec":{"containers":[{"env":[{"name":"NODE_ENV","value":"production"},{"name":"PORT","value":"5001"},{"name":"MONGODB_URI","value":"mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin"},{"name":"WHATSAPP_PHONE_NUMBER_ID","value":"902819506256035"},{"name":"WHATSAPP_ACCESS_TOKEN","valueFrom":{"secretKeyRef":{"key":"WHATSAPP_ACCESS_TOKEN","name":"whatsapp-credentials"}}},{"name":"JWT_SECRET","valueFrom":{"secretKeyRef":{"key":"jwt-secret","name":"cricket-secrets"}}},{"name":"GOOGLE_CLIENT_ID","valueFrom":{"secretKeyRef":{"key":"google-client-id","name":"cricket-secrets"}}},{"name":"GOOGLE_CLIENT_SECRET","valueFrom":{"secretKeyRef":{"key":"google-client-secret","name":"cricket-secrets"}}},{"name":"SUPER_ADMIN_KEY","valueFrom":{"secretKeyRef":{"key":"super-admin-key","name":"cricket-secrets"}}}],"image":"phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v15","imagePullPolicy":"IfNotPresent","livenessProbe":{"httpGet":{"path":"/api/health","port":5001},"initialDelaySeconds":30,"periodSeconds":10},"name":"backend","ports":[{"containerPort":5001}],"readinessProbe":{"httpGet":{"path":"/api/health","port":5001},"initialDelaySeconds":5,"periodSeconds":5},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"200m","memory":"256Mi"}}}],"imagePullSecrets":[{"name":"ocir-creds"}]}}}}
+    creationTimestamp: "2026-01-03T21:09:08Z"
+    generation: 34
+    labels:
+      app: backend
+    name: backend
+    namespace: cricket-feedback
+    resourceVersion: "312734"
+    uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: backend
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:15:56+05:30"
+        labels:
+          app: backend
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v15
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-01-03T23:11:16Z"
+      lastUpdateTime: "2026-01-03T23:11:16Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-01-04T13:20:36Z"
+      lastUpdateTime: "2026-01-04T13:46:07Z"
+      message: ReplicaSet "backend-5b4df67896" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 34
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "21"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"frontend"},"name":"frontend","namespace":"cricket-feedback"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"frontend"}},"template":{"metadata":{"labels":{"app":"frontend"}},"spec":{"containers":[{"env":[{"name":"REACT_APP_API_URL","value":"https://129.153.86.8.sslip.io/api"},{"name":"REACT_APP_GOOGLE_CLIENT_ID","valueFrom":{"secretKeyRef":{"key":"google-client-id","name":"cricket-secrets"}}}],"image":"phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v10","imagePullPolicy":"IfNotPresent","name":"frontend","ports":[{"containerPort":80}],"resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}}],"imagePullSecrets":[{"name":"ocir-creds"}]}}}}
+    creationTimestamp: "2026-01-03T21:18:57Z"
+    generation: 22
+    labels:
+      app: frontend
+    name: frontend
+    namespace: cricket-feedback
+    resourceVersion: "318086"
+    uid: bed1327b-4844-419e-874f-ca065c2831a4
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: frontend
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:34:46+05:30"
+        labels:
+          app: frontend
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v10
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-01-03T22:11:38Z"
+      lastUpdateTime: "2026-01-03T22:11:38Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-01-03T21:18:57Z"
+      lastUpdateTime: "2026-01-04T14:04:49Z"
+      message: ReplicaSet "frontend-74bf47f64b" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 22
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"mongodb"},"name":"mongodb","namespace":"cricket-feedback"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"mongodb"}},"template":{"metadata":{"labels":{"app":"mongodb"}},"spec":{"containers":[{"env":[{"name":"MONGO_INITDB_ROOT_USERNAME","value":"admin"},{"name":"MONGO_INITDB_ROOT_PASSWORD","value":"password123"},{"name":"MONGO_INITDB_DATABASE","value":"cricket-feedback"}],"image":"docker.io/library/mongo:6.0","name":"mongodb","ports":[{"containerPort":27017}],"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"250m","memory":"256Mi"}},"volumeMounts":[{"mountPath":"/data/db","name":"mongodb-storage"},{"mountPath":"/docker-entrypoint-initdb.d","name":"mongodb-init"}]}],"volumes":[{"name":"mongodb-storage","persistentVolumeClaim":{"claimName":"mongodb-pvc"}},{"configMap":{"name":"mongodb-init"},"name":"mongodb-init"}]}}}}
+    creationTimestamp: "2026-01-03T22:22:11Z"
+    generation: 1
+    labels:
+      app: mongodb
+    name: mongodb
+    namespace: cricket-feedback
+    resourceVersion: "51298"
+    uid: 4c39d3e0-8209-4536-914a-c1beb4957d34
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: mongodb
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: mongodb
+      spec:
+        containers:
+        - env:
+          - name: MONGO_INITDB_ROOT_USERNAME
+            value: admin
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            value: password123
+          - name: MONGO_INITDB_DATABASE
+            value: cricket-feedback
+          image: docker.io/library/mongo:6.0
+          imagePullPolicy: IfNotPresent
+          name: mongodb
+          ports:
+          - containerPort: 27017
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /data/db
+            name: mongodb-storage
+          - mountPath: /docker-entrypoint-initdb.d
+            name: mongodb-init
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: mongodb-storage
+          persistentVolumeClaim:
+            claimName: mongodb-pvc
+        - configMap:
+            defaultMode: 420
+            name: mongodb-init
+          name: mongodb-init
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-01-03T22:23:12Z"
+      lastUpdateTime: "2026-01-03T22:23:12Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-01-03T22:22:11Z"
+      lastUpdateTime: "2026-01-03T22:23:12Z"
+      message: ReplicaSet "mongodb-64fcc7d889" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "25"
+    creationTimestamp: "2026-01-04T12:24:00Z"
+    generation: 2
+    labels:
+      app: backend
+      pod-template-hash: 558bbf4dcd
+    name: backend-558bbf4dcd
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "295957"
+    uid: 0e34f31f-6e57-4a0e-992a-a38599aa866b
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 558bbf4dcd
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T17:53:59+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 558bbf4dcd
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v10
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "27"
+    creationTimestamp: "2026-01-04T12:48:12Z"
+    generation: 3
+    labels:
+      app: backend
+      pod-template-hash: 565fb87f6f
+    name: backend-565fb87f6f
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "305328"
+    uid: 78861f74-9286-48c7-8d88-52d633e176d1
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 565fb87f6f
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:18:11+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 565fb87f6f
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v11
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "31"
+    creationTimestamp: "2026-01-04T13:20:39Z"
+    generation: 3
+    labels:
+      app: backend
+      pod-template-hash: 585cc4476f
+    name: backend-585cc4476f
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "312733"
+    uid: f7292f18-d18c-40dd-9cea-354fc88cf18f
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 585cc4476f
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:50:38+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 585cc4476f
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v14
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "26"
+    creationTimestamp: "2026-01-04T12:48:06Z"
+    generation: 2
+    labels:
+      app: backend
+      pod-template-hash: 598864d7f9
+    name: backend-598864d7f9
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "295883"
+    uid: c70c3cb8-351d-4265-b02a-7910082be48b
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 598864d7f9
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T17:53:59+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 598864d7f9
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v11
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "33"
+    creationTimestamp: "2026-01-04T13:45:56Z"
+    generation: 2
+    labels:
+      app: backend
+      pod-template-hash: 5b4df67896
+    name: backend-5b4df67896
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "312722"
+    uid: 8607a9e4-6978-4c46-ad5e-3a2bd1d7e43f
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 5b4df67896
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:15:56+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 5b4df67896
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v15
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 2
+    readyReplicas: 1
+    replicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "23"
+    creationTimestamp: "2026-01-04T12:16:38Z"
+    generation: 2
+    labels:
+      app: backend
+      pod-template-hash: 5b557bd79
+    name: backend-5b557bd79
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "286898"
+    uid: cd5a0e35-fcaa-4e13-b045-9b8f40f0528a
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 5b557bd79
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T17:28:27+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 5b557bd79
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v10
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "29"
+    creationTimestamp: "2026-01-04T12:52:54Z"
+    generation: 3
+    labels:
+      app: backend
+      pod-template-hash: 5c579f55b4
+    name: backend-5c579f55b4
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "305203"
+    uid: 1f9522d0-4b4f-4595-acf5-827d11a4242a
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 5c579f55b4
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:22:54+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 5c579f55b4
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v12
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "32"
+    creationTimestamp: "2026-01-04T13:45:54Z"
+    generation: 2
+    labels:
+      app: backend
+      pod-template-hash: 676df848f4
+    name: backend-676df848f4
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "312603"
+    uid: deed0c46-d3a3-4516-8a36-2b242b0d84ac
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 676df848f4
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:50:38+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 676df848f4
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v15
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "24"
+    creationTimestamp: "2026-01-04T12:16:40Z"
+    generation: 3
+    labels:
+      app: backend
+      pod-template-hash: 6848b4bfd
+    name: backend-6848b4bfd
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "289072"
+    uid: 61a3144f-6ecb-4ada-a821-49da9c98d3c0
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 6848b4bfd
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T17:46:40+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 6848b4bfd
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v10
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "30"
+    creationTimestamp: "2026-01-04T13:20:36Z"
+    generation: 3
+    labels:
+      app: backend
+      pod-template-hash: 6db8876886
+    name: backend-6db8876886
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "305247"
+    uid: ddd8b328-ec61-4a50-8e8a-7401e3036790
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 6db8876886
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:22:54+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 6db8876886
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v14
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "28"
+    creationTimestamp: "2026-01-04T12:52:52Z"
+    generation: 2
+    labels:
+      app: backend
+      pod-template-hash: 7855f9f95b
+    name: backend-7855f9f95b
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: backend
+      uid: d79a9728-11e4-4fc4-a6d7-a9c999443f08
+    resourceVersion: "297280"
+    uid: 44cff7d6-b6b3-4516-9864-98c3fe63e4a6
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: backend
+        pod-template-hash: 7855f9f95b
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:18:11+05:30"
+        labels:
+          app: backend
+          pod-template-hash: 7855f9f95b
+      spec:
+        containers:
+        - env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "5001"
+          - name: MONGODB_URI
+            value: mongodb://admin:password123@mongodb-service:27017/cricket-feedback?authSource=admin
+          - name: WHATSAPP_PHONE_NUMBER_ID
+            value: "902819506256035"
+          - name: WHATSAPP_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: WHATSAPP_ACCESS_TOKEN
+                name: whatsapp-credentials
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: jwt-secret
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          - name: GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: google-client-secret
+                name: cricket-secrets
+          - name: SUPER_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                key: super-admin-key
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-backend:v12
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: backend
+          ports:
+          - containerPort: 5001
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "19"
+    creationTimestamp: "2026-01-04T13:46:06Z"
+    generation: 3
+    labels:
+      app: frontend
+      pod-template-hash: 56dd9bdd78
+    name: frontend-56dd9bdd78
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "318085"
+    uid: 4715a067-845e-45d2-ba87-9c73abb45565
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 56dd9bdd78
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:16:06+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 56dd9bdd78
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v9
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "11"
+    creationTimestamp: "2026-01-03T23:03:45Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: 5df76f9cc8
+    name: frontend-5df76f9cc8
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "282833"
+    uid: dc0ea68a-56c6-422b-8169-8b09bb31131b
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 5df76f9cc8
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T04:33:45+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 5df76f9cc8
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: http://129.153.86.8/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v5
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "14"
+    creationTimestamp: "2026-01-04T13:26:03Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: 64bd497c56
+    name: frontend-64bd497c56
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "306856"
+    uid: 6a6f811b-a8e6-4110-9676-6e7f201040b0
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 64bd497c56
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T17:32:11+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 64bd497c56
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v7
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "12"
+    creationTimestamp: "2026-01-04T12:02:09Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: 698fd7cdf5
+    name: frontend-698fd7cdf5
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "282747"
+    uid: 7e60195c-d38a-4cd6-bc84-a0d0f2d1cd54
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 698fd7cdf5
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T04:33:45+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 698fd7cdf5
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v6
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "15"
+    creationTimestamp: "2026-01-04T13:26:06Z"
+    generation: 3
+    labels:
+      app: frontend
+      pod-template-hash: 6bd58fb757
+    name: frontend-6bd58fb757
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "308145"
+    uid: bc5814e6-e971-4956-923c-15c97fb7c64a
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 6bd58fb757
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:56:06+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 6bd58fb757
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v7
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "13"
+    creationTimestamp: "2026-01-04T12:02:12Z"
+    generation: 3
+    labels:
+      app: frontend
+      pod-template-hash: 6fd9798d99
+    name: frontend-6fd9798d99
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "306905"
+    uid: 7cb93033-a3cc-452f-9193-10e3991832e3
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 6fd9798d99
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T17:32:11+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 6fd9798d99
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v6
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "21"
+    creationTimestamp: "2026-01-04T14:04:46Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: 74bf47f64b
+    name: frontend-74bf47f64b
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "318072"
+    uid: f0c5dcb6-23b0-4008-9a3a-7e259f0b7252
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 74bf47f64b
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:34:46+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 74bf47f64b
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v10
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 2
+    readyReplicas: 1
+    replicas: 1
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "17"
+    creationTimestamp: "2026-01-04T13:30:16Z"
+    generation: 3
+    labels:
+      app: frontend
+      pod-template-hash: 7676d46cd7
+    name: frontend-7676d46cd7
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "312769"
+    uid: 2567e5f9-f51c-4d89-8b69-06de7f1ed3f9
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 7676d46cd7
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:00:16+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 7676d46cd7
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v8
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 3
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "20"
+    creationTimestamp: "2026-01-04T14:04:43Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: 79d57fc486
+    name: frontend-79d57fc486
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "318045"
+    uid: 3afd47c0-a1fd-40a2-84ed-f9fb35c3638c
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 79d57fc486
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:16:06+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 79d57fc486
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v10
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "16"
+    creationTimestamp: "2026-01-04T13:30:14Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: 7cb8b6f554
+    name: frontend-7cb8b6f554
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "308112"
+    uid: 2d344e0c-fdb6-4dea-a68d-101b02593803
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: 7cb8b6f554
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T18:56:06+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: 7cb8b6f554
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v8
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "18"
+    creationTimestamp: "2026-01-04T13:46:04Z"
+    generation: 2
+    labels:
+      app: frontend
+      pod-template-hash: c88747f7d
+    name: frontend-c88747f7d
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: frontend
+      uid: bed1327b-4844-419e-874f-ca065c2831a4
+    resourceVersion: "312701"
+    uid: e9ac1c4e-6539-4566-a269-a8a65f5caa8a
+  spec:
+    replicas: 0
+    selector:
+      matchLabels:
+        app: frontend
+        pod-template-hash: c88747f7d
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-01-04T19:00:16+05:30"
+        labels:
+          app: frontend
+          pod-template-hash: c88747f7d
+      spec:
+        containers:
+        - env:
+          - name: REACT_APP_API_URL
+            value: https://129.153.86.8.sslip.io/api
+          - name: REACT_APP_GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: google-client-id
+                name: cricket-secrets
+          image: phx.ocir.io/axkw6whnjncs/cricket-feedback-frontend:v9
+          imagePullPolicy: IfNotPresent
+          name: frontend
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        imagePullSecrets:
+        - name: ocir-creds
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    observedGeneration: 2
+    replicas: 0
+- apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    annotations:
+      deployment.kubernetes.io/desired-replicas: "1"
+      deployment.kubernetes.io/max-replicas: "2"
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2026-01-03T22:22:11Z"
+    generation: 1
+    labels:
+      app: mongodb
+      pod-template-hash: 64fcc7d889
+    name: mongodb-64fcc7d889
+    namespace: cricket-feedback
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Deployment
+      name: mongodb
+      uid: 4c39d3e0-8209-4536-914a-c1beb4957d34
+    resourceVersion: "51295"
+    uid: 9bdbfaea-ca89-48eb-8ddf-373e47df0984
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: mongodb
+        pod-template-hash: 64fcc7d889
+    template:
+      metadata:
+        labels:
+          app: mongodb
+          pod-template-hash: 64fcc7d889
+      spec:
+        containers:
+        - env:
+          - name: MONGO_INITDB_ROOT_USERNAME
+            value: admin
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            value: password123
+          - name: MONGO_INITDB_DATABASE
+            value: cricket-feedback
+          image: docker.io/library/mongo:6.0
+          imagePullPolicy: IfNotPresent
+          name: mongodb
+          ports:
+          - containerPort: 27017
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /data/db
+            name: mongodb-storage
+          - mountPath: /docker-entrypoint-initdb.d
+            name: mongodb-init
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: mongodb-storage
+          persistentVolumeClaim:
+            claimName: mongodb-pvc
+        - configMap:
+            defaultMode: 420
+            name: mongodb-init
+          name: mongodb-init
+  status:
+    availableReplicas: 1
+    fullyLabeledReplicas: 1
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+kind: List
+metadata:
+  resourceVersion: ""
