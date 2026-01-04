@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-init
+  namespace: cricket-feedback
+data:
+  init.js: |
+    // Initialize cricket-feedback database
+    db = db.getSiblingDB('cricket-feedback');
+    
+    // Create admin user
+    db.createUser({
+      user: 'admin',
+      pwd: 'password123',
+      roles: [
+        {
+          role: 'readWrite',
+          db: 'cricket-feedback'
+        }
+      ]
+    });
+    
+    // Create collections with indexes
+    db.users.createIndex({ "email": 1 }, { unique: true });
+    db.users.createIndex({ "googleId": 1 }, { unique: true });
+    db.feedback.createIndex({ "createdAt": -1 });
+    db.feedback.createIndex({ "matchId": 1 });
+    db.feedback.createIndex({ "userId": 1 });
+    
+    print('Database initialized successfully');
