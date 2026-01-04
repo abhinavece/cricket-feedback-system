@@ -4,7 +4,7 @@ const Feedback = require('../models/Feedback');
 const auth = require('../middleware/auth');
 
 // POST /api/feedback - Submit new feedback
-router.post('/', auth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const {
       playerName,
