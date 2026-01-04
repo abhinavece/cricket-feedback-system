@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Feedback = require('../models/Feedback');
+const auth = require('../middleware/auth');
 
 // POST /api/feedback - Submit new feedback
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const {
       playerName,
@@ -64,7 +65,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/feedback - Get all feedback submissions (non-deleted only)
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const feedback = await Feedback.find({ isDeleted: false }).sort({ createdAt: -1 });
     res.json(feedback);

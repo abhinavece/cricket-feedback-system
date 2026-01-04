@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player.js');
+const auth = require('../middleware/auth.js');
 
 // GET /api/players - Get all active players (for WhatsApp messaging)
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const players = await Player.find({ isActive: true })
       .select('name phone role team')
@@ -20,7 +21,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/players - Add a new player
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const { name, phone, notes } = req.body;
     

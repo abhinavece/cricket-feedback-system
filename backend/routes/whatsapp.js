@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
 
 // POST /api/whatsapp/send - Send WhatsApp messages to players
-router.post('/send', async (req, res) => {
+router.post('/send', auth, async (req, res) => {
   try {
     const { playerIds, message, previewUrl = false, template } = req.body;
     
