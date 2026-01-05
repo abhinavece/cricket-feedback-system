@@ -47,7 +47,7 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [sendMode, setSendMode] = useState<'text' | 'template'>('text');
+  const [sendMode, setSendMode] = useState<'text' | 'template'>('template');
   const [message, setMessage] = useState('Hey team, please confirm availability for tomorrow’s match at 7:00 AM.');
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateConfig>(TEMPLATES[0]);
   const [templateName, setTemplateName] = useState(TEMPLATES[0].name);
@@ -875,21 +875,21 @@ const WhatsAppMessagingTab: React.FC = () => {
                   <input
                     type="radio"
                     name="sendMode"
-                    value="text"
-                    checked={sendMode === 'text'}
-                    onChange={() => setSendMode('text')}
-                  />
-                  Text message
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="sendMode"
                     value="template"
                     checked={sendMode === 'template'}
                     onChange={() => setSendMode('template')}
                   />
                   Template message
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="sendMode"
+                    value="text"
+                    checked={sendMode === 'text'}
+                    onChange={() => setSendMode('text')}
+                  />
+                  Text message
                 </label>
               </div>
 
