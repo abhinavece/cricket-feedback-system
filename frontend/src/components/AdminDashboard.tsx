@@ -172,6 +172,21 @@ const AdminDashboard: React.FC = () => {
     );
   };
 
+  const getTabInfo = () => {
+    switch (activeTab) {
+      case 'feedback':
+        return { title: 'Feedback Center', desc: 'Monitor and analyze player match feedback' };
+      case 'users':
+        return { title: 'User Directory', desc: 'Manage access and roles for the platform' };
+      case 'whatsapp':
+        return { title: 'Messaging Hub', desc: 'Blast WhatsApp updates to your team' };
+      default:
+        return { title: 'Admin Dashboard', desc: 'Manage cricket feedback and user data' };
+    }
+  };
+
+  const { title: pageTitle, desc: pageDesc } = getTabInfo();
+
   if (loading) {
     return (
       <div className="container flex items-center justify-center" style={{minHeight: '80vh'}}>
@@ -197,82 +212,120 @@ const AdminDashboard: React.FC = () => {
     <>
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2" style={{color: 'var(--primary-green)'}}>Admin Dashboard</h1>
-        <p className="text-secondary">Manage cricket feedback and user data</p>
+        <h1 className="text-4xl font-bold mb-2 transition-all duration-300" style={{color: 'var(--primary-green)'}}>
+          {pageTitle}
+        </h1>
+        <p className="text-secondary transition-all duration-300">{pageDesc}</p>
       </div>
         
         {/* Tab Navigation */}
-        <div className="mb-6 md:mb-8">
-          {/* Desktop Tabs */}
-          <nav className="hidden md:flex space-x-8 border-b" style={{borderColor: 'var(--border-color)'}}>
+        <div className="mb-8 md:mb-10">
+          {/* Desktop Advanced Tabs */}
+          <nav className="hidden md:flex p-1.5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 w-fit shadow-2xl relative overflow-hidden">
+            {/* Desktop Slider */}
+            <div 
+              className="absolute h-[calc(100%-12px)] rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+              style={{
+                width: activeTab === 'feedback' ? '180px' : activeTab === 'users' ? '160px' : '180px',
+                left: activeTab === 'feedback' ? '6px' : activeTab === 'users' ? '186px' : '346px'
+              }}
+            />
+            
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
-                activeTab === 'feedback'
-                  ? 'border-primary-green text-primary-green'
-                  : 'border-transparent text-secondary hover:text-primary'
+              className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                activeTab === 'feedback' ? 'text-white' : 'text-secondary hover:text-white'
               }`}
+              style={{ width: '180px', justifyContent: 'center' }}
             >
-              Feedback Management
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              Feedback Center
             </button>
             {user?.role === 'admin' && (
               <>
                 <button
                   onClick={() => setActiveTab('users')}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
-                    activeTab === 'users'
-                      ? 'border-primary-green text-primary-green'
-                      : 'border-transparent text-secondary hover:text-primary'
+                  className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'users' ? 'text-white' : 'text-secondary hover:text-white'
                   }`}
+                  style={{ width: '160px', justifyContent: 'center' }}
                 >
-                  User Management
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  Users
                 </button>
                 <button
                   onClick={() => setActiveTab('whatsapp')}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
-                    activeTab === 'whatsapp'
-                      ? 'border-primary-green text-primary-green'
-                      : 'border-transparent text-secondary hover:text-primary'
+                  className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'whatsapp' ? 'text-white' : 'text-secondary hover:text-white'
                   }`}
+                  style={{ width: '180px', justifyContent: 'center' }}
                 >
-                  WhatsApp Messaging
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  WhatsApp Hub
                 </button>
               </>
             )}
           </nav>
 
-          {/* Mobile Tab Pill Control */}
-          <div className="md:hidden bg-white/5 p-1 rounded-2xl border border-white/10 flex items-center shadow-lg">
+          {/* Mobile Premium Tab Selection */}
+          <div className="md:hidden bg-[#0f172a]/80 backdrop-blur-xl p-1.5 rounded-[1.5rem] border border-white/10 flex items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-6 relative overflow-hidden">
+            {/* Animated Glow Background Slider */}
+            <div 
+              className="absolute h-[calc(100%-12px)] rounded-[1.1rem] bg-gradient-to-br from-emerald-400 to-emerald-600 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_25px_rgba(16,185,129,0.5)]"
+              style={{
+                width: user?.role === 'admin' ? 'calc(33.33% - 6px)' : 'calc(100% - 12px)',
+                left: activeTab === 'feedback' ? '6px' : activeTab === 'users' ? '33.33%' : '66.66%'
+              }}
+            >
+              {/* Subtle inner light effect */}
+              <div className="absolute inset-0 bg-white/20 rounded-[1.1rem] mix-blend-overlay"></div>
+            </div>
+            
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`flex-1 py-3 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
-                activeTab === 'feedback'
-                  ? 'bg-primary-green text-white shadow-lg shadow-primary-green/30 scale-[1.02]'
-                  : 'text-secondary/70'
+              className={`relative z-10 flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex flex-col items-center gap-2 ${
+                activeTab === 'feedback' ? 'text-white' : 'text-slate-400'
               }`}
             >
+              <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeTab === 'feedback' ? 'bg-white/10 scale-110' : 'bg-transparent'}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </div>
               Feedback
             </button>
             {user?.role === 'admin' && (
               <>
                 <button
                   onClick={() => setActiveTab('users')}
-                  className={`flex-1 py-3 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
-                    activeTab === 'users'
-                      ? 'bg-primary-green text-white shadow-lg shadow-primary-green/30 scale-[1.02]'
-                      : 'text-secondary/70'
+                  className={`relative z-10 flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex flex-col items-center gap-2 ${
+                    activeTab === 'users' ? 'text-white' : 'text-slate-400'
                   }`}
                 >
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeTab === 'users' ? 'bg-white/10 scale-110' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
                   Users
                 </button>
                 <button
                   onClick={() => setActiveTab('whatsapp')}
-                  className={`flex-1 py-3 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
-                    activeTab === 'whatsapp'
-                      ? 'bg-primary-green text-white shadow-lg shadow-primary-green/30 scale-[1.02]'
-                      : 'text-secondary/70'
+                  className={`relative z-10 flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex flex-col items-center gap-2 ${
+                    activeTab === 'whatsapp' ? 'text-white' : 'text-slate-400'
                   }`}
                 >
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeTab === 'whatsapp' ? 'bg-white/10 scale-110' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
                   WhatsApp
                 </button>
               </>
