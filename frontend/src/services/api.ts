@@ -101,7 +101,7 @@ export const sendWhatsAppMessage = async (payload: {
 };
 
 export const getMessageHistory = async (phone: string) => {
-  const response = await api.get(`/whatsapp/messages/${phone}`);
+  const response = await api.get(`/whatsapp/messages/${phone}?t=${Date.now()}`);
   return response.data;
 };
 

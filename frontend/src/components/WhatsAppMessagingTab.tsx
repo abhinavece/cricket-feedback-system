@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory } from '../services/api';
 import type { Player } from '../types';
 
@@ -22,6 +22,19 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
   const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [historyMessages]);
 
   const fetchPlayers = async () => {
     try {
@@ -43,6 +56,7 @@ const WhatsAppMessagingTab: React.FC = () => {
       setHistoryPlayer(player);
       const response = await getMessageHistory(player.phone);
       setHistoryMessages(response.data || []);
+      setLastSynced(new Date());
     } catch (err) {
       console.error(err);
       setError('Failed to load message history.');
@@ -55,17 +69,23 @@ const WhatsAppMessagingTab: React.FC = () => {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (historyPlayer) {
+      console.log(`Setting up polling for ${historyPlayer.phone}`);
       interval = setInterval(async () => {
         try {
           const response = await getMessageHistory(historyPlayer.phone);
-          setHistoryMessages(response.data || []);
+          if (response.success && response.data) {
+            setHistoryMessages(response.data);
+            setLastSynced(new Date());
+          }
         } catch (err) {
           console.error('Auto-refresh failed:', err);
         }
-      }, 5000); // Refresh every 5 seconds
+      }, 3000); // Refresh every 3 seconds
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
   }, [historyPlayer]);
 
@@ -484,7 +504,15 @@ const WhatsAppMessagingTab: React.FC = () => {
                 <h3 className="h4 mb-1" style={{ color: '#111827', fontWeight: '700' }}>
                   Conversation with {historyPlayer.name}
                 </h3>
-                <p style={{ color: '#6b7280', margin: 0 }}>{historyPlayer.phone}</p>
+                <div className="flex items-center gap-2">
+                  <p style={{ color: '#6b7280', margin: 0 }}>{historyPlayer.phone}</p>
+                  {lastSynced && (
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Live • {lastSynced.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -551,6 +579,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                   </div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="mt-4 d-flex justify-content-end">
