@@ -39,18 +39,40 @@ router.post('/webhook', (req, res) => {
     
     // Check if this is a WhatsApp message
     if (data.object === 'whatsapp_business_account') {
+      console.log('Valid WhatsApp webhook object found');
       for (const entry of data.entry) {
         for (const change of entry.changes) {
           if (change.field === 'messages') {
-            const messages = change.value.messages || [];
+            const value = change.value;
+            const messages = value.messages || [];
+            const contacts = value.contacts || [];
+            
+            console.log(`Processing ${messages.length} messages and ${contacts.length} contacts`);
             
             for (const message of messages) {
+              const from = message.from; // WhatsApp ID of sender
+              let text = '';
+              
               if (message.type === 'text') {
-                const from = message.from;
-                const text = message.text.body;
-                
-                console.log(`Received message from ${from}: ${text}`);
-                
+                text = message.text.body;
+              } else if (message.type === 'button') {
+                text = message.button.text;
+                console.log(`Received button response: ${text}`);
+              } else if (message.type === 'interactive') {
+                const interactive = message.interactive;
+                if (interactive.type === 'button_reply') {
+                  text = interactive.button_reply.title;
+                } else if (interactive.type === 'list_reply') {
+                  text = interactive.list_reply.title;
+                }
+                console.log(`Received interactive response: ${text}`);
+              } else {
+                text = `[${message.type} message]`;
+                console.log(`Received non-text message type: ${message.type}`);
+              }
+              
+              if (text) {
+                console.log(`Extracted message text: "${text}" from ${from}`);
                 // Process the incoming message
                 processIncomingMessage(from, text);
               }
@@ -93,12 +115,15 @@ async function processIncomingMessage(from, text) {
 router.get('/messages/:phone', auth, async (req, res) => {
   try {
     const { phone } = req.params;
+    console.log(`Fetching message history for phone: ${phone}`);
     
     // Format phone number to match how it's stored
     let formattedPhone = phone.replace(/\D/g, '');
     if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
       formattedPhone = '91' + formattedPhone;
     }
+    
+    console.log(`Querying messages for formatted phone: ${formattedPhone}`);
 
     const messages = await Message.find({
       $or: [
@@ -106,6 +131,8 @@ router.get('/messages/:phone', auth, async (req, res) => {
         { to: formattedPhone }
       ]
     }).sort({ timestamp: 1 });
+
+    console.log(`Found ${messages.length} messages for ${formattedPhone}`);
 
     res.json({
       success: true,

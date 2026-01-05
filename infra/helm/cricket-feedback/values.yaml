@@ -14,7 +14,7 @@ backend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-backend
-    tag: "v22"
+    tag: "v23"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
