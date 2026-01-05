@@ -51,6 +51,24 @@ const WhatsAppMessagingTab: React.FC = () => {
     }
   };
 
+  // Auto-refresh history when modal is open
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (historyPlayer) {
+      interval = setInterval(async () => {
+        try {
+          const response = await getMessageHistory(historyPlayer.phone);
+          setHistoryMessages(response.data || []);
+        } catch (err) {
+          console.error('Auto-refresh failed:', err);
+        }
+      }, 5000); // Refresh every 5 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [historyPlayer]);
+
   useEffect(() => {
     fetchPlayers();
   }, []);
@@ -468,21 +486,31 @@ const WhatsAppMessagingTab: React.FC = () => {
                 </h3>
                 <p style={{ color: '#6b7280', margin: 0 }}>{historyPlayer.phone}</p>
               </div>
-              <button 
-                onClick={() => setHistoryPlayer(null)}
-                style={{
-                  background: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  width: '32px',
-                  height: '32px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  fontSize: '20px'
-                }}
-              >
-                ×
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => fetchHistory(historyPlayer)}
+                  className="btn btn-tertiary text-xs"
+                  style={{ padding: '6px 12px' }}
+                  disabled={loadingHistory}
+                >
+                  {loadingHistory ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button 
+                  onClick={() => setHistoryPlayer(null)}
+                  style={{
+                    background: '#f3f4f6',
+                    border: 'none',
+                    borderRadius: '8px',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    color: '#6b7280',
+                    fontSize: '20px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             <div style={{ 
