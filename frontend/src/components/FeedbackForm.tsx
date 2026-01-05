@@ -17,6 +17,18 @@ const isRatingField = (field: keyof FeedbackForm): field is RatingField =>
   (REQUIRED_RATING_FIELDS as readonly string[]).includes(field as string);
 
 const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading = false }) => {
+  // Helper function to auto-capitalize text like WhatsApp
+  const autoCapitalize = (text: string): string => {
+    if (!text) return text;
+    
+    // Capitalize first character
+    let result = text.charAt(0).toUpperCase() + text.slice(1);
+    
+    // Find all instances of period followed by space and a letter, and capitalize that letter
+    result = result.replace(/\. ([a-z])/g, (match) => `. ${match.charAt(2).toUpperCase()}`);
+    
+    return result;
+  };
   const [formData, setFormData] = useState<FeedbackForm>({
     playerName: '',
     matchDate: new Date(),
@@ -108,7 +120,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
             <input
               type="text"
               value={formData.playerName}
-              onChange={(e) => handleInputChange('playerName', e.target.value)}
+              onChange={(e) => handleInputChange('playerName', autoCapitalize(e.target.value))}
               className={`form-control ${errors.playerName ? 'border-red-500' : ''}`}
               placeholder="Enter your name"
             />
@@ -190,7 +202,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
             </label>
             <textarea
               value={formData.feedbackText}
-              onChange={(e) => handleInputChange('feedbackText', e.target.value)}
+              onChange={(e) => handleInputChange('feedbackText', autoCapitalize(e.target.value))}
               rows={4}
               className={`form-control ${errors.feedbackText ? 'border-red-500' : ''}`}
               placeholder="How was your game today?"
@@ -225,7 +237,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
             </label>
             <textarea
               value={formData.additionalComments}
-              onChange={(e) => handleInputChange('additionalComments', e.target.value)}
+              onChange={(e) => handleInputChange('additionalComments', autoCapitalize(e.target.value))}
               rows={3}
               className="form-control"
               placeholder="Any other thoughts?"

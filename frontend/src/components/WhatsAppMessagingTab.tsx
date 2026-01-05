@@ -68,6 +68,19 @@ const WhatsAppMessagingTab: React.FC = () => {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to auto-capitalize text like WhatsApp
+  const autoCapitalize = (text: string): string => {
+    if (!text) return text;
+    
+    // Capitalize first character
+    let result = text.charAt(0).toUpperCase() + text.slice(1);
+    
+    // Find all instances of period followed by space and a letter, and capitalize that letter
+    result = result.replace(/\. ([a-z])/g, (match) => `. ${match.charAt(2).toUpperCase()}`);
+    
+    return result;
+  };
+
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -708,7 +721,7 @@ const WhatsAppMessagingTab: React.FC = () => {
               <div className="flex-1 relative">
                 <textarea
                   value={historyNewMessage}
-                  onChange={(e) => setHistoryNewMessage(e.target.value)}
+                  onChange={(e) => setHistoryNewMessage(autoCapitalize(e.target.value))}
                   placeholder="Type a message"
                   className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-32 min-h-[40px]"
                   rows={1}
@@ -873,10 +886,12 @@ const WhatsAppMessagingTab: React.FC = () => {
                 <input
                   type="text"
                   value={editingPlayer ? editingPlayer.name : newPlayer.name}
-                  onChange={(e) => editingPlayer 
-                    ? setEditingPlayer(prev => prev ? ({ ...prev, name: e.target.value }) : null)
-                    : setNewPlayer((prev) => ({ ...prev, name: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const capitalizedValue = autoCapitalize(e.target.value);
+                    editingPlayer 
+                      ? setEditingPlayer(prev => prev ? ({ ...prev, name: capitalizedValue }) : null)
+                      : setNewPlayer((prev) => ({ ...prev, name: capitalizedValue }));
+                  }}
                   className="form-control"
                   placeholder="Player name"
                 />
@@ -899,10 +914,12 @@ const WhatsAppMessagingTab: React.FC = () => {
                 <label className="form-label text-sm">Notes (optional)</label>
                 <textarea
                   value={editingPlayer ? (editingPlayer.notes || '') : newPlayer.notes}
-                  onChange={(e) => editingPlayer
-                    ? setEditingPlayer(prev => prev ? ({ ...prev, notes: e.target.value }) : null)
-                    : setNewPlayer((prev) => ({ ...prev, notes: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const capitalizedValue = autoCapitalize(e.target.value);
+                    editingPlayer
+                      ? setEditingPlayer(prev => prev ? ({ ...prev, notes: capitalizedValue }) : null)
+                      : setNewPlayer(prev => ({ ...prev, notes: capitalizedValue }));
+                  }}
                   className="form-control"
                   rows={2}
                   placeholder="Opening batter, prefers morning matches, etc."
@@ -960,7 +977,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                     className="form-control mt-2"
                     rows={5}
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={(e) => setMessage(autoCapitalize(e.target.value))}
                     placeholder="Type your WhatsApp message"
                   />
                 </div>
@@ -1053,7 +1070,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                           className="form-control mt-2"
                           rows={4}
                           value={templateBodyParams}
-                          onChange={(e) => setTemplateBodyParams(e.target.value)}
+                          onChange={(e) => setTemplateBodyParams(autoCapitalize(e.target.value))}
                           placeholder={'Abhinav\n7:00 AM'}
                         />
                       </div>
