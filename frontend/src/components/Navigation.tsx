@@ -64,7 +64,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange, user
             </button>
           </div>
 
-          <nav className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row absolute md:relative top-full left-0 w-full md:w-auto bg-gradient-to-b from-[#16213e] to-[#1a1a2e] md:bg-transparent p-6 md:p-0 border-b border-primary-green/30 md:border-none gap-4 md:gap-8 items-center z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-fade-in`}>
+          <nav className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row absolute md:relative top-full left-0 w-full md:w-auto bg-gradient-to-b from-[#16213e] to-[#1a1a2e] md:[background:none] p-6 md:p-0 border-b border-primary-green/30 md:border-none gap-4 md:gap-8 items-center z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.5)] md:shadow-none animate-fade-in`}>
             <button
               onClick={() => handleViewChange('form')}
               className={`nav-link w-full md:w-auto text-left md:text-center text-lg md:text-base py-4 md:py-0 font-bold md:font-medium tracking-wide ${currentView === 'form' ? 'active text-primary-green' : 'text-white/90'}`}
