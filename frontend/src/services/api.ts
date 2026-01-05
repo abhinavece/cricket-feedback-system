@@ -86,6 +86,15 @@ export const createPlayer = async (data: { name: string; phone: string; notes?: 
   return response.data;
 };
 
+export const updatePlayer = async (id: string, data: Partial<Player>): Promise<Player> => {
+  const response = await api.put(`/players/${id}`, data);
+  return response.data;
+};
+
+export const deletePlayer = async (id: string): Promise<void> => {
+  await api.delete(`/players/${id}`);
+};
+
 export const sendWhatsAppMessage = async (payload: {
   playerIds: string[];
   message?: string;

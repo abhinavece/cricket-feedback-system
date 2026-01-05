@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory } from '../services/api';
+import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updatePlayer, deletePlayer } from '../services/api';
 import type { Player } from '../types';
+import ConfirmDialog from './ConfirmDialog';
 
 const WhatsAppMessagingTab: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [newPlayer, setNewPlayer] = useState({ name: '', phone: '', notes: '' });
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [sendMode, setSendMode] = useState<'text' | 'template'>('text');
   const [message, setMessage] = useState('Hey team, please confirm availability for tomorrow’s match at 7:00 AM.');
   const [templateName, setTemplateName] = useState('mavericks_team_availability');
@@ -47,6 +52,56 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Failed to load players. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdatePlayer = async (event: React.FormEvent) => {
+    event.preventDefault();
+    console.log('handleUpdatePlayer called', { editingPlayer });
+    if (!editingPlayer) return;
+    if (!editingPlayer.name.trim() || !editingPlayer.phone.trim()) {
+      setError('Name and WhatsApp number are required.');
+      return;
+    }
+    try {
+      setIsUpdating(true);
+      setError(null);
+      setSuccess(null);
+      console.log('Sending update request for player:', editingPlayer._id);
+      await updatePlayer(editingPlayer._id, {
+        name: editingPlayer.name.trim(),
+        phone: editingPlayer.phone.trim(),
+        notes: editingPlayer.notes?.trim() || undefined,
+      });
+      console.log('Update successful');
+      setSuccess('Player updated successfully');
+      setEditingPlayer(null);
+      await fetchPlayers();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Update failed:', err);
+      setError(err?.response?.data?.error || 'Failed to update player');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeletePlayer = async () => {
+    console.log('handleDeletePlayer called', { playerToDelete });
+    if (!playerToDelete) return;
+    try {
+      setError(null);
+      setSuccess(null);
+      console.log('Sending delete request for player:', playerToDelete._id);
+      await deletePlayer(playerToDelete._id);
+      console.log('Delete successful');
+      setSuccess('Player deleted successfully');
+      setPlayerToDelete(null);
+      await fetchPlayers();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      setError(err?.response?.data?.error || 'Failed to delete player');
     }
   };
 
@@ -263,6 +318,19 @@ const WhatsAppMessagingTab: React.FC = () => {
       {error && (
         <div className="alert alert-error">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="alert alert-success" style={{
+          backgroundColor: '#ecfdf5',
+          color: '#065f46',
+          border: '1px solid #a7f3d0',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '16px'
+        }}>
+          {success}
         </div>
       )}
 
@@ -678,13 +746,26 @@ const WhatsAppMessagingTab: React.FC = () => {
                     </td>
                     <td className="py-4 pr-4 text-secondary hidden md:table-cell">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
                     <td className="py-4 pr-4">
-                      <button
-                        onClick={() => fetchHistory(player)}
-                        className="btn btn-tertiary text-xs md:text-sm min-h-[40px] w-full md:w-auto"
-                        style={{ padding: '8px 12px' }}
-                      >
-                        History
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => fetchHistory(player)}
+                          className="btn btn-tertiary text-xs md:text-sm min-h-[40px] px-3"
+                        >
+                          History
+                        </button>
+                        <button
+                          onClick={() => setEditingPlayer(player)}
+                          className="btn btn-outline text-xs md:text-sm min-h-[40px] px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setPlayerToDelete(player)}
+                          className="btn btn-outline text-xs md:text-sm min-h-[40px] px-3 border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   ))
@@ -697,15 +778,18 @@ const WhatsAppMessagingTab: React.FC = () => {
         <div className="space-y-6">
           <div className="card">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-              Add Player
+              {editingPlayer ? 'Edit Player' : 'Add Player'}
             </h3>
-            <form className="space-y-4" onSubmit={handleAddPlayer}>
+            <form className="space-y-4" onSubmit={editingPlayer ? handleUpdatePlayer : handleAddPlayer}>
               <div>
                 <label className="form-label text-sm">Name</label>
                 <input
                   type="text"
-                  value={newPlayer.name}
-                  onChange={(e) => setNewPlayer((prev) => ({ ...prev, name: e.target.value }))}
+                  value={editingPlayer ? editingPlayer.name : newPlayer.name}
+                  onChange={(e) => editingPlayer 
+                    ? setEditingPlayer(prev => prev ? ({ ...prev, name: e.target.value }) : null)
+                    : setNewPlayer((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   className="form-control"
                   placeholder="Player name"
                 />
@@ -714,8 +798,11 @@ const WhatsAppMessagingTab: React.FC = () => {
                 <label className="form-label text-sm">WhatsApp Number</label>
                 <input
                   type="tel"
-                  value={newPlayer.phone}
-                  onChange={(e) => setNewPlayer((prev) => ({ ...prev, phone: e.target.value }))}
+                  value={editingPlayer ? editingPlayer.phone : newPlayer.phone}
+                  onChange={(e) => editingPlayer
+                    ? setEditingPlayer(prev => prev ? ({ ...prev, phone: e.target.value }) : null)
+                    : setNewPlayer((prev) => ({ ...prev, phone: e.target.value }))
+                  }
                   className="form-control"
                   placeholder="+91 90000 00000"
                   inputMode="tel"
@@ -724,16 +811,30 @@ const WhatsAppMessagingTab: React.FC = () => {
               <div>
                 <label className="form-label text-sm">Notes (optional)</label>
                 <textarea
-                  value={newPlayer.notes}
-                  onChange={(e) => setNewPlayer((prev) => ({ ...prev, notes: e.target.value }))}
+                  value={editingPlayer ? (editingPlayer.notes || '') : newPlayer.notes}
+                  onChange={(e) => editingPlayer
+                    ? setEditingPlayer(prev => prev ? ({ ...prev, notes: e.target.value }) : null)
+                    : setNewPlayer((prev) => ({ ...prev, notes: e.target.value }))
+                  }
                   className="form-control"
                   rows={2}
                   placeholder="Opening batter, prefers morning matches, etc."
                 />
               </div>
-              <button type="submit" className="btn btn-primary w-full">
-                Save player
-              </button>
+              <div className="flex gap-2">
+                {editingPlayer && (
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary flex-1"
+                    onClick={() => setEditingPlayer(null)}
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button type="submit" className="btn btn-primary flex-[2]" disabled={isUpdating}>
+                  {editingPlayer ? (isUpdating ? 'Updating...' : 'Update Player') : 'Save player'}
+                </button>
+              </div>
             </form>
           </div>
 
@@ -866,6 +967,16 @@ const WhatsAppMessagingTab: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={!!playerToDelete}
+        title="Delete Player"
+        message={`Are you sure you want to delete ${playerToDelete?.name}? this will remove them from the messaging list.`}
+        onConfirm={handleDeletePlayer}
+        onCancel={() => setPlayerToDelete(null)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

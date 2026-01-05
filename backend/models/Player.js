@@ -22,6 +22,11 @@ const playerSchema = new mongoose.Schema({
     trim: true,
     default: 'Unknown Team'
   },
+  notes: {
+    type: String,
+    required: false,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true
