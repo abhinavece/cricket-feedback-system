@@ -53,8 +53,8 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [templateName, setTemplateName] = useState(TEMPLATES[0].name);
   const [templateLanguage, setTemplateLanguage] = useState(TEMPLATES[0].language);
   const [templateBodyParams, setTemplateBodyParams] = useState<string>('');
-  const [matchDateTime, setMatchDateTime] = useState('Sunday, 2:00 PM. 11th Jan, 2026');
-  const [matchVenue, setMatchVenue] = useState('Nityansh Cricket Ground');
+  const [matchDateTime, setMatchDateTime] = useState('');
+  const [matchVenue, setMatchVenue] = useState('');
   const [templateExpectedParams, setTemplateExpectedParams] = useState(TEMPLATES[0].expectedParams);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; attempted: number; results?: Array<{ playerId: string; name: string; phone: string; status: string; messageId?: string; timestamp?: string }> } | null>(null);
@@ -269,8 +269,8 @@ const WhatsAppMessagingTab: React.FC = () => {
                 type: 'body',
                 parameters: [
                   { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
-                  { type: 'text', text: matchDateTime.trim() },
-                  { type: 'text', text: matchVenue.trim() }
+                  { type: 'text', text: (matchDateTime.trim() || 'Sunday, 2:00 PM. 11th Jan, 2026') },
+                  { type: 'text', text: (matchVenue.trim() || 'Nityansh Cricket Ground') }
                 ]
               }
             ]
