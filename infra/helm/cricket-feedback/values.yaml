@@ -101,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-frontend
-    tag: "v29"
+    tag: "v32"
     pullPolicy: IfNotPresent
   replicaCount: 1
   

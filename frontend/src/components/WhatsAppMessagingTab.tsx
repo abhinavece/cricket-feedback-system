@@ -3,6 +3,40 @@ import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updat
 import type { Player } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 
+interface TemplateConfig {
+  id: string;
+  name: string;
+  label: string;
+  format: string;
+  expectedParams: number;
+  language: string;
+  header?: string;
+  footer?: string;
+  buttons?: string[];
+}
+
+const TEMPLATES: TemplateConfig[] = [
+  {
+    id: 'mavericks_team_availability',
+    name: 'mavericks_team_availability',
+    label: 'Team Availability',
+    header: 'Mavericks XI Team Availability',
+    format: 'Hi {{1}},\n\nWe have an upcoming match scheduled at {{2}} on {{3}}.\n\nAre you available for the match?',
+    footer: 'Select an option to confirm your availability',
+    expectedParams: 3,
+    language: 'en',
+    buttons: ['Yes', 'No']
+  },
+  {
+    id: 'custom',
+    name: '',
+    label: 'Custom Template',
+    format: '',
+    expectedParams: 0,
+    language: 'en_US'
+  }
+];
+
 const WhatsAppMessagingTab: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
@@ -15,12 +49,13 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [sendMode, setSendMode] = useState<'text' | 'template'>('text');
   const [message, setMessage] = useState('Hey team, please confirm availability for tomorrow’s match at 7:00 AM.');
-  const [templateName, setTemplateName] = useState('mavericks_team_availability');
-  const [templateLanguage, setTemplateLanguage] = useState('en');
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateConfig>(TEMPLATES[0]);
+  const [templateName, setTemplateName] = useState(TEMPLATES[0].name);
+  const [templateLanguage, setTemplateLanguage] = useState(TEMPLATES[0].language);
   const [templateBodyParams, setTemplateBodyParams] = useState<string>('');
   const [matchDateTime, setMatchDateTime] = useState('Sunday, 2:00 PM. 11th Jan, 2026');
   const [matchVenue, setMatchVenue] = useState('Nityansh Cricket Ground');
-  const [templateExpectedParams, setTemplateExpectedParams] = useState(3);
+  const [templateExpectedParams, setTemplateExpectedParams] = useState(TEMPLATES[0].expectedParams);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; attempted: number; results?: Array<{ playerId: string; name: string; phone: string; status: string; messageId?: string; timestamp?: string }> } | null>(null);
   const [showAlert, setShowAlert] = useState(true);
@@ -224,11 +259,11 @@ const WhatsAppMessagingTab: React.FC = () => {
         payload.message = message.trim();
         payload.previewUrl = false;
       } else {
-        // Special handling for mavericks_team_availability template
-        if (templateName === 'mavericks_team_availability') {
+        // Use selected template config
+        if (selectedTemplate.id === 'mavericks_team_availability') {
           payload.template = {
-            name: templateName.trim(),
-            languageCode: templateLanguage.trim() || 'en',
+            name: selectedTemplate.name,
+            languageCode: templateLanguage.trim() || selectedTemplate.language,
             components: [
               {
                 type: 'body',
@@ -240,8 +275,7 @@ const WhatsAppMessagingTab: React.FC = () => {
               }
             ]
           };
-        } else {
-          // Fallback for other templates using the manual body parameters logic
+        } else if (selectedTemplate.id === 'custom') {
           const bodyParams = templateBodyParams
             .split('\n')
             .map((line: string) => line.trim())
@@ -260,19 +294,10 @@ const WhatsAppMessagingTab: React.FC = () => {
             return;
           }
 
-          const components = bodyParams.length
-            ? [
-                {
-                  type: 'body',
-                  parameters: bodyParams,
-                },
-              ]
-            : undefined;
-
           payload.template = {
             name: templateName.trim(),
             languageCode: templateLanguage.trim() || 'en_US',
-            components,
+            components: bodyParams.length ? [{ type: 'body', parameters: bodyParams }] : undefined,
           };
         }
       }
@@ -690,13 +715,6 @@ const WhatsAppMessagingTab: React.FC = () => {
               >
                 Clear
               </button>
-              <button
-                className="btn btn-secondary col-span-2 flex items-center justify-center gap-2 h-12 md:h-auto"
-                onClick={handleSendMessages}
-                disabled={sending || loading || selectedPlayers.length === 0}
-              >
-                {sending ? 'Sending…' : `Send to ${selectedPlayers.length}`}
-              </button>
             </div>
           </div>
 
@@ -878,40 +896,55 @@ const WhatsAppMessagingTab: React.FC = () => {
                   />
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="form-label text-sm">Template name</label>
-                    <input
-                      type="text"
+                    <label className="form-label text-sm">Select Template</label>
+                    <select
                       className="form-control"
-                      value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
-                      placeholder="hello_world"
-                    />
+                      value={selectedTemplate.id}
+                      onChange={(e) => {
+                        const template = TEMPLATES.find(t => t.id === e.target.value) || TEMPLATES[0];
+                        setSelectedTemplate(template);
+                        setTemplateName(template.name);
+                        setTemplateLanguage(template.language);
+                        setTemplateExpectedParams(template.expectedParams);
+                      }}
+                    >
+                      {TEMPLATES.map(t => (
+                        <option key={t.id} value={t.id}>{t.label}</option>
+                      ))}
+                    </select>
                   </div>
-                  <div>
-                    <label className="form-label text-sm">Language code</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={templateLanguage}
-                      onChange={(e) => setTemplateLanguage(e.target.value)}
-                      placeholder="en_US"
-                    />
-                  </div>
-                  {templateName === 'mavericks_team_availability' ? (
-                    <div className="space-y-4">
+
+                  {selectedTemplate.id === 'custom' && (
+                    <div className="space-y-3">
                       <div>
-                        <label className="form-label text-sm">Parameter 1: Player Name</label>
+                        <label className="form-label text-sm">Template Name</label>
                         <input
                           type="text"
                           className="form-control"
-                          value="Auto-filled for each player"
-                          disabled
+                          value={templateName}
+                          onChange={(e) => setTemplateName(e.target.value)}
+                          placeholder="e.g., hello_world"
                         />
                       </div>
                       <div>
-                        <label className="form-label text-sm">Parameter 2: Match Time & Date</label>
+                        <label className="form-label text-sm">Language Code</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={templateLanguage}
+                          onChange={(e) => setTemplateLanguage(e.target.value)}
+                          placeholder="e.g., en_US"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedTemplate.id === 'mavericks_team_availability' ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="form-label text-sm">Match Time & Date</label>
                         <input
                           type="text"
                           className="form-control"
@@ -921,7 +954,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="form-label text-sm">Parameter 3: Venue</label>
+                        <label className="form-label text-sm">Venue</label>
                         <input
                           type="text"
                           className="form-control"
@@ -957,12 +990,130 @@ const WhatsAppMessagingTab: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Template Preview */}
+                  {selectedTemplate.id !== 'custom' && (
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">Live Preview</p>
+                      <div className="bg-[#1f2c34] border border-gray-700/50 rounded-2xl p-4 overflow-hidden shadow-2xl relative">
+                        {/* WhatsApp bubble tail effect (simplified) */}
+                        <div className="absolute top-0 -left-1 w-0 h-0 border-t-[10px] border-t-[#1f2c34] border-l-[10px] border-l-transparent"></div>
+                        
+                        {selectedTemplate.header && (
+                          <p className="text-[15px] font-bold text-white mb-2 leading-tight">
+                            {selectedTemplate.header}
+                          </p>
+                        )}
+                        <div className="text-[14.5px] text-[#e9edef] whitespace-pre-wrap leading-relaxed mb-1">
+                          {selectedTemplate.format
+                            .replace('{{1}}', players[0]?.name || 'Abhinav Singh')
+                            .replace('{{2}}', matchDateTime || 'Sunday, 2:00 PM. 11th Jan, 2026')
+                            .replace('{{3}}', matchVenue || 'Nityansh Cricket Ground')}
+                        </div>
+                        
+                        {selectedTemplate.footer && (
+                          <p className="text-[13px] text-[#8696a0] mt-2 mb-1">
+                            {selectedTemplate.footer}
+                          </p>
+                        )}
+
+                        <div className="flex justify-end items-center gap-1 mt-1">
+                          <span className="text-[11px] text-[#8696a0]">
+                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
+                          <div className="mt-3 border-t border-[#2a3942] -mx-4">
+                            {selectedTemplate.buttons.map((btn, i) => (
+                              <div 
+                                key={i} 
+                                className={`w-full py-3 flex items-center justify-center gap-2 hover:bg-[#202c33] transition-colors cursor-default ${i !== 0 ? 'border-t border-[#2a3942]' : ''}`}
+                              >
+                                {btn === 'Yes' ? (
+                                  <svg className="w-5 h-5 text-[#00a884]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                  </svg>
+                                ) : btn === 'No' ? (
+                                  <svg className="w-5 h-5 text-[#00a884]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                  </svg>
+                                ) : null}
+                                <span className="text-[#00a884] text-[15px] font-medium">{btn}</span>
+                              </div>
+                            ))}
+                            <div className="w-full py-3 flex items-center justify-center gap-2 border-t border-[#2a3942]">
+                              <svg className="w-5 h-5 text-[#00a884]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                              </svg>
+                              <span className="text-[#00a884] text-[15px] font-medium">See all options</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-            <div className="mt-6 space-y-2 text-xs text-secondary">
-              <p>Selected players: {selectedPlayers.length || players.length || 0}</p>
-              <p>This action triggers an immediate WhatsApp API call—no cron involved.</p>
+            <div className="mt-6 space-y-4">
+              <div className="relative group">
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/50 cursor-help transition-colors hover:bg-gray-800">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <p className="text-xs text-secondary font-medium uppercase tracking-wider">Recipients Selected</p>
+                  </div>
+                  <p className="text-sm font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/20">
+                    {selectedPlayers.length}
+                  </p>
+                </div>
+                
+                {/* Hover Tooltip for Selected Players */}
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 max-h-60 overflow-y-auto">
+                  <p className="text-[10px] uppercase tracking-widest text-secondary mb-3 pb-2 border-b border-gray-700 font-bold">
+                    {selectedPlayers.length === 0 ? 'No players selected' : `Sending to ${selectedPlayers.length} players`}
+                  </p>
+                  <div className="space-y-2">
+                    {selectedPlayers.length === 0 ? (
+                      <p className="text-xs text-secondary italic">Select players from the table to send messages.</p>
+                    ) : (
+                      selectedPlayers.map(id => {
+                        const player = players.find(p => p._id === id);
+                        return player ? (
+                          <div key={id} className="flex items-center justify-between text-xs">
+                            <span className="text-white font-medium">{player.name}</span>
+                            <span className="text-secondary tabular-nums">{player.phone}</span>
+                          </div>
+                        ) : null;
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary w-full flex items-center justify-center gap-2 h-12 shadow-lg shadow-emerald-500/10 transition-all hover:shadow-emerald-500/20 active:scale-[0.98]"
+                onClick={handleSendMessages}
+                disabled={sending || loading || selectedPlayers.length === 0}
+              >
+                {sending ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Sending…
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    Send to {selectedPlayers.length} Players
+                  </>
+                )}
+              </button>
+              
+              <p className="text-center text-[10px] text-secondary/60 italic">
+                Immediate WhatsApp API trigger • No cron job scheduled
+              </p>
             </div>
           </div>
         </div>
