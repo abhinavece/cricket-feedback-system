@@ -63,6 +63,8 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [historyNewMessage, setHistoryNewMessage] = useState('');
+  const [sendingHistoryMessage, setSendingHistoryMessage] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -178,6 +180,26 @@ const WhatsAppMessagingTab: React.FC = () => {
       }
     };
   }, [historyPlayer]);
+
+  const handleSendHistoryMessage = async () => {
+    if (!historyNewMessage.trim() || !historyPlayer) return;
+    
+    try {
+      setSendingHistoryMessage(true);
+      await sendWhatsAppMessage({
+        playerIds: [historyPlayer._id],
+        message: historyNewMessage.trim(),
+        previewUrl: false
+      });
+      setHistoryNewMessage('');
+      // Polling will update the UI
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.response?.data?.error || 'Failed to send message');
+    } finally {
+      setSendingHistoryMessage(false);
+    }
+  };
 
   useEffect(() => {
     fetchPlayers();
@@ -614,7 +636,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l18 18" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
@@ -680,7 +702,45 @@ const WhatsAppMessagingTab: React.FC = () => {
               )}
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Footer - WhatsApp Input Style */}
+            <div className="p-2 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2">              
+              {/* Text Input */}
+              <div className="flex-1 relative">
+                <textarea
+                  value={historyNewMessage}
+                  onChange={(e) => setHistoryNewMessage(e.target.value)}
+                  placeholder="Type a message"
+                  className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-32 min-h-[40px]"
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendHistoryMessage();
+                    }
+                  }}
+                />
+              </div>
+              
+              {/* Send Button */}
+              <button
+                onClick={handleSendHistoryMessage}
+                disabled={!historyNewMessage.trim() || sendingHistoryMessage}
+                className={`w-10 h-10 rounded-full transition-all flex items-center justify-center shrink-0 ${
+                  sendingHistoryMessage
+                    ? 'bg-gray-300 text-white cursor-not-allowed'
+                    : 'bg-[#00a884] text-white hover:bg-[#008f72] active:scale-95 shadow-md'
+                }`}
+              >
+                {sendingHistoryMessage ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
             <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
               <button 
                 onClick={() => setHistoryPlayer(null)}

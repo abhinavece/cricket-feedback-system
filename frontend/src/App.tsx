@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import FeedbackForm from './components/FeedbackForm';
 import AdminDashboard from './components/AdminDashboard';
@@ -16,6 +16,13 @@ function AppContent() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated, logout } = useAuth();
+
+  // Always land on admin page when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      setCurrentView('admin');
+    }
+  }, [isAuthenticated]);
 
   const handleSubmit = async (data: FeedbackFormData) => {
     setLoading(true);

@@ -176,10 +176,10 @@ const AdminDashboard: React.FC = () => {
     switch (activeTab) {
       case 'feedback':
         return { title: 'Feedback Center', desc: 'Monitor and analyze player match feedback' };
-      case 'users':
-        return { title: 'User Directory', desc: 'Manage access and roles for the platform' };
       case 'whatsapp':
         return { title: 'Messaging Hub', desc: 'Blast WhatsApp updates to your team' };
+      case 'users':
+        return { title: 'User Directory', desc: 'Manage access and roles for the platform' };
       default:
         return { title: 'Admin Dashboard', desc: 'Manage cricket feedback and user data' };
     }
@@ -218,82 +218,32 @@ const AdminDashboard: React.FC = () => {
         <p className="text-secondary transition-all duration-300">{pageDesc}</p>
       </div>
         
-        {/* Tab Navigation */}
-        <div className="mb-8 md:mb-10">
-          {/* Desktop Advanced Tabs */}
-          <nav className="hidden md:flex p-1.5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 w-fit shadow-2xl relative overflow-hidden">
-            {/* Desktop Slider */}
+        {/* Premium Tab Navigation */}
+        <div className="mb-10 md:mb-16">
+          {/* Desktop: Ultra-Modern Magnetic Tabs */}
+          <nav className="hidden md:flex p-2 bg-[#1e293b]/50 backdrop-blur-3xl rounded-[2rem] border border-white/10 w-fit shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden">
+            {/* Advanced Slider with Multi-layered Glow */}
             <div 
-              className="absolute h-[calc(100%-12px)] rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+              className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
               style={{
-                width: activeTab === 'feedback' ? '180px' : activeTab === 'users' ? '160px' : '180px',
-                left: activeTab === 'feedback' ? '6px' : activeTab === 'users' ? '186px' : '346px'
-              }}
-            />
-            
-            <button
-              onClick={() => setActiveTab('feedback')}
-              className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-                activeTab === 'feedback' ? 'text-white' : 'text-secondary hover:text-white'
-              }`}
-              style={{ width: '180px', justifyContent: 'center' }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-              Feedback Center
-            </button>
-            {user?.role === 'admin' && (
-              <>
-                <button
-                  onClick={() => setActiveTab('users')}
-                  className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-                    activeTab === 'users' ? 'text-white' : 'text-secondary hover:text-white'
-                  }`}
-                  style={{ width: '160px', justifyContent: 'center' }}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  Users
-                </button>
-                <button
-                  onClick={() => setActiveTab('whatsapp')}
-                  className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-                    activeTab === 'whatsapp' ? 'text-white' : 'text-secondary hover:text-white'
-                  }`}
-                  style={{ width: '180px', justifyContent: 'center' }}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  WhatsApp Hub
-                </button>
-              </>
-            )}
-          </nav>
-
-          {/* Mobile Premium Tab Selection */}
-          <div className="md:hidden bg-[#0f172a]/80 backdrop-blur-xl p-1.5 rounded-[1.5rem] border border-white/10 flex items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-6 relative overflow-hidden">
-            {/* Animated Glow Background Slider */}
-            <div 
-              className="absolute h-[calc(100%-12px)] rounded-[1.1rem] bg-gradient-to-br from-emerald-400 to-emerald-600 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_25px_rgba(16,185,129,0.5)]"
-              style={{
-                width: user?.role === 'admin' ? 'calc(33.33% - 6px)' : 'calc(100% - 12px)',
-                left: activeTab === 'feedback' ? '6px' : activeTab === 'users' ? '33.33%' : '66.66%'
+                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : '200px',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : '448px'
               }}
             >
-              {/* Subtle inner light effect */}
-              <div className="absolute inset-0 bg-white/20 rounded-[1.1rem] mix-blend-overlay"></div>
+              {/* Premium glass reflection and shimmer */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-[1.5rem] mix-blend-overlay"></div>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 rounded-[1.5rem]"></div>
+              <div className="absolute -inset-[1px] bg-gradient-to-r from-white/20 to-transparent rounded-[1.5rem] blur-[1px]"></div>
             </div>
             
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`relative z-10 flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex flex-col items-center gap-2 ${
-                activeTab === 'feedback' ? 'text-white' : 'text-slate-400'
+              className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                activeTab === 'feedback' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
               }`}
+              style={{ width: '220px', justifyContent: 'center' }}
             >
-              <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeTab === 'feedback' ? 'bg-white/10 scale-110' : 'bg-transparent'}`}>
+              <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/10 scale-110 rotate-6 shadow-inner' : 'bg-transparent'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
@@ -303,30 +253,98 @@ const AdminDashboard: React.FC = () => {
             {user?.role === 'admin' && (
               <>
                 <button
-                  onClick={() => setActiveTab('users')}
-                  className={`relative z-10 flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex flex-col items-center gap-2 ${
-                    activeTab === 'users' ? 'text-white' : 'text-slate-400'
+                  onClick={() => setActiveTab('whatsapp')}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'whatsapp' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
                   }`}
+                  style={{ width: '220px', justifyContent: 'center' }}
                 >
-                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeTab === 'users' ? 'bg-white/10 scale-110' : 'bg-transparent'}`}>
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/10 scale-125 rotate-3 shadow-inner' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'users' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  style={{ width: '200px', justifyContent: 'center' }}
+                >
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/10 scale-110 -rotate-6 shadow-inner' : 'bg-transparent'}`}>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
                   Users
                 </button>
+              </>
+            )}
+          </nav>
+
+          {/* Mobile: Ultra-Visible App-style Segmented Control */}
+          <div className="md:hidden bg-[#0f172a] p-2 rounded-[2.5rem] border-2 border-white/5 flex items-center shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            {/* Ultra-High Contrast Gradient Slider */}
+            <div 
+              className="absolute h-[calc(100%-16px)] rounded-[2rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.6)]"
+              style={{
+                width: user?.role === 'admin' ? 'calc(33.33% - 10px)' : 'calc(100% - 16px)',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '33.33%' : '66.66%'
+              }}
+            >
+              {/* Glass reflection and premium texture */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent rounded-[2rem] mix-blend-overlay"></div>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15 rounded-[2rem]"></div>
+            </div>
+            
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                activeTab === 'feedback' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+              }`}
+            >
+              <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/20 scale-125 rotate-6 shadow-lg' : 'bg-white/5'}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'feedback' ? "3" : "2"} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </div>
+              <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'feedback' ? 'opacity-100' : 'opacity-40'}`}>
+                Feedback
+              </span>
+            </button>
+            {user?.role === 'admin' && (
+              <>
                 <button
                   onClick={() => setActiveTab('whatsapp')}
-                  className={`relative z-10 flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex flex-col items-center gap-2 ${
-                    activeTab === 'whatsapp' ? 'text-white' : 'text-slate-400'
+                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                    activeTab === 'whatsapp' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeTab === 'whatsapp' ? 'bg-white/10 scale-110' : 'bg-transparent'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/20 scale-150 rotate-3 shadow-lg' : 'bg-white/5'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'whatsapp' ? "3" : "2"} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  WhatsApp
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'whatsapp' ? 'opacity-100' : 'opacity-40'}`}>
+                    WhatsApp
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                    activeTab === 'users' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/20 scale-125 -rotate-6 shadow-lg' : 'bg-white/5'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'users' ? "3" : "2"} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'users' ? 'opacity-100' : 'opacity-40'}`}>
+                    Users
+                  </span>
                 </button>
               </>
             )}
@@ -514,167 +532,170 @@ const AdminDashboard: React.FC = () => {
             </div>
           </>
         )}
-        {activeTab === 'users' && <UserManagement />}
         {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}
+        {activeTab === 'users' && <UserManagement />}
       </div>
 
       {/* Feedback Detail Modal */}
-      {showModal && selectedFeedback && (
-        <div 
-          className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-backdrop-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeModal();
-            }
-          }}
-        >
-          <div
-            className="w-full max-w-4xl bg-[#1a1a2e] border border-white/10 rounded-[2rem] shadow-2xl animate-modal-in overflow-y-auto no-scrollbar"
-            style={{ maxHeight: '90vh' }}
-            onClick={(e) => e.stopPropagation()}
+      {showModal && selectedFeedback && (() => {
+        const item = selectedFeedback;
+        return (
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-backdrop-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeModal();
+              }
+            }}
           >
-            <div className="relative p-6 md:p-10">
-              <button
-                onClick={closeModal}
-                className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-secondary hover:text-white hover:bg-white/10 transition-all z-10"
-                aria-label="Close details"
-              >
-                <span className="text-2xl">×</span>
-              </button>
+            <div
+              className="w-full max-w-4xl bg-[#1a1a2e] border border-white/10 rounded-[2rem] shadow-2xl animate-modal-in overflow-y-auto no-scrollbar"
+              style={{ maxHeight: '90vh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative p-6 md:p-10">
+                <button
+                  onClick={closeModal}
+                  className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-secondary hover:text-white hover:bg-white/10 transition-all z-10"
+                  aria-label="Close details"
+                >
+                  <span className="text-2xl">×</span>
+                </button>
 
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8 mt-4 md:mt-0">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-3 py-1 rounded-full bg-primary-green/10 text-primary-green text-[10px] font-bold uppercase tracking-widest border border-primary-green/20">Feedback Detail</span>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8 mt-4 md:mt-0">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-3 py-1 rounded-full bg-primary-green/10 text-primary-green text-[10px] font-bold uppercase tracking-widest border border-primary-green/20">Feedback Detail</span>
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
+                      {item.playerName}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-secondary mt-3">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-green"></span>
+                        {formatDate(item.createdAt)}
+                      </span>
+                      <span className="text-white/20">•</span>
+                      <span>Match: {formatDate(String(item.matchDate))}</span>
+                    </div>
                   </div>
-                  <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
-                    {selectedFeedback.playerName}
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-secondary mt-3">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary-green"></span>
-                      {formatDate(selectedFeedback.createdAt)}
-                    </span>
-                    <span className="text-white/20">•</span>
-                    <span>Match: {formatDate(String(selectedFeedback.matchDate))}</span>
+                  <div className="bg-gradient-to-br from-primary-green/20 to-primary-green/5 border border-primary-green/30 rounded-2xl px-8 py-6 text-center md:text-right shadow-inner">
+                    <p className="text-[10px] text-secondary uppercase tracking-[0.2em] mb-1 font-bold">Overall Spirit</p>
+                    <p className="text-5xl font-black text-primary-green drop-shadow-sm">{item.teamSpirit.toFixed(1)}</p>
+                    <p className="text-[10px] text-secondary mt-1 font-medium">OUT OF 5.0</p>
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-primary-green/20 to-primary-green/5 border border-primary-green/30 rounded-2xl px-8 py-6 text-center md:text-right shadow-inner">
-                  <p className="text-[10px] text-secondary uppercase tracking-[0.2em] mb-1 font-bold">Overall Spirit</p>
-                  <p className="text-5xl font-black text-primary-green drop-shadow-sm">{selectedFeedback.teamSpirit.toFixed(1)}</p>
-                  <p className="text-[10px] text-secondary mt-1 font-medium">OUT OF 5.0</p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-                {[
-                  { label: 'Batting', value: selectedFeedback.batting },
-                  { label: 'Bowling', value: selectedFeedback.bowling },
-                  { label: 'Fielding', value: selectedFeedback.fielding },
-                  { label: 'Team Spirit', value: selectedFeedback.teamSpirit },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition-all hover:bg-white/10 hover:border-white/10"
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                  {[
+                    { label: 'Batting', value: item.batting },
+                    { label: 'Bowling', value: item.bowling },
+                    { label: 'Fielding', value: item.fielding },
+                    { label: 'Team Spirit', value: item.teamSpirit },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition-all hover:bg-white/10 hover:border-white/10"
+                    >
+                      <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">{stat.label}</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-black text-white">{stat.value.toFixed(1)}</span>
+                        <span className="text-xs text-secondary/50 font-medium">/ 5</span>
+                      </div>
+                      <div className="text-sm text-yellow-500 mt-2 flex gap-0.5">
+                        {renderStars(Math.round(stat.value))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-10">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-secondary font-bold mb-4">Issue Signals</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {Object.entries(item.issues).every(([, value]) => !value) ? (
+                      <span className="px-4 py-2 rounded-xl text-xs border border-white/5 bg-white/5 text-secondary italic">
+                        No specific issues flagged by player
+                      </span>
+                    ) : (
+                      Object.entries(item.issues)
+                        .filter(([, value]) => value)
+                        .map(([issueKey]) => (
+                          <span
+                            key={issueKey}
+                            className="px-5 py-2 rounded-xl text-xs font-bold bg-primary-green text-white shadow-lg shadow-primary-green/20 uppercase tracking-wider"
+                          >
+                            {issueKey}
+                          </span>
+                        ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-1 h-4 bg-primary-green rounded-full"></span>
+                      <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Match Narration</p>
+                    </div>
+                    <p className="text-base text-white/90 leading-relaxed font-medium italic">"{item.feedbackText}"</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-1 h-4 bg-accent-blue rounded-full"></span>
+                      <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Additional Notes</p>
+                    </div>
+                    <p className="text-base text-white/90 leading-relaxed font-medium">
+                      {item.additionalComments?.trim() || 'No additional comments provided.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4 justify-end pt-6 border-t border-white/5">
+                  <button 
+                    className="btn btn-outline h-14 md:h-auto order-2 md:order-1" 
+                    onClick={closeModal}
+                    style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}
                   >
-                    <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">{stat.label}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-black text-white">{stat.value.toFixed(1)}</span>
-                      <span className="text-xs text-secondary/50 font-medium">/ 5</span>
-                    </div>
-                    <div className="text-sm text-yellow-500 mt-2 flex gap-0.5">
-                      {renderStars(Math.round(stat.value))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mb-10">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-secondary font-bold mb-4">Issue Signals</p>
-                <div className="flex flex-wrap gap-2.5">
-                  {Object.entries(selectedFeedback.issues).every(([, value]) => !value) ? (
-                    <span className="px-4 py-2 rounded-xl text-xs border border-white/5 bg-white/5 text-secondary italic">
-                      No specific issues flagged by player
-                    </span>
+                    Close Detail
+                  </button>
+                  {currentView === 'active' ? (
+                    <button
+                      className="btn btn-danger h-14 md:h-auto order-1 md:order-2"
+                      onClick={() => {
+                        handleDeleteFeedback(item._id);
+                        closeModal();
+                      }}
+                    >
+                      Move to Trash
+                    </button>
                   ) : (
-                    Object.entries(selectedFeedback.issues)
-                      .filter(([, value]) => value)
-                      .map(([issueKey]) => (
-                        <span
-                          key={issueKey}
-                          className="px-5 py-2 rounded-xl text-xs font-bold bg-primary-green text-white shadow-lg shadow-primary-green/20 uppercase tracking-wider"
-                        >
-                          {issueKey}
-                        </span>
-                      ))
+                    <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2 w-full md:w-auto">
+                      <button
+                        className="btn btn-outline h-14 md:h-auto"
+                        onClick={() => {
+                          handleRestoreFeedback(item._id);
+                          closeModal();
+                        }}
+                      >
+                        Restore Feedback
+                      </button>
+                      <button
+                        className="btn btn-danger h-14 md:h-auto"
+                        onClick={() => {
+                          handlePermanentDelete(item._id);
+                          closeModal();
+                        }}
+                      >
+                        Delete Permanently
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-                <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="w-1 h-4 bg-primary-green rounded-full"></span>
-                    <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Match Narration</p>
-                  </div>
-                  <p className="text-base text-white/90 leading-relaxed font-medium italic">"{selectedFeedback.feedbackText}"</p>
-                </div>
-                <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="w-1 h-4 bg-accent-blue rounded-full"></span>
-                    <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Additional Notes</p>
-                  </div>
-                  <p className="text-base text-white/90 leading-relaxed font-medium">
-                    {selectedFeedback.additionalComments?.trim() || 'No additional comments provided.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-4 justify-end pt-6 border-t border-white/5">
-                <button 
-                  className="btn btn-outline h-14 md:h-auto order-2 md:order-1" 
-                  onClick={closeModal}
-                  style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}
-                >
-                  Close Detail
-                </button>
-                {currentView === 'active' ? (
-                  <button
-                    className="btn btn-danger h-14 md:h-auto order-1 md:order-2"
-                    onClick={() => {
-                      handleDeleteFeedback(selectedFeedback._id);
-                      closeModal();
-                    }}
-                  >
-                    Move to Trash
-                  </button>
-                ) : (
-                  <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2 w-full md:w-auto">
-                    <button
-                      className="btn btn-outline h-14 md:h-auto"
-                      onClick={() => {
-                        handleRestoreFeedback(selectedFeedback._id);
-                        closeModal();
-                      }}
-                    >
-                      Restore Feedback
-                    </button>
-                    <button
-                      className="btn btn-danger h-14 md:h-auto"
-                      onClick={() => {
-                        handlePermanentDelete(selectedFeedback._id);
-                        closeModal();
-                      }}
-                    >
-                      Delete Permanently
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Confirmation Dialog */}
       <ConfirmDialog
