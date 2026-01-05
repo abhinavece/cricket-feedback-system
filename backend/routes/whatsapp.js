@@ -115,6 +115,13 @@ async function processIncomingMessage(from, text) {
 router.get('/messages/:phone', auth, async (req, res) => {
   try {
     const { phone } = req.params;
+    
+    // Disable caching for this endpoint
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+
     console.log(`Fetching message history for phone: ${phone}`);
     
     // Format phone number to match how it's stored
