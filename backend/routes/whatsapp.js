@@ -3,6 +3,96 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const axios = require('axios');
 
+// Webhook verification endpoint (GET)
+// Facebook sends a GET request to verify the webhook
+router.get('/webhook', (req, res) => {
+  try {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    // Verify the webhook
+    if (mode && token) {
+      if (mode === 'subscribe' && token === 'mavericks-xi-verify-token-2024') {
+        console.log('WEBHOOK_VERIFIED');
+        res.status(200).send(challenge);
+      } else {
+        res.sendStatus(403);
+      }
+    } else {
+      res.sendStatus(404);
+    }
+  } catch (error) {
+    console.error('Webhook verification error:', error);
+    res.sendStatus(500);
+  }
+});
+
+// Webhook endpoint to receive messages (POST)
+router.post('/webhook', (req, res) => {
+  try {
+    const data = req.body;
+    
+    console.log('Received WhatsApp webhook:', JSON.stringify(data, null, 2));
+    
+    // Check if this is a WhatsApp message
+    if (data.object === 'whatsapp_business_account') {
+      for (const entry of data.entry) {
+        for (const change of entry.changes) {
+          if (change.field === 'messages') {
+            const messages = change.value.messages || [];
+            
+            for (const message of messages) {
+              if (message.type === 'text') {
+                const from = message.from;
+                const text = message.text.body;
+                
+                console.log(`Received message from ${from}: ${text}`);
+                
+                // Process the incoming message
+                processIncomingMessage(from, text);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Send 200 OK response immediately
+    res.status(200).send('EVENT_RECEIVED');
+    
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.sendStatus(500);
+  }
+});
+
+// Process incoming messages
+async function processIncomingMessage(from, text) {
+  try {
+    // Store the message in database (you can create a Message model later)
+    console.log(`Processing message from ${from}: "${text}"`);
+    
+    // For now, just log it. Later you can:
+    // 1. Save to database
+    // 2. Send notifications to admin
+    // 3. Trigger auto-replies
+    // 4. Update chat interface
+    
+    // TODO: Implement message storage
+    // const Message = require('../models/Message');
+    // await Message.create({
+    //   from: from,
+    //   text: text,
+    //   timestamp: new Date(),
+    //   direction: 'incoming'
+    // });
+    
+  } catch (error) {
+    console.error('Error processing incoming message:', error);
+  }
+}
+
 // Test endpoint for WhatsApp API
 router.post('/test', async (req, res) => {
   try {
@@ -10,7 +100,7 @@ router.post('/test', async (req, res) => {
     
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const apiVersion = 'v22.0';
+    const apiVersion = 'v19.0';
     
     const whatsappApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
     
@@ -67,12 +157,20 @@ router.post('/send', auth, async (req, res) => {
     
     // Get player details for response
     const Player = require('../models/Player');
+    console.log('Searching for players with IDs:', playerIds);
     const players = await Player.find({ '_id': { $in: playerIds } }).select('name phone');
+    console.log(`Found ${players.length} players in database`);
     
     // WhatsApp API configuration
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || 'EAASDVAZBQ1cABQZAC1ClMpJPLPj322qRtTeFov0NxrzZB1gBVFN4KPphMEtvGkmdYUoWZBBAyu9RHsLthVtOZC7YoT76ASYF7rj5QtCjtk5qI3edYkEkXM6RriilOR0SEw9xEO4ZBSLQ4Rnel7WVFM0TmunYBI8e3g1rDZBM5zKxSoo9Iw4u66i99BpPt1vjgnCWF4LfeaNMbFEEeESFJmtu8l2pAL69k8TmvnVsBAMpcwhKfTbCQVZAWnuGZCVZCEZCh7dp1NzBV6RiLkuAEL0BSh7lAoTResVi4ocMlIPSG8ZD';
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '902819506256035';
-    const apiVersion = 'v22.0';
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const apiVersion = 'v19.0';
+    
+    console.log('WhatsApp Config:', {
+      apiVersion,
+      phoneNumberId,
+      tokenPrefix: accessToken.substring(0, 10) + '...'
+    });
     
     if (!accessToken || !phoneNumberId) {
       console.error('WhatsApp credentials not configured');
@@ -87,6 +185,8 @@ router.post('/send', auth, async (req, res) => {
     // Send messages to each player
     for (const player of players) {
       try {
+        console.log(`Processing player: ${player.name} (${player._id}) with phone: ${player.phone}`);
+        
         // Format phone number (remove any non-digit characters and add country code if needed)
         let formattedPhone = player.phone.replace(/\D/g, '');
         if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
@@ -99,17 +199,51 @@ router.post('/send', auth, async (req, res) => {
         
         const whatsappApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
         
-        const payload = {
-          messaging_product: 'whatsapp',
-          to: formattedPhone,
-          type: 'text',
-          text: {
-            body: message,
-            preview_url: previewUrl
-          }
-        };
+        let payload;
+        if (template) {
+          console.log('Template detected, processing components...');
+          // Process template components to replace {{PLAYER_NAME}} placeholder
+          const processedComponents = template.components ? template.components.map(component => {
+            if (component.type === 'body' && component.parameters) {
+              return {
+                ...component,
+                parameters: component.parameters.map(param => {
+                  if (param.type === 'text' && param.text === '{{PLAYER_NAME}}') {
+                    console.log(`Replacing {{PLAYER_NAME}} with ${player.name}`);
+                    return { ...param, text: player.name };
+                  }
+                  return param;
+                })
+              };
+            }
+            return component;
+          }) : [];
+
+          payload = {
+            messaging_product: 'whatsapp',
+            to: formattedPhone,
+            type: 'template',
+            template: {
+              name: template.name,
+              language: {
+                code: template.languageCode || 'en'
+              },
+              components: processedComponents
+            }
+          };
+        } else {
+          payload = {
+            messaging_product: 'whatsapp',
+            to: formattedPhone,
+            type: 'text',
+            text: {
+              body: message,
+              preview_url: previewUrl
+            }
+          };
+        }
         
-        console.log(`Sending WhatsApp message to ${player.name} (${formattedPhone}):`, message);
+        console.log(`Final Payload for ${player.name}:`, JSON.stringify(payload, null, 2));
         
         const response = await axios.post(whatsappApiUrl, payload, {
           headers: {
@@ -117,6 +251,8 @@ router.post('/send', auth, async (req, res) => {
             'Content-Type': 'application/json'
           }
         });
+        
+        console.log(`WhatsApp API Success for ${player.name}:`, JSON.stringify(response.data, null, 2));
         
         results.push({
           playerId: player._id,

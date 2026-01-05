@@ -10,10 +10,12 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [newPlayer, setNewPlayer] = useState({ name: '', phone: '', notes: '' });
   const [sendMode, setSendMode] = useState<'text' | 'template'>('text');
   const [message, setMessage] = useState('Hey team, please confirm availability for tomorrow’s match at 7:00 AM.');
-  const [templateName, setTemplateName] = useState('hello_world');
-  const [templateLanguage, setTemplateLanguage] = useState('en_US');
+  const [templateName, setTemplateName] = useState('mavericks_team_availability');
+  const [templateLanguage, setTemplateLanguage] = useState('en');
   const [templateBodyParams, setTemplateBodyParams] = useState<string>('');
-  const [templateExpectedParams, setTemplateExpectedParams] = useState(0);
+  const [matchDateTime, setMatchDateTime] = useState('Sunday, 2:00 PM. 11th Jan, 2026');
+  const [matchVenue, setMatchVenue] = useState('Nityansh Cricket Ground');
+  const [templateExpectedParams, setTemplateExpectedParams] = useState(3);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; attempted: number; results?: Array<{ playerId: string; name: string; phone: string; status: string; messageId?: string; timestamp?: string }> } | null>(null);
   const [showAlert, setShowAlert] = useState(true);
@@ -112,38 +114,57 @@ const WhatsAppMessagingTab: React.FC = () => {
         payload.message = message.trim();
         payload.previewUrl = false;
       } else {
-        const bodyParams = templateBodyParams
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .map((text) => ({
-            type: 'text',
-            text,
-          }));
-
-        if (bodyParams.length !== templateExpectedParams) {
-          setError(
-            `Template expects ${templateExpectedParams} placeholder${
-              templateExpectedParams === 1 ? '' : 's'
-            } but you provided ${bodyParams.length}.`
-          );
-          return;
-        }
-
-        const components = bodyParams.length
-          ? [
+        // Special handling for mavericks_team_availability template
+        if (templateName === 'mavericks_team_availability') {
+          payload.template = {
+            name: templateName.trim(),
+            languageCode: templateLanguage.trim() || 'en',
+            components: [
               {
                 type: 'body',
-                parameters: bodyParams,
-              },
+                parameters: [
+                  { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
+                  { type: 'text', text: matchDateTime.trim() },
+                  { type: 'text', text: matchVenue.trim() }
+                ]
+              }
             ]
-          : undefined;
+          };
+        } else {
+          // Fallback for other templates using the manual body parameters logic
+          const bodyParams = templateBodyParams
+            .split('\n')
+            .map((line: string) => line.trim())
+            .filter(Boolean)
+            .map((text: string) => ({
+              type: 'text',
+              text,
+            }));
 
-        payload.template = {
-          name: templateName.trim(),
-          languageCode: templateLanguage.trim() || 'en_US',
-          components,
-        };
+          if (bodyParams.length !== templateExpectedParams) {
+            setError(
+              `Template expects ${templateExpectedParams} placeholder${
+                templateExpectedParams === 1 ? '' : 's'
+              } but you provided ${bodyParams.length}.`
+            );
+            return;
+          }
+
+          const components = bodyParams.length
+            ? [
+                {
+                  type: 'body',
+                  parameters: bodyParams,
+                },
+              ]
+            : undefined;
+
+          payload.template = {
+            name: templateName.trim(),
+            languageCode: templateLanguage.trim() || 'en_US',
+            components,
+          };
+        }
       }
 
       const response = await sendWhatsAppMessage(payload);
@@ -589,31 +610,64 @@ const WhatsAppMessagingTab: React.FC = () => {
                       placeholder="en_US"
                     />
                   </div>
-                  <div>
-                    <label className="form-label text-sm">Body placeholder count</label>
-                    <input
-                      type="number"
-                      min={0}
-                      className="form-control"
-                      value={templateExpectedParams}
-                      onChange={(e) => setTemplateExpectedParams(Math.max(0, Number(e.target.value) || 0))}
-                    />
-                    <p className="text-xs text-secondary mt-1">
-                      Set this to the number of {'{{ }}'} placeholders defined in Meta for this template.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="form-label text-sm">
-                      Body parameters <span className="text-xs text-secondary">(one per line)</span>
-                    </label>
-                    <textarea
-                      className="form-control mt-2"
-                      rows={4}
-                      value={templateBodyParams}
-                      onChange={(e) => setTemplateBodyParams(e.target.value)}
-                      placeholder={'Abhinav\n7:00 AM'}
-                    />
-                  </div>
+                  {templateName === 'mavericks_team_availability' ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="form-label text-sm">Parameter 1: Player Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value="Auto-filled for each player"
+                          disabled
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label text-sm">Parameter 2: Match Time & Date</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={matchDateTime}
+                          onChange={(e) => setMatchDateTime(e.target.value)}
+                          placeholder="Sunday, 2:00 PM. 11th Jan, 2026"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label text-sm">Parameter 3: Venue</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={matchVenue}
+                          onChange={(e) => setMatchVenue(e.target.value)}
+                          placeholder="Nityansh Cricket Ground"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="form-label text-sm">Body placeholder count</label>
+                        <input
+                          type="number"
+                          min={0}
+                          className="form-control"
+                          value={templateExpectedParams}
+                          onChange={(e) => setTemplateExpectedParams(Math.max(0, Number(e.target.value) || 0))}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label text-sm">
+                          Body parameters <span className="text-xs text-secondary">(one per line)</span>
+                        </label>
+                        <textarea
+                          className="form-control mt-2"
+                          rows={4}
+                          value={templateBodyParams}
+                          onChange={(e) => setTemplateBodyParams(e.target.value)}
+                          placeholder={'Abhinav\n7:00 AM'}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
