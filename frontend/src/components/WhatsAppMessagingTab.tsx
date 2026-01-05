@@ -227,26 +227,32 @@ const WhatsAppMessagingTab: React.FC = () => {
   };
 
   const handleSendMessages = async () => {
-    if (sendMode === 'text' && !message.trim()) {
-      setError('Message cannot be empty');
-      return;
-    }
-    if (sendMode === 'template') {
-      if (!templateName.trim()) {
-        setError('Template name is required');
-        return;
-      }
-      if (templateExpectedParams < 0) {
-        setError('Template placeholder count cannot be negative');
-        return;
-      }
-    }
+    // Basic validation
     if (!selectedPlayers.length) {
-      setError('Select at least one player before sending messages.');
+      setError('Please select at least one player to receive the message.');
       return;
     }
-    const targets = selectedPlayers;
 
+    if (sendMode === 'text') {
+      if (!message.trim()) {
+        setError('Message content cannot be empty.');
+        return;
+      }
+    } else {
+      if (selectedTemplate.id === 'mavericks_team_availability') {
+        if (!matchDateTime.trim() || !matchVenue.trim()) {
+          setError('Please provide both Match Time and Venue details for the template.');
+          return;
+        }
+      } else if (selectedTemplate.id === 'custom') {
+        if (!templateName.trim()) {
+          setError('Template name is required for custom templates.');
+          return;
+        }
+      }
+    }
+
+    const targets = selectedPlayers;
     try {
       setSending(true);
       setError(null);
@@ -269,8 +275,8 @@ const WhatsAppMessagingTab: React.FC = () => {
                 type: 'body',
                 parameters: [
                   { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
-                  { type: 'text', text: (matchDateTime.trim() || 'Sunday, 2:00 PM. 11th Jan, 2026') },
-                  { type: 'text', text: (matchVenue.trim() || 'Nityansh Cricket Ground') }
+                  { type: 'text', text: matchDateTime.trim() },
+                  { type: 'text', text: matchVenue.trim() }
                 ]
               }
             ]
@@ -567,118 +573,118 @@ const WhatsAppMessagingTab: React.FC = () => {
 
       {/* Message History Modal */}
       {historyPlayer && (
-        <div className="modal-overlay" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div className="modal-content" style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '650px',
-            width: '90%',
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div className="d-flex justify-content-between align-items-start mb-4">
-              <div>
-                <h3 className="h4 mb-1" style={{ color: '#111827', fontWeight: '700' }}>
-                  Conversation with {historyPlayer.name}
-                </h3>
-                <div className="flex items-center gap-2">
-                  <p style={{ color: '#6b7280', margin: 0 }}>{historyPlayer.phone}</p>
-                  {lastSynced && (
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Live • {lastSynced.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                  )}
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="p-4 md:p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#128C7E]/10 flex items-center justify-center text-[#128C7E] shrink-0">
+                  <svg className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-gray-900 leading-tight">
+                    {historyPlayer.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-500 font-medium tabular-nums">{historyPlayer.phone}</span>
+                    {lastSynced && (
+                      <span className="flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold uppercase tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => fetchHistory(historyPlayer)}
-                  className="btn btn-tertiary text-xs"
-                  style={{ padding: '6px 12px' }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+                  title="Refresh conversation"
                   disabled={loadingHistory}
                 >
-                  {loadingHistory ? 'Refreshing...' : 'Refresh'}
+                  <svg className={`w-5 h-5 ${loadingHistory ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
                 </button>
                 <button 
                   onClick={() => setHistoryPlayer(null)}
-                  style={{
-                    background: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '8px',
-                    width: '32px',
-                    height: '32px',
-                    cursor: 'pointer',
-                    color: '#6b7280',
-                    fontSize: '20px'
-                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
                 >
-                  ×
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l18 18" />
+                  </svg>
                 </button>
               </div>
             </div>
 
-            <div style={{ 
-              flex: 1,
-              overflowY: 'auto',
-              padding: '16px',
-              backgroundColor: '#f9fafb',
-              borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              {loadingHistory ? (
-                <div className="text-center py-8 text-secondary">Loading messages...</div>
+            {/* Chat Area */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+              {loadingHistory && historyMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full space-y-3">
+                  <div className="w-8 h-8 border-3 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
+                  <p className="text-sm font-medium text-gray-500">Loading conversation...</p>
+                </div>
               ) : historyMessages.length === 0 ? (
-                <div className="text-center py-8 text-secondary">No messages found.</div>
-              ) : (
-                historyMessages.map((msg, idx) => (
-                  <div key={idx} style={{
-                    alignSelf: msg.direction === 'incoming' ? 'flex-start' : 'flex-end',
-                    maxWidth: '80%',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    backgroundColor: msg.direction === 'incoming' ? '#ffffff' : 'var(--primary-green)',
-                    color: msg.direction === 'incoming' ? '#111827' : '#ffffff',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                    border: msg.direction === 'incoming' ? '1px solid #e5e7eb' : 'none'
-                  }}>
-                    <div style={{ fontSize: '15px' }}>{msg.text}</div>
-                    <div style={{ 
-                      fontSize: '11px', 
-                      marginTop: '4px',
-                      opacity: 0.8,
-                      textAlign: 'right'
-                    }}>
-                      {new Date(msg.timestamp).toLocaleString()}
-                    </div>
+                <div className="flex flex-col items-center justify-center h-full opacity-40">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
                   </div>
-                ))
+                  <p className="text-gray-600 font-medium">No messages yet</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {historyMessages.map((msg, idx) => {
+                    const isIncoming = msg.direction === 'incoming';
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`flex flex-col ${isIncoming ? 'items-start' : 'items-end'} max-w-[85%] ${isIncoming ? 'self-start' : 'self-end'}`}
+                      >
+                        <div className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed ${
+                          isIncoming 
+                            ? 'bg-white text-gray-800 rounded-tl-none' 
+                            : 'bg-[#dcf8c6] text-gray-800 rounded-tr-none'
+                        }`}>
+                          {/* Chat bubble tail effect */}
+                          <div className={`absolute top-0 w-0 h-0 border-t-[10px] ${
+                            isIncoming 
+                              ? '-left-2 border-t-white border-l-[10px] border-l-transparent' 
+                              : '-right-2 border-t-[#dcf8c6] border-r-[10px] border-r-transparent'
+                          }`}></div>
+                          
+                          <div className="whitespace-pre-wrap">{msg.text}</div>
+                          
+                          <div className="flex items-center justify-end gap-1 mt-1">
+                            <span className="text-[10px] opacity-50 font-medium tabular-nums">
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {!isIncoming && (
+                              <span className="text-sky-500">
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                                </svg>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} className="h-2" />
+                </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
-            <div className="mt-4 d-flex justify-content-end">
+            {/* Modal Footer */}
+            <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
               <button 
                 onClick={() => setHistoryPlayer(null)}
-                className="btn btn-secondary"
+                className="px-6 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
               >
                 Close
               </button>
@@ -767,8 +773,11 @@ const WhatsAppMessagingTab: React.FC = () => {
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => fetchHistory(player)}
-                          className="btn btn-tertiary text-xs md:text-sm min-h-[40px] px-3"
+                          className="btn btn-tertiary flex items-center gap-2 text-xs md:text-sm min-h-[40px] px-3 bg-[#128C7E]/5 text-[#128C7E] hover:bg-[#128C7E]/10 border-none shadow-none"
                         >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
                           History
                         </button>
                         <button
@@ -994,62 +1003,71 @@ const WhatsAppMessagingTab: React.FC = () => {
                   {/* Template Preview */}
                   {selectedTemplate.id !== 'custom' && (
                     <div className="mt-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">Live Preview</p>
-                      <div className="bg-[#1f2c34] border border-gray-700/50 rounded-2xl p-4 overflow-hidden shadow-2xl relative">
-                        {/* WhatsApp bubble tail effect (simplified) */}
-                        <div className="absolute top-0 -left-1 w-0 h-0 border-t-[10px] border-t-[#1f2c34] border-l-[10px] border-l-transparent"></div>
-                        
-                        {selectedTemplate.header && (
-                          <p className="text-[15px] font-bold text-white mb-2 leading-tight">
-                            {selectedTemplate.header}
-                          </p>
-                        )}
-                        <div className="text-[14.5px] text-[#e9edef] whitespace-pre-wrap leading-relaxed mb-1">
-                          {selectedTemplate.format
-                            .replace('{{1}}', players[0]?.name || 'Abhinav Singh')
-                            .replace('{{2}}', matchDateTime || 'Sunday, 2:00 PM. 11th Jan, 2026')
-                            .replace('{{3}}', matchVenue || 'Nityansh Cricket Ground')}
-                        </div>
-                        
-                        {selectedTemplate.footer && (
-                          <p className="text-[13px] text-[#8696a0] mt-2 mb-1">
-                            {selectedTemplate.footer}
-                          </p>
-                        )}
-
-                        <div className="flex justify-end items-center gap-1 mt-1">
-                          <span className="text-[11px] text-[#8696a0]">
-                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-
-                        {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
-                          <div className="mt-3 border-t border-[#2a3942] -mx-4">
-                            {selectedTemplate.buttons.map((btn, i) => (
-                              <div 
-                                key={i} 
-                                className={`w-full py-3 flex items-center justify-center gap-2 hover:bg-[#202c33] transition-colors cursor-default ${i !== 0 ? 'border-t border-[#2a3942]' : ''}`}
-                              >
-                                {btn === 'Yes' ? (
-                                  <svg className="w-5 h-5 text-[#00a884]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                  </svg>
-                                ) : btn === 'No' ? (
-                                  <svg className="w-5 h-5 text-[#00a884]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                  </svg>
-                                ) : null}
-                                <span className="text-[#00a884] text-[15px] font-medium">{btn}</span>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Live Preview</p>
+                      <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-700/50">
+                        {/* WhatsApp-like Background */}
+                        <div className="p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat min-h-[200px] flex flex-col justify-center">
+                          
+                          <div className="flex flex-col items-end max-w-[90%] self-end">
+                            <div className="relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed bg-[#dcf8c6] text-gray-800 rounded-tr-none">
+                              {/* Chat bubble tail */}
+                              <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-[#dcf8c6] border-r-[10px] border-r-transparent"></div>
+                              
+                              {selectedTemplate.header && (
+                                <p className="text-[14px] font-bold text-gray-900 mb-1 leading-tight border-b border-black/5 pb-1">
+                                  {selectedTemplate.header}
+                                </p>
+                              )}
+                              
+                              <div className="whitespace-pre-wrap">
+                                {selectedTemplate.format
+                                  .replace('{{1}}', players[0]?.name || 'Abhinav Singh')
+                                  .replace('{{2}}', matchDateTime || 'Sunday, 2:00 PM. 11th Jan, 2026')
+                                  .replace('{{3}}', matchVenue || 'Nityansh Cricket Ground')}
                               </div>
-                            ))}
-                            <div className="w-full py-3 flex items-center justify-center gap-2 border-t border-[#2a3942]">
-                              <svg className="w-5 h-5 text-[#00a884]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                              </svg>
-                              <span className="text-[#00a884] text-[15px] font-medium">See all options</span>
+                              
+                              {selectedTemplate.footer && (
+                                <p className="text-[12px] text-gray-500 mt-2 italic border-t border-black/5 pt-1">
+                                  {selectedTemplate.footer}
+                                </p>
+                              )}
+
+                              <div className="flex justify-end items-center gap-1 mt-1">
+                                <span className="text-[10px] opacity-50 font-medium tabular-nums text-gray-600">
+                                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <span className="text-sky-500">
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                                  </svg>
+                                </span>
+                              </div>
                             </div>
+
+                            {/* Buttons Preview */}
+                            {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
+                              <div className="mt-2 w-full space-y-1">
+                                {selectedTemplate.buttons.map((btn, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="bg-white rounded-xl py-2 flex items-center justify-center gap-2 shadow-sm border border-gray-200/50"
+                                  >
+                                    <svg className="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                    </svg>
+                                    <span className="text-sky-500 text-sm font-semibold">{btn}</span>
+                                  </div>
+                                ))}
+                                <div className="bg-white rounded-xl py-2 flex items-center justify-center gap-2 shadow-sm border border-gray-200/50">
+                                  <svg className="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                  </svg>
+                                  <span className="text-sky-500 text-sm font-semibold">See all options</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1057,44 +1075,63 @@ const WhatsAppMessagingTab: React.FC = () => {
               )}
             </div>
             <div className="mt-6 space-y-4">
+              {/* Validation Prompt */}
+              {(!selectedPlayers.length || (sendMode === 'template' && selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))) && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs font-bold text-amber-500 uppercase tracking-tight mb-1">Ready to send?</p>
+                    <p className="text-xs text-amber-200/80 leading-relaxed">
+                      {!selectedPlayers.length 
+                        ? "Select at least one player from the list to continue." 
+                        : "Please fill in the Match Time and Venue details to complete the template."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="relative group">
-                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/50 cursor-help transition-colors hover:bg-gray-800">
+                <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${selectedPlayers.length > 0 ? 'bg-gray-800/50 border-gray-700/50 cursor-help hover:bg-gray-800' : 'bg-gray-800/20 border-gray-800/40 opacity-50'}`}>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div className={`w-2 h-2 rounded-full ${selectedPlayers.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-600'}`}></div>
                     <p className="text-xs text-secondary font-medium uppercase tracking-wider">Recipients Selected</p>
                   </div>
-                  <p className="text-sm font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/20">
+                  <p className={`text-sm font-bold bg-emerald-500/20 px-2 py-0.5 rounded border ${selectedPlayers.length > 0 ? 'text-white border-emerald-500/20' : 'text-gray-500 border-gray-700/30'}`}>
                     {selectedPlayers.length}
                   </p>
                 </div>
                 
                 {/* Hover Tooltip for Selected Players */}
-                <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 max-h-60 overflow-y-auto">
-                  <p className="text-[10px] uppercase tracking-widest text-secondary mb-3 pb-2 border-b border-gray-700 font-bold">
-                    {selectedPlayers.length === 0 ? 'No players selected' : `Sending to ${selectedPlayers.length} players`}
-                  </p>
-                  <div className="space-y-2">
-                    {selectedPlayers.length === 0 ? (
-                      <p className="text-xs text-secondary italic">Select players from the table to send messages.</p>
-                    ) : (
-                      selectedPlayers.map(id => {
-                        const player = players.find(p => p._id === id);
-                        return player ? (
-                          <div key={id} className="flex items-center justify-between text-xs">
-                            <span className="text-white font-medium">{player.name}</span>
-                            <span className="text-secondary tabular-nums">{player.phone}</span>
-                          </div>
-                        ) : null;
-                      })
-                    )}
+                {selectedPlayers.length > 0 && (
+                  <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 max-h-60 overflow-y-auto">
+                    <p className="text-[10px] uppercase tracking-widest text-secondary mb-3 pb-2 border-b border-gray-700 font-bold">
+                      {selectedPlayers.length === 0 ? 'No players selected' : `Sending to ${selectedPlayers.length} players`}
+                    </p>
+                    <div className="space-y-2">
+                      {selectedPlayers.length === 0 ? (
+                        <p className="text-xs text-secondary italic">Select players from the table to send messages.</p>
+                      ) : (
+                        selectedPlayers.map(id => {
+                          const player = players.find(p => p._id === id);
+                          return player ? (
+                            <div key={id} className="flex items-center justify-between text-xs">
+                              <span className="text-white font-medium">{player.name}</span>
+                              <span className="text-secondary tabular-nums">{player.phone}</span>
+                            </div>
+                          ) : null;
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <button
-                className="btn btn-primary w-full flex items-center justify-center gap-2 h-12 shadow-lg shadow-emerald-500/10 transition-all hover:shadow-emerald-500/20 active:scale-[0.98]"
+                className="btn btn-primary w-full flex items-center justify-center gap-2 h-12 shadow-lg shadow-emerald-500/10 transition-all hover:shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale"
                 onClick={handleSendMessages}
-                disabled={sending || loading || selectedPlayers.length === 0}
+                disabled={sending || loading || selectedPlayers.length === 0 || (sendMode === 'template' && selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))}
               >
                 {sending ? (
                   <>
