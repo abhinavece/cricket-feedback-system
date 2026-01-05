@@ -100,4 +100,9 @@ export const sendWhatsAppMessage = async (payload: {
   return response.data;
 };
 
+export const getMessageHistory = async (phone: string) => {
+  const response = await api.get(`/whatsapp/messages/${phone}`);
+  return response.data;
+};
+
 export default api;

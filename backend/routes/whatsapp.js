@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const axios = require('axios');
+const Message = require('../models/Message');
 
 // Webhook verification endpoint (GET)
 // Facebook sends a GET request to verify the webhook
@@ -10,10 +11,11 @@ router.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'mavericks-xi-verify-token-2024';
     
     // Verify the webhook
     if (mode && token) {
-      if (mode === 'subscribe' && token === 'mavericks-xi-verify-token-2024') {
+      if (mode === 'subscribe' && token === verifyToken) {
         console.log('WEBHOOK_VERIFIED');
         res.status(200).send(challenge);
       } else {
@@ -70,28 +72,53 @@ router.post('/webhook', (req, res) => {
 // Process incoming messages
 async function processIncomingMessage(from, text) {
   try {
-    // Store the message in database (you can create a Message model later)
     console.log(`Processing message from ${from}: "${text}"`);
     
-    // For now, just log it. Later you can:
-    // 1. Save to database
-    // 2. Send notifications to admin
-    // 3. Trigger auto-replies
-    // 4. Update chat interface
+    // Save incoming message to database
+    await Message.create({
+      from: from,
+      to: process.env.WHATSAPP_PHONE_NUMBER_ID || 'system',
+      text: text,
+      direction: 'incoming',
+      timestamp: new Date()
+    });
     
-    // TODO: Implement message storage
-    // const Message = require('../models/Message');
-    // await Message.create({
-    //   from: from,
-    //   text: text,
-    //   timestamp: new Date(),
-    //   direction: 'incoming'
-    // });
-    
+    console.log(`Saved incoming message from ${from} to database`);
   } catch (error) {
     console.error('Error processing incoming message:', error);
   }
 }
+
+// GET /api/whatsapp/messages/:phone - Get message history for a phone number
+router.get('/messages/:phone', auth, async (req, res) => {
+  try {
+    const { phone } = req.params;
+    
+    // Format phone number to match how it's stored
+    let formattedPhone = phone.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+
+    const messages = await Message.find({
+      $or: [
+        { from: formattedPhone },
+        { to: formattedPhone }
+      ]
+    }).sort({ timestamp: 1 });
+
+    res.json({
+      success: true,
+      data: messages
+    });
+  } catch (error) {
+    console.error('Error fetching message history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch message history'
+    });
+  }
+});
 
 // Test endpoint for WhatsApp API
 router.post('/test', async (req, res) => {
@@ -126,6 +153,16 @@ router.post('/test', async (req, res) => {
     });
     
     console.log('WhatsApp API Response:', response.data);
+    
+    // Save outgoing test message to database
+    await Message.create({
+      from: phoneNumberId,
+      to: phone,
+      text: message,
+      direction: 'outgoing',
+      messageId: response.data?.messages?.[0]?.id,
+      timestamp: new Date()
+    });
     
     res.json({
       success: true,
@@ -253,6 +290,16 @@ router.post('/send', auth, async (req, res) => {
         });
         
         console.log(`WhatsApp API Success for ${player.name}:`, JSON.stringify(response.data, null, 2));
+        
+        // Save outgoing message to database
+        await Message.create({
+          from: phoneNumberId,
+          to: formattedPhone,
+          text: template ? `Template: ${template.name}` : message,
+          direction: 'outgoing',
+          messageId: response.data?.messages?.[0]?.id,
+          timestamp: new Date()
+        });
         
         results.push({
           playerId: player._id,

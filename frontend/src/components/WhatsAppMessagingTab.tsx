@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { createPlayer, getPlayers, sendWhatsAppMessage } from '../services/api';
+import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory } from '../services/api';
 import type { Player } from '../types';
 
 const WhatsAppMessagingTab: React.FC = () => {
@@ -19,6 +19,9 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; attempted: number; results?: Array<{ playerId: string; name: string; phone: string; status: string; messageId?: string; timestamp?: string }> } | null>(null);
   const [showAlert, setShowAlert] = useState(true);
+  const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
+  const [historyMessages, setHistoryMessages] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const fetchPlayers = async () => {
     try {
@@ -31,6 +34,20 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Failed to load players. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHistory = async (player: Player) => {
+    try {
+      setLoadingHistory(true);
+      setHistoryPlayer(player);
+      const response = await getMessageHistory(player.phone);
+      setHistoryMessages(response.data || []);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load message history.');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -417,6 +434,109 @@ const WhatsAppMessagingTab: React.FC = () => {
         </div>
       )}
 
+      {/* Message History Modal */}
+      {historyPlayer && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="modal-content" style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '650px',
+            width: '90%',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div className="d-flex justify-content-between align-items-start mb-4">
+              <div>
+                <h3 className="h4 mb-1" style={{ color: '#111827', fontWeight: '700' }}>
+                  Conversation with {historyPlayer.name}
+                </h3>
+                <p style={{ color: '#6b7280', margin: 0 }}>{historyPlayer.phone}</p>
+              </div>
+              <button 
+                onClick={() => setHistoryPlayer(null)}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  fontSize: '20px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ 
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              {loadingHistory ? (
+                <div className="text-center py-8 text-secondary">Loading messages...</div>
+              ) : historyMessages.length === 0 ? (
+                <div className="text-center py-8 text-secondary">No messages found.</div>
+              ) : (
+                historyMessages.map((msg, idx) => (
+                  <div key={idx} style={{
+                    alignSelf: msg.direction === 'incoming' ? 'flex-start' : 'flex-end',
+                    maxWidth: '80%',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    backgroundColor: msg.direction === 'incoming' ? '#ffffff' : 'var(--primary-green)',
+                    color: msg.direction === 'incoming' ? '#111827' : '#ffffff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    border: msg.direction === 'incoming' ? '1px solid #e5e7eb' : 'none'
+                  }}>
+                    <div style={{ fontSize: '15px' }}>{msg.text}</div>
+                    <div style={{ 
+                      fontSize: '11px', 
+                      marginTop: '4px',
+                      opacity: 0.8,
+                      textAlign: 'right'
+                    }}>
+                      {new Date(msg.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 d-flex justify-content-end">
+              <button 
+                onClick={() => setHistoryPlayer(null)}
+                className="btn btn-secondary"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 card">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -462,7 +582,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                   <th className="py-3 pr-4">Select</th>
                   <th className="py-3 pr-4">Contact</th>
                   <th className="py-3 pr-4">Added</th>
-                  <th className="py-3 pr-4">Updated</th>
+                  <th className="py-3 pr-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -498,7 +618,15 @@ const WhatsAppMessagingTab: React.FC = () => {
                       {player.notes && <p className="text-xs text-secondary mt-1">{player.notes}</p>}
                     </td>
                     <td className="py-3 pr-4 text-secondary">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
-                    <td className="py-3 pr-4 text-secondary">{player.updatedAt ? new Date(player.updatedAt).toLocaleDateString() : '—'}</td>
+                    <td className="py-3 pr-4">
+                      <button
+                        onClick={() => fetchHistory(player)}
+                        className="btn btn-tertiary text-xs"
+                        style={{ padding: '4px 8px' }}
+                      >
+                        History
+                      </button>
+                    </td>
                   </tr>
                   ))
                 )}

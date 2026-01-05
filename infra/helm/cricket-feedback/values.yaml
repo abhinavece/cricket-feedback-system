@@ -14,7 +14,7 @@ backend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-backend
-    tag: "v20"
+    tag: "v22"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -71,6 +71,11 @@ backend:
         secretKeyRef:
           name: cricket-secrets
           key: whatsapp-phone-number-id
+    - name: WHATSAPP_VERIFY_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: cricket-secrets
+          key: whatsapp-verify-token
   
   livenessProbe:
     httpGet:
@@ -96,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-frontend
-    tag: "v13"
+    tag: "v15"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -159,7 +164,7 @@ ingress:
   
   host: 129.153.86.8.sslip.io
   tls:
-    enabled: false
+    enabled: true
     secretName: cricket-feedback-tls
   
   paths:
