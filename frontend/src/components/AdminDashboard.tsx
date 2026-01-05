@@ -203,7 +203,8 @@ const AdminDashboard: React.FC = () => {
         
         {/* Tab Navigation */}
         <div className="mb-6 md:mb-8">
-          <nav className="flex space-x-4 md:space-x-8 border-b overflow-x-auto no-scrollbar" style={{borderColor: 'var(--border-color)', scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+          {/* Desktop Tabs */}
+          <nav className="hidden md:flex space-x-8 border-b" style={{borderColor: 'var(--border-color)'}}>
             <button
               onClick={() => setActiveTab('feedback')}
               className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
@@ -239,6 +240,44 @@ const AdminDashboard: React.FC = () => {
               </>
             )}
           </nav>
+
+          {/* Mobile Tab Pill Control */}
+          <div className="md:hidden bg-white/5 p-1 rounded-2xl border border-white/10 flex items-center shadow-lg">
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`flex-1 py-3 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
+                activeTab === 'feedback'
+                  ? 'bg-primary-green text-white shadow-lg shadow-primary-green/30 scale-[1.02]'
+                  : 'text-secondary/70'
+              }`}
+            >
+              Feedback
+            </button>
+            {user?.role === 'admin' && (
+              <>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`flex-1 py-3 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
+                    activeTab === 'users'
+                      ? 'bg-primary-green text-white shadow-lg shadow-primary-green/30 scale-[1.02]'
+                      : 'text-secondary/70'
+                  }`}
+                >
+                  Users
+                </button>
+                <button
+                  onClick={() => setActiveTab('whatsapp')}
+                  className={`flex-1 py-3 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
+                    activeTab === 'whatsapp'
+                      ? 'bg-primary-green text-white shadow-lg shadow-primary-green/30 scale-[1.02]'
+                      : 'text-secondary/70'
+                  }`}
+                >
+                  WhatsApp
+                </button>
+              </>
+            )}
+          </div>
         </div>
         
         {/* Tab Content */}
