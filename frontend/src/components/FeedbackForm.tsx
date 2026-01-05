@@ -95,9 +95,9 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1 className="text-3xl font-bold text-center mb-6" style={{color: 'var(--primary-green)'}}>Cricket Match Feedback</h1>
+    <div className="container py-4 md:py-10">
+      <div className="card max-w-2xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-bold text-center mb-6 md:mb-8" style={{color: 'var(--primary-green)'}}>Cricket Match Feedback</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Player Name */}
@@ -142,42 +142,45 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
           </div>
 
           {/* Ratings */}
-          <div className="space-y-4">
+          <div className="space-y-6 md:space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
               Performance Ratings <span className="text-accent-red text-xl">*</span>
             </h3>
             {errors.ratings && (
               <div
-                className="rounded-2xl p-4 shadow-lg flex items-center gap-3"
+                className="rounded-2xl p-4 shadow-lg flex items-center gap-3 animate-fade-in"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,99,71,0.15), rgba(255,165,0,0.15))',
                   border: '1px solid rgba(255, 99, 71, 0.4)'
                 }}
               >
-                <span role="img" aria-label="spark">✨</span>
+                <span className="text-xl">✨</span>
                 <div>
-                  <p className="font-semibold text-accent-orange">Complete your star lineup!</p>
-                  <p className="text-sm text-secondary">{errors.ratings}</p>
+                  <p className="font-semibold text-accent-orange text-sm md:text-base">Complete your star lineup!</p>
+                  <p className="text-xs md:text-sm text-secondary">{errors.ratings}</p>
                 </div>
               </div>
             )}
             
-            {[
-              { key: 'batting' as keyof FeedbackForm, label: 'Batting' },
-              { key: 'bowling' as keyof FeedbackForm, label: 'Bowling' },
-              { key: 'fielding' as keyof FeedbackForm, label: 'Fielding' },
-              { key: 'teamSpirit' as keyof FeedbackForm, label: 'Team Spirit' },
-            ].map(({ key, label }) => (
-              <div key={key} className="form-group">
-                <label className="form-label">
-                  {label} (1-5) <span className="text-accent-red">*</span>
-                </label>
-                <RatingStars
-                  rating={formData[key] as number}
-                  onChange={(value) => handleInputChange(key, value)}
-                />
-              </div>
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {[
+                { key: 'batting' as keyof FeedbackForm, label: 'Batting' },
+                { key: 'bowling' as keyof FeedbackForm, label: 'Bowling' },
+                { key: 'fielding' as keyof FeedbackForm, label: 'Fielding' },
+                { key: 'teamSpirit' as keyof FeedbackForm, label: 'Team Spirit' },
+              ].map(({ key, label }) => (
+                <div key={key} className="form-group mb-0">
+                  <label className="form-label flex items-center justify-between">
+                    <span>{label}</span>
+                    <span className="text-[10px] text-secondary opacity-60">1-5 STARS</span>
+                  </label>
+                  <RatingStars
+                    rating={formData[key] as number}
+                    onChange={(value) => handleInputChange(key, value)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Experience Feedback */}
@@ -190,7 +193,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               onChange={(e) => handleInputChange('feedbackText', e.target.value)}
               rows={4}
               className={`form-control ${errors.feedbackText ? 'border-red-500' : ''}`}
-              placeholder="Describe your match experience..."
+              placeholder="How was your game today?"
             />
             {errors.feedbackText && (
               <p className="text-red-500 text-sm mt-1">{errors.feedbackText}</p>
@@ -198,24 +201,25 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
           </div>
 
           {/* Issues Faced */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3" style={{color: 'var(--text-primary)'}}>Issues Faced</h3>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold" style={{color: 'var(--text-primary)'}}>Issues Faced</h3>
             <div className="checkbox-group">
               {Object.entries(formData.issues).map(([key, value]) => (
-                <div key={key} className="checkbox-item">
+                <div key={key} className="checkbox-item flex items-center group cursor-pointer" onClick={() => handleIssueChange(key as keyof typeof formData.issues)}>
                   <input
                     type="checkbox"
                     checked={value}
-                    onChange={() => handleIssueChange(key as keyof typeof formData.issues)}
+                    onChange={(e) => e.stopPropagation()} /* Handled by parent click for larger target */
+                    className="form-checkbox pointer-events-none"
                   />
-                  <label>{key.charAt(0).toUpperCase() + key.slice(1)}</label>
+                  <label className="flex-1 cursor-pointer ml-3">{key.charAt(0).toUpperCase() + key.slice(1)}</label>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Additional Comments */}
-          <div className="form-group">
+          <div className="form-group pt-4">
             <label className="form-label">
               Additional Comments
             </label>
@@ -224,19 +228,21 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               onChange={(e) => handleInputChange('additionalComments', e.target.value)}
               rows={3}
               className="form-control"
-              placeholder="Any additional feedback or suggestions..."
+              placeholder="Any other thoughts?"
             />
           </div>
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full"
-            style={{fontSize: '18px', padding: '12px 24px'}}
-          >
-            {loading ? 'Submitting...' : 'Submit Feedback'}
-          </button>
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full h-14"
+              style={{fontSize: '18px'}}
+            >
+              {loading ? 'Submitting...' : 'Submit Feedback'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

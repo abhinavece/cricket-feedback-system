@@ -202,11 +202,11 @@ const AdminDashboard: React.FC = () => {
       </div>
         
         {/* Tab Navigation */}
-        <div className="mb-8">
-          <nav className="flex space-x-8 border-b" style={{borderColor: 'var(--border-color)'}}>
+        <div className="mb-6 md:mb-8">
+          <nav className="flex space-x-4 md:space-x-8 border-b overflow-x-auto no-scrollbar" style={{borderColor: 'var(--border-color)', scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-all ${
+              className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
                 activeTab === 'feedback'
                   ? 'border-primary-green text-primary-green'
                   : 'border-transparent text-secondary hover:text-primary'
@@ -218,7 +218,7 @@ const AdminDashboard: React.FC = () => {
               <>
                 <button
                   onClick={() => setActiveTab('users')}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-all ${
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
                     activeTab === 'users'
                       ? 'border-primary-green text-primary-green'
                       : 'border-transparent text-secondary hover:text-primary'
@@ -228,7 +228,7 @@ const AdminDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setActiveTab('whatsapp')}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-all ${
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
                     activeTab === 'whatsapp'
                       ? 'border-primary-green text-primary-green'
                       : 'border-transparent text-secondary hover:text-primary'
@@ -279,9 +279,9 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
             {/* Issue Filters */}
-            <div className="mb-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap gap-2">
+            <div className="mb-6 overflow-hidden">
+              <div className="flex flex-col gap-4">
+                <div className="flex overflow-x-auto no-scrollbar pb-2 gap-2" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                   {[
                     { key: 'venue', label: 'Venue' },
                     { key: 'equipment', label: 'Equipment' },
@@ -291,7 +291,7 @@ const AdminDashboard: React.FC = () => {
                   ].map(({ key, label }) => (
                     <button
                       key={key}
-                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      className={`px-4 py-2 rounded-full text-xs md:text-sm font-medium border transition-all whitespace-nowrap min-h-[40px] flex items-center ${
                         selectedIssue === key
                           ? 'bg-primary-green text-white border-primary-green'
                           : 'border-gray-700 text-secondary hover:text-white'
@@ -302,21 +302,21 @@ const AdminDashboard: React.FC = () => {
                     </button>
                   ))}
                   <button
-                    className="px-4 py-2 rounded-full text-sm font-medium border border-gray-700 text-secondary hover:text-white transition-all"
+                    className="px-4 py-2 rounded-full text-xs md:text-sm font-medium border border-gray-700 text-secondary hover:text-white transition-all whitespace-nowrap min-h-[40px] flex items-center"
                     onClick={() => setSelectedIssue(null)}
                   >
                     Clear Filters
                   </button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
                   <button
-                    className={`btn btn-outline text-sm ${currentView === 'active' ? 'border-primary-green text-primary-green' : ''}`}
+                    className={`btn btn-outline flex-1 md:flex-none text-xs md:text-sm h-11 md:h-auto ${currentView === 'active' ? 'border-primary-green text-primary-green' : ''}`}
                     onClick={() => setCurrentView('active')}
                   >
                     Active ({feedback.length})
                   </button>
                   <button
-                    className={`btn btn-outline text-sm ${currentView === 'trash' ? 'border-primary-green text-primary-green' : ''}`}
+                    className={`btn btn-outline flex-1 md:flex-none text-xs md:text-sm h-11 md:h-auto ${currentView === 'trash' ? 'border-primary-green text-primary-green' : ''}`}
                     onClick={() => setCurrentView('trash')}
                   >
                     Trash ({trashFeedback.length})
@@ -429,7 +429,7 @@ const AdminDashboard: React.FC = () => {
       {/* Feedback Detail Modal */}
       {showModal && selectedFeedback && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-backdrop-in"
+          className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-backdrop-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               closeModal();
@@ -437,38 +437,44 @@ const AdminDashboard: React.FC = () => {
           }}
         >
           <div
-            className="w-full max-w-4xl bg-gradient-to-br from-gray-900 via-gray-900/95 to-black border border-gray-800 rounded-3xl shadow-2xl animate-modal-in overflow-hidden"
+            className="w-full max-w-4xl bg-[#1a1a2e] border border-white/10 rounded-[2rem] shadow-2xl animate-modal-in overflow-y-auto no-scrollbar"
             style={{ maxHeight: '90vh' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative p-6 md:p-10">
               <button
                 onClick={closeModal}
-                className="absolute top-4 right-4 text-secondary hover:text-white transition"
+                className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-secondary hover:text-white hover:bg-white/10 transition-all z-10"
                 aria-label="Close details"
               >
-                ✕
+                <span className="text-2xl">×</span>
               </button>
 
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8 mt-4 md:mt-0">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-primary-green/80">Feedback Detail</p>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mt-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-3 py-1 rounded-full bg-primary-green/10 text-primary-green text-[10px] font-bold uppercase tracking-widest border border-primary-green/20">Feedback Detail</span>
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
                     {selectedFeedback.playerName}
                   </h2>
-                  <p className="text-sm text-secondary mt-2">
-                    Submitted on {formatDate(selectedFeedback.createdAt)} · Match date:{' '}
-                    {formatDate(String(selectedFeedback.matchDate))}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-secondary mt-3">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary-green"></span>
+                      {formatDate(selectedFeedback.createdAt)}
+                    </span>
+                    <span className="text-white/20">•</span>
+                    <span>Match: {formatDate(String(selectedFeedback.matchDate))}</span>
+                  </div>
                 </div>
-                <div className="bg-primary-green/10 border border-primary-green/40 rounded-2xl px-6 py-4 text-right">
-                  <p className="text-xs text-secondary uppercase tracking-wide">Overall Spirit</p>
-                  <p className="text-4xl font-black text-primary-green">{selectedFeedback.teamSpirit.toFixed(1)}</p>
-                  <p className="text-xs text-secondary mt-1">/ 5</p>
+                <div className="bg-gradient-to-br from-primary-green/20 to-primary-green/5 border border-primary-green/30 rounded-2xl px-8 py-6 text-center md:text-right shadow-inner">
+                  <p className="text-[10px] text-secondary uppercase tracking-[0.2em] mb-1 font-bold">Overall Spirit</p>
+                  <p className="text-5xl font-black text-primary-green drop-shadow-sm">{selectedFeedback.teamSpirit.toFixed(1)}</p>
+                  <p className="text-[10px] text-secondary mt-1 font-medium">OUT OF 5.0</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
                 {[
                   { label: 'Batting', value: selectedFeedback.batting },
                   { label: 'Bowling', value: selectedFeedback.bowling },
@@ -477,26 +483,26 @@ const AdminDashboard: React.FC = () => {
                 ].map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-2xl border border-gray-800 bg-gray-900/70 p-4"
+                    className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition-all hover:bg-white/10 hover:border-white/10"
                   >
-                    <p className="text-xs uppercase tracking-wide text-secondary">{stat.label}</p>
-                    <p className="text-2xl font-semibold text-white mt-2">
-                      {stat.value.toFixed(1)}
-                      <span className="text-sm text-secondary"> / 5</span>
-                    </p>
-                    <div className="text-sm text-accent-orange mt-1">
+                    <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">{stat.label}</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-white">{stat.value.toFixed(1)}</span>
+                      <span className="text-xs text-secondary/50 font-medium">/ 5</span>
+                    </div>
+                    <div className="text-sm text-yellow-500 mt-2 flex gap-0.5">
                       {renderStars(Math.round(stat.value))}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mb-8">
-                <p className="text-sm uppercase tracking-[0.4em] text-secondary mb-3">Issue Signals</p>
-                <div className="flex flex-wrap gap-2">
+              <div className="mb-10">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-secondary font-bold mb-4">Issue Signals</p>
+                <div className="flex flex-wrap gap-2.5">
                   {Object.entries(selectedFeedback.issues).every(([, value]) => !value) ? (
-                    <span className="px-3 py-1 rounded-full text-sm border border-gray-700 text-secondary">
-                      No specific issues flagged
+                    <span className="px-4 py-2 rounded-xl text-xs border border-white/5 bg-white/5 text-secondary italic">
+                      No specific issues flagged by player
                     </span>
                   ) : (
                     Object.entries(selectedFeedback.issues)
@@ -504,7 +510,7 @@ const AdminDashboard: React.FC = () => {
                       .map(([issueKey]) => (
                         <span
                           key={issueKey}
-                          className="px-4 py-1.5 rounded-full text-sm font-medium bg-primary-green/10 text-primary-green border border-primary-green/40"
+                          className="px-5 py-2 rounded-xl text-xs font-bold bg-primary-green text-white shadow-lg shadow-primary-green/20 uppercase tracking-wider"
                         >
                           {issueKey}
                         </span>
@@ -513,26 +519,36 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-5">
-                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">Match Narration</p>
-                  <p className="text-base text-white leading-relaxed mt-3">{selectedFeedback.feedbackText}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1 h-4 bg-primary-green rounded-full"></span>
+                    <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Match Narration</p>
+                  </div>
+                  <p className="text-base text-white/90 leading-relaxed font-medium italic">"{selectedFeedback.feedbackText}"</p>
                 </div>
-                <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-5">
-                  <p className="text-xs uppercase tracking-[0.3em] text-secondary">Additional Notes</p>
-                  <p className="text-base text-white leading-relaxed mt-3">
+                <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1 h-4 bg-accent-blue rounded-full"></span>
+                    <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Additional Notes</p>
+                  </div>
+                  <p className="text-base text-white/90 leading-relaxed font-medium">
                     {selectedFeedback.additionalComments?.trim() || 'No additional comments provided.'}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-10 flex flex-wrap gap-3 justify-end">
-                <button className="btn btn-outline" onClick={closeModal}>
-                  Close
+              <div className="flex flex-col md:flex-row gap-4 justify-end pt-6 border-t border-white/5">
+                <button 
+                  className="btn btn-outline h-14 md:h-auto order-2 md:order-1" 
+                  onClick={closeModal}
+                  style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}
+                >
+                  Close Detail
                 </button>
                 {currentView === 'active' ? (
                   <button
-                    className="btn btn-danger"
+                    className="btn btn-danger h-14 md:h-auto order-1 md:order-2"
                     onClick={() => {
                       handleDeleteFeedback(selectedFeedback._id);
                       closeModal();
@@ -541,18 +557,18 @@ const AdminDashboard: React.FC = () => {
                     Move to Trash
                   </button>
                 ) : (
-                  <>
+                  <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2 w-full md:w-auto">
                     <button
-                      className="btn btn-outline"
+                      className="btn btn-outline h-14 md:h-auto"
                       onClick={() => {
                         handleRestoreFeedback(selectedFeedback._id);
                         closeModal();
                       }}
                     >
-                      Restore
+                      Restore Feedback
                     </button>
                     <button
-                      className="btn btn-danger"
+                      className="btn btn-danger h-14 md:h-auto"
                       onClick={() => {
                         handlePermanentDelete(selectedFeedback._id);
                         closeModal();
@@ -560,7 +576,7 @@ const AdminDashboard: React.FC = () => {
                     >
                       Delete Permanently
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

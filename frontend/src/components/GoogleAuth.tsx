@@ -37,24 +37,27 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-6">
+    <div className="flex flex-col items-center space-y-6 md:space-y-8 w-full max-w-sm mx-auto">
       <div className="text-center">
-        <div className="cricket-ball" style={{margin: '0 auto 20px'}}></div>
-        <h2 className="text-3xl font-bold text-primary mb-3">Welcome to Cricket Feedback</h2>
-        <p className="text-secondary">Sign in with your Google account to continue</p>
+        <div className="cricket-ball mx-auto mb-6" style={{width: '48px', height: '48px'}}></div>
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Welcome to Mavericks XI</h2>
+        <p className="text-secondary text-sm md:text-base">Sign in with your Google account to access the dashboard</p>
       </div>
       
-      <GoogleLogin
-        onSuccess={handleGoogleSuccess}
-        onError={handleGoogleError}
-        theme="filled_blue"
-        text="signin_with"
-        shape="rectangular"
-        logo_alignment="left"
-      />
+      <div className="w-full flex justify-center py-2">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          theme="filled_blue"
+          text="continue_with"
+          shape="pill"
+          width="100%"
+          logo_alignment="left"
+        />
+      </div>
       
-      <div className="text-center text-sm text-secondary">
-        <p>By signing in, you agree to our terms and conditions</p>
+      <div className="text-center text-[10px] md:text-xs text-secondary opacity-60">
+        <p>By signing in, you agree to the Mavericks Team internal access policy.</p>
       </div>
     </div>
   );

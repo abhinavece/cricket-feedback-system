@@ -132,64 +132,62 @@ const UserManagement: React.FC = () => {
   }
 
   return (
-    <div className="card">
-      <div className="px-6 py-4 border-b" style={{borderColor: 'var(--border-color)'}}>
+    <div className="card overflow-hidden">
+      <div className="px-4 md:px-6 py-4 border-b" style={{borderColor: 'var(--border-color)'}}>
         <h2 className="text-xl font-semibold text-primary">User Management</h2>
         <p className="text-sm text-secondary mt-1">Manage user roles and permissions</p>
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto no-scrollbar" style={{WebkitOverflowScrolling: 'touch'}}>
         <table className="min-w-full">
           <thead style={{backgroundColor: 'var(--card-bg)'}}>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-secondary uppercase tracking-wider whitespace-nowrap">
                 User
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-secondary uppercase tracking-wider whitespace-nowrap">
                 Role
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-secondary uppercase tracking-wider whitespace-nowrap">
                 Last Login
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-secondary uppercase tracking-wider whitespace-nowrap">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => {
-              console.log('Rendering user:', user);
-              return (
+            {users.map((user) => (
               <tr key={user.id} className="border-b" style={{borderColor: 'var(--border-color)'}}>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     {user.avatar && (
                       <img
-                        className="h-10 w-10 rounded-full"
+                        className="h-8 w-8 md:h-10 md:w-10 rounded-full border border-primary-green/30"
                         src={user.avatar}
                         alt={user.name}
                       />
                     )}
-                    <div className="ml-4">
+                    <div className="ml-3 md:ml-4">
                       <div className="text-sm font-medium text-primary">{user.name}</div>
-                      <div className="text-sm text-secondary">{user.email}</div>
+                      <div className="text-xs text-secondary">{user.email}</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-[10px] md:text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
                     {user.role}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-secondary">
                   {user.lastLogin ? formatDate(user.lastLogin) : 'Never'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <select
                     value={user.role}
                     onChange={(e) => updateUserRole(user.id, e.target.value as 'viewer' | 'editor' | 'admin')}
                     disabled={updatingUserId === user.id}
-                    className="form-control text-sm"
+                    className="form-control text-sm min-h-[36px] min-w-[100px]"
                   >
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>
@@ -197,19 +195,62 @@ const UserManagement: React.FC = () => {
                   </select>
                 </td>
               </tr>
-              );
-            })}
+            ))}
           </tbody>
         </table>
       </div>
+
+      {/* Mobile Card Layout */}
+      <div className="md:hidden divide-y divide-white/5">
+        {users.map((user) => (
+          <div key={user.id} className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {user.avatar && (
+                  <img
+                    className="h-10 w-10 rounded-full border border-primary-green/30"
+                    src={user.avatar}
+                    alt={user.name}
+                  />
+                )}
+                <div>
+                  <div className="text-sm font-bold text-primary">{user.name}</div>
+                  <div className="text-[10px] text-secondary/70">{user.email}</div>
+                </div>
+              </div>
+              <span className={`inline-flex px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full ${getRoleBadgeColor(user.role)}`}>
+                {user.role}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between pt-2">
+              <div className="text-[10px] text-secondary uppercase tracking-widest">
+                Last Login: <span className="text-white ml-1">{user.lastLogin ? formatDate(user.lastLogin) : 'Never'}</span>
+              </div>
+              <div className="w-1/2">
+                <select
+                  value={user.role}
+                  onChange={(e) => updateUserRole(user.id, e.target.value as 'viewer' | 'editor' | 'admin')}
+                  disabled={updatingUserId === user.id}
+                  className="form-control text-xs min-h-[44px] bg-white/5 border-white/10"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
       
-      <div className="px-6 py-4 border-t" style={{borderColor: 'var(--border-color)', backgroundColor: 'var(--card-bg)'}}>
-        <div className="text-sm text-secondary">
+      <div className="px-4 md:px-6 py-4 border-t" style={{borderColor: 'var(--border-color)', backgroundColor: 'var(--card-bg)'}}>
+        <div className="text-xs text-secondary">
           <p className="font-medium mb-2">Role Permissions:</p>
           <ul className="space-y-1">
-            <li><span className="font-medium">Viewer:</span> Can submit feedback only</li>
-            <li><span className="font-medium">Editor:</span> Can submit feedback + view dashboard + edit feedback</li>
-            <li><span className="font-medium">Admin:</span> Full access including user management</li>
+            <li><span className="font-medium text-primary-green">Viewer:</span> Submit feedback only</li>
+            <li><span className="font-medium text-accent-blue">Editor:</span> Submit + View Dashboard + Edit</li>
+            <li><span className="font-medium text-accent-red">Admin:</span> Full Access</li>
           </ul>
         </div>
       </div>

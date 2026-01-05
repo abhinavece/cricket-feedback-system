@@ -237,23 +237,23 @@ const WhatsAppMessagingTab: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-3xl font-bold" style={{ color: 'var(--primary-green)' }}>
+          <h2 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--primary-green)' }}>
             WhatsApp Messaging
           </h2>
-          <p className="text-secondary">
+          <p className="text-secondary text-sm md:text-base">
             Manage recipients and send WhatsApp notifications directly from the dashboard.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
-          <div className="card text-center px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-secondary">Total players</p>
-            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <div className="grid grid-cols-2 gap-3 w-full lg:w-auto">
+          <div className="card text-center px-4 py-3 min-h-[80px] flex flex-col justify-center">
+            <p className="text-[10px] md:text-xs uppercase tracking-wide text-secondary">Total players</p>
+            <p className="text-xl md:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {stats.total}
             </p>
           </div>
-          <div className="card text-center px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-secondary">Selected</p>
-            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <div className="card text-center px-4 py-3 min-h-[80px] flex flex-col justify-center">
+            <p className="text-[10px] md:text-xs uppercase tracking-wide text-secondary">Selected</p>
+            <p className="text-xl md:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {stats.selected}
             </p>
           </div>
@@ -596,18 +596,18 @@ const WhatsAppMessagingTab: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 card">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-lg md:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 Recipients
               </h3>
-              <p className="text-secondary text-sm">
-                Select which players should receive the next WhatsApp blast.
+              <p className="text-secondary text-xs md:text-sm">
+                Select players for the next WhatsApp blast.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
               <button
-                className="btn btn-tertiary text-sm"
+                className="btn btn-tertiary text-xs md:text-sm h-11 md:h-auto"
                 type="button"
                 onClick={handleSelectAll}
                 disabled={loading || players.length === 0}
@@ -615,7 +615,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                 Select all
               </button>
               <button
-                className="btn btn-outline text-sm"
+                className="btn btn-outline text-xs md:text-sm h-11 md:h-auto"
                 type="button"
                 onClick={handleClearSelection}
                 disabled={selectedPlayers.length === 0}
@@ -623,7 +623,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                 Clear
               </button>
               <button
-                className="btn btn-secondary flex items-center gap-2"
+                className="btn btn-secondary col-span-2 flex items-center justify-center gap-2 h-12 md:h-auto"
                 onClick={handleSendMessages}
                 disabled={sending || loading || selectedPlayers.length === 0}
               >
@@ -661,25 +661,27 @@ const WhatsAppMessagingTab: React.FC = () => {
                     key={player._id}
                     className="border-t border-gray-700 hover:bg-gray-800/40 transition-colors"
                   >
-                    <td className="py-3 pr-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedPlayers.includes(player._id)}
-                        onChange={() => toggleSelection(player._id)}
-                        className="form-checkbox h-4 w-4"
-                      />
+                    <td className="py-4 pr-4">
+                      <div className="flex items-center justify-center h-full min-h-[44px]">
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayers.includes(player._id)}
+                          onChange={() => toggleSelection(player._id)}
+                          className="form-checkbox h-6 w-6 cursor-pointer"
+                        />
+                      </div>
                     </td>
-                    <td className="py-3 pr-4">
-                      <p className="font-semibold text-white">{player.name}</p>
-                      <p className="text-xs text-secondary">{player.phone}</p>
-                      {player.notes && <p className="text-xs text-secondary mt-1">{player.notes}</p>}
+                    <td className="py-4 pr-4">
+                      <p className="font-semibold text-white text-base">{player.name}</p>
+                      <p className="text-sm text-secondary">{player.phone}</p>
+                      {player.notes && <p className="text-xs text-secondary mt-1 italic">{player.notes}</p>}
                     </td>
-                    <td className="py-3 pr-4 text-secondary">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
-                    <td className="py-3 pr-4">
+                    <td className="py-4 pr-4 text-secondary hidden md:table-cell">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
+                    <td className="py-4 pr-4">
                       <button
                         onClick={() => fetchHistory(player)}
-                        className="btn btn-tertiary text-xs"
-                        style={{ padding: '4px 8px' }}
+                        className="btn btn-tertiary text-xs md:text-sm min-h-[40px] w-full md:w-auto"
+                        style={{ padding: '8px 12px' }}
                       >
                         History
                       </button>
@@ -711,11 +713,12 @@ const WhatsAppMessagingTab: React.FC = () => {
               <div>
                 <label className="form-label text-sm">WhatsApp Number</label>
                 <input
-                  type="text"
+                  type="tel"
                   value={newPlayer.phone}
                   onChange={(e) => setNewPlayer((prev) => ({ ...prev, phone: e.target.value }))}
                   className="form-control"
                   placeholder="+91 90000 00000"
+                  inputMode="tel"
                 />
               </div>
               <div>

@@ -71,60 +71,71 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="card" style={{maxWidth: '600px', width: '90%', maxHeight: '80vh', overflowY: 'auto'}}>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-primary">User Profile</h3>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="card w-full max-w-lg shadow-2xl animate-modal-in overflow-hidden" style={{maxHeight: '90vh', borderRadius: '24px'}}>
+        <div className="flex justify-between items-center px-6 py-5 border-b" style={{borderColor: 'var(--border-color)'}}>
+          <h3 className="text-xl font-bold text-white">User Profile</h3>
           <button
             onClick={onClose}
-            className="text-2xl text-secondary hover:text-primary transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-secondary hover:text-white hover:bg-white/10 transition-all"
+            aria-label="Close profile"
           >
-            ×
+            <span className="text-2xl">×</span>
           </button>
         </div>
 
-        {error && (
-          <div className="alert alert-error mb-4">
-            {error}
-          </div>
-        )}
+        <div className="p-6 overflow-y-auto no-scrollbar">
+          {error && (
+            <div className="alert alert-error mb-6 text-sm">
+              {error}
+            </div>
+          )}
 
-        {success && (
-          <div className="alert alert-success mb-4">
-            {success}
-          </div>
-        )}
+          {success && (
+            <div className="alert alert-success mb-6 text-sm">
+              {success}
+            </div>
+          )}
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* User Avatar and Basic Info */}
-            <div className="flex items-center space-x-6 pb-6 border-b" style={{borderColor: 'var(--border-color)'}}>
-              {user?.avatar && (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-20 h-20 rounded-full border-4"
-                  style={{borderColor: 'var(--primary-green)'}}
-                />
+            <div className="flex flex-col items-center text-center space-y-4 pb-8 border-b" style={{borderColor: 'var(--border-color)'}}>
+              {user?.avatar ? (
+                <div className="relative">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-24 h-24 rounded-full border-4 shadow-xl"
+                    style={{borderColor: 'var(--primary-green)'}}
+                  />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-emerald-500 border-4 border-card-bg rounded-full"></div>
+                </div>
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-primary-green flex items-center justify-center text-white text-3xl font-bold">
+                  {user?.name?.charAt(0)}
+                </div>
               )}
               <div>
-                <h4 className="text-xl font-semibold text-primary mb-2">{user?.name}</h4>
-                <p className="text-sm text-secondary mb-3">{user?.email}</p>
-                <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                  user?.role === 'admin' ? 'bg-accent-red text-white' :
-                  user?.role === 'editor' ? 'bg-accent-blue text-white' :
-                  'bg-gray-600 text-white'
-                }`}>
-                  {user?.role}
-                </span>
+                <h4 className="text-2xl font-bold text-white leading-tight">{user?.name}</h4>
+                <p className="text-secondary text-sm font-medium mt-1">{user?.email}</p>
+                <div className="mt-4">
+                  <span className={`inline-flex px-4 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded-full ${
+                    user?.role === 'admin' ? 'bg-accent-red text-white' :
+                    user?.role === 'editor' ? 'bg-accent-blue text-white' :
+                    'bg-gray-600 text-white'
+                  }`}>
+                    {user?.role}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Edit Form */}
             {isEditing ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
                 <div className="form-group">
                   <label htmlFor="name" className="form-label">
-                    Name
+                    Display Name
                   </label>
                   <input
                     type="text"
@@ -132,14 +143,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="form-control"
+                    className="form-control h-12 text-lg"
                     required
                   />
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="email" className="form-label">
-                    Email
+                    Email Address
                   </label>
                   <input
                     type="email"
@@ -147,39 +158,40 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="form-control"
+                    className="form-control h-12 text-lg"
                     required
                   />
                 </div>
 
-                <div className="flex space-x-3">
+                <div className="flex flex-col md:flex-row gap-3 pt-4">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="btn btn-primary"
+                    className="btn btn-primary h-12 order-1 md:order-2"
                   >
-                    {loading ? 'Saving...' : 'Save Changes'}
+                    {loading ? 'Updating...' : 'Save Changes'}
                   </button>
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="btn btn-outline"
-                    style={{borderColor: 'var(--accent-red)', color: 'var(--accent-red)'}}
+                    className="btn btn-outline h-12 order-2 md:order-1"
+                    style={{borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)'}}
                   >
                     Cancel
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="text-center">
+              <div className="pt-2">
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="btn btn-secondary"
+                  className="btn btn-secondary w-full h-12 shadow-lg"
                 >
-                  Edit Profile
+                  Edit Profile Information
                 </button>
               </div>
             )}
+          </div>
         </div>
       </div>
     </div>

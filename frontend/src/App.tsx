@@ -65,16 +65,18 @@ function AppContent() {
       
       {currentView === 'form' ? (
         submitted ? (
-          <div className="container fade-in">
-            <div className="card text-center" style={{maxWidth: '500px', margin: '0 auto'}}>
-              <div className="cricket-ball" style={{margin: '0 auto 20px'}}></div>
-              <h2 className="text-3xl font-bold mb-4" style={{color: 'var(--primary-green)'}}>Feedback Submitted!</h2>
-              <p className="text-secondary mb-6">Thank you for your feedback. It has been successfully submitted.</p>
+          <div className="container flex items-center justify-center min-h-[60vh] fade-in">
+            <div className="card text-center w-full max-w-lg p-8 md:p-12 shadow-2xl">
+              <div className="cricket-ball mx-auto mb-8" style={{width: '64px', height: '64px'}}></div>
+              <h2 className="text-2xl md:text-4xl font-bold mb-4" style={{color: 'var(--primary-green)'}}>Feedback Sent!</h2>
+              <p className="text-secondary text-sm md:text-lg mb-10 leading-relaxed">
+                Awesome! Your feedback has been safely caught by our team.
+              </p>
               <button
                 onClick={handleReset}
-                className="btn btn-primary"
+                className="btn btn-primary w-full h-14 text-lg font-bold"
               >
-                Submit Another Feedback
+                Submit Another Entry
               </button>
             </div>
           </div>

@@ -22,27 +22,26 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="card" style={{maxWidth: '500px', width: '90%'}}>
-        <div className="mb-6">
-          <h3 className="text-xl font-bold text-primary">{title}</h3>
-          <div className="mt-4">
-            <p className="text-secondary">{message}</p>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={onCancel}
-              className="btn btn-outline"
-              style={{borderColor: 'var(--accent-red)', color: 'var(--accent-red)'}}
-            >
-              {cancelText}
-            </button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="card w-full max-w-md shadow-2xl animate-modal-in" style={{borderRadius: '20px'}}>
+        <div className="p-2 md:p-4">
+          <h3 className="text-xl md:text-2xl font-bold text-white mb-4">{title}</h3>
+          <p className="text-secondary text-sm md:text-base leading-relaxed mb-8">{message}</p>
+          
+          <div className="flex flex-col md:flex-row justify-end gap-3">
             <button
               onClick={onConfirm}
-              className="btn btn-primary"
+              className="btn btn-primary order-1 md:order-2 h-12 md:h-auto"
               style={{backgroundColor: 'var(--accent-red)'}}
             >
               {confirmText}
+            </button>
+            <button
+              onClick={onCancel}
+              className="btn btn-outline order-2 md:order-1 h-12 md:h-auto"
+              style={{borderColor: 'rgba(255,255,255,0.2)', color: 'var(--text-secondary)'}}
+            >
+              {cancelText}
             </button>
           </div>
         </div>
