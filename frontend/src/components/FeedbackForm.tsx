@@ -184,7 +184,6 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
                 <div key={key} className="form-group mb-0">
                   <label className="form-label flex items-center justify-between">
                     <span>{label}</span>
-                    <span className="text-[10px] text-secondary opacity-60">1-5 STARS</span>
                   </label>
                   <RatingStars
                     rating={formData[key] as number}

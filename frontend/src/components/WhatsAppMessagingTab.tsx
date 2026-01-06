@@ -147,6 +147,8 @@ const WhatsAppMessagingTab: React.FC = () => {
       console.log('Delete successful');
       setSuccess('Player deleted successfully');
       setPlayerToDelete(null);
+      // Remove from selection if it was selected
+      setSelectedPlayers(prev => prev.filter(id => id !== playerToDelete._id));
       await fetchPlayers();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -154,6 +156,8 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError(err?.response?.data?.error || 'Failed to delete player');
     }
   };
+
+  // Single player deletion only
 
   const fetchHistory = async (player: Player) => {
     try {
@@ -777,23 +781,63 @@ const WhatsAppMessagingTab: React.FC = () => {
                 Select players for the next WhatsApp blast.
               </p>
             </div>
-            <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
-              <button
-                className="btn btn-tertiary text-xs md:text-sm h-11 md:h-auto"
-                type="button"
-                onClick={handleSelectAll}
-                disabled={loading || players.length === 0}
-              >
-                Select all
-              </button>
-              <button
-                className="btn btn-outline text-xs md:text-sm h-11 md:h-auto"
-                type="button"
-                onClick={handleClearSelection}
-                disabled={selectedPlayers.length === 0}
-              >
-                Clear
-              </button>
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex gap-2">
+                <button
+                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+                  type="button"
+                  onClick={handleSelectAll}
+                  disabled={loading || players.length === 0}
+                >
+                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  Select all
+                </button>
+                {selectedPlayers.length > 0 && (
+                  <button
+                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+                    type="button"
+                    onClick={handleClearSelection}
+                  >
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear
+                  </button>
+                )}
+              </div>
+              
+              {selectedPlayers.length === 1 && (
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                    type="button"
+                    onClick={() => {
+                      const player = players.find(p => p._id === selectedPlayers[0]);
+                      if (player) setEditingPlayer(player);
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit
+                  </button>
+                  <button
+                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-colors"
+                    type="button"
+                    onClick={() => {
+                      const player = players.find(p => p._id === selectedPlayers[0]);
+                      if (player) setPlayerToDelete(player);
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -843,29 +887,15 @@ const WhatsAppMessagingTab: React.FC = () => {
                     </td>
                     <td className="py-4 pr-4 text-secondary hidden md:table-cell">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
                     <td className="py-4 pr-4">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => fetchHistory(player)}
-                          className="btn btn-tertiary flex items-center gap-2 text-xs md:text-sm min-h-[40px] px-3 bg-[#128C7E]/5 text-[#128C7E] hover:bg-[#128C7E]/10 border-none shadow-none"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                          History
-                        </button>
-                        <button
-                          onClick={() => setEditingPlayer(player)}
-                          className="btn btn-outline text-xs md:text-sm min-h-[40px] px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setPlayerToDelete(player)}
-                          className="btn btn-outline text-xs md:text-sm min-h-[40px] px-3 border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => fetchHistory(player)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#128C7E] text-white rounded-xl hover:bg-[#075E54] transition-all active:scale-95 font-bold shadow-sm"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
+                        </svg>
+                        Chat
+                      </button>
                     </td>
                   </tr>
                   ))
