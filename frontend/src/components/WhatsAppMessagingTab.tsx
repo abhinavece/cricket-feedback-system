@@ -65,6 +65,7 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [historyNewMessage, setHistoryNewMessage] = useState('');
   const [sendingHistoryMessage, setSendingHistoryMessage] = useState(false);
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -781,7 +782,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                 Select players for the next WhatsApp blast.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center justify-between">
               <div className="flex gap-2">
                 <button
                   className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
@@ -808,36 +809,55 @@ const WhatsAppMessagingTab: React.FC = () => {
                 )}
               </div>
               
-              {selectedPlayers.length === 1 && (
-                <div className="flex gap-2 ml-auto">
-                  <button
-                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
-                    type="button"
-                    onClick={() => {
-                      const player = players.find(p => p._id === selectedPlayers[0]);
-                      if (player) setEditingPlayer(player);
-                    }}
-                  >
-                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button
-                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-colors"
-                    type="button"
-                    onClick={() => {
-                      const player = players.find(p => p._id === selectedPlayers[0]);
-                      if (player) setPlayerToDelete(player);
-                    }}
-                  >
-                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                  </button>
-                </div>
-              )}
+              <div className="flex gap-2">
+                {selectedPlayers.length === 1 && (
+                  <>
+                    <button
+                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                      type="button"
+                      onClick={() => {
+                        const player = players.find(p => p._id === selectedPlayers[0]);
+                        if (player) {
+                          setEditingPlayer(player);
+                          setShowPlayerModal(true);
+                        }
+                      }}
+                    >
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit
+                    </button>
+                    <button
+                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-colors"
+                      type="button"
+                      onClick={() => {
+                        const player = players.find(p => p._id === selectedPlayers[0]);
+                        if (player) setPlayerToDelete(player);
+                      }}
+                    >
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete
+                    </button>
+                  </>
+                )}
+                <button
+                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-[#128C7E] text-white hover:bg-[#075E54] transition-colors shadow-sm"
+                  type="button"
+                  onClick={() => {
+                    setEditingPlayer(null);
+                    setNewPlayer({ name: '', phone: '', notes: '' });
+                    setShowPlayerModal(true);
+                  }}
+                >
+                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Player
+                </button>
+              </div>
             </div>
           </div>
 
@@ -906,71 +926,6 @@ const WhatsAppMessagingTab: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-              {editingPlayer ? 'Edit Player' : 'Add Player'}
-            </h3>
-            <form className="space-y-4" onSubmit={editingPlayer ? handleUpdatePlayer : handleAddPlayer}>
-              <div>
-                <label className="form-label text-sm">Name</label>
-                <input
-                  type="text"
-                  value={editingPlayer ? editingPlayer.name : newPlayer.name}
-                  onChange={(e) => {
-                    const capitalizedValue = autoCapitalize(e.target.value);
-                    editingPlayer 
-                      ? setEditingPlayer(prev => prev ? ({ ...prev, name: capitalizedValue }) : null)
-                      : setNewPlayer((prev) => ({ ...prev, name: capitalizedValue }));
-                  }}
-                  className="form-control"
-                  placeholder="Player name"
-                />
-              </div>
-              <div>
-                <label className="form-label text-sm">WhatsApp Number</label>
-                <input
-                  type="tel"
-                  value={editingPlayer ? editingPlayer.phone : newPlayer.phone}
-                  onChange={(e) => editingPlayer
-                    ? setEditingPlayer(prev => prev ? ({ ...prev, phone: e.target.value }) : null)
-                    : setNewPlayer((prev) => ({ ...prev, phone: e.target.value }))
-                  }
-                  className="form-control"
-                  placeholder="+91 90000 00000"
-                  inputMode="tel"
-                />
-              </div>
-              <div>
-                <label className="form-label text-sm">Notes (optional)</label>
-                <textarea
-                  value={editingPlayer ? (editingPlayer.notes || '') : newPlayer.notes}
-                  onChange={(e) => {
-                    const capitalizedValue = autoCapitalize(e.target.value);
-                    editingPlayer
-                      ? setEditingPlayer(prev => prev ? ({ ...prev, notes: capitalizedValue }) : null)
-                      : setNewPlayer(prev => ({ ...prev, notes: capitalizedValue }));
-                  }}
-                  className="form-control"
-                  rows={2}
-                  placeholder="Opening batter, prefers morning matches, etc."
-                />
-              </div>
-              <div className="flex gap-2">
-                {editingPlayer && (
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary flex-1"
-                    onClick={() => setEditingPlayer(null)}
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button type="submit" className="btn btn-primary flex-[2]" disabled={isUpdating}>
-                  {editingPlayer ? (isUpdating ? 'Updating...' : 'Update Player') : 'Save player'}
-                </button>
-              </div>
-            </form>
-          </div>
 
           <div className="card">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
@@ -1262,6 +1217,149 @@ const WhatsAppMessagingTab: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Player Add/Edit Modal */}
+      {showPlayerModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-900 sticky top-0 z-10">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingPlayer ? 'Edit Player' : 'Add New Player'}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {editingPlayer ? 'Update player details' : 'Add a new player to your contacts'}
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowPlayerModal(false);
+                  setEditingPlayer(null);
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto flex-1">
+              <form className="space-y-5" onSubmit={editingPlayer ? handleUpdatePlayer : handleAddPlayer}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Player Name</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={editingPlayer ? editingPlayer.name : newPlayer.name}
+                      onChange={(e) => {
+                        const capitalizedValue = autoCapitalize(e.target.value);
+                        editingPlayer 
+                          ? setEditingPlayer(prev => prev ? ({ ...prev, name: capitalizedValue }) : null)
+                          : setNewPlayer((prev) => ({ ...prev, name: capitalizedValue }));
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors"
+                      placeholder="Enter player name"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">WhatsApp Number</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="tel"
+                      value={editingPlayer ? editingPlayer.phone : newPlayer.phone}
+                      onChange={(e) => editingPlayer
+                        ? setEditingPlayer(prev => prev ? ({ ...prev, phone: e.target.value }) : null)
+                        : setNewPlayer((prev) => ({ ...prev, phone: e.target.value }))
+                      }
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors"
+                      placeholder="+91 90000 00000"
+                      inputMode="tel"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Notes (optional)</label>
+                  <div className="relative">
+                    <div className="absolute top-3 left-3 flex items-start pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </div>
+                    <textarea
+                      value={editingPlayer ? (editingPlayer.notes || '') : newPlayer.notes}
+                      onChange={(e) => {
+                        const capitalizedValue = autoCapitalize(e.target.value);
+                        editingPlayer
+                          ? setEditingPlayer(prev => prev ? ({ ...prev, notes: capitalizedValue }) : null)
+                          : setNewPlayer(prev => ({ ...prev, notes: capitalizedValue }));
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors resize-none"
+                      rows={3}
+                      placeholder="Opening batter, prefers morning matches, etc."
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800">
+              <button 
+                type="button" 
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                onClick={() => {
+                  setShowPlayerModal(false);
+                  setEditingPlayer(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="px-4 py-2 text-sm font-medium text-white bg-[#128C7E] hover:bg-[#075E54] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#128C7E] transition-colors flex items-center gap-1.5 shadow-sm"
+                onClick={editingPlayer ? handleUpdatePlayer : handleAddPlayer}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    {editingPlayer ? 'Updating...' : 'Saving...'}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {editingPlayer ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      )}
+                    </svg>
+                    {editingPlayer ? 'Update Player' : 'Add Player'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirm Delete Dialog */}
       <ConfirmDialog
         isOpen={!!playerToDelete}
