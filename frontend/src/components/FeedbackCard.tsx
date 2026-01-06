@@ -33,7 +33,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
 
       {/* Main Card Container */}
       <div 
-        className="relative h-full flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f172a]/90 backdrop-blur-xl transition-all duration-300 group-hover:border-white/20 group-hover:shadow-lg"
+        className="relative h-full flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f172a]/95 backdrop-blur-xl transition-all duration-300 group-hover:border-white/20 group-hover:shadow-lg sm:p-4 p-3"
         onClick={() => onClick(item)}
         role="button"
         tabIndex={0}
@@ -50,60 +50,140 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
           'bg-gradient-to-r from-rose-500 to-pink-400'
         } opacity-60 group-hover:opacity-100`}></div>
 
-        <div className="flex flex-col p-3 sm:p-4 flex-1">
-          {/* Header Section */}
-          <div className="flex items-start justify-between mb-3 sm:mb-4">
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <div className="relative flex-shrink-0">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg transform rotate-2 group-hover:rotate-0 transition-transform duration-300 ${
-                  avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 
-                  avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' : 
-                  'bg-gradient-to-br from-rose-400 to-pink-600'
-                }`}>
-                  {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
+        <div className="flex flex-col flex-1">
+          {/* Mobile-First Header Section */}
+          <div className="sm:hidden">
+            <div className="flex items-center justify-between mb-2">
+              {/* Player Info */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="relative flex-shrink-0">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-lg ${
+                    avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 
+                    avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' : 
+                    'bg-gradient-to-br from-rose-400 to-pink-600'
+                  }`}>
+                    {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight mb-1 truncate">
-                  {item.playerName}
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-500">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-black text-white tracking-tight leading-tight truncate">
+                    {item.playerName}
+                  </h3>
+                  <span className="text-[9px] font-bold text-slate-500">
                     {new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
               </div>
+
+              {/* Mobile Rating Badge */}
+              <div className="flex-shrink-0 ml-2">
+                <div className={`px-2 py-1 rounded-full text-xs font-black text-white ${
+                  avgRating >= 4 ? 'bg-emerald-500' : avgRating >= 3 ? 'bg-amber-500' : 'bg-rose-500'
+                }`}>
+                  {avgRating.toFixed(1)}
+                </div>
+              </div>
             </div>
 
-            {/* Compact Rating Indicator */}
-            <div className="flex flex-col items-center flex-shrink-0">
-              <div className="relative">
-                <svg className="w-12 h-12 sm:w-14 sm:h-14 transform -rotate-90">
-                  <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" className="text-white/5" />
-                  <circle
-                    cx="24"
-                    cy="24"
-                    r="20"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    fill="transparent"
-                    strokeDasharray={125.6}
-                    strokeDashoffset={125.6 - (125.6 * avgRating) / 5}
-                    className={`${
-                      avgRating >= 4 ? 'text-emerald-400' : avgRating >= 3 ? 'text-amber-400' : 'text-rose-400'
-                    } transition-all duration-1000 ease-out`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-base sm:text-lg font-black text-white leading-none">{avgRating.toFixed(1)}</span>
+            {/* Mobile Performance Metrics */}
+            <div className="mb-2">
+              <div className="grid grid-cols-2 gap-1">
+                {[
+                  { label: 'Batting', value: item.batting, color: 'emerald' },
+                  { label: 'Bowling', value: item.bowling, color: 'sky' },
+                  { label: 'Fielding', value: item.fielding, color: 'amber' },
+                  { label: 'Team Spirit', value: item.teamSpirit, color: 'purple' },
+                ].map((metric) => (
+                  <div key={metric.label} className="flex items-center justify-between bg-slate-800/50 rounded px-2 py-1">
+                    <span className={`text-[10px] font-bold ${
+                      metric.color === 'emerald' ? 'text-emerald-400' :
+                      metric.color === 'sky' ? 'text-sky-400' :
+                      metric.color === 'amber' ? 'text-amber-400' :
+                      'text-purple-400'
+                    }`}>
+                      {metric.label}
+                    </span>
+                    <span className={`text-xs font-black ${
+                      metric.color === 'emerald' ? 'text-emerald-400' :
+                      metric.color === 'sky' ? 'text-sky-400' :
+                      metric.color === 'amber' ? 'text-amber-400' :
+                      'text-purple-400'
+                    }`}>
+                      {metric.value.toFixed(1)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile Issues */}
+            {Object.values(item.issues || {}).some(v => v) && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {Object.entries(item.issues || {}).map(([key, value]) => {
+                  if (!value) return null;
+                  return (
+                    <div key={key} className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600">
+                      <span className="text-[7px] font-bold uppercase text-slate-400">{key.charAt(0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Header Section - Unchanged */}
+          <div className="hidden sm:block">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="relative flex-shrink-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg transform rotate-2 group-hover:rotate-0 transition-transform duration-300 ${
+                    avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 
+                    avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' : 
+                    'bg-gradient-to-br from-rose-400 to-pink-600'
+                  }`}>
+                    {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-black text-white tracking-tight leading-tight truncate">
+                    {item.playerName}
+                  </h3>
+                  <span className="text-xs font-bold text-slate-500">
+                    {new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Desktop Rating Indicator */}
+              <div className="flex flex-col items-center flex-shrink-0">
+                <div className="relative">
+                  <svg className="w-10 h-10 transform -rotate-90">
+                    <circle className="text-white/5" cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="2.5" fill="transparent" />
+                    <circle
+                      className={`${
+                        avgRating >= 4 ? 'text-emerald-400' : avgRating >= 3 ? 'text-amber-400' : 'text-rose-400'
+                      } transition-all duration-1000 ease-out`}
+                      cx="20"
+                      cy="20"
+                      r="16"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      fill="transparent"
+                      strokeDasharray={100.48}
+                      strokeDashoffset={100.48 - (100.48 * avgRating) / 5}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-sm font-black text-white leading-none">{avgRating.toFixed(1)}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Performance Metrics Section */}
-          <div className="mb-3 sm:mb-4">
+          {/* Desktop Performance Metrics Section */}
+          <div className="hidden sm:block mb-3">
             <div className="grid grid-cols-4 gap-2">
               <MetricCard label="Bat" value={item.batting} icon={<BattingIcon />} color="emerald" />
               <MetricCard label="Bowl" value={item.bowling} icon={<BowlingIcon />} color="sky" />
@@ -112,24 +192,21 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
             </div>
           </div>
 
-          {/* Alert Signals (Issues) */}
-          {Object.values(item.issues || {}).some(v => v) && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {Object.entries(item.issues || {}).map(([key, value]) => {
-                if (!value) return null;
-                return (
-                  <div key={key} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900/50 border border-white/5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      key === 'venue' ? 'bg-rose-400' : 
-                      key === 'equipment' ? 'bg-sky-400' : 
-                      'bg-amber-400'
-                    }`}></div>
-                    <span className="text-[9px] font-bold uppercase text-slate-400">{key}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Desktop Issues */}
+          <div className="hidden sm:block">
+            {Object.values(item.issues || {}).some(v => v) && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {Object.entries(item.issues || {}).map(([key, value]) => {
+                  if (!value) return null;
+                  return (
+                    <div key={key} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900/50 border border-white/5">
+                      <span className="text-[8px] font-bold uppercase text-slate-400">{key.charAt(0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Action Buttons */}
           <div className="mt-auto flex items-center gap-2 pt-3 border-t border-white/5">
@@ -158,7 +235,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
   );
 };
 
-const MetricCard = ({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) => {
+const MetricCard = ({ label, value, icon, color, compact = false }: { label: string; value: number; icon: React.ReactNode; color: string; compact?: boolean }) => {
   const colorMap: Record<string, string> = {
     emerald: 'text-emerald-400 bg-emerald-400/10',
     sky: 'text-sky-400 bg-sky-400/10',
@@ -167,13 +244,25 @@ const MetricCard = ({ label, value, icon, color }: { label: string; value: numbe
   };
   const style = colorMap[color];
 
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-0.5 p-1 rounded bg-slate-900/30 border border-white/5">
+        <div className="p-0.5 rounded ${style}" style={{ fontSize: '8px' }}>
+          {icon}
+        </div>
+        <span className="font-black text-white text-[9px] leading-none">{value.toFixed(1)}</span>
+        <span className="font-bold uppercase text-slate-500 text-[6px] leading-none">{label}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-900/30 border border-white/5">
-      <div className={`p-1.5 rounded-lg ${style}`}>
+      <div className="p-1.5 rounded-lg ${style}">
         {icon}
       </div>
-      <span className="text-xs font-black text-white">{value.toFixed(1)}</span>
-      <span className="text-[8px] font-bold uppercase text-slate-500">{label}</span>
+      <span className="font-black text-white text-xs leading-none">{value.toFixed(1)}</span>
+      <span className="font-bold uppercase text-slate-500 text-[8px] leading-none">{label}</span>
     </div>
   );
 };

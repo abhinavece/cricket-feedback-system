@@ -162,12 +162,15 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               }}
               className={`form-control ${errors.matchDate ? 'is-invalid' : ''}`}
               dateFormat="yyyy-MM-dd"
-              placeholderText=""
+              placeholderText="Select match date"
               todayButton="Today"
               showYearDropdown
               scrollableYearDropdown
               yearDropdownItemNumber={15}
               maxDate={new Date()}
+              withPortal={false}
+              popperClassName="date-picker-desktop"
+              popperPlacement="bottom-start"
             />
             {errors.matchDate && <div className="invalid-feedback">{errors.matchDate}</div>}
           </div>
