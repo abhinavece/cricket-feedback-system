@@ -20,7 +20,7 @@ interface FeedbackStats {
   otherIssues: number;
 }
 
-export const AdminDashboard: React.FC = () => {
+const AdminDashboard: React.FC = () => {
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -359,8 +359,54 @@ export const AdminDashboard: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'feedback' && (
           <>
-            {/* Statistics Cards */}
-            {stats && (
+            {/* Active/Trash View Toggle */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-xl font-bold text-white">
+                    {currentView === 'active' ? 'Active Feedback' : 'Trash Bin'}
+                  </h2>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white/70">
+                    {currentView === 'active' ? feedback.length : trashFeedback.length} items
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentView('active')}
+                    className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
+                      currentView === 'active'
+                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                        : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Active
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('trash')}
+                    className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
+                      currentView === 'trash'
+                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                        : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Trash
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Statistics Cards - Only show in active view */}
+            {currentView === 'active' && stats && (
               <div className="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {/* Total Submissions Card */}
                 <div className="card card-primary overflow-visible">
@@ -374,9 +420,9 @@ export const AdminDashboard: React.FC = () => {
                     <div className="mb-8">
                       <p className="text-xs font-semibold uppercase tracking-wider text-primary-solid mb-1">Total Submissions</p>
                       <div className="flex items-baseline gap-2">
-                        <h3 className="text-4xl font-black text-white">{stats.totalSubmissions}</h3>
+                        <h3 className="text-4xl font-black text-white">{stats?.totalSubmissions || 0}</h3>
                         <span className="text-xs font-medium text-primary-solid bg-primary-light px-2 py-0.5 rounded-full">
-                          {stats.totalSubmissions > 0 ? 'Active' : 'No Data'}
+                          {(stats?.totalSubmissions || 0) > 0 ? 'Active' : 'No Data'}
                         </span>
                       </div>
                     </div>
@@ -390,7 +436,7 @@ export const AdminDashboard: React.FC = () => {
                         <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
-                            style={{width: `${(stats.avgBatting / 5) * 100}%`}}
+                            style={{width: `${((stats?.avgBatting || 0) / 5) * 100}%`}}
                           ></div>
                         </div>
                       </div>
@@ -403,7 +449,7 @@ export const AdminDashboard: React.FC = () => {
                         <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
-                            style={{width: `${(stats.avgBowling / 5) * 100}%`}}
+                            style={{width: `${((stats?.avgBowling || 0) / 5) * 100}%`}}
                           ></div>
                         </div>
                       </div>
@@ -491,13 +537,14 @@ export const AdminDashboard: React.FC = () => {
                   <div className="mt-6 pt-4 border-t border-white/5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-secondary">Morale Status</span>
-                      <span className="font-semibold text-accent-success">{stats.avgTeamSpirit >= 4 ? 'Excellent' : stats.avgTeamSpirit >= 3 ? 'Good' : 'Needs Attention'}</span>
+                      <span className="font-semibold text-accent-success">{(stats?.avgTeamSpirit || 0) >= 4 ? 'Excellent' : (stats?.avgTeamSpirit || 0) >= 3 ? 'Good' : 'Needs Attention'}</span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-            {/* Issue Filters */}
+            {/* Issue Filters - Only show in active view */}
+            {currentView === 'active' && (
             <div className="filter-section mb-8">
               <div className="card p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -544,6 +591,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+            )}
             
             {/* Feedback List */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
