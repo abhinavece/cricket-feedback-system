@@ -107,21 +107,33 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
   };
 
   return (
-    <div className="container py-6 md:py-12">
-      <div className="card card-hover-lift max-w-2xl mx-auto animate-fade-in">
-        <div className="card-header text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-solid to-primary-dark flex items-center justify-center shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-primary-solid to-primary-dark bg-clip-text text-transparent">Cricket Match Feedback</h1>
-          <p className="text-text-secondary mt-2">Share your match experience with us</p>
-        </div>
+    <div className="container py-4 md:py-8">
+      <div className="relative max-w-xl mx-auto">
+        {/* Animated background glow */}
+        <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 rounded-3xl blur-2xl opacity-20 animate-pulse"></div>
         
-        <form onSubmit={handleSubmit} className="space-y-8 p-6">
+        <div className="relative card card-hover-lift animate-fade-in bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-2 border-emerald-500/20">
+          <div className="card-header text-center relative overflow-hidden">
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-1/4 w-32 h-32 bg-emerald-400 rounded-full blur-3xl animate-pulse"></div>
+              <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-cyan-400 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+            </div>
+            
+            <div className="flex justify-center mb-3 relative">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full blur-xl opacity-60 animate-pulse"></div>
+                <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 flex items-center justify-center shadow-2xl shadow-emerald-500/50 animate-bounce" style={{animationDuration: '2s'}}>
+                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent mb-2 animate-pulse">Share your match experience with us</h1>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4 p-4 md:p-5">
           {/* Player Name */}
           <div className="form-floating">
             <input
@@ -130,7 +142,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               value={formData.playerName}
               onChange={(e) => handleInputChange('playerName', autoCapitalize(e.target.value))}
               className={`form-control ${errors.playerName ? 'is-invalid' : ''}`}
-              placeholder="Player Name"
+              placeholder=""
             />
             <label htmlFor="playerName" className="form-label">Player Name *</label>
             {errors.playerName && <div className="invalid-feedback">{errors.playerName}</div>}
@@ -150,7 +162,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               }}
               className={`form-control ${errors.matchDate ? 'is-invalid' : ''}`}
               dateFormat="yyyy-MM-dd"
-              placeholderText="Select match date"
+              placeholderText=""
               todayButton="Today"
               showYearDropdown
               scrollableYearDropdown
@@ -161,46 +173,43 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
           </div>
 
           {/* Ratings */}
-          <div className="bg-surface-hover/30 p-6 rounded-xl space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Performance Ratings</h3>
-              <span className="text-xs px-2 py-1 bg-primary-light text-primary-solid rounded-md font-medium">Required</span>
+          <div className="relative bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-cyan-500/10 p-4 rounded-2xl space-y-4 border border-emerald-500/30">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 rounded-2xl animate-pulse"></div>
+            <div className="flex items-center justify-between relative z-10">
+              <h3 className="text-base font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">⭐ Performance Ratings</h3>
+              <span className="text-xs px-2 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full font-bold shadow-lg">Required</span>
             </div>
             
             {errors.ratings && (
               <div
-                className="rounded-xl p-4 bg-accent-danger/10 border border-accent-danger/20 flex items-center gap-3 animate-fade-in"
+                className="relative z-10 rounded-xl p-3 bg-red-500/20 border-2 border-red-500 flex items-center gap-2 animate-bounce shadow-lg shadow-red-500/50"
               >
-                <div className="p-2 rounded-full bg-accent-danger/20 text-accent-danger">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <div className="p-1.5 rounded-full bg-red-500 text-white animate-pulse">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium text-accent-danger text-sm">{errors.ratings}</p>
+                  <p className="font-bold text-white text-sm">{errors.ratings}</p>
                 </div>
               </div>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="relative z-10 grid grid-cols-2 gap-3">
               {[
-                { key: 'batting' as keyof FeedbackForm, label: 'Batting', icon: 'M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11' },
-                { key: 'bowling' as keyof FeedbackForm, label: 'Bowling', icon: 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z' },
-                { key: 'fielding' as keyof FeedbackForm, label: 'Fielding', icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z' },
-                { key: 'teamSpirit' as keyof FeedbackForm, label: 'Team Spirit', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-              ].map(({ key, label, icon }) => (
-                <div key={key} className="bg-surface-card p-4 rounded-lg">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-surface-hover">
-                      <svg className="w-5 h-5 text-primary-solid" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
-                      </svg>
-                    </div>
-                    <span className="font-medium text-white">{label}</span>
+                { key: 'batting' as keyof FeedbackForm, label: '🏏 Batting', color: 'from-orange-500 to-red-500' },
+                { key: 'bowling' as keyof FeedbackForm, label: '⚡ Bowling', color: 'from-blue-500 to-cyan-500' },
+                { key: 'fielding' as keyof FeedbackForm, label: '🎯 Fielding', color: 'from-yellow-500 to-orange-500' },
+                { key: 'teamSpirit' as keyof FeedbackForm, label: '💪 Spirit', color: 'from-purple-500 to-pink-500' },
+              ].map(({ key, label, color }) => (
+                <div key={key} className={`bg-gradient-to-br ${color} p-3 rounded-xl shadow-lg transform transition-all hover:scale-105`}>
+                  <div className="text-center mb-2">
+                    <span className="font-bold text-white text-sm">{label}</span>
                   </div>
                   <RatingStars
                     rating={formData[key] as number}
                     onChange={(value) => handleInputChange(key, value)}
+                    size="sm"
                   />
                 </div>
               ))}
@@ -215,53 +224,40 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               onChange={(e) => handleInputChange('feedbackText', autoCapitalize(e.target.value))}
               rows={4}
               className={`form-control ${errors.feedbackText ? 'is-invalid' : ''}`}
-              placeholder="Match Experience"
+              placeholder=""
             />
             <label htmlFor="feedbackText" className="form-label">Match Experience *</label>
             {errors.feedbackText && <div className="invalid-feedback">{errors.feedbackText}</div>}
           </div>
 
           {/* Issues Faced */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Issues Faced</h3>
-              <span className="text-xs px-2 py-1 bg-surface-hover text-text-secondary rounded-md">Optional</span>
+              <h3 className="text-sm font-bold bg-gradient-to-r from-slate-300 to-slate-500 bg-clip-text text-transparent">⚠️ Issues Faced</h3>
+              <span className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full">Optional</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {Object.entries(formData.issues).map(([key, value]) => {
-                const icons: Record<string, string> = {
-                  venue: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
-                  equipment: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-                  timing: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-                  umpiring: 'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2',
-                  other: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                };
-                
                 return (
                   <div 
                     key={key} 
-                    className={`form-check flex items-center p-3 rounded-lg cursor-pointer transition-all ${value ? 'bg-primary-light border border-primary-solid/30' : 'bg-surface-hover hover:bg-surface-hover/80'}`}
+                    className={`form-check flex items-center p-2 rounded-lg cursor-pointer transition-all ${value ? 'bg-gradient-to-r from-red-500 to-orange-500 shadow-lg shadow-red-500/50 scale-105' : 'bg-slate-800 hover:bg-slate-700'}`}
                     onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
                   >
-                    <div className="mr-3">
-                      <div className={`w-5 h-5 rounded flex items-center justify-center ${value ? 'bg-primary-solid' : 'border border-text-tertiary'}`}>
+                    <div className="mr-2">
+                      <div className={`w-4 h-4 rounded flex items-center justify-center ${value ? 'bg-white' : 'border border-slate-500'}`}>
                         {value && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <svg className={`w-4 h-4 ${value ? 'text-primary-solid' : 'text-text-tertiary'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icons[key] || icons.other} />
-                      </svg>
-                      <span className={`${value ? 'text-primary-solid font-medium' : 'text-text-secondary'}`}>
-                        {key.charAt(0).toUpperCase() + key.slice(1)}
-                      </span>
-                    </div>
+                    <span className={`text-xs font-medium ${value ? 'text-white' : 'text-slate-400'}`}>
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                    </span>
                   </div>
                 );
               })}
@@ -276,37 +272,42 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
               onChange={(e) => handleInputChange('additionalComments', autoCapitalize(e.target.value))}
               rows={3}
               className="form-control"
-              placeholder="Additional Comments"
+              placeholder=""
             />
             <label htmlFor="additionalComments" className="form-label">Additional Comments</label>
           </div>
 
           {/* Submit Button */}
-          <div className="pt-4">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary btn-lg w-full btn-hover-glow"
+              className="relative w-full py-3 px-6 rounded-xl font-bold text-white overflow-hidden group transform transition-all hover:scale-105 active:scale-95 shadow-2xl"
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  Submit Feedback
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </>
-              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 animate-gradient-x"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    SUBMIT FEEDBACK
+                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </>
+                )}
+              </span>
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

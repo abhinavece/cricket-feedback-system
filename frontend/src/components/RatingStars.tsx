@@ -15,25 +15,36 @@ const RatingStars: React.FC<RatingStarsProps> = ({
 }) => {
   const [hoverRating, setHoverRating] = useState(0);
   
-  // Size classes
+  // Size classes - mobile optimized
   const sizeClasses = {
-    sm: 'text-xl',
-    md: 'text-2xl',
-    lg: 'text-3xl',
+    sm: 'text-lg sm:text-xl',
+    md: 'text-xl sm:text-2xl',
+    lg: 'text-2xl sm:text-3xl',
   };
   
-  // Touch target sizes
+  // Touch target sizes - responsive
   const touchTargetClasses = {
-    sm: 'min-w-[36px] min-h-[36px]',
-    md: 'min-w-[44px] min-h-[44px]',
-    lg: 'min-w-[52px] min-h-[52px]',
+    sm: 'min-w-[28px] min-h-[28px] sm:min-w-[32px] sm:min-h-[32px]',
+    md: 'min-w-[32px] min-h-[32px] sm:min-w-[36px] sm:min-h-[36px]',
+    lg: 'min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px]',
   };
 
+  // Dynamic star colors based on rating
+  const getStarColor = (starRating: number) => {
+    if (starRating <= 2) return 'text-rose-400';
+    if (starRating <= 3) return 'text-amber-400';
+    if (starRating <= 4) return 'text-yellow-400';
+    return 'text-emerald-400';
+  };
+
+  const currentColor = getStarColor(hoverRating || rating);
+
   return (
-    <div className="rating-stars flex gap-1 py-2">
+    <div className="rating-stars flex gap-0.5 sm:gap-1 py-1 w-full justify-center">
       {[1, 2, 3, 4, 5].map((star) => {
         const isActive = star <= (hoverRating || rating);
         const isHalf = !isActive && star === Math.ceil(rating) && rating % 1 !== 0;
+        const starColor = isActive ? currentColor : 'text-slate-600';
         
         return (
           <button
@@ -42,14 +53,16 @@ const RatingStars: React.FC<RatingStarsProps> = ({
             onClick={() => !readOnly && onChange(star)}
             onMouseEnter={() => !readOnly && setHoverRating(star)}
             onMouseLeave={() => !readOnly && setHoverRating(0)}
+            onTouchStart={() => !readOnly && setHoverRating(star)}
+            onTouchEnd={() => !readOnly && setHoverRating(0)}
             disabled={readOnly}
-            className={`${sizeClasses[size]} ${touchTargetClasses[size]} transition-all duration-200 transform p-1 
+            className={`${sizeClasses[size]} ${touchTargetClasses[size]} transition-all duration-300 transform p-0.5 flex-shrink-0
               ${isActive 
-                ? 'text-accent-warning scale-110' 
-                : 'text-gray-600 scale-100'
+                ? `${starColor} scale-110 drop-shadow-[0_0_8px_rgba(currentColor,0.5)]` 
+                : 'text-slate-600 scale-100'
               } 
-              ${!readOnly && 'hover:text-accent-warning hover:scale-110'}
-              focus-ring rounded-lg flex items-center justify-center relative overflow-hidden`}
+              ${!readOnly && `hover:${currentColor} hover:scale-110 hover:drop-shadow-[0_0_12px_rgba(currentColor,0.6)]`}
+              focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-slate-500 rounded-lg flex items-center justify-center relative overflow-hidden`}
             title={`${star} star${star !== 1 ? 's' : ''}`}
             aria-label={`Rate ${star} star${star !== 1 ? 's' : ''}`}
           >
@@ -57,13 +70,29 @@ const RatingStars: React.FC<RatingStarsProps> = ({
               {isActive ? '★' : '☆'}
             </span>
             
-            {/* Glow effect on hover/active */}
+            {/* Dynamic glow effect on hover/active */}
             {isActive && (
-              <span className="absolute inset-0 bg-accent-warning/10 rounded-full blur-md transform scale-90"></span>
+              <span 
+                className="absolute inset-0 rounded-full blur-lg opacity-60 animate-pulse"
+                style={{
+                  backgroundColor: `rgba(${currentColor === 'text-rose-400' ? '248,113,113' : 
+                    currentColor === 'text-amber-400' ? '251,191,36' : 
+                    currentColor === 'text-yellow-400' ? '250,204,21' : 
+                    '52,211,153'}, 0.2)`
+                }}
+              ></span>
             )}
             
             {/* Ripple effect on click */}
-            <span className="absolute inset-0 bg-accent-warning/5 rounded-full transform scale-0 opacity-0 hover:scale-100 hover:opacity-100 transition-all duration-300"></span>
+            <span 
+              className="absolute inset-0 rounded-full transform scale-0 opacity-0 hover:scale-100 hover:opacity-30 transition-all duration-300"
+              style={{
+                backgroundColor: `rgba(${currentColor === 'text-rose-400' ? '248,113,113' : 
+                  currentColor === 'text-amber-400' ? '251,191,36' : 
+                  currentColor === 'text-yellow-400' ? '250,204,21' : 
+                  '52,211,153'}, 0.3)`
+              }}
+            ></span>
           </button>
         );
       })}
