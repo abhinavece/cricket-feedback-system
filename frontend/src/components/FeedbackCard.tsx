@@ -85,34 +85,59 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
               </div>
             </div>
 
-            {/* Mobile Performance Metrics */}
+            {/* Mobile Aggregated Performance Tile */}
             <div className="mb-2">
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { label: 'Batting', value: item.batting, color: 'emerald' },
-                  { label: 'Bowling', value: item.bowling, color: 'sky' },
-                  { label: 'Fielding', value: item.fielding, color: 'amber' },
-                  { label: 'Team Spirit', value: item.teamSpirit, color: 'purple' },
-                ].map((metric) => (
-                  <div key={metric.label} className="flex items-center justify-between bg-slate-800/50 rounded px-2 py-1">
-                    <span className={`text-[10px] font-bold ${
-                      metric.color === 'emerald' ? 'text-emerald-400' :
-                      metric.color === 'sky' ? 'text-sky-400' :
-                      metric.color === 'amber' ? 'text-amber-400' :
-                      'text-purple-400'
-                    }`}>
-                      {metric.label}
-                    </span>
-                    <span className={`text-xs font-black ${
-                      metric.color === 'emerald' ? 'text-emerald-400' :
-                      metric.color === 'sky' ? 'text-sky-400' :
-                      metric.color === 'amber' ? 'text-amber-400' :
-                      'text-purple-400'
-                    }`}>
-                      {metric.value.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-3 border border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Performance</span>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                    avgRating >= 4 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                    avgRating >= 3 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                    'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  }`}>
+                    {avgRating.toFixed(1)} Avg
+                  </span>
+                </div>
+                
+                {/* Performance Bars */}
+                <div className="space-y-1.5">
+                  {[
+                    { label: 'Batting', value: item.batting, color: 'emerald' },
+                    { label: 'Bowling', value: item.bowling, color: 'sky' },
+                    { label: 'Fielding', value: item.fielding, color: 'amber' },
+                    { label: 'Team Spirit', value: item.teamSpirit, color: 'purple' },
+                  ].map((metric) => (
+                    <div key={metric.label} className="flex items-center gap-2">
+                      <span className={`text-[9px] font-bold min-w-[60px] ${
+                        metric.color === 'emerald' ? 'text-emerald-400' :
+                        metric.color === 'sky' ? 'text-sky-400' :
+                        metric.color === 'amber' ? 'text-amber-400' :
+                        'text-purple-400'
+                      }`}>
+                        {metric.label}
+                      </span>
+                      <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                            metric.color === 'emerald' ? 'bg-emerald-400' :
+                            metric.color === 'sky' ? 'bg-sky-400' :
+                            metric.color === 'amber' ? 'bg-amber-400' :
+                            'bg-purple-400'
+                          }`}
+                          style={{ width: `${(metric.value / 5) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className={`text-[10px] font-black min-w-[20px] text-right ${
+                        metric.color === 'emerald' ? 'text-emerald-400' :
+                        metric.color === 'sky' ? 'text-sky-400' :
+                        metric.color === 'amber' ? 'text-amber-400' :
+                        'text-purple-400'
+                      }`}>
+                        {metric.value.toFixed(1)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
