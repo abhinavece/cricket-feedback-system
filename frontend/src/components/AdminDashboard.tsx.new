@@ -1,0 +1,231 @@
+import React, { useState, useEffect } from 'react';
+import { getAllFeedback, getStats, deleteFeedback, getTrashFeedback, restoreFeedback, permanentDeleteFeedback } from '../services/api';
+import type { FeedbackSubmission } from '../types';
+import ConfirmDialog from './ConfirmDialog';
+import UserManagement from './UserManagement';
+import WhatsAppMessagingTab from './WhatsAppMessagingTab';
+import { useAuth } from '../contexts/AuthContext';
+import FeedbackCard from './FeedbackCard';
+
+interface FeedbackStats {
+  totalSubmissions: number;
+  avgBatting: number;
+  avgBowling: number;
+  avgFielding: number;
+  avgTeamSpirit: number;
+  venueIssues: number;
+  equipmentIssues: number;
+  timingIssues: number;
+  umpiringIssues: number;
+  otherIssues: number;
+}
+
+const AdminDashboard: React.FC = () => {
+  const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
+  const [stats, setStats] = useState<FeedbackStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSubmission | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
+  const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp'>('feedback');
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+  const { user } = useAuth();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (currentView === 'trash') {
+      fetchTrashData();
+    }
+  }, [currentView]);
+
+  const fetchData = async () => {
+    try {
+      console.log('Fetching data...');
+      const [feedbackData, statsData] = await Promise.all([
+        getAllFeedback(),
+        getStats()
+      ]);
+      
+      console.log('Feedback data:', feedbackData);
+      console.log('Stats data:', statsData);
+      
+      setFeedback(feedbackData);
+      setStats(statsData);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to fetch data');
+      // Set default stats to prevent undefined errors
+      setStats({
+        totalSubmissions: 0,
+        avgBatting: 0,
+        avgBowling: 0,
+        avgFielding: 0,
+        avgTeamSpirit: 0,
+        venueIssues: 0,
+        equipmentIssues: 0,
+        timingIssues: 0,
+        umpiringIssues: 0,
+        otherIssues: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTrashData = async () => {
+    try {
+      const trashData = await getTrashFeedback();
+      setTrashFeedback(trashData);
+    } catch (err) {
+      console.error('Error fetching trash data:', err);
+      setError('Failed to fetch trash data');
+    }
+  };
+
+  const handleDeleteFeedback = async (id: string) => {
+    try {
+      await deleteFeedback(id);
+      await fetchData(); // Refresh active feedback
+    } catch (err) {
+      console.error('Error deleting feedback:', err);
+      alert('Failed to delete feedback');
+    }
+  };
+
+  const handleRestoreFeedback = async (id: string) => {
+    try {
+      await restoreFeedback(id);
+      await fetchData(); // Refresh active feedback
+      await fetchTrashData(); // Refresh trash
+    } catch (err) {
+      console.error('Error restoring feedback:', err);
+      alert('Failed to restore feedback');
+    }
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Permanent Delete',
+      message: 'Are you sure you want to permanently delete this feedback? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await permanentDeleteFeedback(id);
+          await fetchTrashData(); // Refresh trash
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+        } catch (err) {
+          console.error('Error permanently deleting feedback:', err);
+          alert('Failed to permanently delete feedback');
+        }
+      }
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const renderStars = (rating: number) => {
+    return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  };
+
+  const handleFeedbackClick = (item: FeedbackSubmission) => {
+    setSelectedFeedback(item);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedFeedback(null);
+  };
+
+  const handleIssueClick = (issue: string) => {
+    setSelectedIssue(selectedIssue === issue ? null : issue);
+  };
+
+  const getFilteredFeedback = () => {
+    if (!selectedIssue) return feedback;
+    
+    return feedback.filter(item => 
+      item.issues[selectedIssue as keyof typeof item.issues] === true
+    );
+  };
+
+  const getTabInfo = () => {
+    switch (activeTab) {
+      case 'feedback':
+        return { title: 'Feedback Center', desc: 'Monitor and analyze player match feedback' };
+      case 'whatsapp':
+        return { title: 'Messaging Hub', desc: 'Blast WhatsApp updates to your team' };
+      case 'users':
+        return { title: 'User Directory', desc: 'Manage access and roles for the platform' };
+      default:
+        return { title: 'Admin Dashboard', desc: 'Manage cricket feedback and user data' };
+    }
+  };
+
+  const { title: pageTitle, desc: pageDesc } = getTabInfo();
+
+  // Calculate average rating for a feedback item
+  const calculateAverage = (feedback: FeedbackSubmission): number => {
+    const { batting, bowling, fielding, teamSpirit } = feedback;
+    const sum = batting + bowling + fielding + teamSpirit;
+    return sum / 4;
+  };
+
+  const handleTrashClick = (id: string) => {
+    handleDeleteFeedback(id);
+  };
+
+  if (loading) {
+    return (
+      <div className="container flex items-center justify-center" style={{minHeight: '80vh'}}>
+        <div className="text-center">
+          <div className="spinner"></div>
+          <p className="mt-4 text-secondary">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container flex items-center justify-center" style={{minHeight: '80vh'}}>
+        <div className="alert alert-error">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="container">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 transition-all duration-300" style={{color: 'var(--primary-green)'}}>
+            {pageTitle}
+          </h1>
+          <p className="text-secondary transition-all duration-300">{pageDesc}</p>
+        </div>

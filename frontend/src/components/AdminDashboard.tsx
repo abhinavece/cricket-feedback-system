@@ -5,6 +5,7 @@ import ConfirmDialog from './ConfirmDialog';
 import UserManagement from './UserManagement';
 import WhatsAppMessagingTab from './WhatsAppMessagingTab';
 import { useAuth } from '../contexts/AuthContext';
+import FeedbackCard from './FeedbackCard';
 
 interface FeedbackStats {
   totalSubmissions: number;
@@ -19,7 +20,7 @@ interface FeedbackStats {
   otherIssues: number;
 }
 
-const AdminDashboard: React.FC = () => {
+export const AdminDashboard: React.FC = () => {
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,6 +165,10 @@ const AdminDashboard: React.FC = () => {
     setSelectedIssue(selectedIssue === issue ? null : issue);
   };
 
+  const handleTrashClick = (id: string) => {
+    handleDeleteFeedback(id);
+  };
+
   const getFilteredFeedback = () => {
     if (!selectedIssue) return feedback;
     
@@ -210,7 +215,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <>
-    <div className="container">
+      <div className="container">
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2 transition-all duration-300" style={{color: 'var(--primary-green)'}}>
           {pageTitle}
@@ -356,94 +361,198 @@ const AdminDashboard: React.FC = () => {
           <>
             {/* Statistics Cards */}
             {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="card">
-                  <h3 className="text-sm font-medium text-secondary mb-2">Total Submissions</h3>
-                  <p className="text-3xl font-bold" style={{color: 'var(--primary-green)'}}>{stats.totalSubmissions}</p>
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-secondary">Avg Batting:</span>
-                      <span className="font-medium text-primary">{(stats.avgBatting || 0).toFixed(1)}</span>
+              <div className="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* Total Submissions Card */}
+                <div className="card card-primary overflow-visible">
+                  <div className="relative">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-primary-solid to-primary-dark rounded-2xl flex items-center justify-center shadow-lg transform rotate-12">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-secondary">Avg Bowling:</span>
-                      <span className="font-medium text-primary">{(stats.avgBowling || 0).toFixed(1)}</span>
+                    
+                    <div className="mb-8">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary-solid mb-1">Total Submissions</p>
+                      <div className="flex items-baseline gap-2">
+                        <h3 className="text-4xl font-black text-white">{stats.totalSubmissions}</h3>
+                        <span className="text-xs font-medium text-primary-solid bg-primary-light px-2 py-0.5 rounded-full">
+                          {stats.totalSubmissions > 0 ? 'Active' : 'No Data'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="stat-item">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-secondary">Avg Batting</span>
+                          <span className="text-sm font-semibold text-white">{(stats.avgBatting || 0).toFixed(1)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
+                            style={{width: `${(stats.avgBatting / 5) * 100}%`}}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <div className="stat-item">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-secondary">Avg Bowling</span>
+                          <span className="text-sm font-semibold text-white">{(stats.avgBowling || 0).toFixed(1)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
+                            style={{width: `${(stats.avgBowling / 5) * 100}%`}}
+                          ></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="card">
-                  <h3 className="text-sm font-medium text-secondary mb-2">Avg Batting</h3>
-                  <p className="text-2xl font-bold text-primary">{(stats.avgBatting || 0).toFixed(1)}</p>
-                  <div className="text-accent-orange">{renderStars(Math.round(stats.avgBatting || 0))}</div>
+                
+                {/* Batting Stats Card */}
+                <div className="card overflow-visible">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Batting Performance</p>
+                      <h3 className="text-3xl font-black text-white">{(stats.avgBatting || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center">
+                      <svg className="w-5 h-5 text-primary-solid" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="text-2xl text-accent-warning">
+                      {renderStars(Math.round(stats.avgBatting || 0))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-secondary">Team Average</span>
+                      <span className="font-semibold text-white">{stats?.totalSubmissions > 0 ? 'Good' : 'No Data'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="card">
-                  <h3 className="text-sm font-medium text-secondary mb-2">Avg Bowling</h3>
-                  <p className="text-2xl font-bold text-primary">{(stats.avgBowling || 0).toFixed(1)}</p>
-                  <div className="text-accent-orange">{renderStars(Math.round(stats.avgBowling || 0))}</div>
+                
+                {/* Bowling Stats Card */}
+                <div className="card overflow-visible">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Bowling Performance</p>
+                      <h3 className="text-3xl font-black text-white">{(stats.avgBowling || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center">
+                      <svg className="w-5 h-5 text-accent-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="text-2xl text-accent-warning">
+                      {renderStars(Math.round(stats.avgBowling || 0))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-secondary">Team Average</span>
+                      <span className="font-semibold text-white">{stats?.totalSubmissions > 0 ? 'Good' : 'No Data'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="card">
-                  <h3 className="text-sm font-medium text-secondary mb-2">Avg Team Spirit</h3>
-                  <p className="text-2xl font-bold text-primary">{(stats.avgTeamSpirit || 0).toFixed(1)}</p>
-                  <div className="text-accent-orange">{renderStars(Math.round(stats.avgTeamSpirit || 0))}</div>
+                
+                {/* Team Spirit Stats Card */}
+                <div className="card card-success overflow-visible">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-accent-success mb-1">Team Spirit</p>
+                      <h3 className="text-3xl font-black text-white">{(stats.avgTeamSpirit || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-accent-success/20 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="text-2xl text-accent-warning">
+                      {renderStars(Math.round(stats.avgTeamSpirit || 0))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-secondary">Morale Status</span>
+                      <span className="font-semibold text-accent-success">{stats.avgTeamSpirit >= 4 ? 'Excellent' : stats.avgTeamSpirit >= 3 ? 'Good' : 'Needs Attention'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
             {/* Issue Filters */}
-            <div className="mb-6 overflow-hidden">
-              <div className="flex flex-col gap-4">
-                <div className="flex overflow-x-auto no-scrollbar pb-2 gap-2" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-                  {[
-                    { key: 'venue', label: 'Venue' },
-                    { key: 'equipment', label: 'Equipment' },
-                    { key: 'timing', label: 'Timing' },
-                    { key: 'umpiring', label: 'Umpiring' },
-                    { key: 'other', label: 'Other' },
-                  ].map(({ key, label }) => (
-                    <button
-                      key={key}
-                      className={`px-4 py-2 rounded-full text-xs md:text-sm font-medium border transition-all whitespace-nowrap min-h-[40px] flex items-center ${
-                        selectedIssue === key
-                          ? 'bg-primary-green text-white border-primary-green'
-                          : 'border-gray-700 text-secondary hover:text-white'
-                      }`}
-                      onClick={() => handleIssueClick(key)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  <button
-                    className="px-4 py-2 rounded-full text-xs md:text-sm font-medium border border-gray-700 text-secondary hover:text-white transition-all whitespace-nowrap min-h-[40px] flex items-center"
-                    onClick={() => setSelectedIssue(null)}
-                  >
-                    Clear Filters
-                  </button>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                  <button
-                    className={`btn btn-outline flex-1 md:flex-none text-xs md:text-sm h-11 md:h-auto ${currentView === 'active' ? 'border-primary-green text-primary-green' : ''}`}
-                    onClick={() => setCurrentView('active')}
-                  >
-                    Active ({feedback.length})
-                  </button>
-                  <button
-                    className={`btn btn-outline flex-1 md:flex-none text-xs md:text-sm h-11 md:h-auto ${currentView === 'trash' ? 'border-primary-green text-primary-green' : ''}`}
-                    onClick={() => setCurrentView('trash')}
-                  >
-                    Trash ({trashFeedback.length})
-                  </button>
+            <div className="filter-section mb-8">
+              <div className="card p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  {/* Filter Pills */}
+                  <div className="w-full md:w-auto">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Filter by Issue</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { key: 'venue', label: 'Venue', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+                        { key: 'equipment', label: 'Equipment', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                        { key: 'timing', label: 'Timing', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+                        { key: 'umpiring', label: 'Umpiring', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                        { key: 'other', label: 'Other', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                      ].map(({ key, label, icon }) => (
+                        <button
+                          key={key}
+                          className={`filter-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            selectedIssue === key
+                              ? 'bg-primary-solid text-white shadow-md shadow-primary-solid/20'
+                              : 'bg-surface-hover text-secondary hover:bg-surface-hover/80 hover:text-white'
+                          }`}
+                          onClick={() => handleIssueClick(key)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
+                          </svg>
+                          {label}
+                        </button>
+                      ))}
+                      
+                      {selectedIssue && (
+                        <button
+                          className="filter-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 transition-all"
+                          onClick={() => setSelectedIssue(null)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Clear Filter
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
+            
             {/* Feedback List */}
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {(() => {
-                const displayedFeedback =
-                  currentView === 'active' ? getFilteredFeedback() : trashFeedback;
-
+                const displayedFeedback = currentView === 'active' ? getFilteredFeedback() : trashFeedback;
+                
                 if (!displayedFeedback.length) {
                   return (
-                    <div className="card text-center py-12">
+                    <div className="col-span-full card text-center py-12">
                       <p className="text-secondary">
                         {currentView === 'active'
                           ? selectedIssue
@@ -454,79 +563,17 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   );
                 }
-
-                return displayedFeedback.map((item) => (
-                  <div
+                
+                return displayedFeedback.map((item, index) => (
+                  <FeedbackCard
                     key={item._id}
-                    className="card flex flex-col md:flex-row md:items-center md:justify-between gap-4 cursor-pointer transition hover:border-primary-green/50"
-                    onClick={() => handleFeedbackClick(item)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        handleFeedbackClick(item);
-                      }
-                    }}
-                  >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-white">{item.playerName}</p>
-                          <p className="text-xs text-secondary">{formatDate(item.createdAt)}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {Object.entries(item.issues)
-                            .filter(([, value]) => value)
-                            .map(([issueKey]) => (
-                              <span
-                                key={issueKey}
-                                className="px-2 py-1 rounded-full bg-gray-800 border border-gray-700 text-secondary"
-                              >
-                                {issueKey}
-                              </span>
-                            ))}
-                        </div>
-                      </div>
-                      <p className="text-secondary text-sm mt-3 line-clamp-2">
-                        {item.feedbackText}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {currentView === 'active' ? (
-                        <button
-                          className="btn btn-outline text-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFeedback(item._id);
-                          }}
-                        >
-                          Move to Trash
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            className="btn btn-outline text-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRestoreFeedback(item._id);
-                            }}
-                          >
-                            Restore
-                          </button>
-                          <button
-                            className="btn btn-danger text-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePermanentDelete(item._id);
-                            }}
-                          >
-                            Delete Permanently
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                    item={item}
+                    index={index}
+                    onClick={handleFeedbackClick}
+                    onTrash={currentView === 'active' ? handleTrashClick : undefined}
+                    onRestore={currentView === 'trash' ? handleRestoreFeedback : undefined}
+                    onDelete={currentView === 'trash' ? handlePermanentDelete : undefined}
+                  />
                 ));
               })()}
             </div>

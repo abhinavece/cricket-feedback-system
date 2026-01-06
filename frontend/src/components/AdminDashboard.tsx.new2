@@ -1,0 +1,275 @@
+        
+        {/* Premium Tab Navigation */}
+        <div className="mb-10 md:mb-16">
+          {/* Desktop: Ultra-Modern Magnetic Tabs */}
+          <nav className="hidden md:flex p-2 bg-[#1e293b]/50 backdrop-blur-3xl rounded-[2rem] border border-white/10 w-fit shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden">
+            {/* Advanced Slider with Multi-layered Glow */}
+            <div 
+              className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
+              style={{
+                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : '200px',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : '448px'
+              }}
+            >
+              {/* Premium glass reflection and shimmer */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-[1.5rem] mix-blend-overlay"></div>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 rounded-[1.5rem]"></div>
+              <div className="absolute -inset-[1px] bg-gradient-to-r from-white/20 to-transparent rounded-[1.5rem] blur-[1px]"></div>
+            </div>
+            
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                activeTab === 'feedback' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+              }`}
+              style={{ width: '220px', justifyContent: 'center' }}
+            >
+              <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/10 scale-110 rotate-6 shadow-inner' : 'bg-transparent'}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </div>
+              Feedback
+            </button>
+            {user?.role === 'admin' && (
+              <>
+                <button
+                  onClick={() => setActiveTab('whatsapp')}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'whatsapp' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  style={{ width: '220px', justifyContent: 'center' }}
+                >
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/10 scale-125 rotate-3 shadow-inner' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'users' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  style={{ width: '200px', justifyContent: 'center' }}
+                >
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/10 scale-110 -rotate-6 shadow-inner' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  Users
+                </button>
+              </>
+            )}
+          </nav>
+
+          {/* Mobile: Ultra-Visible App-style Segmented Control */}
+          <div className="md:hidden bg-[#0f172a] p-2 rounded-[2.5rem] border-2 border-white/5 flex items-center shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            {/* Ultra-High Contrast Gradient Slider */}
+            <div 
+              className="absolute h-[calc(100%-16px)] rounded-[2rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.6)]"
+              style={{
+                width: user?.role === 'admin' ? 'calc(33.33% - 10px)' : 'calc(100% - 16px)',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '33.33%' : '66.66%'
+              }}
+            >
+              {/* Glass reflection and premium texture */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent rounded-[2rem] mix-blend-overlay"></div>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15 rounded-[2rem]"></div>
+            </div>
+            
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                activeTab === 'feedback' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+              }`}
+            >
+              <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/20 scale-125 rotate-6 shadow-lg' : 'bg-white/5'}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'feedback' ? "3" : "2"} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </div>
+              <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'feedback' ? 'opacity-100' : 'opacity-40'}`}>
+                Feedback
+              </span>
+            </button>
+            {user?.role === 'admin' && (
+              <>
+                <button
+                  onClick={() => setActiveTab('whatsapp')}
+                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                    activeTab === 'whatsapp' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/20 scale-150 rotate-3 shadow-lg' : 'bg-white/5'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'whatsapp' ? "3" : "2"} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'whatsapp' ? 'opacity-100' : 'opacity-40'}`}>
+                    WhatsApp
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                    activeTab === 'users' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/20 scale-125 -rotate-6 shadow-lg' : 'bg-white/5'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'users' ? "3" : "2"} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'users' ? 'opacity-100' : 'opacity-40'}`}>
+                    Users
+                  </span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* Tab Content */}
+        {activeTab === 'feedback' && (
+          <>
+            {/* Statistics Cards */}
+            {stats && (
+              <div className="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* Total Submissions Card */}
+                <div className="card card-primary overflow-visible">
+                  <div className="relative">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-primary-solid to-primary-dark rounded-2xl flex items-center justify-center shadow-lg transform rotate-12">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
+                    </div>
+                    
+                    <div className="mb-8">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary-solid mb-1">Total Submissions</p>
+                      <div className="flex items-baseline gap-2">
+                        <h3 className="text-4xl font-black text-white">{stats.totalSubmissions}</h3>
+                        <span className="text-xs font-medium text-primary-solid bg-primary-light px-2 py-0.5 rounded-full">
+                          {stats.totalSubmissions > 0 ? 'Active' : 'No Data'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="stat-item">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-secondary">Avg Batting</span>
+                          <span className="text-sm font-semibold text-white">{(stats.avgBatting || 0).toFixed(1)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
+                            style={{width: `${(stats.avgBatting / 5) * 100}%`}}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <div className="stat-item">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-secondary">Avg Bowling</span>
+                          <span className="text-sm font-semibold text-white">{(stats.avgBowling || 0).toFixed(1)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
+                            style={{width: `${(stats.avgBowling / 5) * 100}%`}}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Batting Stats Card */}
+                <div className="card overflow-visible">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Batting Performance</p>
+                      <h3 className="text-3xl font-black text-white">{(stats.avgBatting || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center">
+                      <svg className="w-5 h-5 text-primary-solid" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="text-2xl text-accent-warning">
+                      {renderStars(Math.round(stats.avgBatting || 0))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-secondary">Team Average</span>
+                      <span className="font-semibold text-white">{stats.totalSubmissions > 0 ? 'Good' : 'No Data'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Bowling Stats Card */}
+                <div className="card overflow-visible">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Bowling Performance</p>
+                      <h3 className="text-3xl font-black text-white">{(stats.avgBowling || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center">
+                      <svg className="w-5 h-5 text-accent-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="text-2xl text-accent-warning">
+                      {renderStars(Math.round(stats.avgBowling || 0))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-secondary">Team Average</span>
+                      <span className="font-semibold text-white">{stats.totalSubmissions > 0 ? 'Good' : 'No Data'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Team Spirit Stats Card */}
+                <div className="card card-success overflow-visible">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-accent-success mb-1">Team Spirit</p>
+                      <h3 className="text-3xl font-black text-white">{(stats.avgTeamSpirit || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-accent-success/20 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    <div className="text-2xl text-accent-warning">
+                      {renderStars(Math.round(stats.avgTeamSpirit || 0))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-secondary">Morale Status</span>
+                      <span className="font-semibold text-accent-success">{stats.avgTeamSpirit >= 4 ? 'Excellent' : stats.avgTeamSpirit >= 3 ? 'Good' : 'Needs Attention'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}

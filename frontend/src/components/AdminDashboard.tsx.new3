@@ -1,0 +1,283 @@
+            {/* Issue Filters */}
+            <div className="filter-section mb-8">
+              <div className="card p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  {/* Filter Pills */}
+                  <div className="w-full md:w-auto">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Filter by Issue</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { key: 'venue', label: 'Venue', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+                        { key: 'equipment', label: 'Equipment', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                        { key: 'timing', label: 'Timing', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+                        { key: 'umpiring', label: 'Umpiring', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                        { key: 'other', label: 'Other', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                      ].map(({ key, label, icon }) => (
+                        <button
+                          key={key}
+                          className={`filter-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            selectedIssue === key
+                              ? 'bg-primary-solid text-white shadow-md shadow-primary-solid/20'
+                              : 'bg-surface-hover text-secondary hover:bg-surface-hover/80 hover:text-white'
+                          }`}
+                          onClick={() => handleIssueClick(key)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
+                          </svg>
+                          {label}
+                        </button>
+                      ))}
+                      
+                      {selectedIssue && (
+                        <button
+                          className="filter-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 transition-all"
+                          onClick={() => setSelectedIssue(null)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Clear Filter
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* View Toggle */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      className={`btn btn-sm ${currentView === 'active' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setCurrentView('active')}
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Active
+                    </button>
+                    <button
+                      className={`btn btn-sm ${currentView === 'trash' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setCurrentView('trash')}
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Trash
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Feedback List */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {(() => {
+                const displayedFeedback = currentView === 'active' ? getFilteredFeedback() : trashFeedback;
+                
+                if (!displayedFeedback.length) {
+                  return (
+                    <div className="col-span-full card text-center py-12">
+                      <p className="text-secondary">
+                        {currentView === 'active'
+                          ? selectedIssue
+                            ? 'No feedback found for this issue filter.'
+                            : 'No feedback submissions yet.'
+                          : 'Trash is empty.'}
+                      </p>
+                    </div>
+                  );
+                }
+                
+                return displayedFeedback.map((item, index) => (
+                  <FeedbackCard
+                    key={item._id}
+                    item={item}
+                    index={index}
+                    onClick={handleFeedbackClick}
+                    onTrash={currentView === 'active' ? handleTrashClick : undefined}
+                    onRestore={currentView === 'trash' ? handleRestoreFeedback : undefined}
+                    onDelete={currentView === 'trash' ? handlePermanentDelete : undefined}
+                  />
+                ));
+              })()}
+            </div>
+          </>
+        )}
+        
+        {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}
+        {activeTab === 'users' && <UserManagement />}
+      </div>
+
+      {/* Feedback Detail Modal */}
+      {showModal && selectedFeedback && (() => {
+        const item = selectedFeedback;
+        return (
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-backdrop-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeModal();
+              }
+            }}
+          >
+            <div
+              className="w-full max-w-4xl bg-[#1a1a2e] border border-white/10 rounded-[2rem] shadow-2xl animate-modal-in overflow-y-auto no-scrollbar"
+              style={{ maxHeight: '90vh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative p-6 md:p-10">
+                <button
+                  onClick={closeModal}
+                  className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-secondary hover:text-white hover:bg-white/10 transition-all z-10"
+                  aria-label="Close details"
+                >
+                  <span className="text-2xl">×</span>
+                </button>
+
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8 mt-4 md:mt-0">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-3 py-1 rounded-full bg-primary-green/10 text-primary-green text-[10px] font-bold uppercase tracking-widest border border-primary-green/20">Feedback Detail</span>
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
+                      {item.playerName}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-secondary mt-3">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-green"></span>
+                        {formatDate(item.createdAt)}
+                      </span>
+                      <span className="text-white/20">•</span>
+                      <span>Match: {formatDate(String(item.matchDate))}</span>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-primary-green/20 to-primary-green/5 border border-primary-green/30 rounded-2xl px-8 py-6 text-center md:text-right shadow-inner">
+                    <p className="text-[10px] text-secondary uppercase tracking-[0.2em] mb-1 font-bold">Overall Spirit</p>
+                    <p className="text-5xl font-black text-primary-green drop-shadow-sm">{item.teamSpirit.toFixed(1)}</p>
+                    <p className="text-[10px] text-secondary mt-1 font-medium">OUT OF 5.0</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                  {[
+                    { label: 'Batting', value: item.batting },
+                    { label: 'Bowling', value: item.bowling },
+                    { label: 'Fielding', value: item.fielding },
+                    { label: 'Team Spirit', value: item.teamSpirit },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition-all hover:bg-white/10 hover:border-white/10"
+                    >
+                      <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">{stat.label}</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-black text-white">{stat.value.toFixed(1)}</span>
+                        <span className="text-xs text-secondary/50 font-medium">/ 5</span>
+                      </div>
+                      <div className="text-sm text-yellow-500 mt-2 flex gap-0.5">
+                        {renderStars(Math.round(stat.value))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-10">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-secondary font-bold mb-4">Issue Signals</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {Object.entries(item.issues).every(([, value]) => !value) ? (
+                      <span className="px-4 py-2 rounded-xl text-xs border border-white/5 bg-white/5 text-secondary italic">
+                        No specific issues flagged by player
+                      </span>
+                    ) : (
+                      Object.entries(item.issues)
+                        .filter(([, value]) => value)
+                        .map(([issueKey]) => (
+                          <span
+                            key={issueKey}
+                            className="px-5 py-2 rounded-xl text-xs font-bold bg-primary-green text-white shadow-lg shadow-primary-green/20 uppercase tracking-wider"
+                          >
+                            {issueKey}
+                          </span>
+                        ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-1 h-4 bg-primary-green rounded-full"></span>
+                      <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Match Narration</p>
+                    </div>
+                    <p className="text-base text-white/90 leading-relaxed font-medium italic">"{item.feedbackText}"</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-1 h-4 bg-accent-blue rounded-full"></span>
+                      <p className="text-xs uppercase tracking-[0.2em] text-secondary font-bold">Additional Notes</p>
+                    </div>
+                    <p className="text-base text-white/90 leading-relaxed font-medium">
+                      {item.additionalComments?.trim() || 'No additional comments provided.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4 justify-end pt-6 border-t border-white/5">
+                  <button 
+                    className="btn btn-outline h-14 md:h-auto order-2 md:order-1" 
+                    onClick={closeModal}
+                    style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}
+                  >
+                    Close Detail
+                  </button>
+                  {currentView === 'active' ? (
+                    <button
+                      className="btn btn-danger h-14 md:h-auto order-1 md:order-2"
+                      onClick={() => {
+                        handleDeleteFeedback(item._id);
+                        closeModal();
+                      }}
+                    >
+                      Move to Trash
+                    </button>
+                  ) : (
+                    <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2 w-full md:w-auto">
+                      <button
+                        className="btn btn-outline h-14 md:h-auto"
+                        onClick={() => {
+                          handleRestoreFeedback(item._id);
+                          closeModal();
+                        }}
+                      >
+                        Restore Feedback
+                      </button>
+                      <button
+                        className="btn btn-danger h-14 md:h-auto"
+                        onClick={() => {
+                          handlePermanentDelete(item._id);
+                          closeModal();
+                        }}
+                      >
+                        Delete Permanently
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+      />
+    </>
+  );
+};
+
+export default AdminDashboard;
