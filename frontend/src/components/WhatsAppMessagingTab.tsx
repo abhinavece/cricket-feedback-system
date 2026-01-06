@@ -862,66 +862,157 @@ const WhatsAppMessagingTab: React.FC = () => {
           </div>
 
           <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-secondary uppercase text-xs tracking-wide">
-                  <th className="py-3 pr-4">Select</th>
-                  <th className="py-3 pr-4">Contact</th>
-                  <th className="py-3 pr-4">Added</th>
-                  <th className="py-3 pr-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-secondary">
-                      Loading players…
-                    </td>
+            <div className="min-w-full overflow-hidden">
+              {/* Desktop view - Table */}
+              <table className="min-w-full text-sm hidden md:table">
+                <thead>
+                  <tr className="text-left text-secondary uppercase text-xs tracking-wide">
+                    <th className="py-3 pr-4">Contact</th>
+                    <th className="py-3 pr-4">Details</th>
+                    <th className="py-3 pr-4">Added</th>
+                    <th className="py-3 pr-4">Actions</th>
                   </tr>
-                ) : players.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-secondary">
-                      No players added yet. Use the form on the right to add your first contact.
-                    </td>
-                  </tr>
-                ) : (
-                  players.map((player) => (
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-secondary">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="w-6 h-6 border-2 border-gray-600 border-t-gray-400 rounded-full animate-spin"></div>
+                          <p>Loading players...</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : players.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-secondary">
+                        <p>No players found. Add your first player to get started.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    players.map(player => (
                     <tr
-                    key={player._id}
-                    className="border-t border-gray-700 hover:bg-gray-800/40 transition-colors"
-                  >
-                    <td className="py-4 pr-4">
-                      <div className="flex items-center justify-center h-full min-h-[44px]">
-                        <input
-                          type="checkbox"
-                          checked={selectedPlayers.includes(player._id)}
-                          onChange={() => toggleSelection(player._id)}
-                          className="form-checkbox h-6 w-6 cursor-pointer"
-                        />
+                      key={player._id}
+                      className="border-t border-gray-700 hover:bg-gray-800/40 transition-colors"
+                    >
+                      <td className="py-4 pr-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-base">
+                            {player.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-white text-base">{player.name}</p>
+                            <p className="text-sm text-secondary">{player.phone}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 pr-4 text-secondary">
+                        {player.notes ? (
+                          <p className="text-xs text-secondary italic">{player.notes}</p>
+                        ) : (
+                          <p className="text-xs text-gray-500 italic">No notes</p>
+                        )}
+                      </td>
+                      <td className="py-4 pr-4 text-secondary">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
+                      <td className="py-4 pr-4">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => fetchHistory(player)}
+                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#128C7E] text-white rounded-lg hover:bg-[#075E54] transition-all active:scale-95 text-sm font-medium shadow-sm"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
+                            </svg>
+                            Chat
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingPlayer(player);
+                              setShowPlayerModal(true);
+                            }}
+                            className="p-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-all active:scale-95 text-sm shadow-sm"
+                            title="Edit player"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              
+              {/* Mobile view - Card list */}
+              <div className="md:hidden space-y-3">
+                {loading ? (
+                  <div className="py-8 text-center text-secondary">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="w-6 h-6 border-2 border-gray-600 border-t-gray-400 rounded-full animate-spin"></div>
+                      <p>Loading players...</p>
+                    </div>
+                  </div>
+                ) : players.length === 0 ? (
+                  <div className="py-8 text-center text-secondary">
+                    <p>No players found. Add your first player to get started.</p>
+                  </div>
+                ) : (
+                  players.map(player => (
+                    <div 
+                      key={player._id}
+                      className="border border-gray-700 rounded-xl p-3 bg-gray-800/20 hover:bg-gray-800/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-base shrink-0">
+                          {player.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-white text-base truncate">{player.name}</p>
+                          <p className="text-sm text-secondary truncate">{player.phone}</p>
+                        </div>
                       </div>
-                    </td>
-                    <td className="py-4 pr-4">
-                      <p className="font-semibold text-white text-base">{player.name}</p>
-                      <p className="text-sm text-secondary">{player.phone}</p>
-                      {player.notes && <p className="text-xs text-secondary mt-1 italic">{player.notes}</p>}
-                    </td>
-                    <td className="py-4 pr-4 text-secondary hidden md:table-cell">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
-                    <td className="py-4 pr-4">
-                      <button
-                        onClick={() => fetchHistory(player)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#128C7E] text-white rounded-xl hover:bg-[#075E54] transition-all active:scale-95 font-bold shadow-sm"
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
-                        </svg>
-                        Chat
-                      </button>
-                    </td>
-                  </tr>
+                      
+                      {player.notes && (
+                        <div className="px-3 py-1.5 bg-gray-800/40 rounded-lg mb-3">
+                          <p className="text-xs text-secondary italic">{player.notes}</p>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-gray-500">
+                          {player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingPlayer(player);
+                              setShowPlayerModal(true);
+                            }}
+                            className="p-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-all active:scale-95 text-sm shadow-sm"
+                            title="Edit player"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => fetchHistory(player)}
+                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#128C7E] text-white rounded-lg hover:bg-[#075E54] transition-all active:scale-95 text-sm font-medium shadow-sm"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
+                            </svg>
+                            Chat
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ))
                 )}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1137,6 +1228,127 @@ const WhatsAppMessagingTab: React.FC = () => {
               )}
             </div>
             <div className="mt-6 space-y-4">
+              {/* Player Selection Section */}
+              <div className="border border-gray-700/50 rounded-xl overflow-hidden">
+                <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-[#128C7E]" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
+                    </svg>
+                    <h4 className="font-medium text-white">Select Recipients</h4>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                      onClick={handleSelectAll}
+                      disabled={loading || players.length === 0}
+                    >
+                      Select all
+                    </button>
+                    {selectedPlayers.length > 0 && (
+                      <button 
+                        className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                        onClick={handleClearSelection}
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#128C7E] text-white text-xs font-bold">
+                      {selectedPlayers.length}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="max-h-60 overflow-y-auto p-2 bg-gray-900/30">
+                  {loading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <div className="w-5 h-5 border-2 border-gray-600 border-t-[#128C7E] rounded-full animate-spin"></div>
+                    </div>
+                  ) : players.length === 0 ? (
+                    <div className="text-center p-4 text-sm text-gray-400">
+                      No players available. Add players to send messages.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {/* Selected players section */}
+                      {selectedPlayers.length > 0 && (
+                        <div className="mb-2">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-2 h-2 rounded-full bg-[#128C7E]"></div>
+                            <p className="text-xs uppercase tracking-wider text-[#128C7E] font-medium">Selected Players</p>
+                          </div>
+                          <div className="space-y-1.5">
+                            {selectedPlayers.map(id => {
+                              const player = players.find(p => p._id === id);
+                              return player ? (
+                                <div 
+                                  key={`selected-${player._id}`}
+                                  className="flex items-center p-2 rounded-lg cursor-pointer transition-colors bg-[#128C7E]/20 border border-[#128C7E]/30"
+                                  onClick={() => toggleSelection(player._id)}
+                                >
+                                  <div className="flex-shrink-0 mr-2">
+                                    <div className="w-8 h-8 rounded-full bg-[#128C7E]/30 flex items-center justify-center text-white font-medium text-sm">
+                                      {player.name.charAt(0).toUpperCase()}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{player.name}</p>
+                                    <p className="text-xs text-gray-400 truncate">{player.phone}</p>
+                                  </div>
+                                  <div className="ml-2">
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-[#128C7E]">
+                                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                          <div className="h-px bg-gray-700/50 my-3"></div>
+                        </div>
+                      )}
+                      
+                      {/* Available players section */}
+                      <div>
+                        {selectedPlayers.length > 0 && (
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                            <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Other Players</p>
+                          </div>
+                        )}
+                        <div className="space-y-1.5">
+                          {players
+                            .filter(player => !selectedPlayers.includes(player._id))
+                            .map(player => (
+                              <div 
+                                key={player._id}
+                                className="flex items-center p-2 rounded-lg cursor-pointer transition-colors bg-gray-800/30 border border-gray-700/30 hover:bg-gray-800/50"
+                                onClick={() => toggleSelection(player._id)}
+                              >
+                                <div className="flex-shrink-0 mr-2">
+                                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-sm">
+                                    {player.name.charAt(0).toUpperCase()}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-white truncate">{player.name}</p>
+                                  <p className="text-xs text-gray-400 truncate">{player.phone}</p>
+                                </div>
+                                <div className="ml-2">
+                                  <div className="w-5 h-5 rounded-full flex items-center justify-center border border-gray-600">
+                                  </div>
+                                </div>
+                              </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               {/* Validation Prompt */}
               {(!selectedPlayers.length || (sendMode === 'template' && selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))) && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1147,48 +1359,12 @@ const WhatsAppMessagingTab: React.FC = () => {
                     <p className="text-xs font-bold text-amber-500 uppercase tracking-tight mb-1">Ready to send?</p>
                     <p className="text-xs text-amber-200/80 leading-relaxed">
                       {!selectedPlayers.length 
-                        ? "Select at least one player from the list to continue." 
+                        ? "Select at least one recipient from the list above to continue." 
                         : "Please fill in the Match Time and Venue details to complete the template."}
                     </p>
                   </div>
                 </div>
               )}
-
-              <div className="relative group">
-                <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${selectedPlayers.length > 0 ? 'bg-gray-800/50 border-gray-700/50 cursor-help hover:bg-gray-800' : 'bg-gray-800/20 border-gray-800/40 opacity-50'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${selectedPlayers.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-600'}`}></div>
-                    <p className="text-xs text-secondary font-medium uppercase tracking-wider">Recipients Selected</p>
-                  </div>
-                  <p className={`text-sm font-bold bg-emerald-500/20 px-2 py-0.5 rounded border ${selectedPlayers.length > 0 ? 'text-white border-emerald-500/20' : 'text-gray-500 border-gray-700/30'}`}>
-                    {selectedPlayers.length}
-                  </p>
-                </div>
-                
-                {/* Hover Tooltip for Selected Players */}
-                {selectedPlayers.length > 0 && (
-                  <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 max-h-60 overflow-y-auto">
-                    <p className="text-[10px] uppercase tracking-widest text-secondary mb-3 pb-2 border-b border-gray-700 font-bold">
-                      {selectedPlayers.length === 0 ? 'No players selected' : `Sending to ${selectedPlayers.length} players`}
-                    </p>
-                    <div className="space-y-2">
-                      {selectedPlayers.length === 0 ? (
-                        <p className="text-xs text-secondary italic">Select players from the table to send messages.</p>
-                      ) : (
-                        selectedPlayers.map(id => {
-                          const player = players.find(p => p._id === id);
-                          return player ? (
-                            <div key={id} className="flex items-center justify-between text-xs">
-                              <span className="text-white font-medium">{player.name}</span>
-                              <span className="text-secondary tabular-nums">{player.phone}</span>
-                            </div>
-                          ) : null;
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
 
               <button
                 className="btn btn-primary w-full flex items-center justify-center gap-2 h-12 shadow-lg shadow-emerald-500/10 transition-all hover:shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale"
