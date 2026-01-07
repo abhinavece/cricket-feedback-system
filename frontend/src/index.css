@@ -93,11 +93,6 @@
   box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3) !important;
 }
 
-/* Desktop date picker styles */
-.date-picker-desktop {
-  z-index: 9999 !important;
-}
-
 /* Mobile specific adjustments */
 @media (max-width: 640px) {
   .react-datepicker {
@@ -115,25 +110,6 @@
   .react-datepicker__navigation {
     width: 24px !important;
     height: 24px !important;
-  }
-}
-
-/* Desktop specific adjustments */
-@media (min-width: 641px) {
-  .react-datepicker {
-    width: auto !important;
-    font-size: 16px !important;
-  }
-  
-  .react-datepicker__day {
-    width: 40px !important;
-    height: 40px !important;
-    line-height: 40px !important;
-  }
-  
-  .react-datepicker__navigation {
-    width: 32px !important;
-    height: 32px !important;
   }
 }
 

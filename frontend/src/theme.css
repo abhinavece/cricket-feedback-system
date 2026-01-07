@@ -1484,35 +1484,22 @@ document.addEventListener('DOMContentLoaded', function() {
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* Cricket ball animation */
+/* Cricket ball animation - Updated with Mavericks Logo */
 .cricket-ball {
-  width: 60px;
-  height: 60px;
-  background: var(--gradient-primary);
-  border-radius: 50%;
+  width: 400px;
+  height: 400px;
+  border-radius: 100%;
   position: relative;
-  animation: bounce 2s infinite;
+  background-image: url('./cricket-logo.png');
+  background-size: 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: transparent;
+  border: none;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+  overflow: hidden;
 }
 
 .cricket-ball::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 80%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-20px);
-  }
-  60% {
-    transform: translateY(-10px);
-  }
+  display: none; /* Hide the white line since we're using a logo */
 }

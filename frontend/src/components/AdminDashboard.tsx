@@ -4,6 +4,7 @@ import type { FeedbackSubmission } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 import UserManagement from './UserManagement';
 import WhatsAppMessagingTab from './WhatsAppMessagingTab';
+import MatchManagement from './MatchManagement';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackCard from './FeedbackCard';
 
@@ -30,7 +31,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp'>('feedback');
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches'>('feedback');
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -231,8 +232,8 @@ const AdminDashboard: React.FC = () => {
             <div 
               className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
               style={{
-                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : '200px',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : '448px'
+                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : activeTab === 'matches' ? '220px' : '200px',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : activeTab === 'matches' ? '448px' : '668px'
               }}
             >
               {/* Premium glass reflection and shimmer */}
@@ -272,6 +273,20 @@ const AdminDashboard: React.FC = () => {
                   WhatsApp
                 </button>
                 <button
+                  onClick={() => setActiveTab('matches')}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'matches' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  style={{ width: '220px', justifyContent: 'center' }}
+                >
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'matches' ? 'bg-black/10 scale-110 rotate-6 shadow-inner' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  Matches
+                </button>
+                <button
                   onClick={() => setActiveTab('users')}
                   className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                     activeTab === 'users' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
@@ -295,8 +310,8 @@ const AdminDashboard: React.FC = () => {
             <div 
               className="absolute h-[calc(100%-16px)] rounded-[2rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.6)]"
               style={{
-                width: user?.role === 'admin' ? 'calc(33.33% - 10px)' : 'calc(100% - 16px)',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '33.33%' : '66.66%'
+                width: user?.role === 'admin' ? 'calc(25% - 8px)' : 'calc(100% - 16px)',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '25%' : activeTab === 'matches' ? '50%' : '75%'
               }}
             >
               {/* Glass reflection and premium texture */}
@@ -337,12 +352,27 @@ const AdminDashboard: React.FC = () => {
                   </span>
                 </button>
                 <button
+                  onClick={() => setActiveTab('matches')}
+                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                    activeTab === 'matches' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'matches' ? 'bg-black/20 scale-150 rotate-6 shadow-lg' : 'bg-white/5'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'matches' ? "3" : "2"} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'matches' ? 'opacity-100' : 'opacity-40'}`}>
+                    Matches
+                  </span>
+                </button>
+                <button
                   onClick={() => setActiveTab('users')}
                   className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
                     activeTab === 'users' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/20 scale-125 -rotate-6 shadow-lg' : 'bg-white/5'}`}>
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/20 scale-150 -rotate-6 shadow-lg' : 'bg-white/5'}`}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'users' ? "3" : "2"} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
@@ -769,6 +799,7 @@ const AdminDashboard: React.FC = () => {
           </>
         )}
         {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}
+        {activeTab === 'matches' && <MatchManagement />}
         {activeTab === 'users' && <UserManagement />}
       </div>
 
