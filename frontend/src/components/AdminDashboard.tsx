@@ -322,7 +322,7 @@ const AdminDashboard: React.FC = () => {
             <button
               onClick={() => setActiveTab('feedback')}
               className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                activeTab === 'feedback' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                activeTab === 'feedback' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
               }`}
             >
               <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/20 scale-125 rotate-6 shadow-lg' : 'bg-white/5'}`}>
@@ -330,7 +330,7 @@ const AdminDashboard: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'feedback' ? "3" : "2"} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
               </div>
-              <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'feedback' ? 'opacity-100' : 'opacity-40'}`}>
+              <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'feedback' ? 'text-white' : 'text-slate-300'}`}>
                 Feedback
               </span>
             </button>
@@ -339,7 +339,7 @@ const AdminDashboard: React.FC = () => {
                 <button
                   onClick={() => setActiveTab('whatsapp')}
                   className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'whatsapp' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                    activeTab === 'whatsapp' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
                   }`}
                 >
                   <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/20 scale-150 rotate-3 shadow-lg' : 'bg-white/5'}`}>
@@ -347,14 +347,14 @@ const AdminDashboard: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'whatsapp' ? "3" : "2"} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'whatsapp' ? 'opacity-100' : 'opacity-40'}`}>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'whatsapp' ? 'text-white' : 'text-slate-300'}`}>
                     WhatsApp
                   </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('matches')}
                   className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'matches' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                    activeTab === 'matches' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
                   }`}
                 >
                   <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'matches' ? 'bg-black/20 scale-150 rotate-6 shadow-lg' : 'bg-white/5'}`}>
@@ -362,14 +362,14 @@ const AdminDashboard: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'matches' ? "3" : "2"} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'matches' ? 'opacity-100' : 'opacity-40'}`}>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'matches' ? 'text-white' : 'text-slate-300'}`}>
                     Matches
                   </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('users')}
                   className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'users' ? 'text-slate-950 font-black' : 'text-slate-500 opacity-60'
+                    activeTab === 'users' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
                   }`}
                 >
                   <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/20 scale-150 -rotate-6 shadow-lg' : 'bg-white/5'}`}>
@@ -377,7 +377,7 @@ const AdminDashboard: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'users' ? "3" : "2"} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'users' ? 'opacity-100' : 'opacity-40'}`}>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'users' ? 'text-white' : 'text-slate-300'}`}>
                     Users
                   </span>
                 </button>
