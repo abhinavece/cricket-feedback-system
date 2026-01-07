@@ -15,18 +15,18 @@ const RatingStars: React.FC<RatingStarsProps> = ({
 }) => {
   const [hoverRating, setHoverRating] = useState(0);
   
-  // Size classes - mobile optimized
+  // Size classes - mobile optimized (made larger)
   const sizeClasses = {
-    sm: 'text-lg sm:text-xl',
-    md: 'text-xl sm:text-2xl',
-    lg: 'text-2xl sm:text-3xl',
+    sm: 'text-2xl sm:text-3xl',
+    md: 'text-3xl sm:text-4xl',
+    lg: 'text-4xl sm:text-5xl',
   };
   
-  // Touch target sizes - responsive
+  // Touch target sizes - responsive (made larger)
   const touchTargetClasses = {
-    sm: 'min-w-[28px] min-h-[28px] sm:min-w-[32px] sm:min-h-[32px]',
-    md: 'min-w-[32px] min-h-[32px] sm:min-w-[36px] sm:min-h-[36px]',
-    lg: 'min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px]',
+    sm: 'min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px]',
+    md: 'min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px]',
+    lg: 'min-w-[44px] min-h-[44px] sm:min-w-[48px] sm:min-h-[48px]',
   };
 
   // Dynamic star colors based on rating
@@ -40,7 +40,7 @@ const RatingStars: React.FC<RatingStarsProps> = ({
   const currentColor = getStarColor(hoverRating || rating);
 
   return (
-    <div className="rating-stars flex gap-0.5 sm:gap-1 py-1 w-full justify-center">
+    <div className="rating-stars flex gap-1 sm:gap-1.5 py-2 w-full justify-center sm:justify-start">
       {[1, 2, 3, 4, 5].map((star) => {
         const isActive = star <= (hoverRating || rating);
         const isHalf = !isActive && star === Math.ceil(rating) && rating % 1 !== 0;
@@ -56,7 +56,7 @@ const RatingStars: React.FC<RatingStarsProps> = ({
             onTouchStart={() => !readOnly && setHoverRating(star)}
             onTouchEnd={() => !readOnly && setHoverRating(0)}
             disabled={readOnly}
-            className={`${sizeClasses[size]} ${touchTargetClasses[size]} transition-all duration-300 transform p-0.5 flex-shrink-0
+            className={`${sizeClasses[size]} ${touchTargetClasses[size]} transition-all duration-300 transform p-1 flex-shrink-0
               ${isActive 
                 ? `${starColor} scale-110 drop-shadow-[0_0_8px_rgba(currentColor,0.5)]` 
                 : 'text-slate-600 scale-100'
