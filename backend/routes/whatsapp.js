@@ -171,8 +171,14 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
       console.log(`  Sent at: ${recentAvailabilityMessage.timestamp}`);
     }
     
-    if (recentAvailabilityMessage && recentAvailabilityMessage.matchId) {
+    // Only process as availability response if:
+    // 1. This is a reply to a specific message (has context ID) OR
+    // 2. This is a button response (which are always availability-related)
+    const isAvailabilityReply = contextId || recentAvailabilityMessage.messageType === 'availability_request';
+    
+    if (recentAvailabilityMessage && recentAvailabilityMessage.matchId && isAvailabilityReply) {
       console.log(`\n✅ Found availability request for match: ${recentAvailabilityMessage.matchId}`);
+      console.log(`Processing as availability response: ${isAvailabilityReply ? 'YES' : 'NO'}`);
       
       // Determine response type from button text
       let response = 'pending';
@@ -337,7 +343,37 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
         }
       }
     } else {
-      console.log(`❌ No recent availability request found for this number`);
+      console.log(`❌ Not processing as availability response`);
+      
+      // Handle general chat messages - save to database for chat interface
+      try {
+        const player = await Player.findOne({ 
+          phone: { $regex: formattedPhone.slice(-10) } 
+        });
+        
+        if (player) {
+          console.log(`✅ Found player for general message: ${player.name}`);
+          
+          // Save incoming message to database
+          await Message.create({
+            from: formattedPhone,
+            to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+            text: text,
+            direction: 'incoming',
+            messageId: messageId,
+            timestamp: new Date(),
+            messageType: 'general',
+            playerId: player._id,
+            playerName: player.name
+          });
+          
+          console.log(`✅ General message saved to database`);
+        } else {
+          console.log(`❌ Player not found for general message from: ${formattedPhone}`);
+        }
+      } catch (saveErr) {
+        console.error(`❌ Error saving general message:`, saveErr.message);
+      }
     }
     
     console.log('=== END PROCESSING ===\n');
