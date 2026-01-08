@@ -613,8 +613,8 @@ const WhatsAppMessagingTab: React.FC = () => {
 
       {/* Message History Modal */}
       {historyPlayer && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[1000] flex items-end justify-center p-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 md:items-center md:p-4">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 animate-in slide-in-from-bottom duration-300 md:animate-in md:zoom-in-95 md:duration-300" style={{ maxHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
             {/* Modal Header */}
             <div className="p-4 md:p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
               <div className="flex items-center gap-3">
@@ -661,7 +661,7 @@ const WhatsAppMessagingTab: React.FC = () => {
             </div>
 
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat" style={{ maxHeight: 'calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
               {loadingHistory && historyMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full space-y-3">
                   <div className="w-8 h-8 border-3 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
@@ -721,15 +721,21 @@ const WhatsAppMessagingTab: React.FC = () => {
             </div>
 
             {/* Modal Footer - WhatsApp Input Style */}
-            <div className="p-2 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2">              
+            <div className="p-2 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2 shrink-0">              
               {/* Text Input */}
-              <div className="flex-1 relative">
+              <div className="flex-1 relative min-w-0">
                 <textarea
                   value={historyNewMessage}
                   onChange={(e) => setHistoryNewMessage(autoCapitalize(e.target.value))}
                   placeholder="Type a message"
-                  className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-32 min-h-[40px]"
+                  className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-24 min-h-[40px] overflow-hidden"
                   rows={1}
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    overflowY: 'auto'
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();

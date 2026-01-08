@@ -46,8 +46,14 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange, user
         <div className="header-content">
           <div className="flex items-center justify-between w-full md:w-auto">
             <div className="flex items-center">
-              <div className="cricket-ball" style={{width: '32px', height: '32px', marginRight: '10px'}}></div>
-              <h1 className="logo text-lg md:text-2xl">Mavericks XI</h1>
+              <button 
+                onClick={() => handleViewChange('form')}
+                className="flex items-center hover:opacity-80 transition-opacity"
+                aria-label="Go to home page"
+              >
+                <div className="cricket-ball" style={{width: '32px', height: '32px', marginRight: '10px'}}></div>
+                <h1 className="logo text-lg md:text-2xl">Mavericks XI</h1>
+              </button>
             </div>
             
             {/* Mobile Menu Toggle */}
