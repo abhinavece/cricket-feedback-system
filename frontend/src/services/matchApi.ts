@@ -65,6 +65,16 @@ export interface Match {
   createdAt: string;
   updatedAt: string;
   notes: string;
+  // Availability tracking fields
+  availabilitySent?: boolean;
+  availabilitySentAt?: string;
+  totalPlayersRequested?: number;
+  confirmedPlayers?: number;
+  declinedPlayers?: number;
+  tentativePlayers?: number;
+  noResponsePlayers?: number;
+  lastAvailabilityUpdate?: string;
+  squadStatus?: 'pending' | 'partial' | 'full';
 }
 
 export interface MatchStats {

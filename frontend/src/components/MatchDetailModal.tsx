@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell } from 'lucide-react';
 import { getMatchAvailability, sendReminder } from '../services/api';
+import { matchApi } from '../services/matchApi';
 
 interface Match {
   _id: string;
@@ -66,12 +67,13 @@ interface MatchDetailModalProps {
 }
 
 const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
-  match,
+  match: initialMatch,
   onClose,
   onEdit,
   onDelete,
   onSendAvailability
 }) => {
+  const [match, setMatch] = useState<Match>(initialMatch);
   const [availabilities, setAvailabilities] = useState<AvailabilityRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,27 +81,33 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad'>('overview');
   const [sendingReminder, setSendingReminder] = useState(false);
 
-  const loadAvailability = React.useCallback(async () => {
-    if (!match.availabilitySent) return;
-    
+  const loadMatchAndAvailability = React.useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getMatchAvailability(match._id);
-      setAvailabilities(response.data || []);
+      
+      // Fetch fresh match data to get updated statistics
+      const updatedMatch = await matchApi.getMatch(match._id);
+      setMatch(updatedMatch);
+      
+      // Fetch availability records if availability was sent
+      if (updatedMatch.availabilitySent) {
+        const response = await getMatchAvailability(match._id);
+        setAvailabilities(response.data || []);
+      }
     } catch (err) {
-      console.error('Failed to load availability:', err);
+      console.error('Failed to load match data:', err);
     } finally {
       setLoading(false);
     }
-  }, [match._id, match.availabilitySent]);
+  }, [match._id]);
 
   useEffect(() => {
-    loadAvailability();
+    loadMatchAndAvailability();
     
     // Auto-refresh every 10 seconds
-    const interval = setInterval(loadAvailability, 10000);
+    const interval = setInterval(loadMatchAndAvailability, 10000);
     return () => clearInterval(interval);
-  }, [loadAvailability]);
+  }, [loadMatchAndAvailability]);
 
   const matchDate = new Date(match.date);
   const isUpcoming = matchDate > new Date();
@@ -167,7 +175,7 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       setSendingReminder(true);
       const response = await sendReminder(match._id);
       alert(response.message || 'Reminders sent successfully!');
-      loadAvailability(); // Refresh data
+      loadMatchAndAvailability(); // Refresh data
     } catch (err: any) {
       console.error('Failed to send reminders:', err);
       alert(err.response?.data?.error || 'Failed to send reminders');
@@ -278,7 +286,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
               </button>
             )}
             <button
-              onClick={loadAvailability}
+              onClick={loadMatchAndAvailability}
               disabled={loading}
               className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2 border border-blue-500/30 disabled:opacity-50"
             >

@@ -16,7 +16,7 @@ backend:
 
 frontend:
   image:
-    tag: "v55"
+    tag: "v56"
   replicaCount: 1
   resources:
     limits:
