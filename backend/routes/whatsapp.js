@@ -131,7 +131,10 @@ async function processIncomingMessage(from, text, messageId) {
     // Find the most recent availability request sent to this number
     const recentAvailabilityMessage = await Message.findOne({
       to: { $in: phoneVariants },
-      messageType: 'availability_request',
+      $or: [
+        { messageType: 'availability_request' },
+        { messageType: 'general', matchId: { $exists: true } } // Fallback for messages marked as general but have matchId
+      ],
       direction: 'outgoing'
     }).sort({ timestamp: -1 });
     
@@ -533,9 +536,9 @@ router.post('/send', auth, async (req, res) => {
         
         console.log(`WhatsApp API Success for ${player.name}:`, JSON.stringify(response.data, null, 2));
         
-        // Create availability record if matchId is provided
+        // Create availability record if matchId is provided (for availability tracking)
         let availabilityId = null;
-        if (matchId && template) {
+        if (matchId) {
           try {
             const availability = await Availability.create({
               matchId,
@@ -563,7 +566,7 @@ router.post('/send', auth, async (req, res) => {
           timestamp: new Date(),
           matchId: matchId || null,
           matchTitle: matchTitle || null,
-          messageType: matchId && template ? 'availability_request' : 'general',
+          messageType: matchId ? 'availability_request' : 'general',
           templateUsed: template?.name || null,
           availabilityId: availabilityId
         });
