@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "cricket-feedback.fullname" . }}-ingress
+  name: cricket-feedback-ingress
   namespace: {{ .Values.namespace.name | default "default" }}
   labels:
     app: {{ include "cricket-feedback.name" . }}
@@ -18,22 +18,51 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
   rules:
-    - host: {{ .Values.ingress.host }}
-      http:
-        paths:
-          {{- range .Values.ingress.paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
-            backend:
-              service:
-                name: {{ include "cricket-feedback.fullname" $ }}-{{ .service }}-service
-                port:
-                  number: {{ .port }}
-          {{- end }}
+  # Primary host: 129.153.86.8.sslip.io
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: cricket-feedback-backend-service
+            port:
+              number: 5001
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cricket-feedback-frontend-service
+            port:
+              number: 80
+  {{- if .Values.ingress.secondaryHost }}
+  # Secondary host: mavericks11.duckdns.org
+  - host: {{ .Values.ingress.secondaryHost }}
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: cricket-feedback-backend-service
+            port:
+              number: 5001
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cricket-feedback-frontend-service
+            port:
+              number: 80
+  {{- end }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
         - {{ .Values.ingress.host }}
+        {{- if .Values.ingress.secondaryHost }}
+        - {{ .Values.ingress.secondaryHost }}
+        {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}
 {{- end }}

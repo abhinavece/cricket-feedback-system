@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "v32"
+    tag: "v33"
   replicaCount: 1
   resources:
     limits:
@@ -16,7 +16,7 @@ backend:
 
 frontend:
   image:
-    tag: "v53"
+    tag: "v54"
   replicaCount: 1
   resources:
     limits:
@@ -45,6 +45,7 @@ mongodb:
 # Development ingress
 ingress:
   host: 129.153.86.8.sslip.io
+  secondaryHost: mavericks11.duckdns.org
   tls:
     enabled: true
     secretName: cricket-feedback-tls-dev

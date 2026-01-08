@@ -43,6 +43,13 @@ const availabilitySchema = new mongoose.Schema({
     enum: ['sent', 'delivered', 'read', 'responded', 'no_response'],
     default: 'sent'
   },
+  reminderSentAt: {
+    type: Date
+  },
+  reminderCount: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

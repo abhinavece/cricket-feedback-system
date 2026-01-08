@@ -5,6 +5,7 @@ import MatchForm from './MatchForm';
 import MatchCard from './MatchCard';
 import ConfirmDialog from './ConfirmDialog';
 import MatchAvailabilityDashboard from './MatchAvailabilityDashboard';
+import MatchDetailModal from './MatchDetailModal';
 import { matchApi } from '../services/matchApi';
 
 interface Match {
@@ -56,6 +57,8 @@ const MatchManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAvailability, setShowAvailability] = useState(false);
   const [selectedMatchForAvailability, setSelectedMatchForAvailability] = useState<Match | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<Match | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -126,18 +129,25 @@ const MatchManagement: React.FC = () => {
   };
 
   const handleViewMatch = (match: Match) => {
-    // TODO: Implement match view modal/details
-    console.log('View match:', match);
+    setSelectedMatchForDetail(match);
+    setShowDetailModal(true);
   };
 
   const handleManageSquad = (match: Match) => {
-    // TODO: Implement squad management modal
-    console.log('Manage squad:', match);
+    setSelectedMatchForDetail(match);
+    setShowDetailModal(true);
   };
 
   const handleViewAvailability = (match: Match) => {
     setSelectedMatchForAvailability(match);
     setShowAvailability(true);
+  };
+
+  const handleSendAvailabilityFromDetail = (match: Match) => {
+    setShowDetailModal(false);
+    // Navigate to WhatsApp tab with match pre-selected
+    // This would require lifting state up or using a router
+    console.log('Send availability for match:', match._id);
   };
 
   const filteredMatches = matches.filter(match => {
@@ -334,6 +344,27 @@ const MatchManagement: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Match Detail Modal */}
+      {showDetailModal && selectedMatchForDetail && (
+        <MatchDetailModal
+          match={selectedMatchForDetail}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedMatchForDetail(null);
+            fetchMatches(); // Refresh matches after closing
+          }}
+          onEdit={(match) => {
+            setShowDetailModal(false);
+            handleEditMatch(match);
+          }}
+          onDelete={(matchId) => {
+            setShowDetailModal(false);
+            handleDeleteMatch(matchId);
+          }}
+          onSendAvailability={handleSendAvailabilityFromDetail}
+        />
+      )}
 
       {/* Availability Dashboard Modal */}
       {showAvailability && selectedMatchForAvailability && (

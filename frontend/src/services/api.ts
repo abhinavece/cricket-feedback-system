@@ -166,4 +166,9 @@ export const updateAvailability = async (id: string, data: { response: string; m
   return response.data;
 };
 
+export const sendReminder = async (matchId: string) => {
+  const response = await api.post('/whatsapp/send-reminder', { matchId });
+  return response.data;
+};
+
 export default api;

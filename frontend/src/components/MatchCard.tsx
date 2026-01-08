@@ -111,7 +111,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
   };
 
   return (
-    <div className="group relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-black/20">
+    <div 
+      className="group relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-black/20 cursor-pointer"
+      onClick={() => onView(match)}
+    >
       {/* Status Badge */}
       <div className="absolute top-4 right-4 z-10">
         <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor()}`}>
@@ -235,7 +238,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
         <div className="flex gap-2">
           {onViewAvailability && (
             <button
-              onClick={() => onViewAvailability(match)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewAvailability(match);
+              }}
               className="flex-1 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
               title="View Availability Dashboard"
             >
@@ -244,27 +250,39 @@ const MatchCard: React.FC<MatchCardProps> = ({
             </button>
           )}
           <button
-            onClick={() => onView(match)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onView(match);
+            }}
             className="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
           >
             <Eye className="w-3.5 h-3.5" />
             View
           </button>
           <button
-            onClick={() => onManageSquad(match)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onManageSquad(match);
+            }}
             className="flex-1 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
           >
             <Users className="w-3.5 h-3.5" />
             Squad
           </button>
           <button
-            onClick={() => onEdit(match)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(match);
+            }}
             className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200"
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() => onDelete(match._id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(match._id);
+            }}
             className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-sm font-medium rounded-lg transition-all duration-200"
           >
             <Trash2 className="w-3.5 h-3.5" />

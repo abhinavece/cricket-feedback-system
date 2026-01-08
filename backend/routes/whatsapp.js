@@ -74,9 +74,13 @@ router.post('/webhook', (req, res) => {
               }
               
               if (text) {
-                console.log(`Extracted message text: "${text}" from ${from}`);
-                // Process the incoming message
-                processIncomingMessage(from, text);
+                console.log(`Message text: ${text}`);
+                console.log(`Message ID: ${message.id}`);
+                
+                // Process the message asynchronously
+                processIncomingMessage(from, text, message.id).catch(err => {
+                  console.error('Error in processIncomingMessage:', err);
+                });
               }
             }
           }
@@ -94,67 +98,133 @@ router.post('/webhook', (req, res) => {
 });
 
 // Process incoming messages
-async function processIncomingMessage(from, text) {
+async function processIncomingMessage(from, text, messageId) {
   try {
-    console.log(`Processing message from ${from}: "${text}"`);
+    console.log('\n=== PROCESSING INCOMING MESSAGE ===');
+    console.log(`From: ${from}`);
+    console.log(`Text: "${text}"`);
+    console.log(`Message ID: ${messageId}`);
     
     // Check if this is a response to an availability request
     const Player = require('../models/Player');
     
     // Format phone number to match database format
     let formattedPhone = from.replace(/\D/g, '');
+    console.log(`Original phone: ${from}`);
+    console.log(`Cleaned phone: ${formattedPhone}`);
+    
     if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
       formattedPhone = '91' + formattedPhone;
     }
+    console.log(`Formatted phone: ${formattedPhone}`);
+    
+    // Try multiple phone formats to find the message
+    const phoneVariants = [
+      formattedPhone,
+      formattedPhone.slice(-10), // Last 10 digits
+      '91' + formattedPhone.slice(-10), // With country code
+      from // Original format
+    ];
+    
+    console.log(`Searching for messages with phone variants:`, phoneVariants);
     
     // Find the most recent availability request sent to this number
     const recentAvailabilityMessage = await Message.findOne({
-      to: formattedPhone,
+      to: { $in: phoneVariants },
       messageType: 'availability_request',
       direction: 'outgoing'
     }).sort({ timestamp: -1 });
     
+    console.log(`Found availability message:`, recentAvailabilityMessage ? 'YES' : 'NO');
+    if (recentAvailabilityMessage) {
+      console.log(`  Match ID: ${recentAvailabilityMessage.matchId}`);
+      console.log(`  Availability ID: ${recentAvailabilityMessage.availabilityId}`);
+      console.log(`  Sent to: ${recentAvailabilityMessage.to}`);
+      console.log(`  Sent at: ${recentAvailabilityMessage.timestamp}`);
+    }
+    
     if (recentAvailabilityMessage && recentAvailabilityMessage.matchId) {
-      console.log(`Found availability request for match: ${recentAvailabilityMessage.matchId}`);
+      console.log(`\n✅ Found availability request for match: ${recentAvailabilityMessage.matchId}`);
       
       // Determine response type from button text
       let response = 'pending';
       const lowerText = text.toLowerCase().trim();
       
-      if (lowerText === 'yes' || lowerText.includes('available') || lowerText.includes('confirm')) {
+      console.log(`Analyzing response text: "${lowerText}"`);
+      
+      // More comprehensive response detection
+      if (lowerText === 'yes' || lowerText === 'available' || lowerText.includes('confirm') || 
+          lowerText.includes('i am available') || lowerText.includes('i can play') ||
+          lowerText.includes('count me in') || lowerText === 'y') {
         response = 'yes';
-      } else if (lowerText === 'no' || lowerText.includes('not available') || lowerText.includes('decline')) {
+      } else if (lowerText === 'no' || lowerText === 'not available' || lowerText.includes('decline') ||
+                 lowerText.includes('cannot') || lowerText.includes('can\'t') || 
+                 lowerText.includes('unavailable') || lowerText === 'n') {
         response = 'no';
-      } else if (lowerText === 'tentative' || lowerText.includes('maybe') || lowerText.includes('not sure')) {
+      } else if (lowerText === 'tentative' || lowerText === 'maybe' || lowerText.includes('not sure') ||
+                 lowerText.includes('might') || lowerText.includes('possibly')) {
         response = 'tentative';
       }
       
-      // Find player by phone
-      const player = await Player.findOne({ phone: { $regex: formattedPhone.slice(-10) } });
+      console.log(`Detected response type: ${response}`);
       
-      if (player && recentAvailabilityMessage.availabilityId) {
+      // Find player by phone - try multiple formats
+      let player = await Player.findOne({ phone: { $regex: formattedPhone.slice(-10) } });
+      
+      if (!player) {
+        console.log(`Player not found with regex, trying exact matches...`);
+        for (const phoneVariant of phoneVariants) {
+          player = await Player.findOne({ phone: phoneVariant });
+          if (player) {
+            console.log(`Found player with phone variant: ${phoneVariant}`);
+            break;
+          }
+        }
+      }
+      
+      if (!player) {
+        console.log(`❌ Player not found for phone: ${formattedPhone}`);
+        return;
+      }
+      
+      console.log(`✅ Found player: ${player.name} (${player._id})`);
+      
+      if (recentAvailabilityMessage.availabilityId) {
+        console.log(`Updating availability record: ${recentAvailabilityMessage.availabilityId}`);
         // Update availability record
         const availability = await Availability.findById(recentAvailabilityMessage.availabilityId);
         
         if (availability) {
+          console.log(`Current availability status: ${availability.response}`);
           availability.response = response;
           availability.status = 'responded';
           availability.respondedAt = new Date();
           availability.messageContent = text;
+          availability.incomingMessageId = messageId;
           await availability.save();
           
-          console.log(`Updated availability for player ${player.name}: ${response}`);
+          console.log(`✅ Updated availability for player ${player.name}: ${response}`);
+          console.log(`   Responded at: ${availability.respondedAt}`);
           
           // Update match statistics and squad
+          console.log(`Updating match statistics for match: ${recentAvailabilityMessage.matchId}`);
           const match = await Match.findById(recentAvailabilityMessage.matchId);
           if (match) {
             // Recalculate statistics
             const allAvailabilities = await Availability.find({ matchId: match._id });
+            console.log(`Total availability records for match: ${allAvailabilities.length}`);
             
-            match.confirmedPlayers = allAvailabilities.filter(a => a.response === 'yes').length;
-            match.declinedPlayers = allAvailabilities.filter(a => a.response === 'no').length;
-            match.tentativePlayers = allAvailabilities.filter(a => a.response === 'tentative').length;
-            match.noResponsePlayers = allAvailabilities.filter(a => a.response === 'pending').length;
+            const confirmedCount = allAvailabilities.filter(a => a.response === 'yes').length;
+            const declinedCount = allAvailabilities.filter(a => a.response === 'no').length;
+            const tentativeCount = allAvailabilities.filter(a => a.response === 'tentative').length;
+            const pendingCount = allAvailabilities.filter(a => a.response === 'pending').length;
+            
+            console.log(`Statistics: Confirmed=${confirmedCount}, Declined=${declinedCount}, Tentative=${tentativeCount}, Pending=${pendingCount}`);
+            
+            match.confirmedPlayers = confirmedCount;
+            match.declinedPlayers = declinedCount;
+            match.tentativePlayers = tentativeCount;
+            match.noResponsePlayers = pendingCount;
             match.lastAvailabilityUpdate = new Date();
             
             // Update squad status
@@ -187,26 +257,65 @@ async function processIncomingMessage(from, text) {
             }
             
             await match.save();
-            console.log(`Updated match ${match._id} statistics`);
+            console.log(`✅ Match updated successfully`);
+            console.log(`   Match: ${match.matchId}`);
+            console.log(`   Squad Status: ${match.squadStatus}`);
+            console.log(`   Last Update: ${match.lastAvailabilityUpdate}`);
+          } else {
+            console.log(`❌ Match not found: ${recentAvailabilityMessage.matchId}`);
           }
+        } else {
+          console.log(`❌ Availability record not found: ${recentAvailabilityMessage.availabilityId}`);
+        }
+      } else {
+        console.log(`❌ No availabilityId in message record`);
+        
+        // Try to find availability by matchId and player phone
+        const availability = await Availability.findOne({
+          matchId: recentAvailabilityMessage.matchId,
+          playerPhone: { $in: phoneVariants }
+        });
+        
+        if (availability) {
+          console.log(`✅ Found availability by matchId and phone, updating...`);
+          availability.response = response;
+          availability.status = 'responded';
+          availability.respondedAt = new Date();
+          availability.messageContent = text;
+          availability.incomingMessageId = messageId;
+          await availability.save();
+          
+          // Update match statistics
+          const match = await Match.findById(recentAvailabilityMessage.matchId);
+          if (match) {
+            const allAvailabilities = await Availability.find({ matchId: match._id });
+            match.confirmedPlayers = allAvailabilities.filter(a => a.response === 'yes').length;
+            match.declinedPlayers = allAvailabilities.filter(a => a.response === 'no').length;
+            match.tentativePlayers = allAvailabilities.filter(a => a.response === 'tentative').length;
+            match.noResponsePlayers = allAvailabilities.filter(a => a.response === 'pending').length;
+            match.lastAvailabilityUpdate = new Date();
+            
+            if (match.confirmedPlayers >= 11) {
+              match.squadStatus = 'full';
+            } else if (match.confirmedPlayers > 0) {
+              match.squadStatus = 'partial';
+            }
+            
+            await match.save();
+            console.log(`✅ Match updated via fallback method`);
+          }
+        } else {
+          console.log(`❌ Could not find availability record by any method`);
         }
       }
+    } else {
+      console.log(`❌ No recent availability request found for this number`);
     }
     
-    // Save incoming message to database
-    await Message.create({
-      from: from,
-      to: process.env.WHATSAPP_PHONE_NUMBER_ID || 'system',
-      text: text,
-      direction: 'incoming',
-      timestamp: new Date(),
-      matchId: recentAvailabilityMessage?.matchId || null,
-      messageType: recentAvailabilityMessage?.matchId ? 'availability_response' : 'general'
-    });
-    
-    console.log(`Saved incoming message from ${from} to database`);
+    console.log('=== END PROCESSING ===\n');
   } catch (error) {
-    console.error('Error processing incoming message:', error);
+    console.error('❌ Error processing incoming message:', error);
+    console.error('Stack trace:', error.stack);
   }
 }
 
@@ -519,6 +628,168 @@ router.post('/send', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to send messages'
+    });
+  }
+});
+
+// POST /api/whatsapp/send-reminder - Send reminder to non-responders
+router.post('/send-reminder', auth, async (req, res) => {
+  try {
+    const { matchId } = req.body;
+    
+    console.log('\n=== SENDING REMINDER ===');
+    console.log(`Match ID: ${matchId}`);
+    
+    if (!matchId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Match ID is required'
+      });
+    }
+    
+    // Get match details
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({
+        success: false,
+        error: 'Match not found'
+      });
+    }
+    
+    // Find all availability records with no response
+    const pendingAvailabilities = await Availability.find({
+      matchId: matchId,
+      response: 'pending'
+    });
+    
+    console.log(`Found ${pendingAvailabilities.length} players who haven't responded`);
+    
+    if (pendingAvailabilities.length === 0) {
+      return res.json({
+        success: true,
+        message: 'All players have already responded',
+        data: {
+          sent: 0,
+          pending: 0
+        }
+      });
+    }
+    
+    // Get player details
+    const playerIds = pendingAvailabilities.map(a => a.playerId);
+    const Player = require('../models/Player');
+    const players = await Player.find({ '_id': { $in: playerIds } });
+    
+    // WhatsApp API configuration
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const apiVersion = 'v19.0';
+    
+    if (!accessToken || !phoneNumberId) {
+      return res.status(500).json({
+        success: false,
+        error: 'WhatsApp API not configured'
+      });
+    }
+    
+    const results = [];
+    let sentCount = 0;
+    
+    // Send reminder to each player
+    for (const player of players) {
+      try {
+        console.log(`Sending reminder to: ${player.name}`);
+        
+        // Format phone number
+        let formattedPhone = player.phone.replace(/\D/g, '');
+        if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+          formattedPhone = '91' + formattedPhone;
+        }
+        
+        const whatsappApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+        
+        // Create reminder message
+        const reminderText = `🔔 *Reminder: Match Availability*\n\nHi ${player.name},\n\nThis is a friendly reminder about the upcoming match:\n\n📅 *${match.opponent || 'Practice Match'}*\n🏟️ ${match.ground}\n📆 ${new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}\n\nWe haven't received your response yet. Please let us know if you're available!\n\nReply with:\n✅ *Yes* - I'm available\n❌ *No* - Not available\n⏳ *Tentative* - Maybe`;
+        
+        const payload = {
+          messaging_product: 'whatsapp',
+          to: formattedPhone,
+          type: 'text',
+          text: {
+            body: reminderText,
+            preview_url: false
+          }
+        };
+        
+        const response = await axios.post(whatsappApiUrl, payload, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        // Update availability record with reminder timestamp
+        const availability = pendingAvailabilities.find(
+          a => a.playerId.toString() === player._id.toString()
+        );
+        
+        if (availability) {
+          availability.reminderSentAt = new Date();
+          availability.reminderCount = (availability.reminderCount || 0) + 1;
+          await availability.save();
+        }
+        
+        // Save reminder message
+        await Message.create({
+          from: phoneNumberId,
+          to: formattedPhone,
+          text: reminderText,
+          direction: 'outgoing',
+          messageId: response.data?.messages?.[0]?.id,
+          matchId: matchId,
+          matchTitle: match.opponent || 'Practice Match',
+          messageType: 'availability_reminder',
+          availabilityId: availability?._id,
+          timestamp: new Date()
+        });
+        
+        sentCount++;
+        results.push({
+          player: player.name,
+          phone: formattedPhone,
+          status: 'sent'
+        });
+        
+        console.log(`✅ Reminder sent to ${player.name}`);
+        
+      } catch (error) {
+        console.error(`Failed to send reminder to ${player.name}:`, error.message);
+        results.push({
+          player: player.name,
+          phone: player.phone,
+          status: 'failed',
+          error: error.message
+        });
+      }
+    }
+    
+    console.log(`Reminders sent: ${sentCount}/${pendingAvailabilities.length}`);
+    
+    res.json({
+      success: true,
+      message: `Sent ${sentCount} reminder(s) to players who haven't responded`,
+      data: {
+        sent: sentCount,
+        pending: pendingAvailabilities.length,
+        results
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error sending reminders:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send reminders'
     });
   }
 });
