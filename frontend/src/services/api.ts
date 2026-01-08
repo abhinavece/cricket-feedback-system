@@ -104,6 +104,8 @@ export const sendWhatsAppMessage = async (payload: {
     languageCode: string;
     components?: any[];
   };
+  matchId?: string;
+  matchTitle?: string;
 }) => {
   const response = await api.post('/whatsapp/send', payload);
   return response.data;
@@ -111,6 +113,56 @@ export const sendWhatsAppMessage = async (payload: {
 
 export const getMessageHistory = async (phone: string) => {
   const response = await api.get(`/whatsapp/messages/${phone}?t=${Date.now()}`);
+  return response.data;
+};
+
+// Match APIs
+export const getMatches = async () => {
+  const response = await api.get('/matches');
+  return response.data.matches || [];
+};
+
+export const getUpcomingMatches = async () => {
+  const response = await api.get('/matches');
+  const matches = response.data.matches || [];
+  // Filter for upcoming matches (date >= today)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return matches.filter((match: any) => new Date(match.date) >= today);
+};
+
+export const getMatch = async (id: string) => {
+  const response = await api.get(`/matches/${id}`);
+  return response.data;
+};
+
+export const createMatch = async (data: any) => {
+  const response = await api.post('/matches', data);
+  return response.data;
+};
+
+export const updateMatch = async (id: string, data: any) => {
+  const response = await api.put(`/matches/${id}`, data);
+  return response.data;
+};
+
+export const deleteMatch = async (id: string) => {
+  await api.delete(`/matches/${id}`);
+};
+
+// Availability APIs
+export const getMatchAvailability = async (matchId: string) => {
+  const response = await api.get(`/availability/match/${matchId}`);
+  return response.data;
+};
+
+export const getPlayerAvailability = async (playerId: string) => {
+  const response = await api.get(`/availability/player/${playerId}`);
+  return response.data;
+};
+
+export const updateAvailability = async (id: string, data: { response: string; messageContent?: string }) => {
+  const response = await api.put(`/availability/${id}`, data);
   return response.data;
 };
 

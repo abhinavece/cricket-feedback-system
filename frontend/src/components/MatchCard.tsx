@@ -33,11 +33,22 @@ interface MatchCardProps {
     };
     createdAt: string;
     notes: string;
+    // Availability tracking fields
+    availabilitySent?: boolean;
+    availabilitySentAt?: string;
+    totalPlayersRequested?: number;
+    confirmedPlayers?: number;
+    declinedPlayers?: number;
+    tentativePlayers?: number;
+    noResponsePlayers?: number;
+    lastAvailabilityUpdate?: string;
+    squadStatus?: 'pending' | 'partial' | 'full';
   };
   onEdit: (match: any) => void;
   onDelete: (matchId: string) => void;
   onView: (match: any) => void;
   onManageSquad: (match: any) => void;
+  onViewAvailability?: (match: any) => void;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({
@@ -45,17 +56,33 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onEdit,
   onDelete,
   onView,
-  onManageSquad
+  onManageSquad,
+  onViewAvailability
 }) => {
   const getSquadStats = () => {
-    const total = match.squad.length;
-    const yes = match.squad.filter(s => s.response === 'yes').length;
-    const no = match.squad.filter(s => s.response === 'no').length;
-    const tentative = match.squad.filter(s => s.response === 'tentative').length;
-    const pending = match.squad.filter(s => s.response === 'pending').length;
-    const responseRate = Math.round(((yes + no + tentative) / total) * 100);
+    // Use availability tracking fields if available, otherwise fall back to squad
+    if (match.availabilitySent && match.totalPlayersRequested) {
+      const total = match.totalPlayersRequested || 0;
+      const yes = match.confirmedPlayers || 0;
+      const no = match.declinedPlayers || 0;
+      const tentative = match.tentativePlayers || 0;
+      const pending = match.noResponsePlayers || 0;
+      const responded = yes + no + tentative;
+      const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
 
-    return { total, yes, no, tentative, pending, responseRate };
+      return { total, yes, no, tentative, pending, responseRate, responded, isTracking: true };
+    } else {
+      // Fallback to squad-based stats
+      const total = match.squad.length;
+      const yes = match.squad.filter(s => s.response === 'yes').length;
+      const no = match.squad.filter(s => s.response === 'no').length;
+      const tentative = match.squad.filter(s => s.response === 'tentative').length;
+      const pending = match.squad.filter(s => s.response === 'pending').length;
+      const responded = yes + no + tentative;
+      const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
+
+      return { total, yes, no, tentative, pending, responseRate, responded, isTracking: false };
+    }
   };
 
   const stats = getSquadStats();
@@ -135,9 +162,32 @@ const MatchCard: React.FC<MatchCardProps> = ({
       <div className="p-6">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-300">Squad Availability</span>
-            <span className="text-xs text-slate-500">{stats.responseRate}% Response Rate</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-300">
+                {stats.isTracking ? 'Availability Tracking' : 'Squad Availability'}
+              </span>
+              {match.availabilitySent && (
+                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">
+                  📤 Sent
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-slate-500">
+              {stats.responded}/{stats.total} Responded ({stats.responseRate}%)
+            </span>
           </div>
+          
+          {/* Availability Sent Info */}
+          {match.availabilitySent && match.availabilitySentAt && (
+            <div className="mb-2 text-xs text-slate-400">
+              Sent {new Date(match.availabilitySentAt).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </div>
+          )}
           
           {/* Progress Bar */}
           <div className="w-full bg-slate-700/50 rounded-full h-2 mb-3 overflow-hidden">
@@ -151,25 +201,48 @@ const MatchCard: React.FC<MatchCardProps> = ({
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-emerald-500/10 rounded-lg p-2">
               <div className="text-lg font-black text-emerald-400">{stats.yes}</div>
-              <div className="text-xs text-slate-400">Yes</div>
+              <div className="text-xs text-slate-400">✅ Yes</div>
             </div>
             <div className="bg-amber-500/10 rounded-lg p-2">
               <div className="text-lg font-black text-amber-400">{stats.tentative}</div>
-              <div className="text-xs text-slate-400">Maybe</div>
+              <div className="text-xs text-slate-400">⏳ Maybe</div>
             </div>
             <div className="bg-rose-500/10 rounded-lg p-2">
               <div className="text-lg font-black text-rose-400">{stats.no}</div>
-              <div className="text-xs text-slate-400">No</div>
+              <div className="text-xs text-slate-400">❌ No</div>
             </div>
             <div className="bg-slate-500/10 rounded-lg p-2">
               <div className="text-lg font-black text-slate-400">{stats.pending}</div>
-              <div className="text-xs text-slate-400">Pending</div>
+              <div className="text-xs text-slate-400">⚪ Pending</div>
             </div>
           </div>
+          
+          {/* Squad Status Badge */}
+          {match.squadStatus && stats.isTracking && (
+            <div className="mt-3 text-center">
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                match.squadStatus === 'full' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                match.squadStatus === 'partial' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+              }`}>
+                Squad: {match.squadStatus.charAt(0).toUpperCase() + match.squadStatus.slice(1)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
         <div className="flex gap-2">
+          {onViewAvailability && (
+            <button
+              onClick={() => onViewAvailability(match)}
+              className="flex-1 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
+              title="View Availability Dashboard"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Availability
+            </button>
+          )}
           <button
             onClick={() => onView(match)}
             className="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"

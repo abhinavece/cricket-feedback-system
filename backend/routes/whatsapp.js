@@ -3,6 +3,8 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const axios = require('axios');
 const Message = require('../models/Message');
+const Availability = require('../models/Availability');
+const Match = require('../models/Match');
 
 // Webhook verification endpoint (GET)
 // Facebook sends a GET request to verify the webhook
@@ -96,13 +98,110 @@ async function processIncomingMessage(from, text) {
   try {
     console.log(`Processing message from ${from}: "${text}"`);
     
+    // Check if this is a response to an availability request
+    const Player = require('../models/Player');
+    
+    // Format phone number to match database format
+    let formattedPhone = from.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+    
+    // Find the most recent availability request sent to this number
+    const recentAvailabilityMessage = await Message.findOne({
+      to: formattedPhone,
+      messageType: 'availability_request',
+      direction: 'outgoing'
+    }).sort({ timestamp: -1 });
+    
+    if (recentAvailabilityMessage && recentAvailabilityMessage.matchId) {
+      console.log(`Found availability request for match: ${recentAvailabilityMessage.matchId}`);
+      
+      // Determine response type from button text
+      let response = 'pending';
+      const lowerText = text.toLowerCase().trim();
+      
+      if (lowerText === 'yes' || lowerText.includes('available') || lowerText.includes('confirm')) {
+        response = 'yes';
+      } else if (lowerText === 'no' || lowerText.includes('not available') || lowerText.includes('decline')) {
+        response = 'no';
+      } else if (lowerText === 'tentative' || lowerText.includes('maybe') || lowerText.includes('not sure')) {
+        response = 'tentative';
+      }
+      
+      // Find player by phone
+      const player = await Player.findOne({ phone: { $regex: formattedPhone.slice(-10) } });
+      
+      if (player && recentAvailabilityMessage.availabilityId) {
+        // Update availability record
+        const availability = await Availability.findById(recentAvailabilityMessage.availabilityId);
+        
+        if (availability) {
+          availability.response = response;
+          availability.status = 'responded';
+          availability.respondedAt = new Date();
+          availability.messageContent = text;
+          await availability.save();
+          
+          console.log(`Updated availability for player ${player.name}: ${response}`);
+          
+          // Update match statistics and squad
+          const match = await Match.findById(recentAvailabilityMessage.matchId);
+          if (match) {
+            // Recalculate statistics
+            const allAvailabilities = await Availability.find({ matchId: match._id });
+            
+            match.confirmedPlayers = allAvailabilities.filter(a => a.response === 'yes').length;
+            match.declinedPlayers = allAvailabilities.filter(a => a.response === 'no').length;
+            match.tentativePlayers = allAvailabilities.filter(a => a.response === 'tentative').length;
+            match.noResponsePlayers = allAvailabilities.filter(a => a.response === 'pending').length;
+            match.lastAvailabilityUpdate = new Date();
+            
+            // Update squad status
+            if (match.confirmedPlayers >= 11) {
+              match.squadStatus = 'full';
+            } else if (match.confirmedPlayers > 0) {
+              match.squadStatus = 'partial';
+            }
+            
+            // Add to squad if confirmed
+            if (response === 'yes') {
+              const playerInSquad = match.squad.find(
+                s => s.player.toString() === player._id.toString()
+              );
+              
+              if (!playerInSquad) {
+                match.squad.push({
+                  player: player._id,
+                  response: 'yes',
+                  respondedAt: new Date()
+                });
+                console.log(`Added ${player.name} to match squad`);
+              }
+            } else {
+              // Remove from squad if declined or tentative
+              match.squad = match.squad.filter(
+                s => s.player.toString() !== player._id.toString()
+              );
+              console.log(`Removed ${player.name} from match squad`);
+            }
+            
+            await match.save();
+            console.log(`Updated match ${match._id} statistics`);
+          }
+        }
+      }
+    }
+    
     // Save incoming message to database
     await Message.create({
       from: from,
       to: process.env.WHATSAPP_PHONE_NUMBER_ID || 'system',
       text: text,
       direction: 'incoming',
-      timestamp: new Date()
+      timestamp: new Date(),
+      matchId: recentAvailabilityMessage?.matchId || null,
+      messageType: recentAvailabilityMessage?.matchId ? 'availability_response' : 'general'
     });
     
     console.log(`Saved incoming message from ${from} to database`);
@@ -217,7 +316,7 @@ router.post('/test', async (req, res) => {
 // POST /api/whatsapp/send - Send WhatsApp messages to players
 router.post('/send', auth, async (req, res) => {
   try {
-    const { playerIds, message, previewUrl = false, template } = req.body;
+    const { playerIds, message, previewUrl = false, template, matchId, matchTitle } = req.body;
     
     if (!playerIds || !Array.isArray(playerIds) || playerIds.length === 0) {
       return res.status(400).json({
@@ -325,6 +424,26 @@ router.post('/send', auth, async (req, res) => {
         
         console.log(`WhatsApp API Success for ${player.name}:`, JSON.stringify(response.data, null, 2));
         
+        // Create availability record if matchId is provided
+        let availabilityId = null;
+        if (matchId && template) {
+          try {
+            const availability = await Availability.create({
+              matchId,
+              playerId: player._id,
+              playerName: player.name,
+              playerPhone: formattedPhone,
+              response: 'pending',
+              status: 'sent',
+              outgoingMessageId: response.data?.messages?.[0]?.id
+            });
+            availabilityId = availability._id;
+            console.log(`Created availability record for ${player.name} - Match: ${matchId}`);
+          } catch (availErr) {
+            console.error(`Failed to create availability record for ${player.name}:`, availErr.message);
+          }
+        }
+        
         // Save outgoing message to database
         await Message.create({
           from: phoneNumberId,
@@ -332,7 +451,12 @@ router.post('/send', auth, async (req, res) => {
           text: template ? `Template: ${template.name}` : message,
           direction: 'outgoing',
           messageId: response.data?.messages?.[0]?.id,
-          timestamp: new Date()
+          timestamp: new Date(),
+          matchId: matchId || null,
+          matchTitle: matchTitle || null,
+          messageType: matchId && template ? 'availability_request' : 'general',
+          templateUsed: template?.name || null,
+          availabilityId: availabilityId
         });
         
         results.push({
@@ -363,6 +487,21 @@ router.post('/send', auth, async (req, res) => {
     
     const sentCount = results.filter(r => r.status === 'sent').length;
     const failedCount = results.filter(r => r.status === 'failed').length;
+    
+    // Update match statistics if matchId provided
+    if (matchId && sentCount > 0) {
+      try {
+        await Match.findByIdAndUpdate(matchId, {
+          availabilitySent: true,
+          availabilitySentAt: new Date(),
+          totalPlayersRequested: sentCount,
+          noResponsePlayers: sentCount
+        });
+        console.log(`Updated match ${matchId} with availability statistics`);
+      } catch (matchErr) {
+        console.error('Failed to update match statistics:', matchErr.message);
+      }
+    }
     
     res.json({
       success: true,

@@ -33,6 +33,28 @@ const messageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
     index: true
+  },
+  // NEW: Match context fields
+  matchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Match',
+    index: true
+  },
+  matchTitle: {
+    type: String
+  },
+  messageType: {
+    type: String,
+    enum: ['general', 'availability_request', 'availability_response', 'match_update'],
+    default: 'general',
+    index: true
+  },
+  templateUsed: {
+    type: String
+  },
+  availabilityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Availability'
   }
 }, {
   timestamps: true

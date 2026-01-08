@@ -4,6 +4,7 @@ import { Plus, Filter, Search, Calendar, Trophy, Users } from 'lucide-react';
 import MatchForm from './MatchForm';
 import MatchCard from './MatchCard';
 import ConfirmDialog from './ConfirmDialog';
+import MatchAvailabilityDashboard from './MatchAvailabilityDashboard';
 import { matchApi } from '../services/matchApi';
 
 interface Match {
@@ -34,6 +35,16 @@ interface Match {
   };
   createdAt: string;
   notes: string;
+  // Availability tracking fields
+  availabilitySent?: boolean;
+  availabilitySentAt?: string;
+  totalPlayersRequested?: number;
+  confirmedPlayers?: number;
+  declinedPlayers?: number;
+  tentativePlayers?: number;
+  noResponsePlayers?: number;
+  lastAvailabilityUpdate?: string;
+  squadStatus?: 'pending' | 'partial' | 'full';
 }
 
 const MatchManagement: React.FC = () => {
@@ -43,6 +54,8 @@ const MatchManagement: React.FC = () => {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showAvailability, setShowAvailability] = useState(false);
+  const [selectedMatchForAvailability, setSelectedMatchForAvailability] = useState<Match | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -120,6 +133,11 @@ const MatchManagement: React.FC = () => {
   const handleManageSquad = (match: Match) => {
     // TODO: Implement squad management modal
     console.log('Manage squad:', match);
+  };
+
+  const handleViewAvailability = (match: Match) => {
+    setSelectedMatchForAvailability(match);
+    setShowAvailability(true);
   };
 
   const filteredMatches = matches.filter(match => {
@@ -310,11 +328,30 @@ const MatchManagement: React.FC = () => {
                 onDelete={handleDeleteMatch}
                 onView={handleViewMatch}
                 onManageSquad={handleManageSquad}
+                onViewAvailability={handleViewAvailability}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Availability Dashboard Modal */}
+      {showAvailability && selectedMatchForAvailability && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6">
+              <MatchAvailabilityDashboard
+                matchId={selectedMatchForAvailability._id}
+                matchTitle={`${selectedMatchForAvailability.opponent || 'Practice Match'} @ ${selectedMatchForAvailability.ground}`}
+                onClose={() => {
+                  setShowAvailability(false);
+                  setSelectedMatchForAvailability(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Dialog */}
       <ConfirmDialog

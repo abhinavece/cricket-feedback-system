@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updatePlayer, deletePlayer } from '../services/api';
+import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updatePlayer, deletePlayer, getUpcomingMatches } from '../services/api';
 import type { Player } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -39,6 +39,9 @@ const TEMPLATES: TemplateConfig[] = [
 
 const WhatsAppMessagingTab: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
+  const [loadingMatches, setLoadingMatches] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -48,7 +51,7 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [sendMode, setSendMode] = useState<'text' | 'template'>('template');
-  const [message, setMessage] = useState('Hey team, please confirm availability for tomorrow’s match at 7:00 AM.');
+  const [message, setMessage] = useState('Hey team, please confirm availability for tomorrow\'s match at 7:00 AM.');
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateConfig>(TEMPLATES[0]);
   const [templateName, setTemplateName] = useState(TEMPLATES[0].name);
   const [templateLanguage, setTemplateLanguage] = useState(TEMPLATES[0].language);
@@ -103,6 +106,18 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Failed to load players. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMatches = async () => {
+    try {
+      setLoadingMatches(true);
+      const response = await getUpcomingMatches();
+      setMatches(response);
+    } catch (err) {
+      console.error('Failed to load matches:', err);
+    } finally {
+      setLoadingMatches(false);
     }
   };
 
@@ -221,6 +236,7 @@ const WhatsAppMessagingTab: React.FC = () => {
 
   useEffect(() => {
     fetchPlayers();
+    fetchMatches();
   }, []);
 
   const stats = useMemo(() => {
@@ -279,6 +295,12 @@ const WhatsAppMessagingTab: React.FC = () => {
         return;
       }
     } else {
+      // Validate match selection for template messages
+      if (!selectedMatch) {
+        setError('Please select a match for availability tracking.');
+        return;
+      }
+      
       if (selectedTemplate.id === 'mavericks_team_availability') {
         if (!matchDateTime.trim() || !matchVenue.trim()) {
           setError('Please provide both Match Time and Venue details for the template.');
@@ -300,6 +322,12 @@ const WhatsAppMessagingTab: React.FC = () => {
       const payload: Parameters<typeof sendWhatsAppMessage>[0] = {
         playerIds: targets,
       };
+
+      // Add match context if match is selected
+      if (selectedMatch) {
+        payload.matchId = selectedMatch._id;
+        payload.matchTitle = selectedMatch.opponent || 'Practice Match';
+      }
 
       if (sendMode === 'text') {
         payload.message = message.trim();
@@ -1065,6 +1093,72 @@ const WhatsAppMessagingTab: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Match Selection */}
+                  <div>
+                    <label className="form-label text-sm flex items-center gap-2">
+                      <span>Select Match</span>
+                      <span className="text-xs text-gray-500">(Required for availability tracking)</span>
+                    </label>
+                    <select
+                      className="form-control"
+                      value={selectedMatch?._id || ''}
+                      onChange={(e) => {
+                        const match = matches.find(m => m._id === e.target.value);
+                        setSelectedMatch(match || null);
+                        if (match) {
+                          // Auto-fill match details
+                          const matchDate = new Date(match.date);
+                          const timeStr = match.time || matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                          setMatchDateTime(`${matchDate.toLocaleDateString()} ${timeStr}`);
+                          setMatchVenue(match.ground || '');
+                        }
+                      }}
+                    >
+                      <option value="">-- Select a match --</option>
+                      {loadingMatches ? (
+                        <option disabled>Loading matches...</option>
+                      ) : matches.length === 0 ? (
+                        <option disabled>No upcoming matches</option>
+                      ) : (
+                        matches.map(match => {
+                          const matchDate = new Date(match.date);
+                          const dateStr = matchDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          const opponent = match.opponent || 'Practice Match';
+                          return (
+                            <option key={match._id} value={match._id}>
+                              {dateStr} - {opponent} @ {match.ground}
+                            </option>
+                          );
+                        })
+                      )}
+                    </select>
+                    {selectedMatch && (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="text-sm">
+                          <p className="font-semibold text-blue-900">
+                            {selectedMatch.opponent || 'Practice Match'}
+                          </p>
+                          <p className="text-blue-700">
+                            📅 {new Date(selectedMatch.date).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              month: 'long', 
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-blue-700">
+                            📍 {selectedMatch.ground}
+                          </p>
+                          {selectedMatch.time && (
+                            <p className="text-blue-700">
+                              ⏰ {selectedMatch.time}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label className="form-label text-sm">Select Template</label>
                     <select
@@ -1356,7 +1450,7 @@ const WhatsAppMessagingTab: React.FC = () => {
               </div>
               
               {/* Validation Prompt */}
-              {(!selectedPlayers.length || (sendMode === 'template' && selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))) && (
+              {(!selectedPlayers.length || (sendMode === 'template' && (!selectedMatch || (selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))))) && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -1366,6 +1460,8 @@ const WhatsAppMessagingTab: React.FC = () => {
                     <p className="text-xs text-amber-200/80 leading-relaxed">
                       {!selectedPlayers.length 
                         ? "Select at least one recipient from the list above to continue." 
+                        : !selectedMatch && sendMode === 'template'
+                        ? "Please select a match for availability tracking."
                         : "Please fill in the Match Time and Venue details to complete the template."}
                     </p>
                   </div>
@@ -1375,7 +1471,7 @@ const WhatsAppMessagingTab: React.FC = () => {
               <button
                 className="btn btn-primary w-full flex items-center justify-center gap-2 h-12 shadow-lg shadow-emerald-500/10 transition-all hover:shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale"
                 onClick={handleSendMessages}
-                disabled={sending || loading || selectedPlayers.length === 0 || (sendMode === 'template' && selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))}
+                disabled={sending || loading || selectedPlayers.length === 0 || (sendMode === 'template' && (!selectedMatch || (selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))))}
               >
                 {sending ? (
                   <>

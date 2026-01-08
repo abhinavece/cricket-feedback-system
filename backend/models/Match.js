@@ -73,6 +73,42 @@ const matchSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  // NEW: Availability tracking fields
+  availabilitySent: {
+    type: Boolean,
+    default: false
+  },
+  availabilitySentAt: {
+    type: Date
+  },
+  totalPlayersRequested: {
+    type: Number,
+    default: 0
+  },
+  confirmedPlayers: {
+    type: Number,
+    default: 0
+  },
+  declinedPlayers: {
+    type: Number,
+    default: 0
+  },
+  tentativePlayers: {
+    type: Number,
+    default: 0
+  },
+  noResponsePlayers: {
+    type: Number,
+    default: 0
+  },
+  lastAvailabilityUpdate: {
+    type: Date
+  },
+  squadStatus: {
+    type: String,
+    enum: ['pending', 'partial', 'full'],
+    default: 'pending'
   }
 }, {
   timestamps: true
