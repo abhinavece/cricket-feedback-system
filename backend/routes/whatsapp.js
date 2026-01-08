@@ -54,6 +54,7 @@ router.post('/webhook', (req, res) => {
             for (const message of messages) {
               const from = message.from; // WhatsApp ID of sender
               let text = '';
+              const contextId = message.context?.id; // Original message ID being replied to
               
               if (message.type === 'text') {
                 text = message.text.body;
@@ -67,18 +68,17 @@ router.post('/webhook', (req, res) => {
                 } else if (interactive.type === 'list_reply') {
                   text = interactive.list_reply.title;
                 }
-                console.log(`Received interactive response: ${text}`);
-              } else {
-                text = `[${message.type} message]`;
-                console.log(`Received non-text message type: ${message.type}`);
               }
               
               if (text) {
                 console.log(`Message text: ${text}`);
                 console.log(`Message ID: ${message.id}`);
+                if (contextId) {
+                  console.log(`Context ID (replying to): ${contextId}`);
+                }
                 
-                // Process the message asynchronously
-                processIncomingMessage(from, text, message.id).catch(err => {
+                // Process the message asynchronously with context
+                processIncomingMessage(from, text, message.id, contextId).catch(err => {
                   console.error('Error in processIncomingMessage:', err);
                 });
               }
@@ -98,17 +98,18 @@ router.post('/webhook', (req, res) => {
 });
 
 // Process incoming messages
-async function processIncomingMessage(from, text, messageId) {
+async function processIncomingMessage(from, text, messageId, contextId = null) {
   try {
     console.log('\n=== PROCESSING INCOMING MESSAGE ===');
     console.log(`From: ${from}`);
     console.log(`Text: "${text}"`);
     console.log(`Message ID: ${messageId}`);
+    console.log(`Context ID: ${contextId || 'Not provided'}`);
     
     // Check if this is a response to an availability request
     const Player = require('../models/Player');
     
-    // Format phone number to match database format
+    // Format phone number to match database format (needed for both methods)
     let formattedPhone = from.replace(/\D/g, '');
     console.log(`Original phone: ${from}`);
     console.log(`Cleaned phone: ${formattedPhone}`);
@@ -126,17 +127,41 @@ async function processIncomingMessage(from, text, messageId) {
       from // Original format
     ];
     
-    console.log(`Searching for messages with phone variants:`, phoneVariants);
+    let recentAvailabilityMessage = null;
     
-    // Find the most recent availability request sent to this number
-    const recentAvailabilityMessage = await Message.findOne({
-      to: { $in: phoneVariants },
-      $or: [
-        { messageType: 'availability_request' },
-        { messageType: 'general', matchId: { $exists: true } } // Fallback for messages marked as general but have matchId
-      ],
-      direction: 'outgoing'
-    }).sort({ timestamp: -1 });
+    // METHOD 1: Try to find message by context ID (most accurate)
+    if (contextId) {
+      console.log(`\n🔍 METHOD 1: Looking up by context ID...`);
+      recentAvailabilityMessage = await Message.findOne({
+        messageId: contextId,
+        direction: 'outgoing'
+      });
+      
+      if (recentAvailabilityMessage) {
+        console.log(`✅ Found message by context ID!`);
+        console.log(`  Match ID: ${recentAvailabilityMessage.matchId}`);
+        console.log(`  Availability ID: ${recentAvailabilityMessage.availabilityId}`);
+        console.log(`  Sent to: ${recentAvailabilityMessage.to}`);
+      } else {
+        console.log(`❌ No message found with context ID: ${contextId}`);
+      }
+    }
+    
+    // METHOD 2: Fallback to phone number matching if context ID didn't work
+    if (!recentAvailabilityMessage) {
+      console.log(`\n🔍 METHOD 2: Falling back to phone number matching...`);
+      console.log(`Searching for messages with phone variants:`, phoneVariants);
+      
+      // Find the most recent availability request sent to this number
+      recentAvailabilityMessage = await Message.findOne({
+        to: { $in: phoneVariants },
+        $or: [
+          { messageType: 'availability_request' },
+          { messageType: 'general', matchId: { $exists: true } } // Fallback for messages marked as general but have matchId
+        ],
+        direction: 'outgoing'
+      }).sort({ timestamp: -1 });
+    }
     
     console.log(`Found availability message:`, recentAvailabilityMessage ? 'YES' : 'NO');
     if (recentAvailabilityMessage) {

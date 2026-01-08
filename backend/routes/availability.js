@@ -11,7 +11,7 @@ router.get('/match/:matchId', auth, async (req, res) => {
     const { matchId } = req.params;
 
     const availabilities = await Availability.find({ matchId })
-      .populate('playerId', 'name phone')
+      .populate('playerId', 'name phone role team')
       .sort({ createdAt: -1 });
 
     // Calculate statistics

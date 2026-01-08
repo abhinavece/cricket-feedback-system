@@ -69,12 +69,6 @@ availabilitySchema.index({ matchId: 1, status: 1 });
 // Index for quick lookups by player
 availabilitySchema.index({ playerId: 1, response: 1 });
 
-// Update the updatedAt timestamp before saving
-availabilitySchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
 // Virtual for match details
 availabilitySchema.virtual('match', {
   ref: 'Match',

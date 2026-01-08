@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "v36"
+    tag: "v39"
   replicaCount: 1
   resources:
     limits:
