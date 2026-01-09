@@ -46,9 +46,20 @@ router.get('/match/:matchId', auth, async (req, res) => {
       });
     }
 
+    // Convert to JSON and exclude binary image data
+    const paymentObj = payment.toJSON();
+    
+    // Remove binary image data from squadMembers but keep metadata
+    if (paymentObj.squadMembers) {
+      paymentObj.squadMembers = paymentObj.squadMembers.map(member => {
+        const { screenshotImage, ...memberWithoutImage } = member;
+        return memberWithoutImage;
+      });
+    }
+
     res.json({
       success: true,
-      payment
+      payment: paymentObj
     });
   } catch (error) {
     console.error('Error fetching match payment:', error);
