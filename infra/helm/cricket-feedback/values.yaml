@@ -14,7 +14,7 @@ backend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-backend
-    tag: "v62"
+    tag: "v63"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -101,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "v67"
+    tag: "v68"
   replicaCount: 1
   
   service:
