@@ -99,10 +99,9 @@ backend:
 frontend:
   enabled: true
   image:
-    registry: phx.ocir.io
-    repository: axkw6whnjncs/cricket-feedback-frontend
-    tag: "v63"
-    pullPolicy: IfNotPresent
+    registry: phx.ocir.io/axkw6whnjncs
+    repository: cricket-feedback-frontend
+    tag: "v65"
   replicaCount: 1
   
   service:

@@ -27,13 +27,13 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       {/* Dynamic Background Glow */}
-      <div className={`absolute -inset-0.5 rounded-xl opacity-0 blur-lg transition-all duration-500 group-hover:opacity-30 ${
+      <div className={`absolute -inset-0.5 rounded-xl opacity-0 blur-lg transition-all duration-500 group-hover:opacity-60 ${
         avgRating >= 4 ? 'bg-emerald-500' : avgRating >= 3 ? 'bg-amber-500' : 'bg-rose-500'
       }`}></div>
 
       {/* Main Card Container */}
       <div 
-        className="relative h-full flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f172a]/95 backdrop-blur-xl transition-all duration-300 group-hover:border-white/20 group-hover:shadow-lg sm:p-4 p-3"
+        className={`relative h-full flex flex-col overflow-hidden rounded-xl border border-white/5 bg-gradient-to-br from-slate-800/70 to-slate-900/80 backdrop-blur-xl shadow-lg transition-all duration-300 group-hover:border-white/10 group-hover:shadow-2xl sm:p-5 p-4`}
         onClick={() => onClick(item)}
         role="button"
         tabIndex={0}
@@ -44,7 +44,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
         }}
       >
         {/* Top Accent Bar */}
-        <div className={`h-0.5 w-full transition-all duration-300 ${
+        <div className={`h-0.5 w-full mt-1 transition-all duration-300 ${
           avgRating >= 4 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 
           avgRating >= 3 ? 'bg-gradient-to-r from-amber-500 to-orange-400' : 
           'bg-gradient-to-r from-rose-500 to-pink-400'
@@ -87,7 +87,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
 
             {/* Mobile Aggregated Performance Tile */}
             <div className="mb-2">
-              <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-3 border border-white/5">
+              <div className="bg-gradient-to-br from-slate-700/40 to-slate-800/60 rounded-xl p-3 border border-white/5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Performance</span>
                   <span className={`text-xs font-black px-2 py-0.5 rounded-full ${

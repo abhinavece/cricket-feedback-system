@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updatePlayer, deletePlayer, getUpcomingMatches } from '../services/api';
+import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updatePlayer, deletePlayer, getUpcomingMatches, createMatch } from '../services/api';
 import type { Player } from '../types';
 import ConfirmDialog from './ConfirmDialog';
+import MatchForm from './MatchForm';
 
 interface TemplateConfig {
   id: string;
@@ -66,6 +67,8 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [showMatchForm, setShowMatchForm] = useState(false);
+  const [creatingMatch, setCreatingMatch] = useState(false);
   const [historyNewMessage, setHistoryNewMessage] = useState('');
   const [sendingHistoryMessage, setSendingHistoryMessage] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
@@ -118,6 +121,31 @@ const WhatsAppMessagingTab: React.FC = () => {
       console.error('Failed to load matches:', err);
     } finally {
       setLoadingMatches(false);
+    }
+  };
+
+  const handleCreateMatch = async (matchData: any) => {
+    try {
+      setCreatingMatch(true);
+      const newMatch = await createMatch(matchData);
+      await fetchMatches(); // Refresh matches list
+      setSelectedMatch(newMatch); // Auto-select the newly created match
+      
+      // Auto-fill match details in the form
+      const matchDate = new Date(newMatch.date);
+      const timeStr = newMatch.time || matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      setMatchDateTime(`${matchDate.toLocaleDateString()} ${timeStr}`);
+      setMatchVenue(newMatch.ground || '');
+      
+      setShowMatchForm(false);
+      setSuccess('Match created successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Failed to create match:', err);
+      setError('Failed to create match. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setCreatingMatch(false);
     }
   };
 
@@ -1103,6 +1131,10 @@ const WhatsAppMessagingTab: React.FC = () => {
                       className="form-control"
                       value={selectedMatch?._id || ''}
                       onChange={(e) => {
+                        if (e.target.value === 'create-new') {
+                          setShowMatchForm(true);
+                          return;
+                        }
                         const match = matches.find(m => m._id === e.target.value);
                         setSelectedMatch(match || null);
                         if (match) {
@@ -1115,6 +1147,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                       }}
                     >
                       <option value="">-- Select a match --</option>
+                      <option value="create-new" className="font-semibold text-green-600 bg-green-50">+ Create a new match</option>
                       {loadingMatches ? (
                         <option disabled>Loading matches...</option>
                       ) : matches.length === 0 ? (
@@ -1633,6 +1666,34 @@ const WhatsAppMessagingTab: React.FC = () => {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Match Creation Modal */}
+      {showMatchForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Create New Match</h2>
+                <button
+                  onClick={() => setShowMatchForm(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <MatchForm
+                mode="create"
+                onSubmit={handleCreateMatch}
+                onCancel={() => setShowMatchForm(false)}
+                loading={creatingMatch}
+              />
             </div>
           </div>
         </div>
