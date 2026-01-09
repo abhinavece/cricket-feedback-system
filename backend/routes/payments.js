@@ -508,8 +508,8 @@ router.post('/:id/send-requests', auth, async (req, res) => {
   }
 });
 
-// GET /api/payments/:id/screenshot/:memberId - Get screenshot image
-router.get('/:id/screenshot/:memberId', auth, async (req, res) => {
+// GET /api/payments/:id/screenshot/:memberId - Get screenshot image (public for img src)
+router.get('/:id/screenshot/:memberId', async (req, res) => {
   try {
     const payment = await MatchPayment.findById(req.params.id);
     if (!payment) {
