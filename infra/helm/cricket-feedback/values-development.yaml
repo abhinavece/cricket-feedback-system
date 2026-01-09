@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "v45"
+    tag: "v62"
   replicaCount: 1
   resources:
     limits:
@@ -16,7 +16,8 @@ backend:
 
 frontend:
   image:
-    tag: "v60"
+    repository: axkw6whnjncs/cricket-feedback-frontend
+    tag: "v63"
   replicaCount: 1
   resources:
     limits:

@@ -14,7 +14,7 @@ backend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-backend
-    tag: "v45"
+    tag: "v62"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -101,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-frontend
-    tag: "v60"
+    tag: "v63"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -144,7 +144,14 @@ mongodb:
   persistence:
     enabled: true
     storageClass: "oci-bv"
-    size: 8Gi
+    size: 50Gi
+    annotations:
+      # Prevent automatic deletion when namespace is deleted
+      "helm.sh/resource-policy": keep
+    accessModes:
+      - ReadWriteOnce
+    # Retain data even if PVC is deleted
+    persistentVolumeReclaimPolicy: Retain
   
   resources:
     limits:
@@ -170,7 +177,7 @@ ingress:
 
 # Secrets configuration
 secrets:
-  enabled: true
+  enabled: false
   jwtSecret: "CHANGE_ME_JWT"
   googleClientId: "CHANGE_ME_GOOGLE_CLIENT_ID"
   googleClientSecret: "CHANGE_ME_GOOGLE_CLIENT_SECRET"
