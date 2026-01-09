@@ -428,7 +428,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                        <span className="text-xs text-emerald-400 font-medium w-16">✓ {stats.confirmed}</span>
+                        <span className="text-xs text-emerald-400 font-medium min-w-[70px]">Yes {stats.confirmed}</span>
                         <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-emerald-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.confirmed / stats.total) * 100 : 0}%` }}></div>
                         </div>
@@ -436,7 +436,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                       
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                        <span className="text-xs text-amber-400 font-medium w-16">? {stats.tentative}</span>
+                        <span className="text-xs text-amber-400 font-medium min-w-[70px]">Tentative {stats.tentative}</span>
                         <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.tentative / stats.total) * 100 : 0}%` }}></div>
                         </div>
@@ -444,7 +444,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                       
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-                        <span className="text-xs text-rose-400 font-medium w-16">✗ {stats.declined}</span>
+                        <span className="text-xs text-rose-400 font-medium min-w-[70px]">No {stats.declined}</span>
                         <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.declined / stats.total) * 100 : 0}%` }}></div>
                         </div>
@@ -452,7 +452,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                       
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                        <span className="text-xs text-slate-400 font-medium w-16">⏱ {stats.pending}</span>
+                        <span className="text-xs text-slate-400 font-medium min-w-[70px]">No Response {stats.pending}</span>
                         <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-slate-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}></div>
                         </div>
@@ -661,7 +661,38 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           {/* Squad Builder Tab */}
           {activeTab === 'squad' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Mobile: Compact summary */}
+              <div className="md:hidden bg-slate-800/50 border border-white/10 rounded-lg p-4 mb-4">
+                <h4 className="font-bold text-white mb-3">Squad Summary</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                    <span className="text-xs text-emerald-400 font-medium min-w-[70px]">Available {availableSquad.length}</span>
+                    <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                      <div className="h-full bg-emerald-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (availableSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                    <span className="text-xs text-amber-400 font-medium min-w-[70px]">Tentative {tentativeSquad.length}</span>
+                    <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                      <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (tentativeSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-rose-400"></div>
+                    <span className="text-xs text-rose-400 font-medium min-w-[70px]">Not Available {unavailableSquad.length}</span>
+                    <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                      <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (unavailableSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop: 3-column grid */}
+              <div className="hidden md:grid md:grid-cols-3 md:gap-4">
                 
                 {/* Available */}
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
@@ -727,8 +758,8 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                 </div>
               </div>
 
-              {/* Squad Summary */}
-              <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
+              {/* Squad Summary - Desktop Only */}
+              <div className="hidden md:block bg-slate-800/50 border border-white/10 rounded-lg p-4">
                 <h4 className="font-bold text-white mb-2">Squad Summary</h4>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
@@ -750,24 +781,41 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-3 md:p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-2 md:p-4">
+          {/* Mobile: Minimal footer */}
+          <div className="md:hidden flex items-center justify-between gap-2">
+            <button
+              onClick={loadMatchAndAvailability}
+              disabled={loading}
+              className="flex-1 px-2 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1 border border-blue-500/30 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-all"
+            >
+              Close
+            </button>
+          </div>
+
+          {/* Desktop: Full footer */}
+          <div className="hidden md:flex items-center justify-between gap-2 text-xs text-slate-400">
+            <div className="flex flex-row items-center gap-4">
               <span className="flex items-center gap-1">
                 <RefreshCw className="w-3 h-3 animate-spin" />
-                <span className="hidden sm:inline">Auto-refreshing every 10s</span>
-                <span className="sm:hidden">Auto-refresh</span>
+                Auto-refreshing every 10s
               </span>
               {match.lastAvailabilityUpdate && (
                 <span>
-                  <span className="hidden sm:inline">Last updated: </span>
-                  {new Date(match.lastAvailabilityUpdate).toLocaleTimeString()}
+                  Last updated: {new Date(match.lastAvailabilityUpdate).toLocaleTimeString()}
                 </span>
               )}
             </div>
             <button
               onClick={onClose}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs md:text-sm font-medium rounded-lg transition-all w-full sm:w-auto"
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all"
             >
               Close
             </button>

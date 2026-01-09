@@ -59,6 +59,7 @@ const MatchManagement: React.FC = () => {
   const [selectedMatchForAvailability, setSelectedMatchForAvailability] = useState<Match | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<Match | null>(null);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -74,6 +75,20 @@ const MatchManagement: React.FC = () => {
   useEffect(() => {
     fetchMatches();
   }, []);
+
+  // Close filter menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showFilterMenu) {
+        setShowFilterMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showFilterMenu]);
 
   const fetchMatches = async () => {
     try {
@@ -197,21 +212,21 @@ const MatchManagement: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
       <div className="bg-slate-800/50 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-6">
             <div>
-              <h1 className="text-3xl font-black text-white flex items-center gap-3">
-                <Trophy className="w-8 h-8 text-emerald-400" />
+              <h1 className="text-xl sm:text-3xl font-black text-white flex items-center gap-2 sm:gap-3">
+                <Trophy className="w-5 h-5 sm:w-8 sm:h-8 text-emerald-400" />
                 Match Management
               </h1>
-              <p className="text-slate-400 mt-1">Create and manage cricket matches with squad availability</p>
+              <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1 hidden sm:block">Create and manage cricket matches with squad availability</p>
             </div>
             
             <button
               onClick={handleCreateMatch}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm sm:text-base font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2 w-full sm:w-auto justify-center"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               Create Match
             </button>
           </div>
@@ -219,8 +234,38 @@ const MatchManagement: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-8">
+        {/* Mobile: Single compact card with inline stats */}
+        <div className="sm:hidden bg-slate-800/50 backdrop-blur-xl rounded-lg border border-white/10 p-3 mb-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Trophy className="w-3 h-3 text-emerald-400" />
+              <span className="text-xs text-slate-400">Total:</span>
+              <span className="text-sm font-black text-white">{stats.total}</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-amber-400" />
+              <span className="text-xs text-slate-400">Up:</span>
+              <span className="text-sm font-black text-white">{stats.upcoming}</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Users className="w-3 h-3 text-emerald-400" />
+              <span className="text-xs text-slate-400">Conf:</span>
+              <span className="text-sm font-black text-white">{stats.confirmed}</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Trophy className="w-3 h-3 text-slate-400" />
+              <span className="text-xs text-slate-400">Done:</span>
+              <span className="text-sm font-black text-white">{stats.completed}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop: 4-column grid */}
+        <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -271,27 +316,54 @@ const MatchManagement: React.FC = () => {
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-white/10 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-lg border border-white/10 p-3 sm:p-6 mb-4 sm:mb-8">
+          {/* Mobile: Search + Filter Button */}
+          <div className="sm:hidden flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search matches..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
+              />
+            </div>
+            
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFilterMenu(!showFilterMenu);
+                }}
+                className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1"
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop: Search + Dropdown */}
+          <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search matches by ID, opponent, or ground..."
+                  placeholder="Search matches..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
+                  className="w-full pl-9 pr-3 py-2 sm:py-3 text-sm sm:text-base bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
                 />
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-slate-400" />
+              <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
+                className="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base bg-slate-700/50 border border-slate-600 rounded-lg text-white transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
               >
                 <option value="all">All Status</option>
                 <option value="draft">Draft</option>
@@ -302,6 +374,33 @@ const MatchManagement: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Filter Dropdown - Outside container to avoid clipping */}
+        {showFilterMenu && (
+          <div 
+            className="fixed left-0 right-0 top-32 z-[9999] px-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full max-w-xs mx-auto bg-slate-800 border border-slate-600 rounded-lg shadow-lg overflow-hidden">
+              {['all', 'draft', 'confirmed', 'cancelled', 'completed'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => {
+                    setStatusFilter(status);
+                    setShowFilterMenu(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm transition-all ${
+                    statusFilter === status
+                      ? 'bg-emerald-500/20 text-emerald-400 border-l-2 border-emerald-400'
+                      : 'text-slate-300 hover:bg-slate-700/50'
+                  }`}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Matches Grid */}
         {loading ? (

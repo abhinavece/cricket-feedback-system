@@ -200,8 +200,40 @@ const MatchCard: React.FC<MatchCardProps> = ({
             ></div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-4 gap-2 text-center">
+          {/* Mobile: Compact stats */}
+          <div className="sm:hidden space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+              <span className="text-xs text-emerald-400 font-medium min-w-[50px]">Yes {stats.yes}</span>
+              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.yes / stats.total) * 100 : 0}%` }}></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+              <span className="text-xs text-amber-400 font-medium min-w-[50px]">Maybe {stats.tentative}</span>
+              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full bg-amber-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.tentative / stats.total) * 100 : 0}%` }}></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-rose-400"></div>
+              <span className="text-xs text-rose-400 font-medium min-w-[50px]">No {stats.no}</span>
+              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full bg-rose-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.no / stats.total) * 100 : 0}%` }}></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+              <span className="text-xs text-slate-400 font-medium min-w-[50px]">Pending {stats.pending}</span>
+              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full bg-slate-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: Stats Grid */}
+          <div className="hidden sm:grid grid-cols-4 gap-2 text-center">
             <div className="bg-emerald-500/10 rounded-lg p-2">
               <div className="text-lg font-black text-emerald-400">{stats.yes}</div>
               <div className="text-xs text-slate-400">✅ Yes</div>
