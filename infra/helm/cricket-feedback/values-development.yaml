@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "v64"
+    tag: "v65"
   replicaCount: 1
   resources:
     limits:
