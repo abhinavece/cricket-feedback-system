@@ -101,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "v70"
+    tag: "v71"
   replicaCount: 1
   
   service:
@@ -119,7 +119,7 @@ frontend:
   
   env:
     - name: REACT_APP_API_URL
-      value: "https://129.153.86.8.sslip.io/api"
+      value: "https://mavericks11.duckdns.org/api"
     - name: REACT_APP_GOOGLE_CLIENT_ID
       valueFrom:
         secretKeyRef:
