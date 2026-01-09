@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Cricket Feedback System - Windsurf AI Guidelines
 
 ## 🏏 Project Overview

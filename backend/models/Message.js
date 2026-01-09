@@ -45,7 +45,7 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['general', 'availability_request', 'availability_response', 'match_update'],
+    enum: ['general', 'availability_request', 'availability_response', 'availability_reminder', 'match_update'],
     default: 'general',
     index: true
   },
@@ -55,6 +55,15 @@ const messageSchema = new mongoose.Schema({
   availabilityId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Availability'
+  },
+  // Player context for incoming messages
+  playerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Player',
+    index: true
+  },
+  playerName: {
+    type: String
   }
 }, {
   timestamps: true

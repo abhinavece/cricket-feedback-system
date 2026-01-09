@@ -105,19 +105,51 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
     console.log(`Text: "${text}"`);
     console.log(`Message ID: ${messageId}`);
     console.log(`Context ID: ${contextId || 'Not provided'}`);
-    
+
     // Check if this is a response to an availability request
     const Player = require('../models/Player');
-    
+
     // Format phone number to match database format (needed for both methods)
     let formattedPhone = from.replace(/\D/g, '');
     console.log(`Original phone: ${from}`);
     console.log(`Cleaned phone: ${formattedPhone}`);
-    
+
     if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
       formattedPhone = '91' + formattedPhone;
     }
     console.log(`Formatted phone: ${formattedPhone}`);
+
+    // CRITICAL: Save ALL incoming messages immediately, regardless of context
+    // This ensures no messages are ever lost
+    let savedMessage = null;
+    try {
+      // Try to find associated player for enrichment (but don't require it)
+      const player = await Player.findOne({
+        phone: { $regex: formattedPhone.slice(-10) }
+      });
+
+      savedMessage = await Message.create({
+        from: formattedPhone,
+        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        text: text,
+        direction: 'incoming',
+        messageId: messageId,
+        timestamp: new Date(),
+        messageType: 'general', // Will be updated to 'availability_response' if context validates
+        playerId: player?._id || null,
+        playerName: player?.name || null
+      });
+
+      console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
+      if (player) {
+        console.log(`   Associated with player: ${player.name}`);
+      } else {
+        console.log(`   No player association (unknown sender)`);
+      }
+    } catch (saveErr) {
+      // Log error but continue processing - don't fail the whole flow
+      console.error(`⚠️ Failed to persist message immediately:`, saveErr.message);
+    }
     
     // Try multiple phone formats to find the message
     const phoneVariants = [
@@ -128,57 +160,82 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
     ];
     
     let recentAvailabilityMessage = null;
-    
+    let contextValidated = false; // Track if context was properly validated
+    let contextIdProvided = !!contextId; // Track if contextId was in the original message
+
     // METHOD 1: Try to find message by context ID (most accurate)
     if (contextId) {
       console.log(`\n🔍 METHOD 1: Looking up by context ID...`);
-      recentAvailabilityMessage = await Message.findOne({
+      const contextMessage = await Message.findOne({
         messageId: contextId,
         direction: 'outgoing'
       });
-      
-      if (recentAvailabilityMessage) {
+
+      if (contextMessage) {
         console.log(`✅ Found message by context ID!`);
-        console.log(`  Match ID: ${recentAvailabilityMessage.matchId}`);
-        console.log(`  Availability ID: ${recentAvailabilityMessage.availabilityId}`);
-        console.log(`  Sent to: ${recentAvailabilityMessage.to}`);
+        console.log(`  Message Type: ${contextMessage.messageType}`);
+        console.log(`  Match ID: ${contextMessage.matchId}`);
+        console.log(`  Availability ID: ${contextMessage.availabilityId}`);
+        console.log(`  Sent to: ${contextMessage.to}`);
+
+        // CRITICAL: Only treat as availability reply if the context message is an availability_request
+        // or availability_reminder (has matchId and is related to availability)
+        const isAvailabilityTemplate = contextMessage.messageType === 'availability_request' ||
+                                       contextMessage.messageType === 'availability_reminder' ||
+                                       (contextMessage.matchId && contextMessage.availabilityId);
+
+        if (isAvailabilityTemplate) {
+          recentAvailabilityMessage = contextMessage;
+          contextValidated = true;
+          console.log(`✅ Context validated: This is a reply to an availability request`);
+        } else {
+          console.log(`❌ Context message is NOT an availability request (type: ${contextMessage.messageType})`);
+          console.log(`   This message will NOT update availability statistics`);
+        }
       } else {
         console.log(`❌ No message found with context ID: ${contextId}`);
+        console.log(`   This message will NOT update availability statistics (invalid context)`);
       }
     }
-    
-    // METHOD 2: Fallback to phone number matching if context ID didn't work
-    if (!recentAvailabilityMessage) {
-      console.log(`\n🔍 METHOD 2: Falling back to phone number matching...`);
+
+    // METHOD 2: Fallback to phone number matching ONLY if NO contextId was provided
+    // If contextId was provided but invalid, we should NOT fallback - this prevents wrong matches
+    if (!recentAvailabilityMessage && !contextIdProvided) {
+      console.log(`\n🔍 METHOD 2: No context ID provided, falling back to phone number matching...`);
       console.log(`Searching for messages with phone variants:`, phoneVariants);
-      
+
       // Find the most recent availability request sent to this number
+      // Only match actual availability_request or availability_reminder messages
       recentAvailabilityMessage = await Message.findOne({
         to: { $in: phoneVariants },
-        $or: [
-          { messageType: 'availability_request' },
-          { messageType: 'general', matchId: { $exists: true } } // Fallback for messages marked as general but have matchId
-        ],
-        direction: 'outgoing'
+        messageType: { $in: ['availability_request', 'availability_reminder'] },
+        direction: 'outgoing',
+        matchId: { $exists: true, $ne: null } // Must have a matchId
       }).sort({ timestamp: -1 });
+
+      if (recentAvailabilityMessage) {
+        contextValidated = true;
+        console.log(`✅ Found availability request via phone fallback`);
+      }
+    } else if (!recentAvailabilityMessage && contextIdProvided) {
+      console.log(`\n⚠️ Context ID was provided but invalid - NOT falling back to phone matching`);
+      console.log(`   This protects against updating wrong availability records`);
     }
-    
-    console.log(`Found availability message:`, recentAvailabilityMessage ? 'YES' : 'NO');
+
+    console.log(`\n📊 Context Validation Summary:`);
+    console.log(`   Context ID Provided: ${contextIdProvided ? 'YES' : 'NO'}`);
+    console.log(`   Context Validated: ${contextValidated ? 'YES' : 'NO'}`);
+    console.log(`   Found Availability Message: ${recentAvailabilityMessage ? 'YES' : 'NO'}`);
     if (recentAvailabilityMessage) {
-      console.log(`  Match ID: ${recentAvailabilityMessage.matchId}`);
-      console.log(`  Availability ID: ${recentAvailabilityMessage.availabilityId}`);
-      console.log(`  Sent to: ${recentAvailabilityMessage.to}`);
-      console.log(`  Sent at: ${recentAvailabilityMessage.timestamp}`);
+      console.log(`   Match ID: ${recentAvailabilityMessage.matchId}`);
+      console.log(`   Availability ID: ${recentAvailabilityMessage.availabilityId}`);
+      console.log(`   Sent at: ${recentAvailabilityMessage.timestamp}`);
     }
-    
-    // Only process as availability response if:
-    // 1. This is a reply to a specific message (has context ID) OR
-    // 2. This is a button response (which are always availability-related)
-    const isAvailabilityReply = contextId || recentAvailabilityMessage.messageType === 'availability_request';
-    
-    if (recentAvailabilityMessage && recentAvailabilityMessage.matchId && isAvailabilityReply) {
-      console.log(`\n✅ Found availability request for match: ${recentAvailabilityMessage.matchId}`);
-      console.log(`Processing as availability response: ${isAvailabilityReply ? 'YES' : 'NO'}`);
+
+    // Only process as availability response if context was properly validated
+    // This ensures we never update availability for invalid/unrelated messages
+    if (recentAvailabilityMessage && recentAvailabilityMessage.matchId && contextValidated) {
+      console.log(`\n✅ Processing availability response for match: ${recentAvailabilityMessage.matchId}`);
       
       // Determine response type from button text
       let response = 'pending';
@@ -295,6 +352,21 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
             console.log(`   Match: ${match.matchId}`);
             console.log(`   Squad Status: ${match.squadStatus}`);
             console.log(`   Last Update: ${match.lastAvailabilityUpdate}`);
+
+            // Update the saved incoming message to link it to the match context
+            if (savedMessage) {
+              try {
+                await Message.findByIdAndUpdate(savedMessage._id, {
+                  messageType: 'availability_response',
+                  matchId: recentAvailabilityMessage.matchId,
+                  matchTitle: recentAvailabilityMessage.matchTitle,
+                  availabilityId: availability._id
+                });
+                console.log(`✅ Incoming message linked to match context`);
+              } catch (linkErr) {
+                console.error(`⚠️ Failed to link message to match:`, linkErr.message);
+              }
+            }
           } else {
             console.log(`❌ Match not found: ${recentAvailabilityMessage.matchId}`);
           }
@@ -337,42 +409,35 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
             
             await match.save();
             console.log(`✅ Match updated via fallback method`);
+
+            // Update the saved incoming message to link it to the match context
+            if (savedMessage) {
+              try {
+                await Message.findByIdAndUpdate(savedMessage._id, {
+                  messageType: 'availability_response',
+                  matchId: recentAvailabilityMessage.matchId,
+                  matchTitle: recentAvailabilityMessage.matchTitle,
+                  availabilityId: availability._id
+                });
+                console.log(`✅ Incoming message linked to match context (fallback)`);
+              } catch (linkErr) {
+                console.error(`⚠️ Failed to link message to match:`, linkErr.message);
+              }
+            }
           }
         } else {
           console.log(`❌ Could not find availability record by any method`);
         }
       }
     } else {
-      console.log(`❌ Not processing as availability response`);
-      
-      // Handle general chat messages - save to database for chat interface
-      try {
-        const player = await Player.findOne({ 
-          phone: { $regex: formattedPhone.slice(-10) } 
-        });
-        
-        if (player) {
-          console.log(`✅ Found player for general message: ${player.name}`);
-          
-          // Save incoming message to database
-          await Message.create({
-            from: formattedPhone,
-            to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-            text: text,
-            direction: 'incoming',
-            messageId: messageId,
-            timestamp: new Date(),
-            messageType: 'general',
-            playerId: player._id,
-            playerName: player.name
-          });
-          
-          console.log(`✅ General message saved to database`);
-        } else {
-          console.log(`❌ Player not found for general message from: ${formattedPhone}`);
-        }
-      } catch (saveErr) {
-        console.error(`❌ Error saving general message:`, saveErr.message);
+      // Message was already saved at the start of processing
+      // Log why it wasn't processed as an availability response
+      if (!recentAvailabilityMessage) {
+        console.log(`ℹ️ No matching availability request found - saved as general message`);
+      } else if (!recentAvailabilityMessage.matchId) {
+        console.log(`ℹ️ No matchId in availability message - saved as general message`);
+      } else if (!contextValidated) {
+        console.log(`ℹ️ Context validation failed - saved as general message (availability NOT updated)`);
       }
     }
     
