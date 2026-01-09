@@ -12,6 +12,8 @@ const playerRoutes = require('./routes/players');
 const whatsappRoutes = require('./routes/whatsapp');
 const matchRoutes = require('./routes/matches');
 const availabilityRoutes = require('./routes/availability');
+const paymentRoutes = require('./routes/payments');
+const seedRoutes = require('./routes/seed');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,6 +43,8 @@ app.use('/api/players', playerRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/availability', availabilityRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/seed', seedRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

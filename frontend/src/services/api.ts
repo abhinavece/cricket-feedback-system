@@ -171,4 +171,83 @@ export const sendReminder = async (matchId: string) => {
   return response.data;
 };
 
+// Payment APIs
+export const getPayments = async () => {
+  const response = await api.get('/payments');
+  return response.data;
+};
+
+export const getPaymentByMatch = async (matchId: string) => {
+  const response = await api.get(`/payments/match/${matchId}`);
+  return response.data;
+};
+
+export const getPaymentById = async (id: string) => {
+  const response = await api.get(`/payments/${id}`);
+  return response.data;
+};
+
+export const createPayment = async (data: {
+  matchId: string;
+  totalAmount: number;
+  squadMembers: Array<{
+    playerId?: string;
+    playerName: string;
+    playerPhone: string;
+    adjustedAmount?: number;
+  }>;
+  notes?: string;
+}) => {
+  const response = await api.post('/payments', data);
+  return response.data;
+};
+
+export const updatePayment = async (id: string, data: any) => {
+  const response = await api.put(`/payments/${id}`, data);
+  return response.data;
+};
+
+export const updatePaymentMember = async (paymentId: string, memberId: string, data: {
+  adjustedAmount?: number;
+  paymentStatus?: string;
+  notes?: string;
+}) => {
+  const response = await api.put(`/payments/${paymentId}/member/${memberId}`, data);
+  return response.data;
+};
+
+export const addPaymentMember = async (paymentId: string, data: {
+  playerName: string;
+  playerPhone: string;
+  playerId?: string;
+  adjustedAmount?: number;
+}) => {
+  const response = await api.post(`/payments/${paymentId}/add-member`, data);
+  return response.data;
+};
+
+export const removePaymentMember = async (paymentId: string, memberId: string) => {
+  const response = await api.delete(`/payments/${paymentId}/member/${memberId}`);
+  return response.data;
+};
+
+export const loadSquadFromAvailability = async (matchId: string) => {
+  const response = await api.post(`/payments/load-squad/${matchId}`);
+  return response.data;
+};
+
+export const sendPaymentRequests = async (paymentId: string, memberIds?: string[]) => {
+  const response = await api.post(`/payments/${paymentId}/send-requests`, { memberIds });
+  return response.data;
+};
+
+export const deletePayment = async (id: string) => {
+  const response = await api.delete(`/payments/${id}`);
+  return response.data;
+};
+
+export const getPaymentScreenshot = (paymentId: string, memberId: string) => {
+  return `${API_BASE_URL}/payments/${paymentId}/screenshot/${memberId}`;
+};
+
 export default api;

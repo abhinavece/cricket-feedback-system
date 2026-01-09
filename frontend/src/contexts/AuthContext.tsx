@@ -41,6 +41,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if auth is disabled for local development
+    if (process.env.REACT_APP_DISABLE_AUTH === 'true') {
+      console.log('⚠️ Auth bypassed - REACT_APP_DISABLE_AUTH is enabled');
+      const mockUser: User = {
+        id: 'local-dev-user',
+        email: 'dev@localhost',
+        name: 'Local Dev Admin',
+        role: 'admin',
+      };
+      setUser(mockUser);
+      setToken('local-dev-token');
+      setLoading(false);
+      return;
+    }
+
     // Check for existing token on mount
     const storedToken = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('authUser');

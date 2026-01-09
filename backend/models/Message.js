@@ -45,9 +45,17 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['general', 'availability_request', 'availability_response', 'availability_reminder', 'match_update'],
+    enum: ['general', 'availability_request', 'availability_response', 'availability_reminder', 'match_update', 'payment_request', 'payment_screenshot'],
     default: 'general',
     index: true
+  },
+  paymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MatchPayment',
+    index: true
+  },
+  paymentMemberId: {
+    type: mongoose.Schema.Types.ObjectId
   },
   templateUsed: {
     type: String

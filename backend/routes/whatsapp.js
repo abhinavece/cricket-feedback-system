@@ -5,6 +5,7 @@ const axios = require('axios');
 const Message = require('../models/Message');
 const Availability = require('../models/Availability');
 const Match = require('../models/Match');
+const MatchPayment = require('../models/MatchPayment');
 
 // Webhook verification endpoint (GET)
 // Facebook sends a GET request to verify the webhook
@@ -68,6 +69,16 @@ router.post('/webhook', (req, res) => {
                 } else if (interactive.type === 'list_reply') {
                   text = interactive.list_reply.title;
                 }
+              } else if (message.type === 'image') {
+                // Handle image messages (payment screenshots)
+                console.log(`Received image from ${from}`);
+                const imageId = message.image?.id;
+                const caption = message.image?.caption || '';
+                
+                processPaymentScreenshot(from, imageId, message.id, contextId, caption).catch(err => {
+                  console.error('Error in processPaymentScreenshot:', err);
+                });
+                continue; // Skip text processing for images
               }
               
               if (text) {
@@ -444,6 +455,197 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
     console.log('=== END PROCESSING ===\n');
   } catch (error) {
     console.error('❌ Error processing incoming message:', error);
+    console.error('Stack trace:', error.stack);
+  }
+}
+
+// Process payment screenshot uploads
+async function processPaymentScreenshot(from, imageId, messageId, contextId, caption) {
+  try {
+    console.log('\n=== PROCESSING PAYMENT SCREENSHOT ===');
+    console.log(`From: ${from}`);
+    console.log(`Image ID: ${imageId}`);
+    console.log(`Message ID: ${messageId}`);
+    console.log(`Context ID: ${contextId || 'Not provided'}`);
+    console.log(`Caption: ${caption || 'None'}`);
+
+    // Format phone number
+    let formattedPhone = from.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+
+    const phoneVariants = [
+      formattedPhone,
+      formattedPhone.slice(-10),
+      '91' + formattedPhone.slice(-10),
+      from
+    ];
+
+    // Find the payment request message this is replying to
+    let paymentMessage = null;
+
+    // METHOD 1: Try to find by context ID
+    if (contextId) {
+      console.log('🔍 Looking up payment request by context ID...');
+      paymentMessage = await Message.findOne({
+        messageId: contextId,
+        direction: 'outgoing',
+        messageType: 'payment_request'
+      });
+
+      if (paymentMessage) {
+        console.log(`✅ Found payment request by context ID`);
+        console.log(`   Payment ID: ${paymentMessage.paymentId}`);
+        console.log(`   Member ID: ${paymentMessage.paymentMemberId}`);
+      }
+    }
+
+    // METHOD 2: Fallback to recent payment request by phone
+    if (!paymentMessage) {
+      console.log('🔍 Falling back to phone number lookup...');
+      paymentMessage = await Message.findOne({
+        to: { $in: phoneVariants },
+        messageType: 'payment_request',
+        direction: 'outgoing'
+      }).sort({ timestamp: -1 });
+
+      if (paymentMessage) {
+        console.log(`✅ Found payment request by phone fallback`);
+      }
+    }
+
+    if (!paymentMessage || !paymentMessage.paymentId) {
+      console.log('❌ No matching payment request found - saving as general image');
+      
+      // Save as general incoming message
+      await Message.create({
+        from: formattedPhone,
+        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        text: caption || '[Image received]',
+        direction: 'incoming',
+        messageId: messageId,
+        timestamp: new Date(),
+        messageType: 'general'
+      });
+      return;
+    }
+
+    console.log(`\n📸 Processing screenshot for payment: ${paymentMessage.paymentId}`);
+
+    // Download the image from WhatsApp
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const apiVersion = 'v19.0';
+
+    // Step 1: Get image URL
+    const mediaUrl = `https://graph.facebook.com/${apiVersion}/${imageId}`;
+    console.log(`Fetching media info from: ${mediaUrl}`);
+
+    const mediaResponse = await axios.get(mediaUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    const imageDownloadUrl = mediaResponse.data.url;
+    const mimeType = mediaResponse.data.mime_type || 'image/jpeg';
+    console.log(`Image URL obtained, MIME type: ${mimeType}`);
+
+    // Step 2: Download the actual image
+    const imageResponse = await axios.get(imageDownloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      },
+      responseType: 'arraybuffer'
+    });
+
+    const imageBuffer = Buffer.from(imageResponse.data);
+    console.log(`Image downloaded, size: ${imageBuffer.length} bytes`);
+
+    // Step 3: Update the payment record
+    const payment = await MatchPayment.findById(paymentMessage.paymentId);
+    if (!payment) {
+      console.log('❌ Payment record not found');
+      return;
+    }
+
+    // Find the member by phone or member ID
+    let member = null;
+    if (paymentMessage.paymentMemberId) {
+      member = payment.squadMembers.id(paymentMessage.paymentMemberId);
+    }
+    
+    if (!member) {
+      // Try to find by phone
+      member = payment.squadMembers.find(m => 
+        phoneVariants.includes(m.playerPhone) || 
+        m.playerPhone.includes(formattedPhone.slice(-10))
+      );
+    }
+
+    if (!member) {
+      console.log('❌ Could not find matching member in payment record');
+      return;
+    }
+
+    console.log(`✅ Found member: ${member.playerName}`);
+
+    // Update member with screenshot
+    member.screenshotImage = imageBuffer;
+    member.screenshotContentType = mimeType;
+    member.screenshotMediaId = imageId;
+    member.screenshotReceivedAt = new Date();
+    member.paymentStatus = 'paid';
+    member.paidAt = new Date();
+
+    await payment.save();
+
+    console.log(`✅ Payment screenshot saved for ${member.playerName}`);
+    console.log(`   Status updated to: paid`);
+
+    // Save incoming message record
+    await Message.create({
+      from: formattedPhone,
+      to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+      text: caption || '[Payment screenshot received]',
+      direction: 'incoming',
+      messageId: messageId,
+      timestamp: new Date(),
+      messageType: 'payment_screenshot',
+      matchId: paymentMessage.matchId,
+      paymentId: payment._id,
+      paymentMemberId: member._id
+    });
+
+    // Send confirmation message
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const confirmMessage = `✅ Thank you ${member.playerName}! Your payment screenshot has been received and verified.\n\n💰 Amount: ₹${member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount}\n\nYour payment status is now marked as *Paid*. 🙏`;
+
+    try {
+      await axios.post(
+        `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+        {
+          messaging_product: 'whatsapp',
+          to: formattedPhone,
+          type: 'text',
+          text: { body: confirmMessage, preview_url: false }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      console.log('✅ Confirmation message sent');
+    } catch (confirmErr) {
+      console.error('⚠️ Failed to send confirmation:', confirmErr.message);
+    }
+
+    console.log('=== END PAYMENT SCREENSHOT PROCESSING ===\n');
+
+  } catch (error) {
+    console.error('❌ Error processing payment screenshot:', error);
     console.error('Stack trace:', error.stack);
   }
 }

@@ -5,6 +5,7 @@ import ConfirmDialog from './ConfirmDialog';
 import UserManagement from './UserManagement';
 import WhatsAppMessagingTab from './WhatsAppMessagingTab';
 import MatchManagement from './MatchManagement';
+import PaymentManagement from './PaymentManagement';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackCard from './FeedbackCard';
 
@@ -31,7 +32,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches'>('feedback');
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>('feedback');
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -232,8 +233,8 @@ const AdminDashboard: React.FC = () => {
             <div 
               className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
               style={{
-                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : activeTab === 'matches' ? '220px' : '200px',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : activeTab === 'matches' ? '448px' : '668px'
+                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : activeTab === 'matches' ? '220px' : activeTab === 'payments' ? '220px' : '200px',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : activeTab === 'matches' ? '448px' : activeTab === 'payments' ? '668px' : '888px'
               }}
             >
               {/* Premium glass reflection and shimmer */}
@@ -287,6 +288,20 @@ const AdminDashboard: React.FC = () => {
                   Matches
                 </button>
                 <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'payments' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  style={{ width: '220px', justifyContent: 'center' }}
+                >
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'payments' ? 'bg-black/10 scale-110 rotate-3 shadow-inner' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  Payments
+                </button>
+                <button
                   onClick={() => setActiveTab('users')}
                   className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                     activeTab === 'users' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
@@ -310,8 +325,8 @@ const AdminDashboard: React.FC = () => {
             <div 
               className="absolute h-[calc(100%-16px)] rounded-[2rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.6)]"
               style={{
-                width: user?.role === 'admin' ? 'calc(25% - 8px)' : 'calc(100% - 16px)',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '25%' : activeTab === 'matches' ? '50%' : '75%'
+                width: user?.role === 'admin' ? 'calc(20% - 6px)' : 'calc(100% - 16px)',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '20%' : activeTab === 'matches' ? '40%' : activeTab === 'payments' ? '60%' : '80%'
               }}
             >
               {/* Glass reflection and premium texture */}
@@ -364,6 +379,21 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'matches' ? 'text-white' : 'text-slate-300'}`}>
                     Matches
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
+                    activeTab === 'payments' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'payments' ? 'bg-black/20 scale-150 rotate-3 shadow-lg' : 'bg-white/5'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'payments' ? "3" : "2"} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'payments' ? 'text-white' : 'text-slate-300'}`}>
+                    Pay
                   </span>
                 </button>
                 <button
@@ -800,6 +830,7 @@ const AdminDashboard: React.FC = () => {
         )}
         {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}
         {activeTab === 'matches' && <MatchManagement />}
+        {activeTab === 'payments' && user?.role === 'admin' && <PaymentManagement />}
         {activeTab === 'users' && <UserManagement />}
       </div>
 

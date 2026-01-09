@@ -3,6 +3,22 @@ const User = require('../models/User.js');
 
 const auth = async (req, res, next) => {
   try {
+    // Bypass auth for local development if DISABLE_AUTH is set
+    if (process.env.DISABLE_AUTH === 'true') {
+      console.log('⚠️ Auth bypassed - DISABLE_AUTH is enabled');
+      const mongoose = require('mongoose');
+      // Create a mock admin user for local testing with valid ObjectId
+      req.user = {
+        _id: new mongoose.Types.ObjectId(),
+        id: new mongoose.Types.ObjectId().toString(),
+        email: 'dev@localhost',
+        name: 'Local Dev Admin',
+        role: 'admin',
+        isActive: true
+      };
+      return next();
+    }
+
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') 
