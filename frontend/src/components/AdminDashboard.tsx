@@ -41,6 +41,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
   const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>(propActiveTab);
+
+  // Sync activeTab with prop changes from parent
+  useEffect(() => {
+    setActiveTab(propActiveTab);
+  }, [propActiveTab]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;

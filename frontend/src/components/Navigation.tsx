@@ -62,7 +62,98 @@ const Navigation: React.FC<NavigationProps> = ({
     <>
       <header className="header sticky top-0 z-40">
         <div className="header-content">
-          <div className="flex items-center justify-between w-full">
+          {/* Mobile Header - Clean & Beautiful */}
+          <div className="md:hidden flex items-center justify-between w-full px-4 py-3.5">
+            <button 
+              onClick={() => handleViewChange('form')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              aria-label="Go to home page"
+            >
+              <div className="cricket-ball" style={{width: '26px', height: '26px'}}></div>
+              <h1 className="logo text-sm font-bold text-white tracking-tight">Mavericks XI</h1>
+            </button>
+            
+            <button 
+              className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+
+          {/* Mobile Dropdown Menu - Beautiful Design */}
+          {isMenuOpen && (
+            <nav className="md:hidden absolute top-full left-0 w-full bg-gradient-to-b from-[#0f172a]/95 to-[#0a0f1a]/95 backdrop-blur-xl border-b border-primary-green/10 z-[100] animate-fade-in">
+              <div className="px-3 py-5 space-y-1">
+                {/* Main Navigation Items */}
+                <button
+                  onClick={() => { handleViewChange('form'); setIsMenuOpen(false); }}
+                  className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    currentView === 'form' 
+                      ? 'bg-primary-green/20 text-primary-green shadow-lg shadow-primary-green/10' 
+                      : 'text-white/70 hover:text-white hover:bg-white/8'
+                  }`}
+                >
+                  Feedback Form
+                </button>
+                <button
+                  onClick={() => { handleAdminClick(); setIsMenuOpen(false); }}
+                  className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    currentView === 'admin' 
+                      ? 'bg-primary-green/20 text-primary-green shadow-lg shadow-primary-green/10' 
+                      : 'text-white/70 hover:text-white hover:bg-white/8'
+                  }`}
+                >
+                  Admin Dashboard
+                </button>
+                
+                {user && (
+                  <>
+                    {/* Divider */}
+                    <div className="h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 my-4"></div>
+                    
+                    {/* User Section */}
+                    <div className="px-2 py-2">
+                      <div className="flex items-center gap-3 px-2 py-2 mb-3">
+                        {user.avatar && (
+                          <img 
+                            src={user.avatar} 
+                            alt={user.name} 
+                            className="w-8 h-8 rounded-full border border-primary-green/30"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{user.name}</p>
+                          <p className="text-xs text-white/50 uppercase tracking-wider">{user.role}</p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => { setShowProfileModal(true); setIsMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 rounded-lg text-xs font-medium text-white/70 hover:text-white hover:bg-white/8 transition-all duration-200"
+                      >
+                        Profile Settings
+                      </button>
+                      <button
+                        onClick={() => { onLogout(); setIsMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 rounded-lg text-xs font-medium text-red-400/80 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </nav>
+          )}
+
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center justify-between w-full">
             <div className="flex items-center">
               <button 
                 onClick={() => handleViewChange('form')}
@@ -75,7 +166,7 @@ const Navigation: React.FC<NavigationProps> = ({
             </div>
             
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="flex items-center gap-8">
               <button
                 onClick={() => handleViewChange('form')}
                 className={`nav-link text-base font-medium tracking-wide transition-colors ${currentView === 'form' ? 'text-primary-green' : 'text-white/70 hover:text-white'}`}
@@ -121,64 +212,14 @@ const Navigation: React.FC<NavigationProps> = ({
                 </button>
               )}
             </div>
-
-            {/* Mobile Menu Toggle */}
-            <button 
-              className="md:hidden p-2 text-white focus:outline-none"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
           </div>
-
-          {/* Mobile Dropdown Menu */}
-          {isMenuOpen && (
-            <nav className="md:hidden absolute top-full left-0 w-full bg-gradient-to-b from-[#16213e] to-[#1a1a2e] border-b border-primary-green/30 p-4 space-y-3 z-[100] shadow-lg animate-fade-in">
-              <button
-                onClick={() => { handleViewChange('form'); setIsMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'form' ? 'bg-primary-green/20 text-primary-green' : 'text-white/70 hover:bg-white/5'}`}
-              >
-                Feedback Form
-              </button>
-              <button
-                onClick={() => { handleAdminClick(); setIsMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'admin' ? 'bg-primary-green/20 text-primary-green' : 'text-white/70 hover:bg-white/5'}`}
-              >
-                Admin Dashboard
-              </button>
-              
-              {user && (
-                <>
-                  <div className="border-t border-white/10 pt-3 mt-3">
-                    <button
-                      onClick={() => { setShowProfileModal(true); setIsMenuOpen(false); }}
-                      className="w-full text-left px-4 py-3 rounded-lg font-medium text-white/70 hover:bg-white/5 transition-colors"
-                    >
-                      Profile
-                    </button>
-                    <button
-                      onClick={() => { onLogout(); setIsMenuOpen(false); }}
-                      className="w-full text-left px-4 py-3 rounded-lg font-medium text-accent-red hover:bg-red-500/10 transition-colors"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </>
-              )}
-            </nav>
-          )}
         </div>
       </header>
 
       {/* Bottom Navigation Bar - Admin Tabs (Mobile Only) */}
       {currentView === 'admin' && user && (
-        <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-gradient-to-t from-[#0f3460] to-[#16213e] border-t border-primary-green/30 z-40">
-          <div className="flex justify-around items-center h-20 px-2">
+        <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#0a0f1a]/80 backdrop-blur-xl border-t border-primary-green/15 z-40">
+          <div className="flex items-center justify-around h-16 px-1">
             {adminTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -186,18 +227,20 @@ const Navigation: React.FC<NavigationProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => onTabChange?.(tab.id as any)}
-                  className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${
+                  className={`relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-xl transition-all duration-300 ${
                     isActive 
                       ? 'text-primary-green' 
                       : 'text-white/50 hover:text-white/70'
                   }`}
                   aria-label={tab.label}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-xs font-semibold">{tab.label}</span>
                   {isActive && (
-                    <div className="absolute bottom-0 w-12 h-1 bg-primary-green rounded-t-full" />
+                    <div className="absolute inset-0 bg-primary-green/10 rounded-xl -z-10" />
                   )}
+                  <Icon className={`transition-all duration-300 ${isActive ? 'w-5 h-5' : 'w-5 h-5'}`} />
+                  <span className={`text-[10px] font-bold transition-all duration-300 ${isActive ? 'text-primary-green' : 'text-white/50'}`}>
+                    {tab.label}
+                  </span>
                 </button>
               );
             })}
