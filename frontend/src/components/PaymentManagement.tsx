@@ -164,8 +164,10 @@ const PaymentManagement: React.FC = () => {
       
       const paymentsMap = new Map<string, Payment>();
       (paymentsData.payments || []).forEach((p: Payment) => {
-        if (p.matchId?._id) {
-          paymentsMap.set(p.matchId._id, p);
+        // Handle both cases: matchId as string or as object with _id
+        const matchId = typeof p.matchId === 'string' ? p.matchId : p.matchId?._id;
+        if (matchId) {
+          paymentsMap.set(matchId, p);
         }
       });
       
