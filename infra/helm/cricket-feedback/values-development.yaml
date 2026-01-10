@@ -18,7 +18,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "v72"
+    tag: "v73"
   replicaCount: 1
   resources:
     limits:
