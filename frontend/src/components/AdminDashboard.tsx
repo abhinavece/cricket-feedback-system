@@ -324,185 +324,144 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <p className="text-secondary transition-all duration-300">{pageDesc}</p>
       </div>
         
-        {/* Premium Tab Navigation */}
-        <div className="mb-10 md:mb-16">
-          {/* Desktop: Modern Cascade Tab Design - No Scrolling */}
-          <nav className="hidden md:flex flex-wrap gap-3 p-4 bg-gradient-to-r from-slate-900/40 via-slate-800/40 to-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl">
+        {/* Tab Navigation - Elegant & Space Efficient */}
+        <div className="mb-8 md:mb-12">
+          {/* Desktop: Clean Tab Navigation */}
+          <nav className="hidden md:flex gap-1 p-1 bg-white/5 rounded-xl border border-white/10">
             <button
               onClick={() => { setActiveTab('feedback'); onTabChange?.('feedback'); }}
-              className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'feedback'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
               Feedback
             </button>
             {user?.role === 'admin' && (
               <>
                 <button
                   onClick={() => { setActiveTab('whatsapp'); onTabChange?.('whatsapp'); }}
-                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === 'whatsapp'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
                   WhatsApp
                 </button>
                 <button
                   onClick={() => { setActiveTab('matches'); onTabChange?.('matches'); }}
-                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === 'matches'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
                   Matches
                 </button>
                 <button
                   onClick={() => { setActiveTab('payments'); onTabChange?.('payments'); }}
-                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === 'payments'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
                   Payments
                 </button>
                 <button
                   onClick={() => { setActiveTab('player-history'); onTabChange?.('player-history'); }}
-                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === 'player-history'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Player History
+                  History
                 </button>
                 <button
                   onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
-                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === 'users'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
                   Users
                 </button>
               </>
             )}
           </nav>
 
-          {/* Mobile: Ultra-Visible App-style Segmented Control */}
-          <div className="md:hidden bg-[#0f172a] p-2 rounded-[2.5rem] border-2 border-white/5 flex items-center shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden">
-            {/* Ultra-High Contrast Gradient Slider */}
-            <div 
-              className="absolute h-[calc(100%-16px)] rounded-[2rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.6)]"
-              style={{
-                width: user?.role === 'admin' ? 'calc(20% - 6px)' : 'calc(100% - 16px)',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '20%' : activeTab === 'matches' ? '40%' : activeTab === 'payments' ? '60%' : '80%'
-              }}
-            >
-              {/* Glass reflection and premium texture */}
-              <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent rounded-[2rem] mix-blend-overlay"></div>
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15 rounded-[2rem]"></div>
-            </div>
-            
+          {/* Mobile: Clean Segmented Control */}
+          <div className="md:hidden bg-white/5 p-1 rounded-xl border border-white/10 flex items-center gap-1">
             <button
               onClick={() => setActiveTab('feedback')}
-              className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                activeTab === 'feedback' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
+              className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'feedback'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400'
               }`}
             >
-              <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/20 scale-125 rotate-6 shadow-lg' : 'bg-white/5'}`}>
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'feedback' ? "3" : "2"} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-              </div>
-              <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'feedback' ? 'text-white' : 'text-slate-300'}`}>
-                Feedback
-              </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              <span className="hidden sm:inline">Feedback</span>
             </button>
             {user?.role === 'admin' && (
               <>
                 <button
                   onClick={() => setActiveTab('whatsapp')}
-                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'whatsapp' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                    activeTab === 'whatsapp'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/20 scale-150 rotate-3 shadow-lg' : 'bg-white/5'}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'whatsapp' ? "3" : "2"} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'whatsapp' ? 'text-white' : 'text-slate-300'}`}>
-                    WhatsApp
-                  </span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span className="hidden sm:inline">WA</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('matches')}
-                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'matches' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                    activeTab === 'matches'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'matches' ? 'bg-black/20 scale-150 rotate-6 shadow-lg' : 'bg-white/5'}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'matches' ? "3" : "2"} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'matches' ? 'text-white' : 'text-slate-300'}`}>
-                    Matches
-                  </span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="hidden sm:inline">Match</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('payments')}
-                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'payments' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                    activeTab === 'payments'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'payments' ? 'bg-black/20 scale-150 rotate-3 shadow-lg' : 'bg-white/5'}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'payments' ? "3" : "2"} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'payments' ? 'text-white' : 'text-slate-300'}`}>
-                    Pay
-                  </span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span className="hidden sm:inline">Pay</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('users')}
-                  className={`relative z-10 flex-1 py-5 flex flex-col items-center gap-3 transition-all duration-500 ${
-                    activeTab === 'users' ? 'text-slate-950 font-black' : 'text-slate-300 opacity-90'
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                    activeTab === 'users'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/20 scale-150 -rotate-6 shadow-lg' : 'bg-white/5'}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === 'users' ? "3" : "2"} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <span className={`text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === 'users' ? 'text-white' : 'text-slate-300'}`}>
-                    Users
-                  </span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span className="hidden sm:inline">Users</span>
                 </button>
               </>
             )}
