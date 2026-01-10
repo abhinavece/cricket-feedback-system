@@ -92,7 +92,7 @@ const MatchManagement: React.FC = () => {
 
   const fetchMatches = async () => {
     try {
-      const data = await matchApi.getMatches();
+      const data = await matchApi.getMatches({ limit: 100 });
       setMatches(data.matches || []);
     } catch (error) {
       console.error('Error fetching matches:', error);

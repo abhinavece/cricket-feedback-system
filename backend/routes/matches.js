@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 // Get all matches
 router.get('/', auth, async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 100 } = req.query;
     const query = {};
     
     if (status) {
@@ -17,7 +17,7 @@ router.get('/', auth, async (req, res) => {
     const matches = await Match.find(query)
       .populate('squad.player', 'name phone role team')
       .populate('createdBy', 'name email')
-      .sort({ date: -1 })
+      .sort({ createdAt: -1, date: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
     

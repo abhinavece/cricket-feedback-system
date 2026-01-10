@@ -118,12 +118,12 @@ export const getMessageHistory = async (phone: string) => {
 
 // Match APIs
 export const getMatches = async () => {
-  const response = await api.get('/matches');
+  const response = await api.get('/matches', { params: { limit: 100 } });
   return response.data.matches || [];
 };
 
 export const getUpcomingMatches = async () => {
-  const response = await api.get('/matches');
+  const response = await api.get('/matches', { params: { limit: 100 } });
   const matches = response.data.matches || [];
   // Filter for upcoming matches (date >= today)
   const today = new Date();
