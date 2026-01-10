@@ -64,40 +64,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
-router.get('/', auth, async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    
-    const feedback = await Feedback.find({ isDeleted: false })
-      .sort({ createdAt: -1 })
-      .limit(limitNum)
-      .skip((pageNum - 1) * limitNum);
-    
-    const total = await Feedback.countDocuments({ isDeleted: false });
-    const hasMore = (pageNum * limitNum) < total;
-    
-    res.json({
-      feedback,
-      pagination: {
-        current: pageNum,
-        pages: Math.ceil(total / limitNum),
-        total,
-        hasMore: hasMore
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching feedback:', error);
-    res.status(500).json({
-      error: 'Failed to fetch feedback',
-      details: error.message
-    });
-  }
-});
-
 // GET /api/feedback/stats - Get aggregated statistics (non-deleted only)
+// Must be defined BEFORE the main GET / route to avoid route matching issues
 router.get('/stats', async (req, res) => {
   try {
     const stats = await Feedback.aggregate([
@@ -137,6 +105,39 @@ router.get('/stats', async (req, res) => {
     console.error('Error fetching stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
+router.get('/', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    const feedback = await Feedback.find({ isDeleted: false })
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum);
+    
+    const total = await Feedback.countDocuments({ isDeleted: false });
+    const hasMore = (pageNum * limitNum) < total;
+    
+    res.json({
+      feedback,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore: hasMore
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching feedback:', error);
+    res.status(500).json({
+      error: 'Failed to fetch feedback',
       details: error.message
     });
   }
