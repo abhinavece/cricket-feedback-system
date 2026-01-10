@@ -256,6 +256,11 @@ export const recordPayment = async (paymentId: string, memberId: string, data: {
   return response.data;
 };
 
+export const markPaymentUnpaid = async (paymentId: string, memberId: string) => {
+  const response = await api.post(`/payments/${paymentId}/member/${memberId}/mark-unpaid`);
+  return response.data;
+};
+
 export const getPaymentScreenshot = (paymentId: string, memberId: string) => {
   return `${API_BASE_URL}/payments/${paymentId}/screenshot/${memberId}`;
 };

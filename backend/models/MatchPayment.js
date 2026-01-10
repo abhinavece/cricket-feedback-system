@@ -21,6 +21,10 @@ const paymentHistorySchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  isValidPayment: {
+    type: Boolean,
+    default: true // Mark if this payment entry is valid/counted
+  },
   screenshotImage: {
     type: Buffer,
     default: null
@@ -198,8 +202,9 @@ matchPaymentSchema.methods.recalculateAmounts = function() {
       member.calculatedAmount = equalShare;
     }
     
-    // Calculate total paid from payment history
-    const totalPaid = member.paymentHistory.reduce((sum, payment) => sum + payment.amount, 0);
+    // Calculate total paid from valid payment history only
+    const validPayments = member.paymentHistory.filter(p => p.isValidPayment !== false);
+    const totalPaid = validPayments.reduce((sum, payment) => sum + payment.amount, 0);
     member.amountPaid = totalPaid;
     
     // Calculate due amount

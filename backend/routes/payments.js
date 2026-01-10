@@ -264,14 +264,23 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
     
     // Handle status changes - but status will be auto-calculated based on payments
     if (paymentStatus !== undefined && paymentStatus !== member.paymentStatus) {
-      // If marking as paid without payment history, add a full payment entry
-      if (paymentStatus === 'paid' && member.paymentHistory.length === 0) {
+      // If marking as paid without valid payment history, add a full payment entry
+      const validPayments = member.paymentHistory.filter(p => p.isValidPayment !== false);
+      if (paymentStatus === 'paid' && validPayments.length === 0) {
         const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
+        
+        // Mark all existing payments as invalid
+        member.paymentHistory.forEach(payment => {
+          payment.isValidPayment = false;
+        });
+        
+        // Add new valid payment
         member.paymentHistory.push({
           amount: effectiveAmount,
           paidAt: new Date(),
           paymentMethod: 'other',
-          notes: notes || 'Marked as paid'
+          notes: notes || 'Marked as paid',
+          isValidPayment: true
         });
       }
     }
@@ -320,13 +329,42 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
       });
     }
 
-    // Add payment to history
+    // Override total amount paid with the user input
+    const parsedAmount = parseFloat(amount);
+    
+    // Mark all existing payments as invalid
+    member.paymentHistory.forEach(payment => {
+      payment.isValidPayment = false;
+    });
+    
+    // Add new payment entry as valid
     member.paymentHistory.push({
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       paidAt: paidAt ? new Date(paidAt) : new Date(),
       paymentMethod: paymentMethod || 'upi',
-      notes: notes || ''
+      notes: notes || '',
+      isValidPayment: true // Mark new payment as valid
     });
+    
+    // Calculate amountPaid from valid payments only
+    const validPayments = member.paymentHistory.filter(p => p.isValidPayment);
+    member.amountPaid = validPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    // Calculate due amount based on effective amount
+    const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
+    member.dueAmount = Math.max(0, effectiveAmount - member.amountPaid);
+    
+    // Update payment status
+    if (member.amountPaid === 0) {
+      member.paymentStatus = 'pending';
+    } else if (member.amountPaid >= effectiveAmount) {
+      member.paymentStatus = 'paid';
+    } else {
+      member.paymentStatus = 'partial';
+    }
+    
+    // Set paid date
+    member.paidAt = member.amountPaid > 0 ? (paidAt ? new Date(paidAt) : new Date()) : null;
 
     await payment.save();
 
@@ -345,6 +383,62 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to record payment'
+    });
+  }
+});
+
+// POST /api/payments/:id/member/:memberId/mark-unpaid - Mark payment as unpaid
+router.post('/:id/member/:memberId/mark-unpaid', auth, async (req, res) => {
+  try {
+    const payment = await MatchPayment.findById(req.params.id);
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment record not found'
+      });
+    }
+
+    const member = payment.squadMembers.id(req.params.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        error: 'Squad member not found'
+      });
+    }
+
+    // Mark as unpaid - mark all payments as invalid
+    member.paymentHistory.forEach(payment => {
+      payment.isValidPayment = false;
+    });
+    
+    // Calculate amountPaid from valid payments only (should be 0 now)
+    const validPayments = member.paymentHistory.filter(p => p.isValidPayment);
+    member.amountPaid = validPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    member.paymentStatus = 'pending';
+    member.paidAt = null;
+    
+    // Recalculate due amount
+    const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
+    member.dueAmount = effectiveAmount;
+
+    await payment.save();
+
+    const populatedPayment = await MatchPayment.findById(payment._id)
+      .populate('matchId', 'date opponent ground slot matchId')
+      .populate('squadMembers.playerId', 'name phone role');
+
+    res.json({
+      success: true,
+      payment: populatedPayment,
+      member: payment.squadMembers.id(req.params.memberId),
+      message: 'Marked as unpaid successfully'
+    });
+  } catch (error) {
+    console.error('Error marking as unpaid:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark as unpaid'
     });
   }
 });
@@ -375,6 +469,9 @@ router.get('/player/:phone/history', auth, async (req, res) => {
         totalPaid += memberData.amountPaid;
         totalDue += memberData.dueAmount;
 
+        // Filter to only include valid payments in history
+        const validPaymentHistory = memberData.paymentHistory.filter(p => p.isValidPayment !== false);
+        
         playerHistory.push({
           paymentId: payment._id,
           match: payment.matchId,
@@ -383,7 +480,7 @@ router.get('/player/:phone/history', auth, async (req, res) => {
           dueAmount: memberData.dueAmount,
           paymentStatus: memberData.paymentStatus,
           dueDate: memberData.dueDate,
-          paymentHistory: memberData.paymentHistory,
+          paymentHistory: validPaymentHistory,
           notes: memberData.notes,
           lastPaymentDate: memberData.paidAt
         });

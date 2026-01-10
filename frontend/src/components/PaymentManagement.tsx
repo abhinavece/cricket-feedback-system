@@ -39,6 +39,7 @@ import {
   loadSquadFromAvailability,
   sendPaymentRequests,
   recordPayment,
+  markPaymentUnpaid,
   getPaymentScreenshot
 } from '../services/api';
 
@@ -698,22 +699,16 @@ const PaymentManagement: React.FC = () => {
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
-                                value={editAmount === 0 ? '' : editAmount}
+                                value={editAmount || ''}
                                 onChange={(e) => {
-                                  const inputValue = e.target.value.trim();
-                                  if (inputValue === '') {
+                                  const inputVal = e.target.value;
+                                  if (inputVal === '') {
                                     setEditAmount(0);
                                   } else {
-                                    const value = Number(inputValue);
-                                    if (!isNaN(value) && value >= 0) {
-                                      setEditAmount(value);
+                                    const val = Number(inputVal);
+                                    if (!isNaN(val) && val >= 0) {
+                                      setEditAmount(val);
                                     }
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  const inputValue = e.target.value.trim();
-                                  if (inputValue === '') {
-                                    setEditAmount(0);
                                   }
                                 }}
                                 className="w-20 px-2 py-1 bg-slate-600 border border-white/10 rounded text-white text-sm"
@@ -842,14 +837,14 @@ const PaymentManagement: React.FC = () => {
             <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-emerald-400" /> Record Payment
+                  <CreditCard className="w-5 h-5 text-emerald-400" /> Payment Status
                 </h3>
                 <button onClick={() => setShowPaymentModal(false)} className="p-1 text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="mb-4 p-3 bg-slate-700/30 rounded-xl">
+              <div className="mb-6 p-3 bg-slate-700/30 rounded-xl">
                 <p className="text-sm text-slate-400 mb-1">Player: <span className="text-white font-medium">{paymentMember.playerName}</span></p>
                 <div className="flex justify-between text-sm mt-2">
                   <span className="text-slate-400">Expected:</span>
@@ -869,69 +864,27 @@ const PaymentManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Payment Amount *</label>
+                  <label className="block text-sm text-slate-400 mb-2">Update Amount Paid</label>
                   <input
                     type="number"
-                    value={paymentAmount === 0 ? '' : paymentAmount}
+                    value={paymentAmount || ''}
                     onChange={(e) => {
-                      const inputValue = e.target.value.trim();
-                      if (inputValue === '') {
+                      const inputVal = e.target.value;
+                      if (inputVal === '') {
                         setPaymentAmount(0);
                       } else {
-                        const value = parseFloat(inputValue);
-                        if (!isNaN(value) && value >= 0) {
-                          setPaymentAmount(value);
+                        const val = parseFloat(inputVal);
+                        if (!isNaN(val) && val >= 0) {
+                          setPaymentAmount(val);
                         }
                       }
                     }}
-                    onBlur={(e) => {
-                      const inputValue = e.target.value.trim();
-                      if (inputValue === '') {
-                        setPaymentAmount(0);
-                      }
-                    }}
-                    placeholder="Enter amount (0 for free player)"
+                    placeholder="Enter amount paid"
                     min="0"
                     step="1"
                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-slate-400 mb-2">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as any)}
-                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="upi">UPI</option>
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-slate-400 mb-2">Payment Date</label>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-slate-400 mb-2">Notes (Optional)</label>
-                  <textarea
-                    value={paymentNotes}
-                    onChange={(e) => setPaymentNotes(e.target.value)}
-                    placeholder="Add payment notes..."
-                    rows={2}
-                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                   />
                 </div>
 
@@ -940,17 +893,44 @@ const PaymentManagement: React.FC = () => {
                     onClick={() => setShowPaymentModal(false)}
                     className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
                   >
-                    Cancel
+                    Close
                   </button>
                   <button
                     onClick={handleRecordPayment}
                     disabled={loading || !paymentAmount || paymentAmount <= 0}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Record Payment
+                    Update Payment
                   </button>
                 </div>
+
+                <button
+                  onClick={async () => {
+                    if (!payment || !paymentMember) return;
+                    setLoading(true);
+                    try {
+                      const result = await markPaymentUnpaid(payment._id, paymentMember._id);
+                      if (result.success) {
+                        setPayment(result.payment);
+                        setSuccess(`Marked as unpaid for ${paymentMember.playerName}`);
+                        setShowPaymentModal(false);
+                        setPaymentMember(null);
+                      } else {
+                        setError(result.error || 'Failed to mark as unpaid');
+                      }
+                    } catch (err: any) {
+                      setError(err.response?.data?.error || err.message || 'Failed to mark as unpaid');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
+                  Mark as Unpaid
+                </button>
               </div>
             </div>
           </div>
