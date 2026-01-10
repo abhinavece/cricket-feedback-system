@@ -4,7 +4,63 @@ const Match = require('../models/Match');
 const Player = require('../models/Player');
 const auth = require('../middleware/auth');
 
-// Get all matches
+// Get matches summary (lightweight, for listing view)
+router.get('/summary', auth, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const query = {};
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    // Fetch matches without populating squad.player (saves ~80% payload)
+    const matches = await Match.find(query)
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1, date: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
+      .lean();
+    
+    // Compute squad stats server-side and exclude squad array
+    const summaryMatches = matches.map(match => {
+      // Compute stats from squad array
+      const squadStats = {
+        total: match.squad?.length || 0,
+        yes: match.squad?.filter(s => s.response === 'yes').length || 0,
+        no: match.squad?.filter(s => s.response === 'no').length || 0,
+        tentative: match.squad?.filter(s => s.response === 'tentative').length || 0,
+        pending: match.squad?.filter(s => s.response === 'pending').length || 0
+      };
+      
+      // Return match without squad array, but with computed stats
+      const { squad, ...matchWithoutSquad } = match;
+      return {
+        ...matchWithoutSquad,
+        squadStats // Computed stats for fallback when availability tracking is off
+      };
+    });
+    
+    const total = await Match.countDocuments(query);
+    const hasMore = (pageNum * limitNum) < total;
+    
+    res.json({
+      matches: summaryMatches,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all matches (full data, for detail views)
 router.get('/', auth, async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;

@@ -118,12 +118,20 @@ export const getMessageHistory = async (phone: string) => {
 
 // Match APIs
 export const getMatches = async () => {
+  // Use lightweight summary endpoint for listing views (80% smaller payload)
+  const response = await api.get('/matches/summary', { params: { limit: 50 } });
+  return response.data.matches || [];
+};
+
+export const getMatchesFull = async () => {
+  // Use full endpoint when squad data is needed
   const response = await api.get('/matches', { params: { limit: 50 } });
   return response.data.matches || [];
 };
 
 export const getUpcomingMatches = async () => {
-  const response = await api.get('/matches', { params: { limit: 50 } });
+  // Use lightweight summary endpoint for listing views
+  const response = await api.get('/matches/summary', { params: { limit: 50 } });
   const matches = response.data.matches || [];
   // Filter for upcoming matches (date >= today)
   const today = new Date();

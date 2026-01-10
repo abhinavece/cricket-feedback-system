@@ -15,6 +15,14 @@ interface SquadMember {
   notes: string;
 }
 
+interface SquadStats {
+  total: number;
+  yes: number;
+  no: number;
+  tentative: number;
+  pending: number;
+}
+
 interface MatchCardProps {
   match: {
     _id: string;
@@ -26,7 +34,8 @@ interface MatchCardProps {
     opponent: string;
     ground: string;
     status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
-    squad: SquadMember[];
+    squad?: SquadMember[]; // Optional - only present in full endpoint
+    squadStats?: SquadStats; // Pre-computed stats from summary endpoint
     createdBy: {
       name: string;
       email: string;
@@ -60,7 +69,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onViewAvailability
 }) => {
   const getSquadStats = () => {
-    // Use availability tracking fields if available, otherwise fall back to squad
+    // Priority 1: Use availability tracking fields if available
     if (match.availabilitySent && match.totalPlayersRequested) {
       const total = match.totalPlayersRequested || 0;
       const yes = match.confirmedPlayers || 0;
@@ -71,8 +80,18 @@ const MatchCard: React.FC<MatchCardProps> = ({
       const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
 
       return { total, yes, no, tentative, pending, responseRate, responded, isTracking: true };
-    } else {
-      // Fallback to squad-based stats
+    }
+    
+    // Priority 2: Use pre-computed squadStats from summary endpoint
+    if (match.squadStats) {
+      const { total, yes, no, tentative, pending } = match.squadStats;
+      const responded = yes + no + tentative;
+      const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
+      return { total, yes, no, tentative, pending, responseRate, responded, isTracking: false };
+    }
+    
+    // Priority 3: Compute from squad array (full endpoint)
+    if (match.squad && match.squad.length > 0) {
       const total = match.squad.length;
       const yes = match.squad.filter(s => s.response === 'yes').length;
       const no = match.squad.filter(s => s.response === 'no').length;
@@ -83,6 +102,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
       return { total, yes, no, tentative, pending, responseRate, responded, isTracking: false };
     }
+    
+    // Fallback: No data available
+    return { total: 0, yes: 0, no: 0, tentative: 0, pending: 0, responseRate: 0, responded: 0, isTracking: false };
   };
 
   const stats = getSquadStats();

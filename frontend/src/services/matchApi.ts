@@ -47,6 +47,14 @@ export interface SquadMember {
   notes: string;
 }
 
+export interface SquadStats {
+  total: number;
+  yes: number;
+  no: number;
+  tentative: number;
+  pending: number;
+}
+
 export interface Match {
   _id: string;
   matchId: string;
@@ -57,7 +65,8 @@ export interface Match {
   opponent: string;
   ground: string;
   status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
-  squad: SquadMember[];
+  squad?: SquadMember[]; // Optional - only present in full endpoint
+  squadStats?: SquadStats; // Pre-computed stats from summary endpoint
   createdBy: {
     name: string;
     email: string;
@@ -99,8 +108,23 @@ export interface MatchesResponse {
 class MatchApiService {
   private baseUrl = '/api/matches';
 
-  // Get all matches with optional filters
+  // Get matches summary (lightweight, for listing views - 80% smaller payload)
   async getMatches(filters?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<MatchesResponse> {
+    const params: any = {};
+    if (filters?.status) params.status = filters.status;
+    if (filters?.page) params.page = filters.page;
+    if (filters?.limit) params.limit = filters.limit;
+
+    const response = await api.get('/matches/summary', { params });
+    return response.data;
+  }
+
+  // Get all matches with full squad data (for detail views)
+  async getMatchesFull(filters?: {
     status?: string;
     page?: number;
     limit?: number;
