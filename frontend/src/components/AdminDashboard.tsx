@@ -1,14 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { getAllFeedback, getStats, deleteFeedback, getTrashFeedback, restoreFeedback, permanentDeleteFeedback } from '../services/api';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { getAllFeedback, getStats, deleteFeedback, getTrashFeedback, restoreFeedback, permanentDeleteFeedback, getFeedbackById } from '../services/api';
 import type { FeedbackSubmission } from '../types';
 import ConfirmDialog from './ConfirmDialog';
-import UserManagement from './UserManagement';
-import WhatsAppMessagingTab from './WhatsAppMessagingTab';
-import MatchManagement from './MatchManagement';
-import PaymentManagement from './PaymentManagement';
-import PlayerPaymentHistory from './PlayerPaymentHistory';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackCard from './FeedbackCard';
+
+// Lazy load heavy tab components - only loaded when tab is selected
+const UserManagement = lazy(() => import('./UserManagement'));
+const WhatsAppMessagingTab = lazy(() => import('./WhatsAppMessagingTab'));
+const MatchManagement = lazy(() => import('./MatchManagement'));
+const PaymentManagement = lazy(() => import('./PaymentManagement'));
+const PlayerPaymentHistory = lazy(() => import('./PlayerPaymentHistory'));
+
+// Tab loading spinner
+const TabLoadingSpinner = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="text-center">
+      <div className="spinner mb-4"></div>
+      <p className="text-sm text-slate-400">Loading...</p>
+    </div>
+  </div>
+);
 
 interface FeedbackStats {
   totalSubmissions: number;
@@ -246,9 +258,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   };
 
-  const handleFeedbackClick = (item: FeedbackSubmission) => {
-    setSelectedFeedback(item);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const handleFeedbackClick = async (item: FeedbackSubmission) => {
+    // If the item already has full details (feedbackText), use it directly
+    if (item.feedbackText) {
+      setSelectedFeedback(item);
+      setShowModal(true);
+      return;
+    }
+    
+    // Otherwise, fetch full details from API
+    setLoadingDetail(true);
     setShowModal(true);
+    try {
+      const fullFeedback = await getFeedbackById(item._id);
+      setSelectedFeedback(fullFeedback);
+    } catch (err) {
+      console.error('Error fetching feedback details:', err);
+      // Fall back to partial data
+      setSelectedFeedback(item);
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const closeModal = () => {
@@ -897,15 +929,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
           </>
         )}
-        {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}
-        {activeTab === 'matches' && <MatchManagement />}
-        {activeTab === 'payments' && user?.role === 'admin' && <PaymentManagement />}
-        {activeTab === 'player-history' && user?.role === 'admin' && <PlayerPaymentHistory />}
-        {activeTab === 'users' && <UserManagement />}
+        {activeTab === 'whatsapp' && user?.role === 'admin' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <WhatsAppMessagingTab />
+          </Suspense>
+        )}
+        {activeTab === 'matches' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <MatchManagement />
+          </Suspense>
+        )}
+        {activeTab === 'payments' && user?.role === 'admin' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <PaymentManagement />
+          </Suspense>
+        )}
+        {activeTab === 'player-history' && user?.role === 'admin' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <PlayerPaymentHistory />
+          </Suspense>
+        )}
+        {activeTab === 'users' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <UserManagement />
+          </Suspense>
+        )}
       </div>
 
       {/* Feedback Detail Modal */}
-      {showModal && selectedFeedback && (() => {
+      {showModal && (loadingDetail ? (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="text-center">
+            <div className="spinner mb-4"></div>
+            <p className="text-sm text-slate-400">Loading details...</p>
+          </div>
+        </div>
+      ) : selectedFeedback && (() => {
         const item = selectedFeedback;
         return (
           <div 
@@ -1063,7 +1122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
         );
-      })()}
+      })())}
 
       {/* Confirmation Dialog */}
       <ConfirmDialog

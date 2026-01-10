@@ -101,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "v83"
+    tag: "v84"
   replicaCount: 1
   
   service:

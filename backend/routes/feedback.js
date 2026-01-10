@@ -110,17 +110,20 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
-router.get('/', auth, async (req, res) => {
+// GET /api/feedback/summary - Lightweight endpoint for list view (excludes large text fields)
+router.get('/summary', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     
+    // Select only essential fields for list view - exclude feedbackText and additionalComments
     const feedback = await Feedback.find({ isDeleted: false })
+      .select('_id playerName matchDate batting bowling fielding teamSpirit issues createdAt')
       .sort({ createdAt: -1 })
       .limit(limitNum)
-      .skip((pageNum - 1) * limitNum);
+      .skip((pageNum - 1) * limitNum)
+      .lean(); // Use lean() for faster query - returns plain JS objects
     
     const total = await Feedback.countDocuments({ isDeleted: false });
     const hasMore = (pageNum * limitNum) < total;
@@ -134,6 +137,60 @@ router.get('/', auth, async (req, res) => {
         hasMore: hasMore
       }
     });
+  } catch (error) {
+    console.error('Error fetching feedback summary:', error);
+    res.status(500).json({
+      error: 'Failed to fetch feedback summary',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
+// Full data including feedbackText and additionalComments - use for detail view
+router.get('/', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    const feedback = await Feedback.find({ isDeleted: false })
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
+      .lean(); // Use lean() for faster query
+    
+    const total = await Feedback.countDocuments({ isDeleted: false });
+    const hasMore = (pageNum * limitNum) < total;
+    
+    res.json({
+      feedback,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore: hasMore
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching feedback:', error);
+    res.status(500).json({
+      error: 'Failed to fetch feedback',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/feedback/:id - Get single feedback with full details
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id).lean();
+    
+    if (!feedback) {
+      return res.status(404).json({ error: 'Feedback not found' });
+    }
+    
+    res.json(feedback);
   } catch (error) {
     console.error('Error fetching feedback:', error);
     res.status(500).json({

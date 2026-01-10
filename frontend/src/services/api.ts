@@ -45,7 +45,14 @@ export const submitFeedback = async (data: FeedbackForm): Promise<FeedbackSubmis
 };
 
 export const getAllFeedback = async (params?: { page?: number; limit?: number }): Promise<{ feedback: FeedbackSubmission[]; pagination: { current: number; pages: number; total: number; hasMore: boolean } }> => {
-  const response = await api.get('/feedback', { params });
+  // Use lightweight summary endpoint for list view (excludes large text fields)
+  const response = await api.get('/feedback/summary', { params });
+  return response.data;
+};
+
+export const getFeedbackById = async (id: string): Promise<FeedbackSubmission> => {
+  // Use full endpoint to get complete feedback details for modal view
+  const response = await api.get(`/feedback/${id}`);
   return response.data;
 };
 
