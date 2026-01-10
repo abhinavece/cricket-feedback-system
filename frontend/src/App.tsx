@@ -1,14 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import FeedbackForm from './components/FeedbackForm';
-import AdminDashboard from './components/AdminDashboard';
-import GoogleAuth from './components/GoogleAuth';
-import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { submitFeedback } from './services/api';
 import type { FeedbackForm as FeedbackFormData } from './types';
 import './theme.css';
+
+// Lazy load heavy components - only loaded when needed
+const FeedbackForm = lazy(() => import('./components/FeedbackForm'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const GoogleAuth = lazy(() => import('./components/GoogleAuth'));
+const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
+
+// Loading spinner component for Suspense fallback
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="spinner"></div>
+  </div>
+);
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
@@ -73,33 +82,35 @@ function AppContent() {
         </div>
       )}
       
-      {currentView === 'form' ? (
-        submitted ? (
-          <div className="container flex items-center justify-center min-h-[60vh] fade-in">
-            <div className="card text-center w-full max-w-lg p-8 md:p-12 shadow-2xl">
-              <div className="cricket-ball mx-auto mb-8" style={{width: '64px', height: '64px'}}></div>
-              <h2 className="text-2xl md:text-4xl font-bold mb-4" style={{color: 'var(--primary-green)'}}>Feedback Sent!</h2>
-              <p className="text-secondary text-sm md:text-lg mb-10 leading-relaxed">
-                Awesome! Your feedback has been safely caught by our team.
-              </p>
-              <button
-                onClick={handleReset}
-                className="btn btn-primary w-full h-14 text-lg font-bold"
-              >
-                Submit Another Entry
-              </button>
+      <Suspense fallback={<LoadingSpinner />}>
+        {currentView === 'form' ? (
+          submitted ? (
+            <div className="container flex items-center justify-center min-h-[60vh] fade-in">
+              <div className="card text-center w-full max-w-lg p-8 md:p-12 shadow-2xl">
+                <div className="cricket-ball mx-auto mb-8" style={{width: '64px', height: '64px'}}></div>
+                <h2 className="text-2xl md:text-4xl font-bold mb-4" style={{color: 'var(--primary-green)'}}>Feedback Sent!</h2>
+                <p className="text-secondary text-sm md:text-lg mb-10 leading-relaxed">
+                  Awesome! Your feedback has been safely caught by our team.
+                </p>
+                <button
+                  onClick={handleReset}
+                  className="btn btn-primary w-full h-14 text-lg font-bold"
+                >
+                  Submit Another Entry
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="container fade-in">
+              <FeedbackForm onSubmit={handleSubmit} loading={loading} />
+            </div>
+          )
         ) : (
-          <div className="container fade-in">
-            <FeedbackForm onSubmit={handleSubmit} loading={loading} />
-          </div>
-        )
-      ) : (
-        <ProtectedRoute permission="view_dashboard">
-          <AdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
-        </ProtectedRoute>
-      )}
+          <ProtectedRoute permission="view_dashboard">
+            <AdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
+          </ProtectedRoute>
+        )}
+      </Suspense>
     </div>
   );
 }
