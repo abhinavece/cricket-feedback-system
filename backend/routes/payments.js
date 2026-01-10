@@ -240,7 +240,7 @@ router.put('/:id', auth, async (req, res) => {
 // PUT /api/payments/:id/member/:memberId - Update single member
 router.put('/:id/member/:memberId', auth, async (req, res) => {
   try {
-    const { adjustedAmount, paymentStatus, notes } = req.body;
+    const { adjustedAmount, paymentStatus, notes, dueDate } = req.body;
 
     const payment = await MatchPayment.findById(req.params.id);
     if (!payment) {
@@ -259,13 +259,22 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
     }
 
     if (adjustedAmount !== undefined) member.adjustedAmount = adjustedAmount;
-    if (paymentStatus !== undefined) {
-      member.paymentStatus = paymentStatus;
-      if (paymentStatus === 'paid') {
-        member.paidAt = new Date();
+    if (notes !== undefined) member.notes = notes;
+    if (dueDate !== undefined) member.dueDate = dueDate;
+    
+    // Handle status changes - but status will be auto-calculated based on payments
+    if (paymentStatus !== undefined && paymentStatus !== member.paymentStatus) {
+      // If marking as paid without payment history, add a full payment entry
+      if (paymentStatus === 'paid' && member.paymentHistory.length === 0) {
+        const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
+        member.paymentHistory.push({
+          amount: effectiveAmount,
+          paidAt: new Date(),
+          paymentMethod: 'other',
+          notes: notes || 'Marked as paid'
+        });
       }
     }
-    if (notes !== undefined) member.notes = notes;
 
     await payment.save();
 
@@ -279,6 +288,125 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update member'
+    });
+  }
+});
+
+// POST /api/payments/:id/member/:memberId/add-payment - Record a partial/full payment
+router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
+  try {
+    const { amount, paymentMethod, notes, paidAt } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid payment amount is required'
+      });
+    }
+
+    const payment = await MatchPayment.findById(req.params.id);
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment record not found'
+      });
+    }
+
+    const member = payment.squadMembers.id(req.params.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        error: 'Squad member not found'
+      });
+    }
+
+    // Add payment to history
+    member.paymentHistory.push({
+      amount: parseFloat(amount),
+      paidAt: paidAt ? new Date(paidAt) : new Date(),
+      paymentMethod: paymentMethod || 'upi',
+      notes: notes || ''
+    });
+
+    await payment.save();
+
+    const populatedPayment = await MatchPayment.findById(payment._id)
+      .populate('matchId', 'date opponent ground slot matchId')
+      .populate('squadMembers.playerId', 'name phone role');
+
+    res.json({
+      success: true,
+      payment: populatedPayment,
+      member: payment.squadMembers.id(req.params.memberId),
+      message: 'Payment recorded successfully'
+    });
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to record payment'
+    });
+  }
+});
+
+// GET /api/payments/player/:phone/history - Get payment history for a specific player
+router.get('/player/:phone/history', auth, async (req, res) => {
+  try {
+    const phone = formatPhoneNumber(req.params.phone);
+    
+    // Find all payments where this player is involved
+    const payments = await MatchPayment.find({
+      'squadMembers.playerPhone': phone
+    })
+    .populate('matchId', 'date opponent ground slot matchId')
+    .sort({ 'matchId.date': -1 });
+
+    // Extract player-specific data from each payment
+    const playerHistory = [];
+    let totalPaid = 0;
+    let totalDue = 0;
+    let totalExpected = 0;
+
+    for (const payment of payments) {
+      const memberData = payment.squadMembers.find(m => m.playerPhone === phone);
+      if (memberData) {
+        const effectiveAmount = memberData.adjustedAmount !== null ? memberData.adjustedAmount : memberData.calculatedAmount;
+        totalExpected += effectiveAmount;
+        totalPaid += memberData.amountPaid;
+        totalDue += memberData.dueAmount;
+
+        playerHistory.push({
+          paymentId: payment._id,
+          match: payment.matchId,
+          expectedAmount: effectiveAmount,
+          amountPaid: memberData.amountPaid,
+          dueAmount: memberData.dueAmount,
+          paymentStatus: memberData.paymentStatus,
+          dueDate: memberData.dueDate,
+          paymentHistory: memberData.paymentHistory,
+          notes: memberData.notes,
+          lastPaymentDate: memberData.paidAt
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      playerPhone: phone,
+      summary: {
+        totalMatches: playerHistory.length,
+        totalExpected,
+        totalPaid,
+        totalDue,
+        totalPayments: playerHistory.reduce((sum, p) => sum + p.paymentHistory.length, 0)
+      },
+      history: playerHistory
+    });
+  } catch (error) {
+    console.error('Error fetching player payment history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payment history'
     });
   }
 });

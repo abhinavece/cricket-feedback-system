@@ -41,6 +41,13 @@ import {
   getPaymentScreenshot
 } from '../services/api';
 
+interface PaymentHistoryEntry {
+  amount: number;
+  paidAt: string;
+  paymentMethod: 'cash' | 'upi' | 'card' | 'bank_transfer' | 'other';
+  notes: string;
+}
+
 interface SquadMember {
   _id: string;
   playerId?: string;
@@ -49,7 +56,11 @@ interface SquadMember {
   calculatedAmount: number;
   adjustedAmount: number | null;
   effectiveAmount?: number;
-  paymentStatus: 'pending' | 'paid' | 'due';
+  amountPaid: number;
+  dueAmount: number;
+  paymentStatus: 'pending' | 'paid' | 'partial' | 'due';
+  paymentHistory: PaymentHistoryEntry[];
+  dueDate?: string | null;
   messageSentAt: string | null;
   screenshotImage?: boolean;
   screenshotReceivedAt?: string;
@@ -129,11 +140,13 @@ const PaymentManagement: React.FC = () => {
   const [screenshotError, setScreenshotError] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   
-  // Status change modal
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [statusChangeMember, setStatusChangeMember] = useState<SquadMember | null>(null);
-  const [newStatus, setNewStatus] = useState<'pending' | 'paid' | 'due'>('pending');
-  const [statusComment, setStatusComment] = useState('');
+  // Payment modal
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMember, setPaymentMember] = useState<SquadMember | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'bank_transfer' | 'other'>('upi');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -265,28 +278,46 @@ const PaymentManagement: React.FC = () => {
     }
   };
 
-  const handleOpenStatusModal = (member: SquadMember) => {
-    setStatusChangeMember(member);
-    setNewStatus(member.paymentStatus);
-    setStatusComment('');
-    setShowStatusModal(true);
+  const handleOpenPaymentModal = (member: SquadMember) => {
+    setPaymentMember(member);
+    // Default to remaining due amount or full amount
+    const effectiveAmount = member.adjustedAmount || member.calculatedAmount || 0;
+    const amountPaid = member.amountPaid || 0;
+    const remaining = effectiveAmount - amountPaid;
+    setPaymentAmount(remaining > 0 ? remaining : effectiveAmount);
+    setPaymentMethod('upi');
+    setPaymentNotes('');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setShowPaymentModal(true);
   };
 
-  const handleSaveStatusChange = async () => {
-    if (!payment || !statusChangeMember) return;
+  const handleRecordPayment = async () => {
+    if (!payment || !paymentMember || !paymentAmount || paymentAmount <= 0) return;
     setLoading(true);
     try {
-      const result = await updatePaymentMember(payment._id, statusChangeMember._id, { 
-        paymentStatus: newStatus,
-        notes: statusComment 
+      // Call new add-payment endpoint
+      const response = await fetch(`/api/payments/${payment._id}/member/${paymentMember._id}/add-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: paymentAmount,
+          paymentMethod,
+          notes: paymentNotes,
+          paidAt: paymentDate
+        })
       });
-      setPayment(result.payment);
-      setSuccess(`${statusChangeMember.playerName} status updated to ${newStatus}`);
-      setShowStatusModal(false);
-      setStatusChangeMember(null);
-      setStatusComment('');
+      
+      const result = await response.json();
+      if (result.success) {
+        setPayment(result.payment);
+        setSuccess(`Payment of ₹${paymentAmount} recorded for ${paymentMember.playerName}`);
+        setShowPaymentModal(false);
+        setPaymentMember(null);
+      } else {
+        setError(result.error || 'Failed to record payment');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update status');
+      setError(err.response?.data?.error || 'Failed to record payment');
     } finally {
       setLoading(false);
     }
@@ -678,7 +709,7 @@ const PaymentManagement: React.FC = () => {
                           )}
                         </div>
                         <button
-                          onClick={() => handleOpenStatusModal(member)}
+                          onClick={() => handleOpenPaymentModal(member)}
                           className={`px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-medium ${getStatusColor(member.paymentStatus)}`}
                         >
                           {getStatusIcon(member.paymentStatus)}
@@ -776,63 +807,99 @@ const PaymentManagement: React.FC = () => {
           </div>
         )}
 
-        {/* Status Change Modal */}
-        {showStatusModal && statusChangeMember && (
+        {/* Payment Recording Modal */}
+        {showPaymentModal && paymentMember && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-emerald-400" /> Update Payment Status
+                  <CreditCard className="w-5 h-5 text-emerald-400" /> Record Payment
                 </h3>
-                <button onClick={() => setShowStatusModal(false)} className="p-1 text-slate-400 hover:text-white">
+                <button onClick={() => setShowPaymentModal(false)} className="p-1 text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="mb-4">
-                <p className="text-sm text-slate-400 mb-2">Player: <span className="text-white font-medium">{statusChangeMember.playerName}</span></p>
-                <p className="text-sm text-slate-400">Current Status: <span className={`font-medium ${getStatusColor(statusChangeMember.paymentStatus)}`}>{statusChangeMember.paymentStatus}</span></p>
+              <div className="mb-4 p-3 bg-slate-700/30 rounded-xl">
+                <p className="text-sm text-slate-400 mb-1">Player: <span className="text-white font-medium">{paymentMember.playerName}</span></p>
+                <div className="flex justify-between text-sm mt-2">
+                  <span className="text-slate-400">Expected:</span>
+                  <span className="text-white font-semibold">₹{paymentMember.adjustedAmount || paymentMember.calculatedAmount}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Paid:</span>
+                  <span className="text-emerald-400 font-semibold">₹{paymentMember.amountPaid || 0}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-white/10 mt-2 pt-2">
+                  <span className="text-slate-400">Remaining:</span>
+                  <span className="text-yellow-400 font-semibold">₹{paymentMember.dueAmount || 0}</span>
+                </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">New Status</label>
+                  <label className="block text-sm text-slate-400 mb-2">Payment Amount *</label>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="Enter amount"
+                    min="0"
+                    step="1"
+                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Payment Method</label>
                   <select
-                    value={newStatus}
-                    onChange={(e) => setNewStatus(e.target.value as 'pending' | 'paid' | 'due')}
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as any)}
                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="due">Due</option>
+                    <option value="upi">UPI</option>
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="other">Other</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Payment Date</label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Comment (Optional)</label>
+                  <label className="block text-sm text-slate-400 mb-2">Notes (Optional)</label>
                   <textarea
-                    value={statusComment}
-                    onChange={(e) => setStatusComment(e.target.value)}
-                    placeholder="Add a note about this status change..."
-                    rows={3}
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    placeholder="Add payment notes..."
+                    rows={2}
                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                   />
                 </div>
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowStatusModal(false)}
+                    onClick={() => setShowPaymentModal(false)}
                     className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={handleSaveStatusChange}
-                    disabled={loading}
+                    onClick={handleRecordPayment}
+                    disabled={loading || !paymentAmount || paymentAmount <= 0}
                     className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Save
+                    Record Payment
                   </button>
                 </div>
               </div>

@@ -1,5 +1,36 @@
 const mongoose = require('mongoose');
 
+const paymentHistorySchema = new mongoose.Schema({
+  amount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  paidAt: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'upi', 'card', 'bank_transfer', 'other'],
+    default: 'upi'
+  },
+  notes: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  screenshotImage: {
+    type: Buffer,
+    default: null
+  },
+  screenshotContentType: {
+    type: String,
+    default: null
+  }
+}, { _id: true, timestamps: true });
+
 const paymentMemberSchema = new mongoose.Schema({
   playerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -24,10 +55,23 @@ const paymentMemberSchema = new mongoose.Schema({
     type: Number,
     default: null // Manual override, null means use calculated
   },
+  amountPaid: {
+    type: Number,
+    default: 0 // Total amount actually paid (sum of all payments in history)
+  },
+  dueAmount: {
+    type: Number,
+    default: 0 // Remaining amount to be paid
+  },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'due'],
+    enum: ['pending', 'paid', 'partial', 'due'],
     default: 'pending'
+  },
+  paymentHistory: [paymentHistorySchema], // Array of all payment transactions
+  dueDate: {
+    type: Date,
+    default: null // When the payment is due
   },
   messageSentAt: {
     type: Date,
@@ -39,7 +83,7 @@ const paymentMemberSchema = new mongoose.Schema({
   },
   screenshotImage: {
     type: Buffer,
-    default: null
+    default: null // Latest screenshot (kept for backward compatibility)
   },
   screenshotContentType: {
     type: String,
@@ -55,7 +99,7 @@ const paymentMemberSchema = new mongoose.Schema({
   },
   paidAt: {
     type: Date,
-    default: null
+    default: null // Date of last payment
   },
   notes: {
     type: String,
@@ -148,23 +192,46 @@ matchPaymentSchema.methods.recalculateAmounts = function() {
   // Calculate equal share for non-adjusted members
   const equalShare = nonAdjustedCount > 0 ? Math.ceil(remainingAmount / nonAdjustedCount) : 0;
 
-  // Update calculated amounts
+  // Update calculated amounts and payment details
   this.squadMembers.forEach(member => {
     if (member.adjustedAmount === null) {
       member.calculatedAmount = equalShare;
+    }
+    
+    // Calculate total paid from payment history
+    const totalPaid = member.paymentHistory.reduce((sum, payment) => sum + payment.amount, 0);
+    member.amountPaid = totalPaid;
+    
+    // Calculate due amount
+    const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
+    member.dueAmount = Math.max(0, effectiveAmount - totalPaid);
+    
+    // Update payment status based on amounts
+    if (totalPaid === 0) {
+      member.paymentStatus = 'pending';
+    } else if (totalPaid >= effectiveAmount) {
+      member.paymentStatus = 'paid';
+    } else {
+      member.paymentStatus = 'partial';
+    }
+    
+    // Update paidAt to last payment date
+    if (member.paymentHistory.length > 0) {
+      member.paidAt = member.paymentHistory[member.paymentHistory.length - 1].paidAt;
     }
   });
 
   // Update statistics
   this.membersCount = this.squadMembers.length;
   this.paidCount = this.squadMembers.filter(m => m.paymentStatus === 'paid').length;
-  this.totalCollected = this.squadMembers
-    .filter(m => m.paymentStatus === 'paid')
-    .reduce((sum, m) => sum + (m.adjustedAmount !== null ? m.adjustedAmount : m.calculatedAmount), 0);
+  
+  // Total collected is sum of all amounts paid
+  this.totalCollected = this.squadMembers.reduce((sum, m) => sum + m.amountPaid, 0);
   this.totalPending = this.totalAmount - this.totalCollected;
 
   // Update overall status
-  if (this.paidCount === 0) {
+  const hasPartial = this.squadMembers.some(m => m.paymentStatus === 'partial');
+  if (this.paidCount === 0 && !hasPartial) {
     this.status = this.squadMembers.some(m => m.messageSentAt) ? 'sent' : 'draft';
   } else if (this.paidCount === this.membersCount) {
     this.status = 'completed';
