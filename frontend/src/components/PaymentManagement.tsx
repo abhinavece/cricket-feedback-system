@@ -700,12 +700,20 @@ const PaymentManagement: React.FC = () => {
                                 type="number"
                                 value={editAmount === 0 ? '' : editAmount}
                                 onChange={(e) => {
-                                  const value = e.target.value === '' ? 0 : Number(e.target.value);
-                                  setEditAmount(Math.max(0, value));
+                                  const inputValue = e.target.value.trim();
+                                  if (inputValue === '') {
+                                    setEditAmount(0);
+                                  } else {
+                                    const value = Number(inputValue);
+                                    if (!isNaN(value) && value >= 0) {
+                                      setEditAmount(value);
+                                    }
+                                  }
                                 }}
-                                onFocus={(e) => {
-                                  if (editAmount === 0) {
-                                    e.target.value = '';
+                                onBlur={(e) => {
+                                  const inputValue = e.target.value.trim();
+                                  if (inputValue === '') {
+                                    setEditAmount(0);
                                   }
                                 }}
                                 className="w-20 px-2 py-1 bg-slate-600 border border-white/10 rounded text-white text-sm"
@@ -845,7 +853,11 @@ const PaymentManagement: React.FC = () => {
                 <p className="text-sm text-slate-400 mb-1">Player: <span className="text-white font-medium">{paymentMember.playerName}</span></p>
                 <div className="flex justify-between text-sm mt-2">
                   <span className="text-slate-400">Expected:</span>
-                  <span className="text-white font-semibold">₹{paymentMember.adjustedAmount || paymentMember.calculatedAmount}</span>
+                  {(paymentMember.adjustedAmount || paymentMember.calculatedAmount) === 0 ? (
+                    <span className="text-purple-400 font-semibold">FREE PLAYER</span>
+                  ) : (
+                    <span className="text-white font-semibold">₹{paymentMember.adjustedAmount || paymentMember.calculatedAmount}</span>
+                  )}
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Paid:</span>
@@ -864,15 +876,23 @@ const PaymentManagement: React.FC = () => {
                     type="number"
                     value={paymentAmount === 0 ? '' : paymentAmount}
                     onChange={(e) => {
-                      const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                      setPaymentAmount(Math.max(0, value));
-                    }}
-                    onFocus={(e) => {
-                      if (paymentAmount === 0) {
-                        e.target.value = '';
+                      const inputValue = e.target.value.trim();
+                      if (inputValue === '') {
+                        setPaymentAmount(0);
+                      } else {
+                        const value = parseFloat(inputValue);
+                        if (!isNaN(value) && value >= 0) {
+                          setPaymentAmount(value);
+                        }
                       }
                     }}
-                    placeholder="Enter amount"
+                    onBlur={(e) => {
+                      const inputValue = e.target.value.trim();
+                      if (inputValue === '') {
+                        setPaymentAmount(0);
+                      }
+                    }}
+                    placeholder="Enter amount (0 for free player)"
                     min="0"
                     step="1"
                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
