@@ -146,6 +146,39 @@ router.get('/summary', auth, async (req, res) => {
   }
 });
 
+// GET /api/feedback/trash - Get deleted feedback (must come before /:id route)
+router.get('/trash', auth, async (req, res) => {
+  try {
+    const deletedFeedback = await Feedback.find({ isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .lean();
+    
+    res.json(deletedFeedback);
+  } catch (error) {
+    console.error('Error fetching deleted feedback:', error);
+    res.status(500).json({ error: 'Failed to fetch deleted feedback' });
+  }
+});
+
+// GET /api/feedback/:id - Get single feedback with full details
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id).lean();
+    
+    if (!feedback) {
+      return res.status(404).json({ error: 'Feedback not found' });
+    }
+    
+    res.json(feedback);
+  } catch (error) {
+    console.error('Error fetching feedback:', error);
+    res.status(500).json({
+      error: 'Failed to fetch feedback',
+      details: error.message
+    });
+  }
+});
+
 // GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
 // Full data including feedbackText and additionalComments - use for detail view
 router.get('/', auth, async (req, res) => {
@@ -172,25 +205,6 @@ router.get('/', auth, async (req, res) => {
         hasMore: hasMore
       }
     });
-  } catch (error) {
-    console.error('Error fetching feedback:', error);
-    res.status(500).json({
-      error: 'Failed to fetch feedback',
-      details: error.message
-    });
-  }
-});
-
-// GET /api/feedback/:id - Get single feedback with full details
-router.get('/:id', auth, async (req, res) => {
-  try {
-    const feedback = await Feedback.findById(req.params.id).lean();
-    
-    if (!feedback) {
-      return res.status(404).json({ error: 'Feedback not found' });
-    }
-    
-    res.json(feedback);
   } catch (error) {
     console.error('Error fetching feedback:', error);
     res.status(500).json({
@@ -230,19 +244,6 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error soft deleting feedback:', error);
     res.status(500).json({ error: 'Failed to delete feedback' });
-  }
-});
-
-// Get deleted feedback (trash)
-router.get('/trash', async (req, res) => {
-  try {
-    const deletedFeedback = await Feedback.find({ isDeleted: true })
-      .sort({ deletedAt: -1 });
-    
-    res.json(deletedFeedback);
-  } catch (error) {
-    console.error('Error fetching deleted feedback:', error);
-    res.status(500).json({ error: 'Failed to fetch deleted feedback' });
   }
 });
 
