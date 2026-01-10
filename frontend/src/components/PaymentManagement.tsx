@@ -274,7 +274,29 @@ const PaymentManagement: React.FC = () => {
     setLoading(true);
     try {
       const result = await updatePaymentMember(payment._id, memberId, { adjustedAmount: editAmount });
-      setPayment(result.payment);
+      
+      // Update the specific member in the payment state
+      if (result.success && result.member) {
+        const updatedPayment = { ...payment };
+        const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === memberId);
+        if (memberIndex >= 0) {
+          updatedPayment.squadMembers[memberIndex] = {
+            ...updatedPayment.squadMembers[memberIndex],
+            ...result.member
+          };
+        }
+        
+        // Update payment summary if provided
+        if (result.paymentSummary) {
+          updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+          updatedPayment.totalPending = result.paymentSummary.totalPending;
+          updatedPayment.paidCount = result.paymentSummary.paidCount;
+          updatedPayment.status = result.paymentSummary.status;
+        }
+        
+        setPayment(updatedPayment);
+      }
+      
       setEditingMember(null);
       setSuccess('Amount adjusted');
     } catch (err: any) {
@@ -309,7 +331,28 @@ const PaymentManagement: React.FC = () => {
       });
       
       if (result.success) {
-        setPayment(result.payment);
+        // Update the specific member in the payment state
+        if (result.member) {
+          const updatedPayment = { ...payment };
+          const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
+          if (memberIndex >= 0) {
+            updatedPayment.squadMembers[memberIndex] = {
+              ...updatedPayment.squadMembers[memberIndex],
+              ...result.member
+            };
+          }
+          
+          // Update payment summary if provided
+          if (result.paymentSummary) {
+            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+            updatedPayment.totalPending = result.paymentSummary.totalPending;
+            updatedPayment.paidCount = result.paymentSummary.paidCount;
+            updatedPayment.status = result.paymentSummary.status;
+          }
+          
+          setPayment(updatedPayment);
+        }
+        
         setSuccess(`Payment of ₹${paymentAmount} recorded for ${paymentMember.playerName}`);
         setShowPaymentModal(false);
         setPaymentMember(null);

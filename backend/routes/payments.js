@@ -388,9 +388,32 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
 
     await payment.save();
 
+    // Return only the updated member data, not the entire payment object
+    const updatedMember = payment.squadMembers.id(req.params.memberId);
+    const memberData = {
+      _id: updatedMember._id,
+      playerName: updatedMember.playerName,
+      playerPhone: updatedMember.playerPhone,
+      calculatedAmount: updatedMember.calculatedAmount,
+      adjustedAmount: updatedMember.adjustedAmount,
+      amountPaid: updatedMember.amountPaid,
+      dueAmount: updatedMember.dueAmount,
+      paymentStatus: updatedMember.paymentStatus,
+      notes: updatedMember.notes,
+      dueDate: updatedMember.dueDate,
+      paidAt: updatedMember.paidAt
+    };
+
     res.json({
       success: true,
-      payment,
+      member: memberData,
+      paymentSummary: {
+        totalAmount: payment.totalAmount,
+        totalCollected: payment.totalCollected,
+        totalPending: payment.totalPending,
+        paidCount: payment.paidCount,
+        status: payment.status
+      },
       message: 'Member updated successfully'
     });
   } catch (error) {
@@ -469,14 +492,42 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
 
     await payment.save();
 
-    const populatedPayment = await MatchPayment.findById(payment._id)
-      .populate('matchId', 'date opponent ground slot matchId')
-      .populate('squadMembers.playerId', 'name phone role');
+    // Return only the updated member data, not the entire payment object
+    const updatedMember = payment.squadMembers.id(req.params.memberId);
+    
+    // Get only the latest payment entry (without binary data)
+    const latestPayment = updatedMember.paymentHistory
+      .filter(p => p.isValidPayment !== false)
+      .sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt))[0];
+    
+    const memberData = {
+      _id: updatedMember._id,
+      playerName: updatedMember.playerName,
+      playerPhone: updatedMember.playerPhone,
+      calculatedAmount: updatedMember.calculatedAmount,
+      adjustedAmount: updatedMember.adjustedAmount,
+      amountPaid: updatedMember.amountPaid,
+      dueAmount: updatedMember.dueAmount,
+      paymentStatus: updatedMember.paymentStatus,
+      paidAt: updatedMember.paidAt,
+      latestPayment: latestPayment ? {
+        amount: latestPayment.amount,
+        paidAt: latestPayment.paidAt,
+        paymentMethod: latestPayment.paymentMethod,
+        notes: latestPayment.notes
+      } : null
+    };
 
     res.json({
       success: true,
-      payment: populatedPayment,
-      member: payment.squadMembers.id(req.params.memberId),
+      member: memberData,
+      paymentSummary: {
+        totalAmount: payment.totalAmount,
+        totalCollected: payment.totalCollected,
+        totalPending: payment.totalPending,
+        paidCount: payment.paidCount,
+        status: payment.status
+      },
       message: 'Payment recorded successfully'
     });
   } catch (error) {
