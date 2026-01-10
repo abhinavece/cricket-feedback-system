@@ -87,10 +87,17 @@ const MatchManagement: React.FC = () => {
       }
 
       const data = await matchApi.getMatches({ page: pageNum, limit: 10 });
+      const pagination = data.pagination || {};
+      
+      // Calculate hasMore: if current page * limit < total, there are more pages
+      const hasMoreData = (pageNum * 10) < (pagination.total || 0);
+      
       console.log(`[MatchManagement] API Response:`, {
         matchCount: data.matches?.length || 0,
-        pagination: data.pagination,
-        hasMore: data.pagination?.hasMore
+        pagination,
+        calculatedHasMore: hasMoreData,
+        pageNum,
+        total: pagination.total
       });
 
       if (append) {
@@ -104,7 +111,6 @@ const MatchManagement: React.FC = () => {
         console.log(`[MatchManagement] Set initial matches: ${data.matches?.length || 0}`);
       }
 
-      const hasMoreData = data.pagination?.hasMore || false;
       console.log(`[MatchManagement] Setting hasMore to: ${hasMoreData}`);
       setHasMore(hasMoreData);
       setCurrentPage(pageNum);

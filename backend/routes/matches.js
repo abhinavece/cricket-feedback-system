@@ -8,6 +8,8 @@ const auth = require('../middleware/auth');
 router.get('/', auth, async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
     const query = {};
     
     if (status) {
@@ -18,19 +20,24 @@ router.get('/', auth, async (req, res) => {
       .populate('squad.player', 'name phone role team')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1, date: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum);
     
     const total = await Match.countDocuments(query);
+    const hasMore = (pageNum * limitNum) < total;
+    
+    const paginationData = {
+      current: pageNum,
+      pages: Math.ceil(total / limitNum),
+      total,
+      hasMore: hasMore
+    };
+    
+    console.log('[Matches API] Pagination:', paginationData);
     
     res.json({
       matches,
-      pagination: {
-        current: parseInt(page),
-        pages: Math.ceil(total / limit),
-        total,
-        hasMore: (page * limit) < total
-      }
+      pagination: paginationData
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
