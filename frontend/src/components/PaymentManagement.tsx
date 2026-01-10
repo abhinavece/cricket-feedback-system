@@ -38,6 +38,7 @@ import {
   removePaymentMember,
   loadSquadFromAvailability,
   sendPaymentRequests,
+  recordPayment,
   getPaymentScreenshot
 } from '../services/api';
 
@@ -295,29 +296,25 @@ const PaymentManagement: React.FC = () => {
     if (!payment || !paymentMember || !paymentAmount || paymentAmount <= 0) return;
     setLoading(true);
     try {
-      // Call new add-payment endpoint
-      const response = await fetch(`/api/payments/${payment._id}/member/${paymentMember._id}/add-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: paymentAmount,
-          paymentMethod,
-          notes: paymentNotes,
-          paidAt: paymentDate
-        })
+      const result = await recordPayment(payment._id, paymentMember._id, {
+        amount: paymentAmount,
+        paymentMethod,
+        notes: paymentNotes,
+        paidAt: paymentDate
       });
       
-      const result = await response.json();
       if (result.success) {
         setPayment(result.payment);
         setSuccess(`Payment of ₹${paymentAmount} recorded for ${paymentMember.playerName}`);
         setShowPaymentModal(false);
         setPaymentMember(null);
+        setPaymentAmount(0);
+        setPaymentNotes('');
       } else {
         setError(result.error || 'Failed to record payment');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to record payment');
+      setError(err.response?.data?.error || err.message || 'Failed to record payment');
     } finally {
       setLoading(false);
     }
@@ -856,8 +853,8 @@ const PaymentManagement: React.FC = () => {
                   <label className="block text-sm text-slate-400 mb-2">Payment Amount *</label>
                   <input
                     type="number"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                    value={paymentAmount || ''}
+                    onChange={(e) => setPaymentAmount(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                     placeholder="Enter amount"
                     min="0"
                     step="1"

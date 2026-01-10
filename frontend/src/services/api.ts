@@ -246,6 +246,16 @@ export const deletePayment = async (id: string) => {
   return response.data;
 };
 
+export const recordPayment = async (paymentId: string, memberId: string, data: {
+  amount: number;
+  paymentMethod: string;
+  notes?: string;
+  paidAt?: string;
+}) => {
+  const response = await api.post(`/payments/${paymentId}/member/${memberId}/add-payment`, data);
+  return response.data;
+};
+
 export const getPaymentScreenshot = (paymentId: string, memberId: string) => {
   return `${API_BASE_URL}/payments/${paymentId}/screenshot/${memberId}`;
 };
