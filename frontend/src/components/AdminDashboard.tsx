@@ -326,106 +326,86 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         
         {/* Premium Tab Navigation */}
         <div className="mb-10 md:mb-16">
-          {/* Desktop: Ultra-Modern Magnetic Tabs */}
-          <nav className="hidden md:flex p-2 bg-[#1e293b]/50 backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-x-auto max-w-full">
-            {/* Advanced Slider with Multi-layered Glow */}
-            <div 
-              className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
-              style={{
-                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : activeTab === 'matches' ? '220px' : activeTab === 'payments' ? '220px' : activeTab === 'player-history' ? '280px' : '200px',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : activeTab === 'matches' ? '448px' : activeTab === 'payments' ? '668px' : activeTab === 'player-history' ? '888px' : '1188px'
-              }}
-            >
-              {/* Premium glass reflection and shimmer */}
-              <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-[1.5rem] mix-blend-overlay"></div>
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 rounded-[1.5rem]"></div>
-              <div className="absolute -inset-[1px] bg-gradient-to-r from-white/20 to-transparent rounded-[1.5rem] blur-[1px]"></div>
-            </div>
-            
+          {/* Desktop: Modern Cascade Tab Design - No Scrolling */}
+          <nav className="hidden md:flex flex-wrap gap-3 p-4 bg-gradient-to-r from-slate-900/40 via-slate-800/40 to-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl">
             <button
               onClick={() => { setActiveTab('feedback'); onTabChange?.('feedback'); }}
-              className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
-                activeTab === 'feedback' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+              className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                activeTab === 'feedback'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
               }`}
-              style={{ width: '220px', justifyContent: 'center' }}
             >
-              <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'feedback' ? 'bg-black/10 scale-110 rotate-6 shadow-inner' : 'bg-transparent'}`}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-              </div>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
               Feedback
             </button>
             {user?.role === 'admin' && (
               <>
                 <button
                   onClick={() => { setActiveTab('whatsapp'); onTabChange?.('whatsapp'); }}
-                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
-                    activeTab === 'whatsapp' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'whatsapp'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
-                  style={{ width: '220px', justifyContent: 'center' }}
                 >
-                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'whatsapp' ? 'bg-black/10 scale-125 rotate-3 shadow-inner' : 'bg-transparent'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
                   WhatsApp
                 </button>
                 <button
                   onClick={() => { setActiveTab('matches'); onTabChange?.('matches'); }}
-                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
-                    activeTab === 'matches' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'matches'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
-                  style={{ width: '220px', justifyContent: 'center' }}
                 >
-                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'matches' ? 'bg-black/10 scale-110 rotate-6 shadow-inner' : 'bg-transparent'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   Matches
                 </button>
                 <button
                   onClick={() => { setActiveTab('payments'); onTabChange?.('payments'); }}
-                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
-                    activeTab === 'payments' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'payments'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
-                  style={{ width: '220px', justifyContent: 'center' }}
                 >
-                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'payments' ? 'bg-black/10 scale-110 rotate-3 shadow-inner' : 'bg-transparent'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
                   Payments
                 </button>
                 <button
                   onClick={() => { setActiveTab('player-history'); onTabChange?.('player-history'); }}
-                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
-                    activeTab === 'player-history' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'player-history'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
-                  style={{ width: '280px', justifyContent: 'center' }}
                 >
-                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'player-history' ? 'bg-black/10 scale-110 rotate-3 shadow-inner' : 'bg-transparent'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   Player History
                 </button>
                 <button
                   onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
-                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
-                    activeTab === 'users' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === 'users'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
-                  style={{ width: '200px', justifyContent: 'center' }}
                 >
-                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'users' ? 'bg-black/10 scale-110 -rotate-6 shadow-inner' : 'bg-transparent'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
                   Users
                 </button>
               </>
