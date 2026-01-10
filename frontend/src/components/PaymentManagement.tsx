@@ -698,10 +698,19 @@ const PaymentManagement: React.FC = () => {
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
-                                value={editAmount}
-                                onChange={(e) => setEditAmount(Number(e.target.value))}
+                                value={editAmount === 0 ? '' : editAmount}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                                  setEditAmount(Math.max(0, value));
+                                }}
+                                onFocus={(e) => {
+                                  if (editAmount === 0) {
+                                    e.target.value = '';
+                                  }
+                                }}
                                 className="w-20 px-2 py-1 bg-slate-600 border border-white/10 rounded text-white text-sm"
                                 autoFocus
+                                placeholder="0"
                               />
                               <button onClick={() => handleUpdateMemberAmount(member._id)} className="p-1 text-emerald-400 hover:bg-emerald-500/20 rounded">
                                 <Check className="w-4 h-4" />
@@ -853,8 +862,16 @@ const PaymentManagement: React.FC = () => {
                   <label className="block text-sm text-slate-400 mb-2">Payment Amount *</label>
                   <input
                     type="number"
-                    value={paymentAmount || ''}
-                    onChange={(e) => setPaymentAmount(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    value={paymentAmount === 0 ? '' : paymentAmount}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                      setPaymentAmount(Math.max(0, value));
+                    }}
+                    onFocus={(e) => {
+                      if (paymentAmount === 0) {
+                        e.target.value = '';
+                      }
+                    }}
                     placeholder="Enter amount"
                     min="0"
                     step="1"
