@@ -8,7 +8,7 @@ const Availability = require('../models/Availability');
 const Message = require('../models/Message');
 const axios = require('axios');
 
-// GET /api/payments - Get all payment records
+// GET /api/payments - Get all payment records (optimized)
 router.get('/', auth, async (req, res) => {
   try {
     const payments = await MatchPayment.find()
@@ -16,9 +16,29 @@ router.get('/', auth, async (req, res) => {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 
+    // Optimize payload by removing heavy data
+    const optimizedPayments = payments.map(payment => {
+      const paymentObj = payment.toJSON();
+      
+      // Remove payment history and binary data from squad members
+      if (paymentObj.squadMembers) {
+        paymentObj.squadMembers = paymentObj.squadMembers.map(member => {
+          const { 
+            paymentHistory, 
+            screenshotImage, 
+            screenshotContentType, 
+            ...memberOptimized 
+          } = member;
+          return memberOptimized;
+        });
+      }
+      
+      return paymentObj;
+    });
+
     res.json({
       success: true,
-      payments
+      payments: optimizedPayments
     });
   } catch (error) {
     console.error('Error fetching payments:', error);
@@ -29,10 +49,11 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// GET /api/payments/match/:matchId - Get payment for a specific match
+// GET /api/payments/match/:matchId - Get payment for a specific match (optimized)
 router.get('/match/:matchId', auth, async (req, res) => {
   try {
     const { matchId } = req.params;
+    const { includeHistory = false } = req.query; // Optional query param to include payment history
 
     const payment = await MatchPayment.findOne({ matchId })
       .populate('matchId', 'date opponent ground slot matchId')
@@ -46,13 +67,24 @@ router.get('/match/:matchId', auth, async (req, res) => {
       });
     }
 
-    // Convert to JSON and exclude binary image data
+    // Convert to JSON and optimize payload
     const paymentObj = payment.toJSON();
     
-    // Remove binary image data from squadMembers but keep metadata
+    // Remove binary image data and optionally payment history from squad members
     if (paymentObj.squadMembers) {
       paymentObj.squadMembers = paymentObj.squadMembers.map(member => {
-        const { screenshotImage, ...memberWithoutImage } = member;
+        const { 
+          screenshotImage, 
+          screenshotContentType,
+          ...memberWithoutImage 
+        } = member;
+        
+        // Only include payment history if explicitly requested
+        if (!includeHistory) {
+          const { paymentHistory, ...memberWithoutHistory } = memberWithoutImage;
+          return memberWithoutHistory;
+        }
+        
         return memberWithoutImage;
       });
     }
@@ -70,9 +102,11 @@ router.get('/match/:matchId', auth, async (req, res) => {
   }
 });
 
-// GET /api/payments/:id - Get single payment by ID
+// GET /api/payments/:id - Get single payment by ID (optimized)
 router.get('/:id', auth, async (req, res) => {
   try {
+    const { includeHistory = false } = req.query; // Optional query param to include payment history
+
     const payment = await MatchPayment.findById(req.params.id)
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('squadMembers.playerId', 'name phone role');
@@ -84,9 +118,31 @@ router.get('/:id', auth, async (req, res) => {
       });
     }
 
+    // Optimize payload by removing heavy data
+    const paymentObj = payment.toJSON();
+    
+    // Remove binary image data and optionally payment history from squad members
+    if (paymentObj.squadMembers) {
+      paymentObj.squadMembers = paymentObj.squadMembers.map(member => {
+        const { 
+          screenshotImage, 
+          screenshotContentType,
+          ...memberWithoutImage 
+        } = member;
+        
+        // Only include payment history if explicitly requested
+        if (!includeHistory) {
+          const { paymentHistory, ...memberWithoutHistory } = memberWithoutImage;
+          return memberWithoutHistory;
+        }
+        
+        return memberWithoutImage;
+      });
+    }
+
     res.json({
       success: true,
-      payment
+      payment: paymentObj
     });
   } catch (error) {
     console.error('Error fetching payment:', error);
@@ -297,6 +353,52 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update member'
+    });
+  }
+});
+
+// GET /api/payments/summary - Get lightweight payment summary for list view
+router.get('/summary', auth, async (req, res) => {
+  try {
+    const payments = await MatchPayment.find()
+      .populate('matchId', 'date opponent ground slot matchId')
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    // Return only essential fields for list view
+    const summaryPayments = payments.map(payment => ({
+      _id: payment._id,
+      matchId: payment.matchId,
+      totalAmount: payment.totalAmount,
+      status: payment.status,
+      totalCollected: payment.totalCollected,
+      totalPending: payment.totalPending,
+      membersCount: payment.membersCount,
+      paidCount: payment.paidCount,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      // Include minimal squad member info (just counts and basic status)
+      squadMembers: payment.squadMembers.map(member => ({
+        _id: member._id,
+        playerName: member.playerName,
+        playerPhone: member.playerPhone,
+        paymentStatus: member.paymentStatus,
+        amountPaid: member.amountPaid,
+        dueAmount: member.dueAmount,
+        adjustedAmount: member.adjustedAmount,
+        calculatedAmount: member.calculatedAmount
+      }))
+    }));
+
+    res.json({
+      success: true,
+      payments: summaryPayments
+    });
+  } catch (error) {
+    console.error('Error fetching payment summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payment summary'
     });
   }
 });

@@ -173,17 +173,22 @@ export const sendReminder = async (matchId: string) => {
 
 // Payment APIs
 export const getPayments = async () => {
-  const response = await api.get('/payments');
+  // Use the lightweight summary endpoint for list view
+  const response = await api.get('/payments/summary');
   return response.data;
 };
 
-export const getPaymentByMatch = async (matchId: string) => {
-  const response = await api.get(`/payments/match/${matchId}`);
+export const getPaymentByMatch = async (matchId: string, includeHistory = false) => {
+  // Use optimized endpoint with optional history inclusion
+  const query = includeHistory ? '?includeHistory=true' : '';
+  const response = await api.get(`/payments/match/${matchId}${query}`);
   return response.data;
 };
 
-export const getPaymentById = async (id: string) => {
-  const response = await api.get(`/payments/${id}`);
+export const getPaymentById = async (paymentId: string, includeHistory = false) => {
+  // Use optimized endpoint with optional history inclusion
+  const query = includeHistory ? '?includeHistory=true' : '';
+  const response = await api.get(`/payments/${paymentId}${query}`);
   return response.data;
 };
 
