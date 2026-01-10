@@ -52,7 +52,7 @@ const MatchManagement: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -75,9 +75,52 @@ const MatchManagement: React.FC = () => {
     onConfirm: () => {}
   });
 
-  useEffect(() => {
-    fetchMatches();
+  // Fetch matches with pagination
+  const fetchMatches = useCallback(async (pageNum: number = 1, append: boolean = false) => {
+    try {
+      console.log(`[MatchManagement] Fetching matches - Page: ${pageNum}, Append: ${append}`);
+      
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const data = await matchApi.getMatches({ page: pageNum, limit: 10 });
+      console.log(`[MatchManagement] API Response:`, {
+        matchCount: data.matches?.length || 0,
+        pagination: data.pagination,
+        hasMore: data.pagination?.hasMore
+      });
+
+      if (append) {
+        setMatches(prev => {
+          const newMatches = [...prev, ...(data.matches || [])];
+          console.log(`[MatchManagement] Appended matches. Total now: ${newMatches.length}`);
+          return newMatches;
+        });
+      } else {
+        setMatches(data.matches || []);
+        console.log(`[MatchManagement] Set initial matches: ${data.matches?.length || 0}`);
+      }
+
+      const hasMoreData = data.pagination?.hasMore || false;
+      console.log(`[MatchManagement] Setting hasMore to: ${hasMoreData}`);
+      setHasMore(hasMoreData);
+      setCurrentPage(pageNum);
+    } catch (error) {
+      console.error('[MatchManagement] Error fetching matches:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    console.log('[MatchManagement] Component mounted, fetching initial matches');
+    fetchMatches(1, false);
+  }, [fetchMatches]);
 
   // Close filter menu when clicking outside
   useEffect(() => {
@@ -93,44 +136,39 @@ const MatchManagement: React.FC = () => {
     };
   }, [showFilterMenu]);
 
-  const fetchMatches = useCallback(async (pageNum: number = 1, append: boolean = false) => {
-    try {
-      if (append) {
-        setLoadingMore(true);
-      }
-      const data = await matchApi.getMatches({ page: pageNum, limit: 10 });
-      if (append) {
-        setMatches(prev => [...prev, ...(data.matches || [])]);
-      } else {
-        setMatches(data.matches || []);
-      }
-      setHasMore(data.pagination?.hasMore || false);
-      setPage(pageNum);
-    } catch (error) {
-      console.error('Error fetching matches:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
-
   // Infinite scroll handler
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    let isScrolling = false;
     
     const handleScroll = () => {
+      if (isScrolling) return;
+      
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        if (loading || loadingMore || !hasMore) return;
+        if (loading || loadingMore || !hasMore) {
+          console.log('[MatchManagement] Scroll ignored - loading:', loading, 'loadingMore:', loadingMore, 'hasMore:', hasMore);
+          return;
+        }
         
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const scrollHeight = document.documentElement.scrollHeight;
         const clientHeight = document.documentElement.clientHeight;
         
+        console.log('[MatchManagement] Scroll position:', {
+          scrollTop,
+          clientHeight,
+          scrollHeight,
+          distanceFromBottom: scrollHeight - (scrollTop + clientHeight)
+        });
+        
         // Trigger when user is 300px from bottom
         if (scrollTop + clientHeight >= scrollHeight - 300) {
           if (!loadingMore && hasMore) {
-            fetchMatches(page + 1, true);
+            console.log('[MatchManagement] Triggering load more - next page:', currentPage + 1);
+            isScrolling = true;
+            fetchMatches(currentPage + 1, true);
+            setTimeout(() => { isScrolling = false; }, 500);
           }
         }
       }, 100);
@@ -141,7 +179,7 @@ const MatchManagement: React.FC = () => {
       clearTimeout(timeoutId);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [loading, loadingMore, hasMore, page, fetchMatches]);
+  }, [loading, loadingMore, hasMore, currentPage, fetchMatches]);
 
   const handleCreateMatch = () => {
     setEditingMatch(null);
@@ -162,7 +200,8 @@ const MatchManagement: React.FC = () => {
       }
       setShowForm(false);
       setEditingMatch(null);
-      fetchMatches();
+      console.log('[MatchManagement] Match saved, refreshing list');
+      fetchMatches(1, false);
     } catch (error) {
       console.error('Error saving match:', error);
     }
@@ -176,7 +215,8 @@ const MatchManagement: React.FC = () => {
       onConfirm: async () => {
         try {
           await matchApi.deleteMatch(matchId);
-          fetchMatches();
+          console.log('[MatchManagement] Match deleted, refreshing list');
+          fetchMatches(1, false);
         } catch (error) {
           console.error('Error deleting match:', error);
         }
@@ -512,7 +552,8 @@ const MatchManagement: React.FC = () => {
           onClose={() => {
             setShowDetailModal(false);
             setSelectedMatchForDetail(null);
-            fetchMatches(); // Refresh matches after closing
+            console.log('[MatchManagement] Modal closed, refreshing matches');
+            fetchMatches(1, false);
           }}
           onEdit={(match) => {
             setShowDetailModal(false);
