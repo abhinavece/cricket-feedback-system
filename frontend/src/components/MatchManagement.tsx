@@ -18,7 +18,7 @@ interface Match {
   opponent: string;
   ground: string;
   status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
-  squad: Array<{
+  squad?: Array<{
     player: {
       _id: string;
       name: string;
