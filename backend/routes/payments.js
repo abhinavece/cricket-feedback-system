@@ -333,7 +333,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
 
     const formattedPhone = formatPhoneNumber(playerPhone);
 
-    // Check if member already exists
+    // Check if member already exists in payment
     const exists = payment.squadMembers.some(m => m.playerPhone === formattedPhone);
     if (exists) {
       return res.status(400).json({
@@ -342,8 +342,30 @@ router.post('/:id/add-member', auth, async (req, res) => {
       });
     }
 
+    // Save player permanently to Player collection if not exists
+    const Player = require('../models/Player');
+    let savedPlayerId = playerId;
+    
+    if (!playerId) {
+      // Check if player exists in database
+      let existingPlayer = await Player.findOne({ phone: formattedPhone });
+      
+      if (!existingPlayer) {
+        // Create new player in database
+        existingPlayer = await Player.create({
+          name: playerName,
+          phone: formattedPhone,
+          role: 'player',
+          team: 'Mavericks XI',
+          isActive: true
+        });
+      }
+      
+      savedPlayerId = existingPlayer._id;
+    }
+
     payment.squadMembers.push({
-      playerId: playerId || null,
+      playerId: savedPlayerId,
       playerName,
       playerPhone: formattedPhone,
       adjustedAmount: adjustedAmount !== undefined ? adjustedAmount : null,
@@ -359,7 +381,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
     res.json({
       success: true,
       payment: populatedPayment,
-      message: 'Member added successfully'
+      message: 'Member added successfully and saved to squad'
     });
   } catch (error) {
     console.error('Error adding member:', error);

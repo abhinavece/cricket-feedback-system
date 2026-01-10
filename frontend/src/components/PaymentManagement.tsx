@@ -128,6 +128,12 @@ const PaymentManagement: React.FC = () => {
   const [viewingScreenshot, setViewingScreenshot] = useState<{memberId: string; playerName: string} | null>(null);
   const [screenshotError, setScreenshotError] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  
+  // Status change modal
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusChangeMember, setStatusChangeMember] = useState<SquadMember | null>(null);
+  const [newStatus, setNewStatus] = useState<'pending' | 'paid' | 'due'>('pending');
+  const [statusComment, setStatusComment] = useState('');
 
   useEffect(() => {
     fetchDashboardData();
@@ -259,14 +265,26 @@ const PaymentManagement: React.FC = () => {
     }
   };
 
-  const handleTogglePaidStatus = async (member: SquadMember) => {
-    if (!payment) return;
-    const newStatus = member.paymentStatus === 'paid' ? 'pending' : 'paid';
+  const handleOpenStatusModal = (member: SquadMember) => {
+    setStatusChangeMember(member);
+    setNewStatus(member.paymentStatus);
+    setStatusComment('');
+    setShowStatusModal(true);
+  };
+
+  const handleSaveStatusChange = async () => {
+    if (!payment || !statusChangeMember) return;
     setLoading(true);
     try {
-      const result = await updatePaymentMember(payment._id, member._id, { paymentStatus: newStatus });
+      const result = await updatePaymentMember(payment._id, statusChangeMember._id, { 
+        paymentStatus: newStatus,
+        notes: statusComment 
+      });
       setPayment(result.payment);
-      setSuccess(`${member.playerName} marked as ${newStatus}`);
+      setSuccess(`${statusChangeMember.playerName} status updated to ${newStatus}`);
+      setShowStatusModal(false);
+      setStatusChangeMember(null);
+      setStatusComment('');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update status');
     } finally {
@@ -660,7 +678,7 @@ const PaymentManagement: React.FC = () => {
                           )}
                         </div>
                         <button
-                          onClick={() => handleTogglePaidStatus(member)}
+                          onClick={() => handleOpenStatusModal(member)}
                           className={`px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-medium ${getStatusColor(member.paymentStatus)}`}
                         >
                           {getStatusIcon(member.paymentStatus)}
@@ -754,6 +772,70 @@ const PaymentManagement: React.FC = () => {
                   onError={() => setScreenshotError(true)}
                 />
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Status Change Modal */}
+        {showStatusModal && statusChangeMember && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-emerald-400" /> Update Payment Status
+                </h3>
+                <button onClick={() => setShowStatusModal(false)} className="p-1 text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-sm text-slate-400 mb-2">Player: <span className="text-white font-medium">{statusChangeMember.playerName}</span></p>
+                <p className="text-sm text-slate-400">Current Status: <span className={`font-medium ${getStatusColor(statusChangeMember.paymentStatus)}`}>{statusChangeMember.paymentStatus}</span></p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">New Status</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as 'pending' | 'paid' | 'due')}
+                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="due">Due</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Comment (Optional)</label>
+                  <textarea
+                    value={statusComment}
+                    onChange={(e) => setStatusComment(e.target.value)}
+                    placeholder="Add a note about this status change..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveStatusChange}
+                    disabled={loading}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Save
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
