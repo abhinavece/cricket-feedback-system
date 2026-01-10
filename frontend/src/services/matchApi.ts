@@ -92,6 +92,7 @@ export interface MatchesResponse {
     current: number;
     pages: number;
     total: number;
+    hasMore: boolean;
   };
 }
 

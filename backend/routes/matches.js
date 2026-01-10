@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 // Get all matches
 router.get('/', auth, async (req, res) => {
   try {
-    const { status, page = 1, limit = 100 } = req.query;
+    const { status, page = 1, limit = 10 } = req.query;
     const query = {};
     
     if (status) {
@@ -26,9 +26,10 @@ router.get('/', auth, async (req, res) => {
     res.json({
       matches,
       pagination: {
-        current: page,
+        current: parseInt(page),
         pages: Math.ceil(total / limit),
-        total
+        total,
+        hasMore: (page * limit) < total
       }
     });
   } catch (error) {

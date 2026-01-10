@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 // @ts-ignore
 import { Plus, Filter, Search, Calendar, Trophy, Users } from 'lucide-react';
 import MatchForm from './MatchForm';
@@ -51,6 +51,9 @@ interface Match {
 const MatchManagement: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,16 +93,55 @@ const MatchManagement: React.FC = () => {
     };
   }, [showFilterMenu]);
 
-  const fetchMatches = async () => {
+  const fetchMatches = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
-      const data = await matchApi.getMatches({ limit: 100 });
-      setMatches(data.matches || []);
+      if (append) {
+        setLoadingMore(true);
+      }
+      const data = await matchApi.getMatches({ page: pageNum, limit: 10 });
+      if (append) {
+        setMatches(prev => [...prev, ...(data.matches || [])]);
+      } else {
+        setMatches(data.matches || []);
+      }
+      setHasMore(data.pagination?.hasMore || false);
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching matches:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, []);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (loading || loadingMore || !hasMore) return;
+        
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight;
+        
+        // Trigger when user is 300px from bottom
+        if (scrollTop + clientHeight >= scrollHeight - 300) {
+          if (!loadingMore && hasMore) {
+            fetchMatches(page + 1, true);
+          }
+        }
+      }, 100);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [loading, loadingMore, hasMore, page, fetchMatches]);
 
   const handleCreateMatch = () => {
     setEditingMatch(null);
@@ -428,19 +470,38 @@ const MatchManagement: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredMatches.map((match) => (
-              <MatchCard
-                key={match._id}
-                match={match}
-                onEdit={handleEditMatch}
-                onDelete={handleDeleteMatch}
-                onView={handleViewMatch}
-                onManageSquad={handleManageSquad}
-                onViewAvailability={handleViewAvailability}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredMatches.map((match) => (
+                <MatchCard
+                  key={match._id}
+                  match={match}
+                  onEdit={handleEditMatch}
+                  onDelete={handleDeleteMatch}
+                  onView={handleViewMatch}
+                  onManageSquad={handleManageSquad}
+                  onViewAvailability={handleViewAvailability}
+                />
+              ))}
+            </div>
+            
+            {/* Loading More Indicator */}
+            {loadingMore && (
+              <div className="flex justify-center items-center py-8">
+                <div className="flex items-center gap-3 text-slate-400">
+                  <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm">Loading more matches...</span>
+                </div>
+              </div>
+            )}
+            
+            {/* No More Matches Indicator */}
+            {!hasMore && matches.length > 0 && (
+              <div className="flex justify-center items-center py-8">
+                <p className="text-sm text-slate-500">No more matches to load</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

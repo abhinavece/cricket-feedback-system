@@ -248,7 +248,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Premium Tab Navigation */}
         <div className="mb-10 md:mb-16">
           {/* Desktop: Ultra-Modern Magnetic Tabs */}
-          <nav className="hidden md:flex p-2 bg-[#1e293b]/50 backdrop-blur-3xl rounded-[2rem] border border-white/10 w-fit shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden">
+          <nav className="hidden md:flex p-2 bg-[#1e293b]/50 backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-x-auto max-w-full">
             {/* Advanced Slider with Multi-layered Glow */}
             <div 
               className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
