@@ -765,22 +765,23 @@ const PaymentManagement: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 sm:p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="p-2 sm:p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex-shrink-0">
             <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Payment Dashboard</h2>
-            <p className="text-xs sm:text-sm text-slate-400">Manage match payments at a glance</p>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-white truncate">Payment Dashboard</h2>
+            <p className="text-xs text-slate-400 hidden sm:block">Manage match payments at a glance</p>
           </div>
         </div>
         <button
           onClick={fetchDashboardData}
           disabled={loadingDashboard}
-          className="p-2 bg-slate-700/50 hover:bg-slate-700 rounded-xl text-white transition-colors"
+          className="p-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-white transition-colors flex-shrink-0"
+          title="Refresh"
         >
-          <RefreshCw className={`w-5 h-5 ${loadingDashboard ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loadingDashboard ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
@@ -793,8 +794,8 @@ const PaymentManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Stats Cards - Desktop Grid */}
+      <div className="hidden sm:grid grid-cols-4 gap-3">
         <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
             <CreditCard className="w-4 h-4" /> Total Collected
@@ -818,6 +819,36 @@ const PaymentManagement: React.FC = () => {
             <Calendar className="w-4 h-4" /> With Payments
           </div>
           <div className="text-xl sm:text-2xl font-bold text-white">{dashboardStats.withPayments} / {dashboardStats.totalMatches}</div>
+        </div>
+      </div>
+
+      {/* Stats Card - Mobile Merged */}
+      <div className="sm:hidden bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
+              <CreditCard className="w-3 h-3" /> Collected
+            </div>
+            <div className="text-lg font-bold text-emerald-400">₹{dashboardStats.totalCollected.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
+              <Clock className="w-3 h-3" /> Pending
+            </div>
+            <div className="text-lg font-bold text-yellow-400">₹{dashboardStats.totalPending.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
+              <CheckCircle2 className="w-3 h-3" /> Completed
+            </div>
+            <div className="text-lg font-bold text-white">{dashboardStats.completedPayments}</div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
+              <Calendar className="w-3 h-3" /> Payments
+            </div>
+            <div className="text-lg font-bold text-white">{dashboardStats.withPayments}/{dashboardStats.totalMatches}</div>
+          </div>
         </div>
       </div>
 

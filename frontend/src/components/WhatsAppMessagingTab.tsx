@@ -417,7 +417,7 @@ const WhatsAppMessagingTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="hidden md:flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--primary-green)' }}>
             WhatsApp Messaging
@@ -439,6 +439,23 @@ const WhatsAppMessagingTab: React.FC = () => {
               {stats.selected}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile: Merged stats bar */}
+      <div className="md:hidden card px-4 py-3 flex items-center justify-center gap-8">
+        <div className="flex flex-col items-center">
+          <p className="text-[10px] uppercase tracking-wide text-secondary">Total</p>
+          <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+            {stats.total}
+          </p>
+        </div>
+        <div className="w-px h-12 bg-white/10"></div>
+        <div className="flex flex-col items-center">
+          <p className="text-[10px] uppercase tracking-wide text-secondary">Selected</p>
+          <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+            {stats.selected}
+          </p>
         </div>
       </div>
 

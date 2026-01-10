@@ -12,6 +12,7 @@ import './theme.css';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>('feedback');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,8 @@ function AppContent() {
         onViewChange={setCurrentView} 
         user={user}
         onLogout={handleLogout}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       
       {error && currentView === 'form' && (
@@ -94,7 +97,7 @@ function AppContent() {
         )
       ) : (
         <ProtectedRoute permission="view_dashboard">
-          <AdminDashboard />
+          <AdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
         </ProtectedRoute>
       )}
     </div>

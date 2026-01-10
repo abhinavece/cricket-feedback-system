@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import GoogleAuth from './GoogleAuth';
 import UserProfile from './UserProfile';
 import Notification from './Notification';
+import { Menu, X, Home, Settings, MessageSquare, Calendar, Wallet, Users } from 'lucide-react';
 
 interface NavigationProps {
   currentView: 'form' | 'admin';
@@ -15,9 +16,18 @@ interface NavigationProps {
     role: 'viewer' | 'editor' | 'admin';
   } | null;
   onLogout: () => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments') => void;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange, user, onLogout }) => {
+const Navigation: React.FC<NavigationProps> = ({ 
+  currentView, 
+  onViewChange, 
+  user, 
+  onLogout,
+  activeTab = 'feedback',
+  onTabChange
+}) => {
   const { hasPermission } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -40,11 +50,19 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange, user
     onViewChange(view);
   };
 
+  const adminTabs = [
+    { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+    { id: 'matches', label: 'Matches', icon: Calendar },
+    { id: 'payments', label: 'Payments', icon: Wallet },
+    { id: 'users', label: 'Users', icon: Users }
+  ];
+
   return (
     <>
       <header className="header sticky top-0 z-40">
         <div className="header-content">
-          <div className="flex items-center justify-between w-full md:w-auto">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
               <button 
                 onClick={() => handleViewChange('form')}
@@ -56,83 +74,162 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange, user
               </button>
             </div>
             
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-8">
+              <button
+                onClick={() => handleViewChange('form')}
+                className={`nav-link text-base font-medium tracking-wide transition-colors ${currentView === 'form' ? 'text-primary-green' : 'text-white/70 hover:text-white'}`}
+              >
+                Feedback
+              </button>
+              <button
+                onClick={handleAdminClick}
+                className={`nav-link text-base font-medium tracking-wide transition-colors ${currentView === 'admin' ? 'text-primary-green' : 'text-white/70 hover:text-white'}`}
+              >
+                Admin
+              </button>
+              
+              {user ? (
+                <div className="flex items-center gap-4 pl-8 border-l border-white/10">
+                  <div className="flex items-center gap-3">
+                    {user.avatar && (
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name} 
+                        className="w-8 h-8 rounded-full cursor-pointer border-2 border-primary-green"
+                        onClick={() => setShowProfileModal(true)}
+                      />
+                    )}
+                    <div className="text-sm">
+                      <p className="font-semibold text-white">{user.name}</p>
+                      <p className="text-xs text-secondary/70 uppercase">{user.role}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onLogout()}
+                    className="text-xs text-secondary hover:text-accent-red transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowAuthModal(true)}
+                  className="btn btn-primary text-sm h-10 px-6 rounded-lg"
+                >
+                  Admin Login
+                </button>
+              )}
+            </div>
+
             {/* Mobile Menu Toggle */}
             <button 
               className="md:hidden p-2 text-white focus:outline-none"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label="Toggle menu"
             >
-              <div className="space-y-1.5">
-                <span className={`block w-6 h-0.5 bg-white transition-transform ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-                <span className={`block w-6 h-0.5 bg-white transition-opacity ${isMenuOpen ? 'opacity-0' : ''}`}></span>
-                <span className={`block w-6 h-0.5 bg-white transition-transform ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
-              </div>
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
 
-          <nav className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row absolute md:relative top-full left-0 w-full md:w-auto bg-gradient-to-b from-[#16213e] to-[#1a1a2e] md:[background:none] p-6 md:p-0 border-b border-primary-green/30 md:border-none gap-4 md:gap-8 items-center z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.5)] md:shadow-none animate-fade-in`}>
-            <button
-              onClick={() => handleViewChange('form')}
-              className={`nav-link w-full md:w-auto text-left md:text-center text-lg md:text-base py-4 md:py-0 font-bold md:font-medium tracking-wide ${currentView === 'form' ? 'active text-primary-green' : 'text-white/90'}`}
-            >
-              Feedback Form
-            </button>
-            <button
-              onClick={handleAdminClick}
-              className={`nav-link w-full md:w-auto text-left md:text-center text-lg md:text-base py-4 md:py-0 font-bold md:font-medium tracking-wide ${currentView === 'admin' ? 'active text-primary-green' : 'text-white/90'}`}
-            >
-              Admin Dashboard
-            </button>
-            
-            <div className="flex flex-col md:flex-row items-center w-full md:w-auto gap-5 md:gap-4 mt-4 md:mt-0 pt-6 md:pt-0 border-t border-white/10 md:border-none">
-              {user ? (
+          {/* Mobile Dropdown Menu */}
+          {isMenuOpen && (
+            <nav className="md:hidden absolute top-full left-0 w-full bg-gradient-to-b from-[#16213e] to-[#1a1a2e] border-b border-primary-green/30 p-4 space-y-3 z-[100] shadow-lg animate-fade-in">
+              <button
+                onClick={() => { handleViewChange('form'); setIsMenuOpen(false); }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'form' ? 'bg-primary-green/20 text-primary-green' : 'text-white/70 hover:bg-white/5'}`}
+              >
+                Feedback Form
+              </button>
+              <button
+                onClick={() => { handleAdminClick(); setIsMenuOpen(false); }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'admin' ? 'bg-primary-green/20 text-primary-green' : 'text-white/70 hover:bg-white/5'}`}
+              >
+                Admin Dashboard
+              </button>
+              
+              {user && (
                 <>
-                  <div className="flex items-center justify-between w-full md:w-auto md:space-x-3 p-4 md:p-0 bg-white/5 md:bg-transparent rounded-2xl border border-white/5 md:border-none">
-                    <div className="flex items-center space-x-4">
-                      {user.avatar && (
-                        <img 
-                          src={user.avatar} 
-                          alt={user.name} 
-                          className="w-12 h-12 md:w-8 md:h-8 rounded-full cursor-pointer border-2 border-primary-green shadow-lg shadow-primary-green/20"
-                          onClick={() => setShowProfileModal(true)}
-                        />
-                      )}
-                      <div>
-                        <p className="text-lg md:text-sm font-black text-white">{user.name}</p>
-                        <p className="text-xs text-secondary/70 uppercase tracking-widest font-bold">{user.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 w-full md:w-auto">
+                  <div className="border-t border-white/10 pt-3 mt-3">
                     <button
-                      onClick={() => { setIsMenuOpen(false); setShowProfileModal(true); }}
-                      className="btn btn-outline flex-1 md:flex-none h-14 md:h-auto rounded-xl"
-                      style={{fontSize: '14px', fontWeight: '700'}}
+                      onClick={() => { setShowProfileModal(true); setIsMenuOpen(false); }}
+                      className="w-full text-left px-4 py-3 rounded-lg font-medium text-white/70 hover:bg-white/5 transition-colors"
                     >
                       Profile
                     </button>
                     <button
-                      onClick={() => { setIsMenuOpen(false); onLogout(); }}
-                      className="btn btn-outline flex-1 md:flex-none h-14 md:h-auto rounded-xl"
-                      style={{fontSize: '14px', fontWeight: '700', borderColor: 'var(--accent-red)', color: 'var(--accent-red)'}}
+                      onClick={() => { onLogout(); setIsMenuOpen(false); }}
+                      className="w-full text-left px-4 py-3 rounded-lg font-medium text-accent-red hover:bg-red-500/10 transition-colors"
                     >
                       Logout
                     </button>
                   </div>
                 </>
-              ) : (
-                <button 
-                  onClick={() => { setIsMenuOpen(false); setShowAuthModal(true); }}
-                  className="btn btn-primary w-full md:w-auto h-14 md:h-auto shadow-xl rounded-xl"
-                  style={{fontSize: '16px', fontWeight: '800'}}
-                >
-                  Admin Login
-                </button>
               )}
-            </div>
-          </nav>
+            </nav>
+          )}
         </div>
       </header>
+
+      {/* Bottom Navigation Bar - Admin Tabs (Mobile Only) */}
+      {currentView === 'admin' && user && (
+        <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-gradient-to-t from-[#0f3460] to-[#16213e] border-t border-primary-green/30 z-40">
+          <div className="flex justify-around items-center h-20 px-2">
+            {adminTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange?.(tab.id as any)}
+                  className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${
+                    isActive 
+                      ? 'text-primary-green' 
+                      : 'text-white/50 hover:text-white/70'
+                  }`}
+                  aria-label={tab.label}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-xs font-semibold">{tab.label}</span>
+                  {isActive && (
+                    <div className="absolute bottom-0 w-12 h-1 bg-primary-green rounded-t-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
+      {/* Desktop Tab Navigation - Admin */}
+      {currentView === 'admin' && user && (
+        <div className="hidden md:block sticky top-16 z-30 bg-gradient-to-r from-[#0f3460] to-[#16213e] border-b border-primary-green/20">
+          <div className="max-w-7xl mx-auto px-6 flex gap-8">
+            {adminTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange?.(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-4 font-medium transition-all border-b-2 ${
+                    isActive 
+                      ? 'text-primary-green border-primary-green' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Authentication Modal */}
       {showAuthModal && (

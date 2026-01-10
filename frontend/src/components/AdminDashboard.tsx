@@ -22,7 +22,15 @@ interface FeedbackStats {
   otherIssues: number;
 }
 
-const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments') => void;
+}
+
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
+  activeTab: propActiveTab = 'feedback',
+  onTabChange
+}) => {
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +40,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>('feedback');
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>(propActiveTab);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -218,7 +226,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <>
       <div className="container">
-      <div className="mb-8">
+      <div className="mb-8 hidden md:block">
         <h1 className="text-4xl font-bold mb-2 transition-all duration-300" style={{color: 'var(--primary-green)'}}>
           {pageTitle}
         </h1>
@@ -244,7 +252,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             
             <button
-              onClick={() => setActiveTab('feedback')}
+              onClick={() => { setActiveTab('feedback'); onTabChange?.('feedback'); }}
               className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                 activeTab === 'feedback' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
               }`}
@@ -260,7 +268,7 @@ const AdminDashboard: React.FC = () => {
             {user?.role === 'admin' && (
               <>
                 <button
-                  onClick={() => setActiveTab('whatsapp')}
+                  onClick={() => { setActiveTab('whatsapp'); onTabChange?.('whatsapp'); }}
                   className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                     activeTab === 'whatsapp' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
                   }`}
@@ -274,7 +282,7 @@ const AdminDashboard: React.FC = () => {
                   WhatsApp
                 </button>
                 <button
-                  onClick={() => setActiveTab('matches')}
+                  onClick={() => { setActiveTab('matches'); onTabChange?.('matches'); }}
                   className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                     activeTab === 'matches' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
                   }`}
@@ -288,7 +296,7 @@ const AdminDashboard: React.FC = () => {
                   Matches
                 </button>
                 <button
-                  onClick={() => setActiveTab('payments')}
+                  onClick={() => { setActiveTab('payments'); onTabChange?.('payments'); }}
                   className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                     activeTab === 'payments' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
                   }`}
@@ -302,7 +310,7 @@ const AdminDashboard: React.FC = () => {
                   Payments
                 </button>
                 <button
-                  onClick={() => setActiveTab('users')}
+                  onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
                   className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
                     activeTab === 'users' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
                   }`}
