@@ -16,8 +16,8 @@ interface NavigationProps {
     role: 'viewer' | 'editor' | 'admin';
   } | null;
   onLogout: () => void;
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 

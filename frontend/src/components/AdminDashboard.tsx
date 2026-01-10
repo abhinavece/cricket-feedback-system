@@ -6,6 +6,7 @@ import UserManagement from './UserManagement';
 import WhatsAppMessagingTab from './WhatsAppMessagingTab';
 import MatchManagement from './MatchManagement';
 import PaymentManagement from './PaymentManagement';
+import PlayerPaymentHistory from './PlayerPaymentHistory';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackCard from './FeedbackCard';
 
@@ -23,8 +24,8 @@ interface FeedbackStats {
 }
 
 interface AdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -40,7 +41,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>(propActiveTab);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>(propActiveTab);
 
   // Sync activeTab with prop changes from parent
   useEffect(() => {
@@ -195,7 +196,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const getTabInfo = () => {
     switch (activeTab) {
       case 'feedback':
-        return { title: 'Feedback Center', desc: 'Monitor and analyze player match feedback' };
+        return { title: 'Feedback Hub', desc: 'Analyze player performance and match insights' };
+      case 'matches':
+        return { title: 'Match Management', desc: 'Create and manage cricket matches' };
+      case 'payments':
+        return { title: 'Payment Management', desc: 'Track and manage match payments' };
+      case 'player-history':
+        return { title: 'Player Payment History', desc: 'View complete payment history for any player' };
       case 'whatsapp':
         return { title: 'Messaging Hub', desc: 'Blast WhatsApp updates to your team' };
       case 'users':
@@ -246,8 +253,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div 
               className="absolute h-[calc(100%-16px)] top-2 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-600 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-[0_0_40px_rgba(16,185,129,0.5)]"
               style={{
-                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : activeTab === 'matches' ? '220px' : activeTab === 'payments' ? '220px' : '200px',
-                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : activeTab === 'matches' ? '448px' : activeTab === 'payments' ? '668px' : '888px'
+                width: activeTab === 'feedback' ? '220px' : activeTab === 'whatsapp' ? '220px' : activeTab === 'matches' ? '220px' : activeTab === 'payments' ? '220px' : activeTab === 'player-history' ? '280px' : '200px',
+                left: activeTab === 'feedback' ? '8px' : activeTab === 'whatsapp' ? '228px' : activeTab === 'matches' ? '448px' : activeTab === 'payments' ? '668px' : activeTab === 'player-history' ? '888px' : '1188px'
               }}
             >
               {/* Premium glass reflection and shimmer */}
@@ -313,6 +320,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </svg>
                   </div>
                   Payments
+                </button>
+                <button
+                  onClick={() => { setActiveTab('player-history'); onTabChange?.('player-history'); }}
+                  className={`relative z-10 px-8 py-4 rounded-[1.5rem] text-[14px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-4 ${
+                    activeTab === 'player-history' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  style={{ width: '280px', justifyContent: 'center' }}
+                >
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === 'player-history' ? 'bg-black/10 scale-110 rotate-3 shadow-inner' : 'bg-transparent'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  Player History
                 </button>
                 <button
                   onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
@@ -844,6 +865,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}
         {activeTab === 'matches' && <MatchManagement />}
         {activeTab === 'payments' && user?.role === 'admin' && <PaymentManagement />}
+        {activeTab === 'player-history' && user?.role === 'admin' && <PlayerPaymentHistory />}
         {activeTab === 'users' && <UserManagement />}
       </div>
 

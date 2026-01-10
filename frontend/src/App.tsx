@@ -12,7 +12,7 @@ import './theme.css';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments'>('feedback');
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>('feedback');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
