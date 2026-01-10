@@ -25,7 +25,8 @@ import {
   CreditCard,
   TrendingUp,
   Search,
-  Eye
+  Eye,
+  Filter
 } from 'lucide-react';
 import {
   getMatches,
@@ -113,6 +114,7 @@ const PaymentManagement: React.FC = () => {
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'partial' | 'completed' | 'no-payment'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   
   // Selected match detail view
   const [selectedMatchId, setSelectedMatchId] = useState<string>('');
@@ -1044,8 +1046,9 @@ const PaymentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Search and Filter Dropdown */}
+      <div className="flex gap-3 items-center">
+        {/* Search Bar - 80% width */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -1056,26 +1059,44 @@ const PaymentManagement: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {[
-            { value: 'all', label: 'All' },
-            { value: 'no-payment', label: 'No Payment' },
-            { value: 'pending', label: 'Pending' },
-            { value: 'partial', label: 'Partial' },
-            { value: 'completed', label: 'Completed' }
-          ].map(option => (
-            <button
-              key={option.value}
-              onClick={() => setFilterStatus(option.value as any)}
-              className={`px-3 py-2 rounded-xl text-sm whitespace-nowrap transition-colors ${
-                filterStatus === option.value
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+
+        {/* Filter Dropdown Button - 20% width */}
+        <div className="relative">
+          <button
+            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            className="px-4 py-2.5 bg-slate-800/50 border border-white/10 rounded-xl text-white text-sm font-medium hover:bg-slate-700/50 transition-colors flex items-center gap-2 whitespace-nowrap"
+          >
+            <Filter className="w-4 h-4" />
+            {filterStatus === 'all' ? 'Filter' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1).replace('-', ' ')}
+          </button>
+
+          {/* Dropdown Menu */}
+          {showFilterDropdown && (
+            <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-xl shadow-lg z-50">
+              {[
+                { value: 'all', label: 'All' },
+                { value: 'no-payment', label: 'No Payment' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'partial', label: 'Partial' },
+                { value: 'completed', label: 'Completed' }
+              ].map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setFilterStatus(option.value as any);
+                    setShowFilterDropdown(false);
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    filterStatus === option.value
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'text-slate-300 hover:bg-slate-700/50'
+                  } ${option.value === 'all' ? 'border-b border-white/10' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
