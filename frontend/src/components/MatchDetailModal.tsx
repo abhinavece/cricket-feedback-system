@@ -204,11 +204,11 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-white/10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/10">
         
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xl border-b border-white/10 p-4 md:p-6">
+        <div className="bg-slate-900/95 backdrop-blur-xl border-b border-white/10 p-4 md:p-6">
           <div className="flex items-start justify-between mb-2 md:mb-4">
             <div className="flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
@@ -349,7 +349,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         </div>
 
         {/* Content */}
-        <div className="p-4 md:p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 280px)', minHeight: '300px' }}>
+        <div className="p-4 md:p-6">
           
           {/* Overview Tab */}
           {activeTab === 'overview' && (
@@ -490,40 +490,38 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                   {availabilities.length > 0 && (
                     <div className="mt-4 md:mt-6">
                       <h4 className="text-md font-bold text-white mb-3">Players Sent Availability Request</h4>
-                      <div className="bg-slate-800/50 border border-white/10 rounded-lg p-3 md:p-4 max-h-80 md:max-h-96 overflow-y-auto">
-                        <div className="space-y-2">
-                          {availabilities.map((avail) => (
-                            <div key={avail._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-all gap-2">
-                              <div className="flex items-center gap-3 flex-1">
-                                {getResponseIcon(avail.response)}
-                                <div>
-                                  <p className="text-sm font-medium text-white">{avail.playerName}</p>
-                                  <p className="text-xs text-slate-400">{avail.playerPhone}</p>
-                                </div>
+                      <div className="bg-slate-800/50 border border-white/10 rounded-lg p-3 md:p-4 space-y-2">
+                        {availabilities.map((avail) => (
+                          <div key={avail._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-all gap-2">
+                            <div className="flex items-center gap-3 flex-1">
+                              {getResponseIcon(avail.response)}
+                              <div>
+                                <p className="text-sm font-medium text-white">{avail.playerName}</p>
+                                <p className="text-xs text-slate-400">{avail.playerPhone}</p>
                               </div>
-                              <div className="text-right sm:text-left">
-                                <p className="text-xs text-slate-400">
-                                  📤 {new Date(avail.createdAt).toLocaleString('en-US', {
+                            </div>
+                            <div className="text-right sm:text-left">
+                              <p className="text-xs text-slate-400">
+                                📤 {new Date(avail.createdAt).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                              {avail.respondedAt && (
+                                <p className="text-xs text-emerald-400">
+                                  ✅ {new Date(avail.respondedAt).toLocaleString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
                                     hour: '2-digit',
                                     minute: '2-digit'
                                   })}
                                 </p>
-                                {avail.respondedAt && (
-                                  <p className="text-xs text-emerald-400">
-                                    ✅ {new Date(avail.respondedAt).toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </p>
-                                )}
-                              </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -781,7 +779,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-2 md:p-4">
+        <div className="bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 flex gap-3 justify-end">
           {/* Mobile: Minimal footer */}
           <div className="md:hidden flex items-center justify-between gap-2">
             <button
