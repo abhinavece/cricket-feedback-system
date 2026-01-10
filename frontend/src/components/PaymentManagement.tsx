@@ -687,6 +687,14 @@ const PaymentManagement: React.FC = () => {
                             <span className="font-medium text-white truncate">{member.playerName}</span>
                             <span className="text-xs text-slate-400">{member.playerPhone}</span>
                           </div>
+                          <div className="flex items-center gap-2 mt-1 text-xs">
+                            {member.amountPaid > 0 && (
+                              <span className="text-emerald-400">Paid: ₹{member.amountPaid}</span>
+                            )}
+                            {member.dueAmount > 0 && (
+                              <span className="text-yellow-400">Due: ₹{member.dueAmount}</span>
+                            )}
+                          </div>
                           {member.messageSentAt && (
                             <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
                               <MessageSquare className="w-3 h-3" />
