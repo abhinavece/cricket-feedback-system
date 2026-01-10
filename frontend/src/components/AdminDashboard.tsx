@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getAllFeedback, getStats, deleteFeedback, getTrashFeedback, restoreFeedback, permanentDeleteFeedback } from '../services/api';
 import type { FeedbackSubmission } from '../types';
 import ConfirmDialog from './ConfirmDialog';
@@ -35,6 +35,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSubmission | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -42,6 +43,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
   const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>(propActiveTab);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   // Sync activeTab with prop changes from parent
   useEffect(() => {
@@ -60,28 +63,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
   const { user } = useAuth();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (currentView === 'trash') {
-      fetchTrashData();
-    }
-  }, [currentView]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
-      console.log('Fetching data...');
-      const [feedbackData, statsData] = await Promise.all([
-        getAllFeedback(),
+      console.log(`[AdminDashboard] Fetching feedback - Page: ${pageNum}, Append: ${append}`);
+      
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const [feedbackResponse, statsData] = await Promise.all([
+        getAllFeedback({ page: pageNum, limit: 10 }),
         getStats()
       ]);
       
-      console.log('Feedback data:', feedbackData);
-      console.log('Stats data:', statsData);
+      const pagination = feedbackResponse.pagination || {};
+      const hasMoreData = (pageNum * 10) < (pagination.total || 0);
       
-      setFeedback(feedbackData);
+      console.log(`[AdminDashboard] Feedback Response:`, {
+        feedbackCount: feedbackResponse.feedback?.length || 0,
+        pagination,
+        calculatedHasMore: hasMoreData
+      });
+      
+      if (append) {
+        setFeedback(prev => {
+          const newFeedback = [...prev, ...(feedbackResponse.feedback || [])];
+          console.log(`[AdminDashboard] Appended feedback. Total now: ${newFeedback.length}`);
+          return newFeedback;
+        });
+      } else {
+        setFeedback(feedbackResponse.feedback || []);
+        console.log(`[AdminDashboard] Set initial feedback: ${feedbackResponse.feedback?.length || 0}`);
+      }
+
+      setHasMore(hasMoreData);
+      setCurrentPage(pageNum);
       setStats(statsData);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -101,8 +119,67 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    console.log('[AdminDashboard] Component mounted, fetching initial feedback');
+    fetchData(1, false);
+  }, [fetchData]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let isScrolling = false;
+    
+    const handleScroll = () => {
+      if (isScrolling) return;
+      
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (loading || loadingMore || !hasMore) {
+          console.log('[AdminDashboard] Scroll ignored - loading:', loading, 'loadingMore:', loadingMore, 'hasMore:', hasMore);
+          return;
+        }
+        
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight;
+        
+        console.log('[AdminDashboard] Scroll position:', {
+          scrollTop,
+          clientHeight,
+          scrollHeight,
+          distanceFromBottom: scrollHeight - (scrollTop + clientHeight)
+        });
+        
+        // Trigger when user is 300px from bottom
+        if (scrollTop + clientHeight >= scrollHeight - 300) {
+          if (!loadingMore && hasMore) {
+            console.log('[AdminDashboard] Triggering load more - next page:', currentPage + 1);
+            isScrolling = true;
+            fetchData(currentPage + 1, true);
+            setTimeout(() => { isScrolling = false; }, 500);
+          }
+        }
+      }, 100);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [loading, loadingMore, hasMore, currentPage, fetchData]);
+
+  // Fetch trash data when view changes
+  useEffect(() => {
+    if (currentView === 'trash') {
+      fetchTrashData();
+    }
+  }, [currentView]);
 
   const fetchTrashData = async () => {
     try {
@@ -117,7 +194,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDeleteFeedback = async (id: string) => {
     try {
       await deleteFeedback(id);
-      await fetchData(); // Refresh active feedback
+      console.log('[AdminDashboard] Feedback deleted, refreshing list');
+      await fetchData(1, false); // Refresh active feedback
     } catch (err) {
       console.error('Error deleting feedback:', err);
       alert('Failed to delete feedback');
@@ -127,7 +205,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleRestoreFeedback = async (id: string) => {
     try {
       await restoreFeedback(id);
-      await fetchData(); // Refresh active feedback
+      console.log('[AdminDashboard] Feedback restored, refreshing lists');
+      await fetchData(1, false); // Refresh active feedback
       await fetchTrashData(); // Refresh trash
     } catch (err) {
       console.error('Error restoring feedback:', err);
@@ -860,6 +939,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 ));
               })()}
             </div>
+
+            {/* Loading More Indicator */}
+            {currentView === 'active' && loadingMore && (
+              <div className="flex justify-center items-center py-8">
+                <div className="flex items-center gap-3 text-slate-400">
+                  <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm">Loading more feedback...</span>
+                </div>
+              </div>
+            )}
+
+            {/* No More Feedback Indicator */}
+            {currentView === 'active' && !hasMore && feedback.length > 0 && (
+              <div className="flex justify-center items-center py-8">
+                <p className="text-sm text-slate-500">No more feedback to load</p>
+              </div>
+            )}
           </>
         )}
         {activeTab === 'whatsapp' && user?.role === 'admin' && <WhatsAppMessagingTab />}

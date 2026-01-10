@@ -44,8 +44,8 @@ export const submitFeedback = async (data: FeedbackForm): Promise<FeedbackSubmis
   return response.data;
 };
 
-export const getAllFeedback = async (): Promise<FeedbackSubmission[]> => {
-  const response = await api.get('/feedback');
+export const getAllFeedback = async (params?: { page?: number; limit?: number }): Promise<{ feedback: FeedbackSubmission[]; pagination: { current: number; pages: number; total: number; hasMore: boolean } }> => {
+  const response = await api.get('/feedback', { params });
   return response.data;
 };
 

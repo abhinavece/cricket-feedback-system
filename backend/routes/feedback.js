@@ -64,11 +64,30 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/feedback - Get all feedback submissions (non-deleted only)
+// GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
 router.get('/', auth, async (req, res) => {
   try {
-    const feedback = await Feedback.find({ isDeleted: false }).sort({ createdAt: -1 });
-    res.json(feedback);
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    const feedback = await Feedback.find({ isDeleted: false })
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum);
+    
+    const total = await Feedback.countDocuments({ isDeleted: false });
+    const hasMore = (pageNum * limitNum) < total;
+    
+    res.json({
+      feedback,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore: hasMore
+      }
+    });
   } catch (error) {
     console.error('Error fetching feedback:', error);
     res.status(500).json({
