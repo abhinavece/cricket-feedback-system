@@ -570,40 +570,55 @@ const PaymentManagement: React.FC = () => {
         {/* Payment Details (payment exists) */}
         {payment && (
           <>
-            {/* Summary Card */}
-            <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <IndianRupee className="w-5 h-5 text-emerald-400" />
+            {/* Compact Payment Summary */}
+            <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-6 space-y-3">
+              {/* Header with Status */}
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <IndianRupee className="w-4 h-4 text-emerald-400" />
                   Payment Summary
                 </h3>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(payment.status)}`}>
+                <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
                   {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <div className="p-3 bg-slate-700/30 rounded-xl">
-                  <div className="text-xs text-slate-400 mb-1">Total</div>
-                  <div className="text-lg font-bold text-white">₹{payment.totalAmount}</div>
+
+              {/* Compact Grid - 2x2 on mobile, 4 columns on desktop */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Total */}
+                <div className="p-2.5 bg-slate-700/40 rounded-lg">
+                  <div className="text-xs text-slate-400 mb-0.5">Total</div>
+                  <div className="text-base font-bold text-white">₹{payment.totalAmount}</div>
                 </div>
-                <div className="p-3 bg-emerald-500/10 rounded-xl">
-                  <div className="text-xs text-emerald-400 mb-1">Collected</div>
-                  <div className="text-lg font-bold text-emerald-400">₹{payment.totalCollected}</div>
+                {/* Collected */}
+                <div className="p-2.5 bg-emerald-500/15 rounded-lg">
+                  <div className="text-xs text-emerald-400 mb-0.5">Collected</div>
+                  <div className="text-base font-bold text-emerald-400">₹{payment.totalCollected}</div>
                 </div>
-                <div className="p-3 bg-yellow-500/10 rounded-xl">
-                  <div className="text-xs text-yellow-400 mb-1">Pending</div>
-                  <div className="text-lg font-bold text-yellow-400">₹{payment.totalPending}</div>
+                {/* Pending */}
+                <div className="p-2.5 bg-yellow-500/15 rounded-lg">
+                  <div className="text-xs text-yellow-400 mb-0.5">Pending</div>
+                  <div className="text-base font-bold text-yellow-400">₹{payment.totalPending}</div>
                 </div>
-                <div className="p-3 bg-slate-700/30 rounded-xl">
-                  <div className="text-xs text-slate-400 mb-1">Paid / Total</div>
-                  <div className="text-lg font-bold text-white">{payment.paidCount} / {payment.membersCount}</div>
+                {/* Paid Count */}
+                <div className="p-2.5 bg-slate-700/40 rounded-lg">
+                  <div className="text-xs text-slate-400 mb-0.5">Paid / Total</div>
+                  <div className="text-base font-bold text-white">{payment.paidCount}/{payment.membersCount}</div>
                 </div>
               </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
-                  style={{ width: `${(payment.paidCount / payment.membersCount) * 100}%` }}
-                />
+
+              {/* Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+                    style={{ width: `${(payment.paidCount / payment.membersCount) * 100}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Collection Progress</span>
+                  <span className="text-emerald-400 font-medium">{Math.round((payment.totalCollected / payment.totalAmount) * 100)}%</span>
+                </div>
               </div>
               <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
