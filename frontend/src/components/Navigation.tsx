@@ -216,9 +216,9 @@ const Navigation: React.FC<NavigationProps> = ({
         </div>
       </header>
 
-      {/* Bottom Navigation Bar - Admin Tabs (Mobile Only) */}
+      {/* Bottom Navigation Bar - Admin Tabs (Hidden - using top segmented control instead) */}
       {currentView === 'admin' && user && (
-        <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#0a0f1a]/80 backdrop-blur-xl border-t border-primary-green/15 z-40">
+        <nav className="hidden bg-[#0a0f1a]/80 backdrop-blur-xl border-t border-primary-green/15 z-40">
           <div className="flex items-center justify-around h-16 px-1">
             {adminTabs.map((tab) => {
               const Icon = tab.icon;
@@ -248,9 +248,9 @@ const Navigation: React.FC<NavigationProps> = ({
         </nav>
       )}
 
-      {/* Desktop Tab Navigation - Admin */}
+      {/* Desktop Tab Navigation - Admin (Hidden - using AdminDashboard cascade tabs instead) */}
       {currentView === 'admin' && user && (
-        <div className="hidden md:block sticky top-16 z-30 bg-gradient-to-r from-[#0f3460] to-[#16213e] border-b border-primary-green/20">
+        <div className="hidden bg-gradient-to-r from-[#0f3460] to-[#16213e] border-b border-primary-green/20">
           <div className="max-w-7xl mx-auto px-6 flex gap-8">
             {adminTabs.map((tab) => {
               const Icon = tab.icon;
