@@ -727,7 +727,11 @@ const PaymentManagement: React.FC = () => {
                               onClick={() => { setEditingMember(member._id); setEditAmount(effectiveAmount); }}
                               className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300"
                             >
-                              <span className="font-semibold">₹{effectiveAmount}</span>
+                              {member.adjustedAmount === 0 ? (
+                                <span className="font-semibold text-purple-400">FREE PLAYER</span>
+                              ) : (
+                                <span className="font-semibold">₹{effectiveAmount}</span>
+                              )}
                               <Edit2 className="w-3 h-3 opacity-50" />
                             </button>
                           )}
@@ -848,10 +852,10 @@ const PaymentManagement: React.FC = () => {
                 <p className="text-sm text-slate-400 mb-1">Player: <span className="text-white font-medium">{paymentMember.playerName}</span></p>
                 <div className="flex justify-between text-sm mt-2">
                   <span className="text-slate-400">Expected:</span>
-                  {(paymentMember.adjustedAmount || paymentMember.calculatedAmount) === 0 ? (
+                  {paymentMember.adjustedAmount === 0 ? (
                     <span className="text-purple-400 font-semibold">FREE PLAYER</span>
                   ) : (
-                    <span className="text-white font-semibold">₹{paymentMember.adjustedAmount || paymentMember.calculatedAmount}</span>
+                    <span className="text-white font-semibold">₹{paymentMember.adjustedAmount !== null ? paymentMember.adjustedAmount : paymentMember.calculatedAmount}</span>
                   )}
                 </div>
                 <div className="flex justify-between text-sm">
