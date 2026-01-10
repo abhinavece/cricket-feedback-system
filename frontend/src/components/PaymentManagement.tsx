@@ -275,16 +275,18 @@ const PaymentManagement: React.FC = () => {
     try {
       const result = await updatePaymentMember(payment._id, memberId, { adjustedAmount: editAmount });
       
-      // Update the specific member in the payment state
-      if (result.success && result.member) {
+      // Update all squad members (rebalancing affects all non-adjusted members)
+      if (result.success && result.squadMembers) {
         const updatedPayment = { ...payment };
-        const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === memberId);
-        if (memberIndex >= 0) {
-          updatedPayment.squadMembers[memberIndex] = {
-            ...updatedPayment.squadMembers[memberIndex],
-            ...result.member
+        
+        // Replace all squad members with the rebalanced data
+        updatedPayment.squadMembers = result.squadMembers.map((newMember: any) => {
+          const existingMember = updatedPayment.squadMembers.find(m => m._id === newMember._id);
+          return {
+            ...existingMember,
+            ...newMember
           };
-        }
+        });
         
         // Update payment summary if provided
         if (result.paymentSummary) {
@@ -298,7 +300,7 @@ const PaymentManagement: React.FC = () => {
       }
       
       setEditingMember(null);
-      setSuccess('Amount adjusted');
+      setSuccess('Amount adjusted and rebalanced');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update member');
     } finally {

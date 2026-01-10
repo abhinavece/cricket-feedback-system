@@ -388,25 +388,24 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
 
     await payment.save();
 
-    // Return only the updated member data, not the entire payment object
-    const updatedMember = payment.squadMembers.id(req.params.memberId);
-    const memberData = {
-      _id: updatedMember._id,
-      playerName: updatedMember.playerName,
-      playerPhone: updatedMember.playerPhone,
-      calculatedAmount: updatedMember.calculatedAmount,
-      adjustedAmount: updatedMember.adjustedAmount,
-      amountPaid: updatedMember.amountPaid,
-      dueAmount: updatedMember.dueAmount,
-      paymentStatus: updatedMember.paymentStatus,
-      notes: updatedMember.notes,
-      dueDate: updatedMember.dueDate,
-      paidAt: updatedMember.paidAt
-    };
+    // Return all squad members (rebalancing affects all non-adjusted members)
+    const squadMembersData = payment.squadMembers.map(member => ({
+      _id: member._id,
+      playerName: member.playerName,
+      playerPhone: member.playerPhone,
+      calculatedAmount: member.calculatedAmount,
+      adjustedAmount: member.adjustedAmount,
+      amountPaid: member.amountPaid,
+      dueAmount: member.dueAmount,
+      paymentStatus: member.paymentStatus,
+      notes: member.notes,
+      dueDate: member.dueDate,
+      paidAt: member.paidAt
+    }));
 
     res.json({
       success: true,
-      member: memberData,
+      squadMembers: squadMembersData,
       paymentSummary: {
         totalAmount: payment.totalAmount,
         totalCollected: payment.totalCollected,
