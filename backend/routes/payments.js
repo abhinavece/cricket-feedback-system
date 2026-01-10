@@ -102,6 +102,51 @@ router.get('/match/:matchId', auth, async (req, res) => {
   }
 });
 
+// GET /api/payments/summary - Get lightweight payment summary for list view
+router.get('/summary', auth, async (req, res) => {
+  try {
+    const payments = await MatchPayment.find({})
+      .sort({ createdAt: -1 })
+      .lean(); // Use lean for better performance
+
+    // Return only essential fields for list view
+    const summaryPayments = payments.map(payment => ({
+      _id: payment._id,
+      matchId: payment.matchId,
+      totalAmount: payment.totalAmount,
+      status: payment.status,
+      totalCollected: payment.totalCollected,
+      totalPending: payment.totalPending,
+      membersCount: payment.membersCount,
+      paidCount: payment.paidCount,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      // Include minimal squad member info (just counts and basic status)
+      squadMembers: payment.squadMembers ? payment.squadMembers.map(member => ({
+        _id: member._id,
+        playerName: member.playerName,
+        playerPhone: member.playerPhone,
+        paymentStatus: member.paymentStatus,
+        amountPaid: member.amountPaid,
+        dueAmount: member.dueAmount,
+        adjustedAmount: member.adjustedAmount,
+        calculatedAmount: member.calculatedAmount
+      })) : []
+    }));
+
+    res.json({
+      success: true,
+      payments: summaryPayments
+    });
+  } catch (error) {
+    console.error('Error fetching payment summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payment summary'
+    });
+  }
+});
+
 // GET /api/payments/:id - Get single payment by ID (optimized)
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -353,52 +398,6 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update member'
-    });
-  }
-});
-
-// GET /api/payments/summary - Get lightweight payment summary for list view
-router.get('/summary', auth, async (req, res) => {
-  try {
-    const payments = await MatchPayment.find()
-      .populate('matchId', 'date opponent ground slot matchId')
-      .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
-
-    // Return only essential fields for list view
-    const summaryPayments = payments.map(payment => ({
-      _id: payment._id,
-      matchId: payment.matchId,
-      totalAmount: payment.totalAmount,
-      status: payment.status,
-      totalCollected: payment.totalCollected,
-      totalPending: payment.totalPending,
-      membersCount: payment.membersCount,
-      paidCount: payment.paidCount,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
-      // Include minimal squad member info (just counts and basic status)
-      squadMembers: payment.squadMembers.map(member => ({
-        _id: member._id,
-        playerName: member.playerName,
-        playerPhone: member.playerPhone,
-        paymentStatus: member.paymentStatus,
-        amountPaid: member.amountPaid,
-        dueAmount: member.dueAmount,
-        adjustedAmount: member.adjustedAmount,
-        calculatedAmount: member.calculatedAmount
-      }))
-    }));
-
-    res.json({
-      success: true,
-      payments: summaryPayments
-    });
-  } catch (error) {
-    console.error('Error fetching payment summary:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch payment summary'
     });
   }
 });
