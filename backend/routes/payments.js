@@ -575,14 +575,30 @@ router.post('/:id/member/:memberId/mark-unpaid', auth, async (req, res) => {
 
     await payment.save();
 
-    const populatedPayment = await MatchPayment.findById(payment._id)
-      .populate('matchId', 'date opponent ground slot matchId')
-      .populate('squadMembers.playerId', 'name phone role');
+    // Return only the updated member data
+    const updatedMember = payment.squadMembers.id(req.params.memberId);
+    const memberData = {
+      _id: updatedMember._id,
+      playerName: updatedMember.playerName,
+      playerPhone: updatedMember.playerPhone,
+      calculatedAmount: updatedMember.calculatedAmount,
+      adjustedAmount: updatedMember.adjustedAmount,
+      amountPaid: updatedMember.amountPaid,
+      dueAmount: updatedMember.dueAmount,
+      paymentStatus: updatedMember.paymentStatus,
+      paidAt: updatedMember.paidAt
+    };
 
     res.json({
       success: true,
-      payment: populatedPayment,
-      member: payment.squadMembers.id(req.params.memberId),
+      member: memberData,
+      paymentSummary: {
+        totalAmount: payment.totalAmount,
+        totalCollected: payment.totalCollected,
+        totalPending: payment.totalPending,
+        paidCount: payment.paidCount,
+        status: payment.status
+      },
       message: 'Marked as unpaid successfully'
     });
   } catch (error) {
@@ -673,9 +689,32 @@ router.delete('/:id/member/:memberId', auth, async (req, res) => {
     payment.squadMembers.pull(req.params.memberId);
     await payment.save();
 
+    // Return all squad members (rebalancing affects all non-adjusted members)
+    const squadMembersData = payment.squadMembers.map(member => ({
+      _id: member._id,
+      playerName: member.playerName,
+      playerPhone: member.playerPhone,
+      calculatedAmount: member.calculatedAmount,
+      adjustedAmount: member.adjustedAmount,
+      amountPaid: member.amountPaid,
+      dueAmount: member.dueAmount,
+      paymentStatus: member.paymentStatus,
+      notes: member.notes,
+      dueDate: member.dueDate,
+      paidAt: member.paidAt
+    }));
+
     res.json({
       success: true,
-      payment,
+      squadMembers: squadMembersData,
+      paymentSummary: {
+        totalAmount: payment.totalAmount,
+        totalCollected: payment.totalCollected,
+        totalPending: payment.totalPending,
+        paidCount: payment.paidCount,
+        membersCount: payment.membersCount,
+        status: payment.status
+      },
       message: 'Member removed successfully'
     });
   } catch (error) {
@@ -750,13 +789,32 @@ router.post('/:id/add-member', auth, async (req, res) => {
 
     await payment.save();
 
-    const populatedPayment = await MatchPayment.findById(payment._id)
-      .populate('matchId', 'date opponent ground slot matchId')
-      .populate('squadMembers.playerId', 'name phone role');
+    // Return all squad members (rebalancing affects all non-adjusted members)
+    const squadMembersData = payment.squadMembers.map(member => ({
+      _id: member._id,
+      playerName: member.playerName,
+      playerPhone: member.playerPhone,
+      calculatedAmount: member.calculatedAmount,
+      adjustedAmount: member.adjustedAmount,
+      amountPaid: member.amountPaid,
+      dueAmount: member.dueAmount,
+      paymentStatus: member.paymentStatus,
+      notes: member.notes,
+      dueDate: member.dueDate,
+      paidAt: member.paidAt
+    }));
 
     res.json({
       success: true,
-      payment: populatedPayment,
+      squadMembers: squadMembersData,
+      paymentSummary: {
+        totalAmount: payment.totalAmount,
+        totalCollected: payment.totalCollected,
+        totalPending: payment.totalPending,
+        paidCount: payment.paidCount,
+        membersCount: payment.membersCount,
+        status: payment.status
+      },
       message: 'Member added successfully and saved to squad'
     });
   } catch (error) {

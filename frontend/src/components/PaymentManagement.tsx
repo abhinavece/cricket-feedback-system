@@ -382,11 +382,28 @@ const PaymentManagement: React.FC = () => {
           playerName: newPlayerName,
           playerPhone: newPlayerPhone
         });
-        setPayment(result.payment);
+        
+        // Update all squad members (rebalancing affects all non-adjusted members)
+        if (result.success && result.squadMembers) {
+          const updatedPayment = { ...payment };
+          updatedPayment.squadMembers = result.squadMembers;
+          
+          // Update payment summary if provided
+          if (result.paymentSummary) {
+            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+            updatedPayment.totalPending = result.paymentSummary.totalPending;
+            updatedPayment.paidCount = result.paymentSummary.paidCount;
+            updatedPayment.membersCount = result.paymentSummary.membersCount;
+            updatedPayment.status = result.paymentSummary.status;
+          }
+          
+          setPayment(updatedPayment);
+        }
+        
         setShowAddPlayer(false);
         setNewPlayerName('');
         setNewPlayerPhone('');
-        setSuccess('Player added');
+        setSuccess('Player added and amounts rebalanced');
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to add player');
       } finally {
@@ -408,8 +425,25 @@ const PaymentManagement: React.FC = () => {
     setLoading(true);
     try {
       const result = await removePaymentMember(payment._id, memberId);
-      setPayment(result.payment);
-      setSuccess('Player removed');
+      
+      // Update all squad members (rebalancing affects all non-adjusted members)
+      if (result.success && result.squadMembers) {
+        const updatedPayment = { ...payment };
+        updatedPayment.squadMembers = result.squadMembers;
+        
+        // Update payment summary if provided
+        if (result.paymentSummary) {
+          updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+          updatedPayment.totalPending = result.paymentSummary.totalPending;
+          updatedPayment.paidCount = result.paymentSummary.paidCount;
+          updatedPayment.membersCount = result.paymentSummary.membersCount;
+          updatedPayment.status = result.paymentSummary.status;
+        }
+        
+        setPayment(updatedPayment);
+      }
+      
+      setSuccess('Player removed and amounts rebalanced');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to remove player');
     } finally {
@@ -973,7 +1007,28 @@ const PaymentManagement: React.FC = () => {
                     try {
                       const result = await markPaymentUnpaid(payment._id, paymentMember._id);
                       if (result.success) {
-                        setPayment(result.payment);
+                        // Update the specific member in the payment state
+                        if (result.member) {
+                          const updatedPayment = { ...payment };
+                          const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
+                          if (memberIndex >= 0) {
+                            updatedPayment.squadMembers[memberIndex] = {
+                              ...updatedPayment.squadMembers[memberIndex],
+                              ...result.member
+                            };
+                          }
+                          
+                          // Update payment summary if provided
+                          if (result.paymentSummary) {
+                            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+                            updatedPayment.totalPending = result.paymentSummary.totalPending;
+                            updatedPayment.paidCount = result.paymentSummary.paidCount;
+                            updatedPayment.status = result.paymentSummary.status;
+                          }
+                          
+                          setPayment(updatedPayment);
+                        }
+                        
                         setSuccess(`Marked as unpaid for ${paymentMember.playerName}`);
                         setShowPaymentModal(false);
                         setPaymentMember(null);
