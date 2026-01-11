@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import GoogleAuth from './GoogleAuth';
 import UserProfile from './UserProfile';
 import Notification from './Notification';
-import { Menu, X, Home, Settings, MessageSquare, Calendar, Wallet, Users } from 'lucide-react';
+import { Menu, X, Home, Settings, MessageSquare, Calendar, Wallet, Users, Smartphone } from 'lucide-react';
 
 interface NavigationProps {
   currentView: 'form' | 'admin';
@@ -18,6 +18,7 @@ interface NavigationProps {
   onLogout: () => void;
   activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
   onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
+  onToggleDevice?: () => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 
@@ -26,7 +27,8 @@ const Navigation: React.FC<NavigationProps> = ({
   user, 
   onLogout,
   activeTab = 'feedback',
-  onTabChange
+  onTabChange,
+  onToggleDevice
 }) => {
   const { hasPermission } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -112,6 +114,20 @@ const Navigation: React.FC<NavigationProps> = ({
                   Admin Dashboard
                 </button>
                 
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 my-4"></div>
+                
+                {/* Device Toggle */}
+                {onToggleDevice && (
+                  <button
+                    onClick={() => { onToggleDevice(); setIsMenuOpen(false); }}
+                    className="w-full text-left px-4 py-3.5 rounded-xl text-sm font-medium text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 transition-all duration-200 flex items-center gap-2"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    Switch to Mobile
+                  </button>
+                )}
+
                 {user && (
                   <>
                     {/* Divider */}

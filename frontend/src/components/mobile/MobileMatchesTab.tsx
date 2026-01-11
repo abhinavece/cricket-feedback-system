@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getMatches, getMatch } from '../../services/api';
-import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon } from 'lucide-react';
+import { getMatches, getMatch, createMatch, updateMatch, deleteMatch } from '../../services/api';
+import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy } from 'lucide-react';
 
 interface Match {
   _id: string;
@@ -28,6 +28,21 @@ const MobileMatchesTab: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('upcoming');
+  
+  // Form states
+  const [showForm, setShowForm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    date: '',
+    time: '',
+    slot: 'morning',
+    opponent: '',
+    ground: '',
+    notes: ''
+  });
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const fetchMatches = async (isRefresh = false) => {
     try {
@@ -51,6 +66,75 @@ const MobileMatchesTab: React.FC = () => {
   }, []);
 
   const handleRefresh = () => fetchMatches(true);
+
+  const resetForm = () => {
+    setFormData({ date: '', time: '', slot: 'morning', opponent: '', ground: '', notes: '' });
+    setEditMode(false);
+    setShowForm(false);
+  };
+
+  const handleCreateMatch = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const handleEditMatch = () => {
+    if (!selectedMatch) return;
+    setFormData({
+      date: selectedMatch.date?.split('T')[0] || '',
+      time: selectedMatch.time || '',
+      slot: selectedMatch.slot || 'morning',
+      opponent: selectedMatch.opponent || '',
+      ground: selectedMatch.ground || '',
+      notes: selectedMatch.notes || ''
+    });
+    setEditMode(true);
+    setShowForm(true);
+    setSelectedMatch(null);
+  };
+
+  const handleSubmitForm = async () => {
+    if (!formData.opponent || !formData.date) {
+      setError('Opponent and date are required');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      if (editMode && selectedMatch) {
+        await updateMatch(selectedMatch._id, formData);
+        setSuccess('Match updated');
+      } else {
+        await createMatch(formData);
+        setSuccess('Match created');
+      }
+      resetForm();
+      fetchMatches(true);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to save match');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteMatch = async () => {
+    if (!selectedMatch || !window.confirm('Delete this match?')) return;
+    setActionLoading(true);
+    try {
+      await deleteMatch(selectedMatch._id);
+      setSuccess('Match deleted');
+      setSelectedMatch(null);
+      fetchMatches(true);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete match');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Clear messages after delay
+  if (error || success) {
+    setTimeout(() => { setError(null); setSuccess(null); }, 3000);
+  }
 
   const handleViewDetail = async (match: Match) => {
     setLoadingDetail(true);
@@ -105,7 +189,14 @@ const MobileMatchesTab: React.FC = () => {
 
   return (
     <>
-      {/* Header with Refresh */}
+      {/* Toast Messages */}
+      {(error || success) && (
+        <div className={`fixed top-16 left-4 right-4 z-[60] p-3 rounded-xl ${error ? 'bg-red-500/90' : 'bg-emerald-500/90'} text-white text-sm`}>
+          {error || success}
+        </div>
+      )}
+
+      {/* Header with Create & Refresh */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex gap-2">
           {(['upcoming', 'completed', 'all'] as const).map((f) => (
@@ -122,13 +213,21 @@ const MobileMatchesTab: React.FC = () => {
             </button>
           ))}
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleCreateMatch}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Match List */}
@@ -220,11 +319,28 @@ const MobileMatchesTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEditMatch}
+                  className="flex-1 py-2 bg-slate-700 rounded-lg text-white text-xs font-medium flex items-center justify-center gap-1"
+                >
+                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button
+                  onClick={handleDeleteMatch}
+                  disabled={actionLoading}
+                  className="py-2 px-4 bg-red-500/20 rounded-lg text-red-400 text-xs font-medium flex items-center justify-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+
               {/* Squad List */}
               {selectedMatch.squad && selectedMatch.squad.length > 0 && (
                 <div className="bg-slate-800/50 rounded-xl p-4">
                   <p className="text-xs text-slate-400 mb-3">Squad ({selectedMatch.squad.length})</p>
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  <div className="space-y-2">
                     {selectedMatch.squad.map((member: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                         <span className="text-sm text-white">{member.player?.name || 'Unknown'}</span>
@@ -250,6 +366,102 @@ const MobileMatchesTab: React.FC = () => {
       {loadingDetail && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
           <div className="spinner"></div>
+        </div>
+      )}
+
+      {/* Create/Edit Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={resetForm}>
+          <div className="bg-slate-800 rounded-2xl p-4 w-full max-w-sm max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-emerald-400" /> 
+              {editMode ? 'Edit Match' : 'Create Match'}
+            </h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Opponent *</label>
+                <input
+                  type="text"
+                  value={formData.opponent}
+                  onChange={(e) => setFormData({...formData, opponent: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
+                  placeholder="Team name"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Date *</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Time</label>
+                <input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({...formData, time: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Slot</label>
+                <select
+                  value={formData.slot}
+                  onChange={(e) => setFormData({...formData, slot: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
+                >
+                  <option value="morning">Morning</option>
+                  <option value="evening">Evening</option>
+                  <option value="night">Night</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Ground</label>
+                <input
+                  type="text"
+                  value={formData.ground}
+                  onChange={(e) => setFormData({...formData, ground: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
+                  placeholder="Ground name"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm resize-none"
+                  rows={2}
+                  placeholder="Optional notes"
+                />
+              </div>
+              
+              <button
+                onClick={handleSubmitForm}
+                disabled={actionLoading || !formData.opponent || !formData.date}
+                className="w-full py-2.5 bg-emerald-500 rounded-lg text-white font-medium disabled:opacity-50"
+              >
+                {actionLoading ? 'Saving...' : (editMode ? 'Update Match' : 'Create Match')}
+              </button>
+              
+              <button
+                onClick={resetForm}
+                className="w-full py-2.5 bg-slate-700 rounded-lg text-slate-300 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

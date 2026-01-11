@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getAllFeedback, deleteFeedback, getFeedbackById, getStats } from '../../services/api';
+import { getAllFeedback, deleteFeedback, getFeedbackById, getStats, getTrashFeedback, restoreFeedback, permanentDeleteFeedback } from '../../services/api';
 import type { FeedbackSubmission } from '../../types';
-import { Star, Trash2, ChevronRight, X, RefreshCw } from 'lucide-react';
+import { Star, Trash2, ChevronRight, X, RefreshCw, RotateCcw, Archive } from 'lucide-react';
 
 interface FeedbackStats {
   totalSubmissions: number;
@@ -13,6 +13,7 @@ interface FeedbackStats {
 
 const MobileFeedbackTab: React.FC = () => {
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
+  const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -21,6 +22,9 @@ const MobileFeedbackTab: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSubmission | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -61,8 +65,30 @@ const MobileFeedbackTab: React.FC = () => {
   }, []);
 
   const handleRefresh = () => {
-    fetchFeedback(1, false, true);
+    if (currentView === 'active') {
+      fetchFeedback(1, false, true);
+    } else {
+      fetchTrash();
+    }
   };
+
+  const fetchTrash = async () => {
+    setRefreshing(true);
+    try {
+      const data = await getTrashFeedback();
+      setTrashFeedback(data || []);
+    } catch (err) {
+      console.error('Error fetching trash:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentView === 'trash') {
+      fetchTrash();
+    }
+  }, [currentView]);
 
   // Initial load
   useEffect(() => {
@@ -108,11 +134,46 @@ const MobileFeedbackTab: React.FC = () => {
       try {
         await deleteFeedback(id);
         setFeedback(prev => prev.filter(f => f._id !== id));
+        setSuccess('Moved to trash');
       } catch (err) {
         console.error('Error deleting feedback:', err);
       }
     }
   };
+
+  const handleRestore = async (id: string) => {
+    setActionLoading(true);
+    try {
+      await restoreFeedback(id);
+      setTrashFeedback(prev => prev.filter(f => f._id !== id));
+      setSuccess('Restored');
+      fetchFeedback(1, false, true);
+    } catch (err) {
+      console.error('Error restoring feedback:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    if (window.confirm('Permanently delete this feedback? This cannot be undone.')) {
+      setActionLoading(true);
+      try {
+        await permanentDeleteFeedback(id);
+        setTrashFeedback(prev => prev.filter(f => f._id !== id));
+        setSuccess('Permanently deleted');
+      } catch (err) {
+        console.error('Error permanently deleting:', err);
+      } finally {
+        setActionLoading(false);
+      }
+    }
+  };
+
+  // Clear success message
+  if (success) {
+    setTimeout(() => setSuccess(null), 2000);
+  }
 
   const formatDate = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
@@ -136,17 +197,44 @@ const MobileFeedbackTab: React.FC = () => {
 
   return (
     <>
-      {/* Stats Header with Refresh */}
+      {/* Success Toast */}
+      {success && (
+        <div className="fixed top-16 left-4 right-4 z-[60] p-3 rounded-xl bg-emerald-500/90 text-white text-sm">
+          {success}
+        </div>
+      )}
+
+      {/* Header with View Toggle & Refresh */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white">Performance Overview</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentView('active')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                currentView === 'active'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setCurrentView('trash')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+                currentView === 'trash'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  : 'bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              <Archive className="w-3 h-3" /> Trash
+            </button>
+          </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
         
@@ -172,57 +260,113 @@ const MobileFeedbackTab: React.FC = () => {
         )}
       </div>
 
-      {/* Compact Feedback List */}
-      <div className="space-y-2">
-        {feedback.map((item) => (
-          <div
-            key={item._id}
-            className="bg-slate-800/50 rounded-xl p-3 border border-white/5 active:bg-slate-800/70 transition-colors"
-            onClick={() => handleViewDetail(item)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-white text-sm truncate">{item.playerName}</span>
-                  <span className="text-xs text-slate-500">{formatDate(item.matchDate)}</span>
-                </div>
-                <div className="flex items-center gap-3 mt-1">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    <span className="text-xs text-amber-400 font-medium">{getAverageRating(item)}</span>
+      {/* Active Feedback List */}
+      {currentView === 'active' && (
+        <>
+          <div className="space-y-2">
+            {feedback.map((item) => (
+              <div
+                key={item._id}
+                className="bg-slate-800/50 rounded-xl p-3 border border-white/5 active:bg-slate-800/70 transition-colors"
+                onClick={() => handleViewDetail(item)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white text-sm truncate">{item.playerName}</span>
+                      <span className="text-xs text-slate-500">{formatDate(item.matchDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                        <span className="text-xs text-amber-400 font-medium">{getAverageRating(item)}</span>
+                      </div>
+                      <div className="flex gap-2 text-xs text-slate-500">
+                        <span>B:{item.batting}</span>
+                        <span>Bw:{item.bowling}</span>
+                        <span>F:{item.fielding}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2 text-xs text-slate-500">
-                    <span>B:{item.batting}</span>
-                    <span>Bw:{item.bowling}</span>
-                    <span>F:{item.fielding}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
+                      className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <ChevronRight className="w-4 h-4 text-slate-600" />
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
-                  className="p-2 text-slate-500 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <ChevronRight className="w-4 h-4 text-slate-600" />
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Load More Trigger */}
-      <div ref={loadMoreRef} className="py-4">
-        {loadingMore && (
-          <div className="flex items-center justify-center">
-            <div className="spinner w-6 h-6"></div>
+          {/* Load More Trigger */}
+          <div ref={loadMoreRef} className="py-4">
+            {loadingMore && (
+              <div className="flex items-center justify-center">
+                <div className="spinner w-6 h-6"></div>
+              </div>
+            )}
+            {!hasMore && feedback.length > 0 && (
+              <p className="text-center text-xs text-slate-500">No more feedback</p>
+            )}
           </div>
-        )}
-        {!hasMore && feedback.length > 0 && (
-          <p className="text-center text-xs text-slate-500">No more feedback</p>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* Trash List */}
+      {currentView === 'trash' && (
+        <div className="space-y-2">
+          {trashFeedback.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <Archive className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">Trash is empty</p>
+            </div>
+          ) : (
+            trashFeedback.map((item) => (
+              <div
+                key={item._id}
+                className="bg-slate-800/30 rounded-xl p-3 border border-red-500/10"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white text-sm truncate">{item.playerName}</span>
+                      <span className="text-xs text-slate-500">{formatDate(item.matchDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                        <span className="text-xs text-amber-400 font-medium">{getAverageRating(item)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleRestore(item._id)}
+                      disabled={actionLoading}
+                      className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors"
+                      title="Restore"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handlePermanentDelete(item._id)}
+                      disabled={actionLoading}
+                      className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                      title="Delete permanently"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Detail Modal - Slide up sheet */}
       {selectedFeedback && (

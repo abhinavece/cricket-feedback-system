@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleAuth from '../GoogleAuth';
-import { Menu, X, Home, Settings, LogOut, LogIn } from 'lucide-react';
+import { Menu, X, Home, Settings, LogOut, LogIn, Monitor } from 'lucide-react';
 
 interface MobileNavigationProps {
   currentView: 'form' | 'admin';
@@ -16,6 +16,7 @@ interface MobileNavigationProps {
   onLogout: () => void;
   activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
   onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
+  onToggleDevice?: () => void;
 }
 
 const MobileNavigation: React.FC<MobileNavigationProps> = ({
@@ -25,6 +26,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
   onLogout,
   activeTab,
   onTabChange,
+  onToggleDevice,
 }) => {
   const { hasPermission } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -117,6 +119,18 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
                 <Settings className="w-4 h-4" />
                 Dashboard
               </button>
+
+              <div className="h-px bg-white/10 my-2" />
+              
+              {onToggleDevice && (
+                <button
+                  onClick={() => { onToggleDevice(); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-sky-400 hover:bg-sky-500/10 transition-all"
+                >
+                  <Monitor className="w-4 h-4" />
+                  Switch to Desktop
+                </button>
+              )}
 
               {user ? (
                 <>

@@ -4,28 +4,26 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { submitFeedback } from './services/api';
 import { isMobileDevice } from './hooks/useDevice';
 import type { FeedbackForm as FeedbackFormData } from './types';
+import { Smartphone, Monitor } from 'lucide-react';
 import './theme.css';
 
 // Device detection at module level for code splitting
-const IS_MOBILE = isMobileDevice();
+const getInitialDeviceMode = () => {
+  const saved = localStorage.getItem('forceDeviceMode');
+  if (saved) return saved === 'mobile';
+  return isMobileDevice();
+};
+
+const IS_MOBILE_DEFAULT = getInitialDeviceMode();
 
 // Lazy load heavy components - device-specific bundles
 const FeedbackForm = lazy(() => import('./components/FeedbackForm'));
 const GoogleAuth = lazy(() => import('./components/GoogleAuth'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
-
-// Load device-appropriate components
-const Navigation = lazy(() => 
-  IS_MOBILE 
-    ? import('./components/mobile/MobileNavigation')
-    : import('./components/Navigation')
-);
-
-const AdminDashboard = lazy(() => 
-  IS_MOBILE 
-    ? import('./components/mobile/MobileAdminDashboard')
-    : import('./components/AdminDashboard')
-);
+const MobileNavigation = lazy(() => import('./components/mobile/MobileNavigation'));
+const DesktopNavigation = lazy(() => import('./components/Navigation'));
+const MobileAdminDashboard = lazy(() => import('./components/mobile/MobileAdminDashboard'));
+const DesktopAdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 // Loading spinner component for Suspense fallback
 const LoadingSpinner = () => (
@@ -40,7 +38,14 @@ function AppContent() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(IS_MOBILE_DEFAULT);
   const { user, isAuthenticated, logout } = useAuth();
+
+  const toggleDeviceMode = () => {
+    const newMode = !isMobile;
+    setIsMobile(newMode);
+    localStorage.setItem('forceDeviceMode', newMode ? 'mobile' : 'desktop');
+  };
 
   // Always land on admin page when authenticated
   useEffect(() => {
@@ -77,14 +82,27 @@ function AppContent() {
   return (
     <div className="App">
       <Suspense fallback={<div className="h-14 bg-slate-900" />}>
-        <Navigation 
-          currentView={currentView} 
-          onViewChange={setCurrentView} 
-          user={user}
-          onLogout={handleLogout}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        {isMobile ? (
+          <MobileNavigation 
+            currentView={currentView} 
+            onViewChange={setCurrentView} 
+            user={user}
+            onLogout={handleLogout}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onToggleDevice={toggleDeviceMode}
+          />
+        ) : (
+          <DesktopNavigation 
+            currentView={currentView} 
+            onViewChange={setCurrentView} 
+            user={user}
+            onLogout={handleLogout}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onToggleDevice={toggleDeviceMode}
+          />
+        )}
       </Suspense>
       
       {error && currentView === 'form' && (
@@ -124,7 +142,11 @@ function AppContent() {
           )
         ) : (
           <ProtectedRoute permission="view_dashboard">
-            <AdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
+            {isMobile ? (
+              <MobileAdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
+            ) : (
+              <DesktopAdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
+            )}
           </ProtectedRoute>
         )}
       </Suspense>
