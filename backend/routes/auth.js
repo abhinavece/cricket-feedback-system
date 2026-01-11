@@ -89,6 +89,87 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Mobile Google OAuth login (uses access token instead of ID token)
+router.post('/google/mobile', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Access token is required' });
+    }
+
+    // Fetch user info from Google using access token
+    const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      return res.status(401).json({ error: 'Invalid access token' });
+    }
+
+    const googleUser = await response.json();
+    const { email, name, picture, id: googleId } = googleUser;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user with default role
+      user = new User({
+        googleId,
+        email,
+        name,
+        avatar: picture,
+        role: 'viewer', // Default role
+        isActive: true,
+        lastLogin: new Date(),
+      });
+      await user.save();
+    } else {
+      // Update last login and avatar if changed
+      user.lastLogin = new Date();
+      if (picture && user.avatar !== picture) {
+        user.avatar = picture;
+      }
+      await user.save();
+    }
+
+    // Generate JWT token with longer expiry for mobile
+    const jwtToken = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '30d' } // Longer expiry for mobile
+    );
+
+    // Return user data
+    const userData = {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      lastLogin: user.lastLogin,
+      createdAt: user.createdAt
+    };
+
+    res.json({
+      token: jwtToken,
+      user: userData
+    });
+  } catch (error) {
+    console.error('Mobile Google auth error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
 // Verify token and get user info
 router.get('/verify', async (req, res) => {
   try {
