@@ -1,16 +1,31 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import Navigation from './components/Navigation';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { submitFeedback } from './services/api';
+import { isMobileDevice } from './hooks/useDevice';
 import type { FeedbackForm as FeedbackFormData } from './types';
 import './theme.css';
 
-// Lazy load heavy components - only loaded when needed
+// Device detection at module level for code splitting
+const IS_MOBILE = isMobileDevice();
+
+// Lazy load heavy components - device-specific bundles
 const FeedbackForm = lazy(() => import('./components/FeedbackForm'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const GoogleAuth = lazy(() => import('./components/GoogleAuth'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
+
+// Load device-appropriate components
+const Navigation = lazy(() => 
+  IS_MOBILE 
+    ? import('./components/mobile/MobileNavigation')
+    : import('./components/Navigation')
+);
+
+const AdminDashboard = lazy(() => 
+  IS_MOBILE 
+    ? import('./components/mobile/MobileAdminDashboard')
+    : import('./components/AdminDashboard')
+);
 
 // Loading spinner component for Suspense fallback
 const LoadingSpinner = () => (
@@ -61,14 +76,16 @@ function AppContent() {
 
   return (
     <div className="App">
-      <Navigation 
-        currentView={currentView} 
-        onViewChange={setCurrentView} 
-        user={user}
-        onLogout={handleLogout}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <Suspense fallback={<div className="h-14 bg-slate-900" />}>
+        <Navigation 
+          currentView={currentView} 
+          onViewChange={setCurrentView} 
+          user={user}
+          onLogout={handleLogout}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      </Suspense>
       
       {error && currentView === 'form' && (
         <div className="alert alert-error container">

@@ -64,4 +64,17 @@ const feedbackSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+// Indexes for optimized queries
+// Compound index for listing active feedback sorted by date
+feedbackSchema.index({ isDeleted: 1, createdAt: -1 });
+
+// Index for trash view
+feedbackSchema.index({ isDeleted: 1, deletedAt: -1 });
+
+// Index for stats aggregation
+feedbackSchema.index({ isDeleted: 1, batting: 1, bowling: 1, fielding: 1, teamSpirit: 1 });
+
+// Index for player name search
+feedbackSchema.index({ playerName: 'text' });
+
 module.exports = mongoose.model('Feedback', feedbackSchema);
