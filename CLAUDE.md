@@ -110,6 +110,17 @@ WhatsApp message history with direction, context linking to matches/availability
 - Consolidate stats into compact cards for mobile
 - Icon-only buttons on mobile, text on desktop
 
+### CRITICAL: Dual Platform Development
+**ALWAYS develop features for BOTH mobile browser UI AND desktop browser UI:**
+1. Create mobile-specific components in `frontend/src/components/mobile/`
+2. Ensure desktop components remain functional and beautiful
+3. Test features on both mobile (responsive mode) and desktop views
+4. Include refresh buttons on mobile tabs for real-time data updates
+5. Always ask user to **verify both mobile and desktop** after implementation
+
+Mobile component naming convention: `Mobile[ComponentName].tsx`
+Example: `MobileFeedbackTab.tsx`, `MobilePaymentsTab.tsx`, `MobileWhatsAppTab.tsx`
+
 ### Design System
 - **Colors**: Slate/dark theme with emerald accents
 - **Cards**: `bg-slate-800/50 backdrop-blur-xl border border-white/10`

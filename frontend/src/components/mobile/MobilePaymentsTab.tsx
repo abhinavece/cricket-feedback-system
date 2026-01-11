@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { getPayments } from '../../services/api';
-import { Wallet, ChevronRight, X, Check, Clock, AlertCircle } from 'lucide-react';
+import { Wallet, ChevronRight, X, Check, Clock, AlertCircle, RefreshCw, User } from 'lucide-react';
+
+interface SquadMember {
+  _id: string;
+  playerName: string;
+  playerPhone: string;
+  paymentStatus: 'paid' | 'partial' | 'unpaid';
+  amountPaid: number;
+  dueAmount: number;
+  adjustedAmount?: number;
+  calculatedAmount?: number;
+}
 
 interface Payment {
   _id: string;
@@ -11,32 +22,43 @@ interface Payment {
     ground: string;
   };
   totalAmount: number;
-  collectedAmount: number;
-  pendingAmount: number;
+  totalCollected: number;
+  totalPending: number;
   status: string;
   membersCount: number;
   paidCount: number;
+  squadMembers?: SquadMember[];
 }
 
 const MobilePaymentsTab: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
-  useEffect(() => {
-    const fetchPayments = async () => {
-      try {
+  const fetchPayments = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
         setLoading(true);
-        const data = await getPayments();
-        setPayments(data);
-      } catch (err) {
-        console.error('Error fetching payments:', err);
-      } finally {
-        setLoading(false);
       }
-    };
+      const response = await getPayments();
+      const paymentsList = Array.isArray(response) ? response : (response.payments || []);
+      setPayments(paymentsList);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPayments();
   }, []);
+
+  const handleRefresh = () => fetchPayments(true);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -63,8 +85,8 @@ const MobilePaymentsTab: React.FC = () => {
   };
 
   // Calculate totals
-  const totalCollected = payments.reduce((sum, p) => sum + (p.collectedAmount || 0), 0);
-  const totalPending = payments.reduce((sum, p) => sum + (p.pendingAmount || 0), 0);
+  const totalCollected = payments.reduce((sum, p) => sum + (p.totalCollected || 0), 0);
+  const totalPending = payments.reduce((sum, p) => sum + (p.totalPending || 0), 0);
 
   if (loading) {
     return (
@@ -74,8 +96,29 @@ const MobilePaymentsTab: React.FC = () => {
     );
   }
 
+  const getMemberStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid': return 'text-emerald-400 bg-emerald-500/20';
+      case 'partial': return 'text-amber-400 bg-amber-500/20';
+      default: return 'text-red-400 bg-red-500/20';
+    }
+  };
+
   return (
     <>
+      {/* Header with Refresh */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-white">Payment Overview</h2>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
       {/* Summary Stats */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
@@ -120,12 +163,12 @@ const MobilePaymentsTab: React.FC = () => {
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all"
                         style={{
-                          width: `${payment.totalAmount > 0 ? (payment.collectedAmount / payment.totalAmount) * 100 : 0}%`
+                          width: `${payment.totalAmount > 0 ? (payment.totalCollected / payment.totalAmount) * 100 : 0}%`
                         }}
                       />
                     </div>
                     <div className="flex justify-between mt-1 text-xs">
-                      <span className="text-emerald-400">{formatCurrency(payment.collectedAmount)}</span>
+                      <span className="text-emerald-400">{formatCurrency(payment.totalCollected)}</span>
                       <span className="text-slate-500">{formatCurrency(payment.totalAmount)}</span>
                     </div>
                   </div>
@@ -164,19 +207,65 @@ const MobilePaymentsTab: React.FC = () => {
                 </div>
                 <div className="bg-slate-800/50 rounded-xl p-3 text-center">
                   <p className="text-xs text-slate-400 mb-1">Collected</p>
-                  <p className="text-sm font-bold text-emerald-400">{formatCurrency(selectedPayment.collectedAmount)}</p>
+                  <p className="text-sm font-bold text-emerald-400">{formatCurrency(selectedPayment.totalCollected)}</p>
                 </div>
                 <div className="bg-slate-800/50 rounded-xl p-3 text-center">
                   <p className="text-xs text-slate-400 mb-1">Pending</p>
-                  <p className="text-sm font-bold text-amber-400">{formatCurrency(selectedPayment.pendingAmount)}</p>
+                  <p className="text-sm font-bold text-amber-400">{formatCurrency(selectedPayment.totalPending)}</p>
                 </div>
               </div>
 
-              {/* Info Note */}
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                <p className="text-xs text-blue-400">
-                  For detailed payment management, please use the desktop version.
-                </p>
+              {/* Squad Members List */}
+              {selectedPayment.squadMembers && selectedPayment.squadMembers.length > 0 && (
+                <div className="bg-slate-800/30 rounded-xl p-3">
+                  <p className="text-xs text-slate-400 mb-3 font-medium">Squad Members ({selectedPayment.squadMembers.length})</p>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {selectedPayment.squadMembers.map((member) => (
+                      <div key={member._id} className="flex items-center justify-between py-2 px-2 bg-slate-800/50 rounded-lg">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center">
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm text-white truncate">{member.playerName}</p>
+                            <p className="text-[10px] text-slate-500">{member.playerPhone}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          <div className="text-right">
+                            <p className="text-xs text-emerald-400">₹{member.amountPaid}</p>
+                            {member.dueAmount > 0 && (
+                              <p className="text-[10px] text-red-400">Due: ₹{member.dueAmount}</p>
+                            )}
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getMemberStatusColor(member.paymentStatus)}`}>
+                            {member.paymentStatus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Progress Bar */}
+              <div className="bg-slate-800/30 rounded-xl p-3">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-slate-400">Collection Progress</span>
+                  <span className="text-emerald-400">
+                    {selectedPayment.totalAmount > 0 
+                      ? Math.round((selectedPayment.totalCollected / selectedPayment.totalAmount) * 100) 
+                      : 0}%
+                  </span>
+                </div>
+                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
+                    style={{
+                      width: `${selectedPayment.totalAmount > 0 ? (selectedPayment.totalCollected / selectedPayment.totalAmount) * 100 : 0}%`
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

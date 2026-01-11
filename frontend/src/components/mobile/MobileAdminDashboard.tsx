@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { getAllFeedback, getStats, deleteFeedback, getFeedbackById } from '../../services/api';
-import type { FeedbackSubmission } from '../../types';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { getStats } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { MessageSquare, Calendar, Wallet, Users, ChevronRight, Star, TrendingUp } from 'lucide-react';
+import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp } from 'lucide-react';
 
 // Lazy load tab content - only loaded when tab is selected
 const MobileFeedbackTab = lazy(() => import('./MobileFeedbackTab'));
 const MobileMatchesTab = lazy(() => import('./MobileMatchesTab'));
 const MobilePaymentsTab = lazy(() => import('./MobilePaymentsTab'));
+const MobileContactTeam = lazy(() => import('./MobileContactTeam'));
+const MobileWhatsAppTab = lazy(() => import('./MobileWhatsAppTab'));
+
+// Reuse desktop components for tabs that don't have mobile versions yet
+const UserManagement = lazy(() => import('../UserManagement'));
+const PlayerPaymentHistory = lazy(() => import('../PlayerPaymentHistory'));
 
 const TabLoadingSpinner = () => (
   <div className="flex items-center justify-center py-16">
@@ -61,14 +66,21 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     onTabChange?.(tab);
   };
 
-  const tabs = [
-    { id: 'feedback', label: 'Feedback', icon: MessageSquare, permission: 'view_feedback' },
-    { id: 'matches', label: 'Matches', icon: Calendar, permission: 'view_matches' },
-    { id: 'payments', label: 'Payments', icon: Wallet, permission: 'manage_payments' },
-    { id: 'users', label: 'Users', icon: Users, permission: 'manage_users' },
+  // Define all tabs - admin users see all, others see only feedback
+  const allTabs = [
+    { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+    { id: 'whatsapp', label: 'WhatsApp', icon: Send },
+    { id: 'matches', label: 'Matches', icon: Calendar },
+    { id: 'payments', label: 'Payments', icon: Wallet },
+    { id: 'player-history', label: 'History', icon: History },
+    { id: 'users', label: 'Users', icon: Users },
   ];
 
-  const visibleTabs = tabs.filter(tab => hasPermission(tab.permission as any));
+  // Admin users see all tabs, viewers only see feedback
+  const isViewer = user?.role === 'viewer';
+  const visibleTabs = user?.role === 'admin' 
+    ? allTabs 
+    : allTabs.filter(tab => tab.id === 'feedback');
 
   if (loading) {
     return (
@@ -78,9 +90,20 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     );
   }
 
+  // Show contact page for viewers trying to access admin-only tabs
+  if (isViewer && activeTab !== 'feedback') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
+        <Suspense fallback={<TabLoadingSpinner />}>
+          <MobileContactTeam userName={user?.name} />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
-      {/* Compact Stats Header */}
+      {/* Compact Stats Header - Only show on feedback tab */}
       {stats && activeTab === 'feedback' && (
         <div className="px-4 py-3 border-b border-white/5">
           <div className="flex items-center justify-between gap-2">
@@ -121,20 +144,52 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
         </div>
       </div>
 
+      {/* Desktop Banner */}
+      <div className="mx-3 mt-2 mb-3 bg-gradient-to-r from-sky-500/10 to-purple-500/10 rounded-xl p-3 border border-sky-500/20">
+        <div className="flex items-center gap-2">
+          <Monitor className="w-4 h-4 text-sky-400" />
+          <p className="text-xs text-slate-300">
+            <span className="text-sky-400 font-medium">Pro tip:</span> Use desktop for full features & better experience
+          </p>
+        </div>
+      </div>
+
       {/* Tab Content */}
-      <div className="px-3 py-4">
+      <div className="px-3 py-2">
         <Suspense fallback={<TabLoadingSpinner />}>
           {activeTab === 'feedback' && <MobileFeedbackTab />}
           {activeTab === 'matches' && <MobileMatchesTab />}
           {activeTab === 'payments' && <MobilePaymentsTab />}
+          {activeTab === 'whatsapp' && <MobileWhatsAppTab />}
+          {activeTab === 'player-history' && (
+            <div className="mobile-tab-wrapper">
+              <PlayerPaymentHistory />
+            </div>
+          )}
           {activeTab === 'users' && (
-            <div className="text-center py-12 text-slate-400">
-              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">User management available on desktop</p>
+            <div className="mobile-tab-wrapper">
+              <UserManagement />
             </div>
           )}
         </Suspense>
       </div>
+
+      <style>{`
+        .mobile-tab-wrapper {
+          margin: -0.75rem;
+        }
+        .mobile-tab-wrapper .container {
+          padding-left: 0.75rem;
+          padding-right: 0.75rem;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };

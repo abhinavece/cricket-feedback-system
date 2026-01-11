@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Menu, X, Home, Settings, LogOut } from 'lucide-react';
+import GoogleAuth from '../GoogleAuth';
+import { Menu, X, Home, Settings, LogOut, LogIn } from 'lucide-react';
 
 interface MobileNavigationProps {
   currentView: 'form' | 'admin';
@@ -13,6 +14,8 @@ interface MobileNavigationProps {
     role: 'viewer' | 'editor' | 'admin';
   } | null;
   onLogout: () => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
 }
 
 const MobileNavigation: React.FC<MobileNavigationProps> = ({
@@ -20,15 +23,25 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
   onViewChange,
   user,
   onLogout,
+  activeTab,
+  onTabChange,
 }) => {
   const { hasPermission } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleAdminClick = () => {
     setIsMenuOpen(false);
-    if (user && hasPermission('view_dashboard')) {
+    if (!user) {
+      setShowAuthModal(true);
+    } else if (hasPermission('view_dashboard')) {
       onViewChange('admin');
     }
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    onViewChange('admin');
   };
 
   return (
@@ -45,12 +58,20 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
           </button>
 
           <div className="flex items-center gap-2">
-            {user && (
+            {user ? (
               <img
                 src={user.avatar}
                 alt={user.name}
                 className="w-7 h-7 rounded-full border border-emerald-500/30"
               />
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Login
+              </button>
             )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -85,26 +106,25 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
                 Feedback Form
               </button>
 
-              {user && hasPermission('view_dashboard') && (
-                <button
-                  onClick={handleAdminClick}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                    currentView === 'admin'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <Settings className="w-4 h-4" />
-                  Dashboard
-                </button>
-              )}
+              <button
+                onClick={handleAdminClick}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  currentView === 'admin'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                Dashboard
+              </button>
 
-              {user && (
+              {user ? (
                 <>
                   <div className="h-px bg-white/10 my-2" />
                   <div className="px-4 py-2">
                     <p className="text-xs text-slate-500">Signed in as</p>
                     <p className="text-sm text-white font-medium truncate">{user.name}</p>
+                    <p className="text-xs text-slate-500 capitalize">{user.role}</p>
                   </div>
                   <button
                     onClick={() => { onLogout(); setIsMenuOpen(false); }}
@@ -114,9 +134,46 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
                     Sign Out
                   </button>
                 </>
+              ) : (
+                <>
+                  <div className="h-px bg-white/10 my-2" />
+                  <button
+                    onClick={() => { setShowAuthModal(true); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign In with Google
+                  </button>
+                </>
               )}
             </div>
           </nav>
+        </div>
+      )}
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowAuthModal(false)}
+        >
+          <div
+            className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className="cricket-ball mx-auto mb-4" style={{ width: '48px', height: '48px' }}></div>
+              <h2 className="text-xl font-bold text-white mb-2">Welcome Back!</h2>
+              <p className="text-sm text-slate-400">Sign in to access the dashboard</p>
+            </div>
+            <GoogleAuth onSuccess={handleAuthSuccess} />
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -127,6 +184,13 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
         }
         .animate-slide-down {
           animation: slide-down 0.2s ease-out;
+        }
+        @keyframes slide-up {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
         }
       `}</style>
     </>

@@ -1,12 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getAllFeedback, deleteFeedback, getFeedbackById } from '../../services/api';
+import { getAllFeedback, deleteFeedback, getFeedbackById, getStats } from '../../services/api';
 import type { FeedbackSubmission } from '../../types';
-import { Star, Trash2, ChevronRight, X } from 'lucide-react';
+import { Star, Trash2, ChevronRight, X, RefreshCw } from 'lucide-react';
+
+interface FeedbackStats {
+  totalSubmissions: number;
+  avgBatting: number;
+  avgBowling: number;
+  avgFielding: number;
+  avgTeamSpirit: number;
+}
 
 const MobileFeedbackTab: React.FC = () => {
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
+  const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSubmission | null>(null);
@@ -14,15 +24,21 @@ const MobileFeedbackTab: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const fetchFeedback = useCallback(async (pageNum: number, append: boolean = false) => {
+  const fetchFeedback = useCallback(async (pageNum: number, append: boolean = false, isRefresh: boolean = false) => {
     try {
-      if (append) {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else if (append) {
         setLoadingMore(true);
       } else {
         setLoading(true);
       }
 
-      const response = await getAllFeedback({ page: pageNum, limit: 15 });
+      const [response, statsData] = await Promise.all([
+        getAllFeedback({ page: pageNum, limit: 15 }),
+        pageNum === 1 ? getStats() : Promise.resolve(null)
+      ]);
+      
       const pagination = response.pagination || {};
       const hasMoreData = (pageNum * 15) < (pagination.total || 0);
 
@@ -31,7 +47,8 @@ const MobileFeedbackTab: React.FC = () => {
       } else {
         setFeedback(response.feedback || []);
       }
-
+      
+      if (statsData) setStats(statsData);
       setHasMore(hasMoreData);
       setCurrentPage(pageNum);
     } catch (err) {
@@ -39,8 +56,13 @@ const MobileFeedbackTab: React.FC = () => {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const handleRefresh = () => {
+    fetchFeedback(1, false, true);
+  };
 
   // Initial load
   useEffect(() => {
@@ -114,6 +136,42 @@ const MobileFeedbackTab: React.FC = () => {
 
   return (
     <>
+      {/* Stats Header with Refresh */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white">Performance Overview</h2>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+        
+        {stats && (
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-emerald-500/10 rounded-lg p-2 text-center border border-emerald-500/20">
+              <p className="text-[10px] text-emerald-400 mb-0.5">Batting</p>
+              <p className="text-sm font-bold text-emerald-400">{stats.avgBatting.toFixed(1)}</p>
+            </div>
+            <div className="bg-sky-500/10 rounded-lg p-2 text-center border border-sky-500/20">
+              <p className="text-[10px] text-sky-400 mb-0.5">Bowling</p>
+              <p className="text-sm font-bold text-sky-400">{stats.avgBowling.toFixed(1)}</p>
+            </div>
+            <div className="bg-amber-500/10 rounded-lg p-2 text-center border border-amber-500/20">
+              <p className="text-[10px] text-amber-400 mb-0.5">Fielding</p>
+              <p className="text-sm font-bold text-amber-400">{stats.avgFielding.toFixed(1)}</p>
+            </div>
+            <div className="bg-purple-500/10 rounded-lg p-2 text-center border border-purple-500/20">
+              <p className="text-[10px] text-purple-400 mb-0.5">Spirit</p>
+              <p className="text-sm font-bold text-purple-400">{stats.avgTeamSpirit.toFixed(1)}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Compact Feedback List */}
       <div className="space-y-2">
         {feedback.map((item) => (

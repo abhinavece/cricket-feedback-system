@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getMatches, getMatch } from '../../services/api';
-import { Calendar, MapPin, Users, Clock, ChevronRight, X, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon } from 'lucide-react';
 
 interface Match {
   _id: string;
@@ -11,36 +11,46 @@ interface Match {
   opponent: string;
   ground: string;
   status: string;
+  squad?: any[];
   squadStats?: {
-    confirmed: number;
-    declined: number;
+    total: number;
+    yes: number;
+    no: number;
     tentative: number;
     pending: number;
-    total: number;
   };
 }
 
 const MobileMatchesTab: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('upcoming');
 
-  useEffect(() => {
-    const fetchMatches = async () => {
-      try {
+  const fetchMatches = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
         setLoading(true);
-        const data = await getMatches();
-        setMatches(data);
-      } catch (err) {
-        console.error('Error fetching matches:', err);
-      } finally {
-        setLoading(false);
       }
-    };
+      const data = await getMatches();
+      setMatches(data);
+    } catch (err) {
+      console.error('Error fetching matches:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchMatches();
   }, []);
+
+  const handleRefresh = () => fetchMatches(true);
 
   const handleViewDetail = async (match: Match) => {
     setLoadingDetail(true);
@@ -95,21 +105,30 @@ const MobileMatchesTab: React.FC = () => {
 
   return (
     <>
-      {/* Filter Pills */}
-      <div className="flex gap-2 mb-4">
-        {(['upcoming', 'completed', 'all'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-              filter === f
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-slate-800/50 text-slate-400'
-            }`}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* Header with Refresh */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex gap-2">
+          {(['upcoming', 'completed', 'all'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                filter === f
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Match List */}
@@ -147,11 +166,19 @@ const MobileMatchesTab: React.FC = () => {
                     )}
                   </div>
                   {match.squadStats && (
-                    <div className="flex items-center gap-2 mt-2 text-xs">
-                      <span className="text-emerald-400">✓{match.squadStats.confirmed}</span>
-                      <span className="text-red-400">✗{match.squadStats.declined}</span>
-                      <span className="text-amber-400">?{match.squadStats.tentative}</span>
-                      <span className="text-slate-500">⏳{match.squadStats.pending}</span>
+                    <div className="flex items-center gap-3 mt-2 text-xs">
+                      <span className="flex items-center gap-1 text-emerald-400">
+                        <CheckCircle className="w-3 h-3" />{match.squadStats.yes || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-red-400">
+                        <XCircle className="w-3 h-3" />{match.squadStats.no || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-amber-400">
+                        <HelpCircle className="w-3 h-3" />{match.squadStats.tentative || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-slate-500">
+                        <ClockIcon className="w-3 h-3" />{match.squadStats.pending || 0}
+                      </span>
                     </div>
                   )}
                 </div>
