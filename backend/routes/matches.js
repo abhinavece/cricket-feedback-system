@@ -60,40 +60,59 @@ router.get('/summary', auth, async (req, res) => {
   }
 });
 
-// Get all matches (full data, for detail views)
+// Get all matches (optimized - squad only included when explicitly requested)
 router.get('/', auth, async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 10, includeSquad = 'false' } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
+    const shouldIncludeSquad = includeSquad === 'true';
     const query = {};
     
     if (status) {
       query.status = status;
     }
     
-    const matches = await Match.find(query)
-      .populate('squad.player', 'name phone role team')
+    let matchQuery = Match.find(query)
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1, date: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum);
     
+    // Only populate squad if explicitly requested (reduces payload by ~80%)
+    if (shouldIncludeSquad) {
+      matchQuery = matchQuery.populate('squad.player', 'name phone role team');
+    }
+    
+    const matches = await matchQuery.lean();
+    
+    // If squad not requested, compute stats and exclude squad array
+    let responseMatches = matches;
+    if (!shouldIncludeSquad) {
+      responseMatches = matches.map(match => {
+        const squadStats = {
+          total: match.squad?.length || 0,
+          yes: match.squad?.filter(s => s.response === 'yes').length || 0,
+          no: match.squad?.filter(s => s.response === 'no').length || 0,
+          tentative: match.squad?.filter(s => s.response === 'tentative').length || 0,
+          pending: match.squad?.filter(s => s.response === 'pending').length || 0
+        };
+        const { squad, ...matchWithoutSquad } = match;
+        return { ...matchWithoutSquad, squadStats };
+      });
+    }
+    
     const total = await Match.countDocuments(query);
     const hasMore = (pageNum * limitNum) < total;
     
-    const paginationData = {
-      current: pageNum,
-      pages: Math.ceil(total / limitNum),
-      total,
-      hasMore: hasMore
-    };
-    
-    console.log('[Matches API] Pagination:', paginationData);
-    
     res.json({
-      matches,
-      pagination: paginationData
+      matches: responseMatches,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -201,10 +220,10 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Update squad response
+// Update squad response (optimized - returns only updated member, not entire match)
 router.put('/:id/squad/:playerId', auth, async (req, res) => {
   try {
-    const { response, notes } = req.body;
+    const { response, notes, returnFullMatch = false } = req.body;
     
     if (!['yes', 'no', 'tentative'].includes(response)) {
       return res.status(400).json({ error: 'Invalid response' });
@@ -227,11 +246,27 @@ router.put('/:id/squad/:playerId', auth, async (req, res) => {
     
     await match.save();
     
-    const updatedMatch = await Match.findById(match._id)
-      .populate('squad.player', 'name phone role team')
-      .populate('createdBy', 'name email');
+    // By default, return only the updated member (reduces payload by ~99%)
+    // Set returnFullMatch=true in body to get full match data
+    if (returnFullMatch) {
+      const updatedMatch = await Match.findById(match._id)
+        .populate('squad.player', 'name phone role team')
+        .populate('createdBy', 'name email');
+      return res.json(updatedMatch);
+    }
     
-    res.json(updatedMatch);
+    // Return minimal response with updated member data
+    res.json({
+      success: true,
+      message: 'Squad response updated',
+      data: {
+        matchId: match._id,
+        playerId: req.params.playerId,
+        response: squadMember.response,
+        respondedAt: squadMember.respondedAt,
+        notes: squadMember.notes
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

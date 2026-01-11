@@ -146,14 +146,33 @@ router.get('/summary', auth, async (req, res) => {
   }
 });
 
-// GET /api/feedback/trash - Get deleted feedback (must come before /:id route)
+// GET /api/feedback/trash - Get deleted feedback with pagination (must come before /:id route)
 router.get('/trash', auth, async (req, res) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    // Exclude large text fields for list view - use /:id for full details
     const deletedFeedback = await Feedback.find({ isDeleted: true })
+      .select('_id playerName matchDate batting bowling fielding teamSpirit issues deletedAt deletedBy createdAt')
       .sort({ deletedAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
       .lean();
     
-    res.json(deletedFeedback);
+    const total = await Feedback.countDocuments({ isDeleted: true });
+    const hasMore = (pageNum * limitNum) < total;
+    
+    res.json({
+      feedback: deletedFeedback,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore
+      }
+    });
   } catch (error) {
     console.error('Error fetching deleted feedback:', error);
     res.status(500).json({ error: 'Failed to fetch deleted feedback' });
@@ -214,8 +233,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Soft delete feedback
-router.delete('/:id', async (req, res) => {
+// Soft delete feedback (requires authentication)
+router.delete('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const { deletedBy } = req.body; // Optional admin identifier
@@ -247,8 +266,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Restore feedback from trash
-router.post('/:id/restore', async (req, res) => {
+// Restore feedback from trash (requires authentication)
+router.post('/:id/restore', auth, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -279,8 +298,8 @@ router.post('/:id/restore', async (req, res) => {
   }
 });
 
-// Permanently delete feedback
-router.delete('/:id/permanent', async (req, res) => {
+// Permanently delete feedback (requires authentication)
+router.delete('/:id/permanent', auth, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -8,13 +8,19 @@ const Availability = require('../models/Availability');
 const Message = require('../models/Message');
 const axios = require('axios');
 
-// GET /api/payments - Get all payment records (optimized)
+// GET /api/payments - Get all payment records (optimized with pagination)
 router.get('/', auth, async (req, res) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
     const payments = await MatchPayment.find()
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum);
 
     // Optimize payload by removing heavy data
     const optimizedPayments = payments.map(payment => {
@@ -36,9 +42,18 @@ router.get('/', auth, async (req, res) => {
       return paymentObj;
     });
 
+    const total = await MatchPayment.countDocuments();
+    const hasMore = (pageNum * limitNum) < total;
+
     res.json({
       success: true,
-      payments: optimizedPayments
+      payments: optimizedPayments,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore
+      }
     });
   } catch (error) {
     console.error('Error fetching payments:', error);

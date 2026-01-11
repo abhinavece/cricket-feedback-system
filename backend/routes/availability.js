@@ -5,14 +5,17 @@ const Match = require('../models/Match');
 const Player = require('../models/Player');
 const auth = require('../middleware/auth');
 
-// GET /api/availability/match/:matchId - Get all availability records for a match
+// GET /api/availability/match/:matchId - Get all availability records for a match (optimized)
 router.get('/match/:matchId', auth, async (req, res) => {
   try {
     const { matchId } = req.params;
 
+    // Don't populate playerId - we already have playerName and playerPhone in the document
+    // This reduces redundant data in response
     const availabilities = await Availability.find({ matchId })
-      .populate('playerId', 'name phone role team')
-      .sort({ createdAt: -1 });
+      .select('_id matchId playerId playerName playerPhone response status respondedAt createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
 
     // Calculate statistics
     const stats = {
@@ -39,15 +42,23 @@ router.get('/match/:matchId', auth, async (req, res) => {
   }
 });
 
-// GET /api/availability/player/:playerId - Get availability history for a player
+// GET /api/availability/player/:playerId - Get availability history for a player (with pagination)
 router.get('/player/:playerId', auth, async (req, res) => {
   try {
     const { playerId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
 
     const availabilities = await Availability.find({ playerId })
       .populate('matchId', 'date opponent ground')
       .sort({ createdAt: -1 })
-      .limit(20);
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
+      .lean();
+
+    const total = await Availability.countDocuments({ playerId });
+    const hasMore = (pageNum * limitNum) < total;
 
     // Calculate player statistics
     const stats = {
@@ -63,7 +74,13 @@ router.get('/player/:playerId', auth, async (req, res) => {
     res.json({
       success: true,
       data: availabilities,
-      stats
+      stats,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore
+      }
     });
   } catch (error) {
     console.error('Error fetching player availability:', error);
