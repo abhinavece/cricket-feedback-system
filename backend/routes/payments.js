@@ -22,6 +22,12 @@ router.get('/', auth, async (req, res) => {
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum);
 
+    // Force recalculation for each payment to fix legacy data
+    for (const payment of payments) {
+      payment.recalculateAmounts();
+      await payment.save();
+    }
+
     // Optimize payload by removing heavy data
     const optimizedPayments = payments.map(payment => {
       const paymentObj = payment.toJSON();
@@ -82,6 +88,10 @@ router.get('/match/:matchId', auth, async (req, res) => {
       });
     }
 
+    // Force recalculation to ensure correct totals (fixes legacy data)
+    payment.recalculateAmounts();
+    await payment.save();
+
     // Convert to JSON and optimize payload
     const paymentObj = payment.toJSON();
     
@@ -121,8 +131,13 @@ router.get('/match/:matchId', auth, async (req, res) => {
 router.get('/summary', auth, async (req, res) => {
   try {
     const payments = await MatchPayment.find({})
-      .sort({ createdAt: -1 })
-      .lean(); // Use lean for better performance
+      .sort({ createdAt: -1 });
+
+    // Force recalculation for each payment to fix legacy data
+    for (const payment of payments) {
+      payment.recalculateAmounts();
+      await payment.save();
+    }
 
     // Return only essential fields for list view
     const summaryPayments = payments.map(payment => ({
@@ -132,6 +147,7 @@ router.get('/summary', auth, async (req, res) => {
       status: payment.status,
       totalCollected: payment.totalCollected,
       totalPending: payment.totalPending,
+      totalOwed: payment.totalOwed,
       membersCount: payment.membersCount,
       paidCount: payment.paidCount,
       createdAt: payment.createdAt,
@@ -144,6 +160,7 @@ router.get('/summary', auth, async (req, res) => {
         paymentStatus: member.paymentStatus,
         amountPaid: member.amountPaid,
         dueAmount: member.dueAmount,
+        owedAmount: member.owedAmount,
         adjustedAmount: member.adjustedAmount,
         calculatedAmount: member.calculatedAmount
       })) : []
@@ -412,6 +429,7 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
       adjustedAmount: member.adjustedAmount,
       amountPaid: member.amountPaid,
       dueAmount: member.dueAmount,
+      owedAmount: member.owedAmount,
       paymentStatus: member.paymentStatus,
       notes: member.notes,
       dueDate: member.dueDate,
@@ -425,7 +443,9 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
         totalAmount: payment.totalAmount,
         totalCollected: payment.totalCollected,
         totalPending: payment.totalPending,
+        totalOwed: payment.totalOwed,
         paidCount: payment.paidCount,
+        membersCount: payment.membersCount,
         status: payment.status
       },
       message: 'Member updated successfully'
@@ -539,7 +559,9 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
         totalAmount: payment.totalAmount,
         totalCollected: payment.totalCollected,
         totalPending: payment.totalPending,
+        totalOwed: payment.totalOwed,
         paidCount: payment.paidCount,
+        membersCount: payment.membersCount,
         status: payment.status
       },
       message: 'Payment recorded successfully'
@@ -611,7 +633,9 @@ router.post('/:id/member/:memberId/mark-unpaid', auth, async (req, res) => {
         totalAmount: payment.totalAmount,
         totalCollected: payment.totalCollected,
         totalPending: payment.totalPending,
+        totalOwed: payment.totalOwed,
         paidCount: payment.paidCount,
+        membersCount: payment.membersCount,
         status: payment.status
       },
       message: 'Marked as unpaid successfully'
@@ -713,6 +737,7 @@ router.delete('/:id/member/:memberId', auth, async (req, res) => {
       adjustedAmount: member.adjustedAmount,
       amountPaid: member.amountPaid,
       dueAmount: member.dueAmount,
+      owedAmount: member.owedAmount,
       paymentStatus: member.paymentStatus,
       notes: member.notes,
       dueDate: member.dueDate,
@@ -726,6 +751,7 @@ router.delete('/:id/member/:memberId', auth, async (req, res) => {
         totalAmount: payment.totalAmount,
         totalCollected: payment.totalCollected,
         totalPending: payment.totalPending,
+        totalOwed: payment.totalOwed,
         paidCount: payment.paidCount,
         membersCount: payment.membersCount,
         status: payment.status
@@ -813,6 +839,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
       adjustedAmount: member.adjustedAmount,
       amountPaid: member.amountPaid,
       dueAmount: member.dueAmount,
+      owedAmount: member.owedAmount,
       paymentStatus: member.paymentStatus,
       notes: member.notes,
       dueDate: member.dueDate,
@@ -826,6 +853,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
         totalAmount: payment.totalAmount,
         totalCollected: payment.totalCollected,
         totalPending: payment.totalPending,
+        totalOwed: payment.totalOwed,
         paidCount: payment.paidCount,
         membersCount: payment.membersCount,
         status: payment.status

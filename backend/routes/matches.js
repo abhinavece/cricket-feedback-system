@@ -24,10 +24,16 @@ router.get('/summary', auth, async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .lean();
     
-    // Compute squad stats server-side and exclude squad array
+    // Compute squad stats from match's availability fields (not squad array)
     const summaryMatches = matches.map(match => {
-      // Compute stats from squad array
-      const squadStats = {
+      // Use availability tracking fields if availabilitySent, otherwise use squad array as fallback
+      const squadStats = match.availabilitySent ? {
+        total: match.totalPlayersRequested || 0,
+        yes: match.confirmedPlayers || 0,
+        no: match.declinedPlayers || 0,
+        tentative: match.tentativePlayers || 0,
+        pending: match.noResponsePlayers || 0
+      } : {
         total: match.squad?.length || 0,
         yes: match.squad?.filter(s => s.response === 'yes').length || 0,
         no: match.squad?.filter(s => s.response === 'no').length || 0,
@@ -39,7 +45,7 @@ router.get('/summary', auth, async (req, res) => {
       const { squad, ...matchWithoutSquad } = match;
       return {
         ...matchWithoutSquad,
-        squadStats // Computed stats for fallback when availability tracking is off
+        squadStats
       };
     });
     
@@ -90,7 +96,14 @@ router.get('/', auth, async (req, res) => {
     let responseMatches = matches;
     if (!shouldIncludeSquad) {
       responseMatches = matches.map(match => {
-        const squadStats = {
+        // Use availability tracking fields if availabilitySent, otherwise use squad array as fallback
+        const squadStats = match.availabilitySent ? {
+          total: match.totalPlayersRequested || 0,
+          yes: match.confirmedPlayers || 0,
+          no: match.declinedPlayers || 0,
+          tentative: match.tentativePlayers || 0,
+          pending: match.noResponsePlayers || 0
+        } : {
           total: match.squad?.length || 0,
           yes: match.squad?.filter(s => s.response === 'yes').length || 0,
           no: match.squad?.filter(s => s.response === 'no').length || 0,
@@ -148,9 +161,18 @@ router.post('/', auth, async (req, res) => {
       });
     }
     
-    // Generate match ID
-    const count = await Match.countDocuments();
-    const matchId = `MATCH-${String(count + 1).padStart(4, '0')}`;
+    // Generate match ID - find max existing matchId to avoid duplicates
+    const lastMatch = await Match.findOne({ matchId: { $regex: /^MATCH-\d+$/ } })
+      .sort({ matchId: -1 })
+      .select('matchId')
+      .lean();
+    
+    let nextNum = 1;
+    if (lastMatch && lastMatch.matchId) {
+      const lastNum = parseInt(lastMatch.matchId.replace('MATCH-', ''), 10);
+      nextNum = lastNum + 1;
+    }
+    const matchId = `MATCH-${String(nextNum).padStart(4, '0')}`;
     
     // Create match
     const match = new Match({

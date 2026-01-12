@@ -4,10 +4,20 @@ const Player = require('../models/Player.js');
 const auth = require('../middleware/auth.js');
 
 // GET /api/players - Get all active players (for WhatsApp messaging)
+// Supports search query parameter for filtering by name
 router.get('/', auth, async (req, res) => {
-  console.log('GET /api/players - Fetching all active players');
+  console.log('GET /api/players - Fetching players');
   try {
-    const players = await Player.find({ isActive: true })
+    const { search } = req.query;
+    
+    let query = { isActive: true };
+    
+    // If search term provided, filter by name starting with that term (case-insensitive)
+    if (search && search.trim()) {
+      query.name = { $regex: `^${search.trim()}`, $options: 'i' };
+    }
+    
+    const players = await Player.find(query)
       .select('name phone role team notes createdAt')
       .sort({ name: 1 });
     
@@ -53,7 +63,7 @@ router.post('/', auth, async (req, res) => {
     if (existingPlayer) {
       return res.status(400).json({
         success: false,
-        error: 'Player with this phone number already exists'
+        error: `Player already exists with same number. Name: "${existingPlayer.name}"`
       });
     }
     

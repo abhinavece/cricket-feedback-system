@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getMatches, getMatch, createMatch, updateMatch, deleteMatch } from '../../services/api';
-import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy } from 'lucide-react';
+import { getMatches, getMatch, createMatch, updateMatch, deleteMatch, getMatchAvailability, updateAvailability, deleteAvailability, createAvailability, getPlayers } from '../../services/api';
+import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy, UserPlus, Users } from 'lucide-react';
 
 interface Match {
   _id: string;
@@ -43,6 +43,13 @@ const MobileMatchesTab: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Availability management state
+  const [availabilities, setAvailabilities] = useState<any[]>([]);
+  const [editingAvailId, setEditingAvailId] = useState<string | null>(null);
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [selectedPlayersToAdd, setSelectedPlayersToAdd] = useState<string[]>([]);
 
   const fetchMatches = async (isRefresh = false) => {
     try {
@@ -141,10 +148,81 @@ const MobileMatchesTab: React.FC = () => {
     try {
       const fullMatch = await getMatch(match._id);
       setSelectedMatch(fullMatch);
+      // Also load availability records
+      try {
+        const availResult = await getMatchAvailability(match._id);
+        setAvailabilities(availResult.data || []);
+      } catch (e) {
+        setAvailabilities([]);
+      }
     } catch (err) {
       console.error('Error fetching match detail:', err);
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  // Availability management handlers
+  const handleUpdateAvailStatus = async (availId: string, newStatus: 'yes' | 'no' | 'tentative') => {
+    setActionLoading(true);
+    try {
+      await updateAvailability(availId, { response: newStatus });
+      setSuccess('Status updated');
+      setEditingAvailId(null);
+      // Refresh availability
+      if (selectedMatch) {
+        const availResult = await getMatchAvailability(selectedMatch._id);
+        setAvailabilities(availResult.data || []);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteAvail = async (availId: string, playerName: string) => {
+    if (!window.confirm(`Remove ${playerName}?`)) return;
+    setActionLoading(true);
+    try {
+      await deleteAvailability(availId);
+      setSuccess('Player removed');
+      if (selectedMatch) {
+        const availResult = await getMatchAvailability(selectedMatch._id);
+        setAvailabilities(availResult.data || []);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to remove');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenAddPlayer = async () => {
+    try {
+      const players = await getPlayers();
+      const existingIds = new Set(availabilities.map((a: any) => a.playerId));
+      setAllPlayers(players.filter((p: any) => !existingIds.has(p._id)));
+      setSelectedPlayersToAdd([]);
+      setShowAddPlayer(true);
+    } catch (err) {
+      setError('Failed to load players');
+    }
+  };
+
+  const handleAddPlayers = async () => {
+    if (selectedPlayersToAdd.length === 0 || !selectedMatch) return;
+    setActionLoading(true);
+    try {
+      await createAvailability(selectedMatch._id, selectedPlayersToAdd);
+      setSuccess(`Added ${selectedPlayersToAdd.length} player(s)`);
+      setShowAddPlayer(false);
+      const availResult = await getMatchAvailability(selectedMatch._id);
+      setAvailabilities(availResult.data || []);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to add players');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -336,28 +414,58 @@ const MobileMatchesTab: React.FC = () => {
                 </button>
               </div>
 
-              {/* Squad List */}
-              {selectedMatch.squad && selectedMatch.squad.length > 0 && (
-                <div className="bg-slate-800/50 rounded-xl p-4">
-                  <p className="text-xs text-slate-400 mb-3">Squad ({selectedMatch.squad.length})</p>
+              {/* Availability List with CRUD */}
+              <div className="bg-slate-800/50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-slate-400">Availability ({availabilities.length})</p>
+                  <button
+                    onClick={handleOpenAddPlayer}
+                    className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs"
+                  >
+                    <UserPlus className="w-3 h-3" /> Add
+                  </button>
+                </div>
+                {availabilities.length === 0 ? (
+                  <div className="text-center py-4 text-slate-500 text-sm">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    No availability tracking yet
+                  </div>
+                ) : (
                   <div className="space-y-2">
-                    {selectedMatch.squad.map((member: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                        <span className="text-sm text-white">{member.player?.name || 'Unknown'}</span>
-                        <span className={`text-xs ${
-                          member.response === 'yes' ? 'text-emerald-400' :
-                          member.response === 'no' ? 'text-red-400' :
-                          member.response === 'tentative' ? 'text-amber-400' : 'text-slate-500'
-                        }`}>
-                          {member.response === 'yes' ? '✓ Yes' :
-                           member.response === 'no' ? '✗ No' :
-                           member.response === 'tentative' ? '? Tentative' : '⏳ Pending'}
-                        </span>
+                    {availabilities.map((avail: any) => (
+                      <div key={avail._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                        <div className="flex-1">
+                          <span className="text-sm text-white">{avail.playerName}</span>
+                          <span className={`ml-2 text-xs ${
+                            avail.response === 'yes' ? 'text-emerald-400' :
+                            avail.response === 'no' ? 'text-red-400' :
+                            avail.response === 'tentative' ? 'text-amber-400' : 'text-slate-500'
+                          }`}>
+                            {avail.response === 'yes' ? '✓' : avail.response === 'no' ? '✗' : avail.response === 'tentative' ? '?' : '⏳'}
+                          </span>
+                        </div>
+                        {editingAvailId === avail._id ? (
+                          <div className="flex gap-1">
+                            <button onClick={() => handleUpdateAvailStatus(avail._id, 'yes')} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded">Y</button>
+                            <button onClick={() => handleUpdateAvailStatus(avail._id, 'tentative')} className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded">?</button>
+                            <button onClick={() => handleUpdateAvailStatus(avail._id, 'no')} className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded">N</button>
+                            <button onClick={() => setEditingAvailId(null)} className="px-2 py-1 bg-slate-600 text-white text-xs rounded">✕</button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            <button onClick={() => setEditingAvailId(avail._id)} className="p-1.5 bg-slate-700 text-white rounded">
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => handleDeleteAvail(avail._id, avail.playerName)} className="p-1.5 bg-red-500/20 text-red-400 rounded">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -461,6 +569,67 @@ const MobileMatchesTab: React.FC = () => {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Player Modal */}
+      {showAddPlayer && (
+        <div className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowAddPlayer(false)}>
+          <div className="bg-slate-800 rounded-2xl p-4 w-full max-w-sm max-h-[70vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-emerald-400" /> Add Players
+              </h3>
+              <button onClick={() => setShowAddPlayer(false)} className="text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {allPlayers.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-sm">
+                All players already added
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-slate-400 mb-2">{selectedPlayersToAdd.length} selected</p>
+                <div className="flex-1 overflow-y-auto space-y-1 mb-3">
+                  {allPlayers.map((player: any) => {
+                    const isSelected = selectedPlayersToAdd.includes(player._id);
+                    return (
+                      <div
+                        key={player._id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedPlayersToAdd(prev => prev.filter(id => id !== player._id));
+                          } else {
+                            setSelectedPlayersToAdd(prev => [...prev, player._id]);
+                          }
+                        }}
+                        className={`p-3 rounded-lg cursor-pointer ${isSelected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-700/50'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'}`}>
+                            {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
+                          </div>
+                          <div>
+                            <p className="text-white text-sm">{player.name}</p>
+                            <p className="text-xs text-slate-400">{player.phone}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleAddPlayers}
+                  disabled={selectedPlayersToAdd.length === 0 || actionLoading}
+                  className="w-full py-2 bg-emerald-500 rounded-lg text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {actionLoading ? 'Adding...' : `Add (${selectedPlayersToAdd.length})`}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

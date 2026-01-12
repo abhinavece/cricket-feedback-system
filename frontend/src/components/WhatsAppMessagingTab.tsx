@@ -117,8 +117,10 @@ const WhatsAppMessagingTab: React.FC = () => {
       setLoadingMatches(true);
       const response = await getUpcomingMatches();
       setMatches(response);
+      return response; // Return matches for immediate use
     } catch (err) {
       console.error('Failed to load matches:', err);
+      return [];
     } finally {
       setLoadingMatches(false);
     }
@@ -128,14 +130,18 @@ const WhatsAppMessagingTab: React.FC = () => {
     try {
       setCreatingMatch(true);
       const newMatch = await createMatch(matchData);
-      await fetchMatches(); // Refresh matches list
-      setSelectedMatch(newMatch); // Auto-select the newly created match
+      const updatedMatches = await fetchMatches(); // Refresh matches list and get updated list
+      
+      // Find the match from the updated list to ensure consistent structure with dropdown
+      const matchFromList = updatedMatches.find((m: any) => m._id === newMatch._id);
+      setSelectedMatch(matchFromList || newMatch); // Auto-select the newly created match
       
       // Auto-fill match details in the form
-      const matchDate = new Date(newMatch.date);
-      const timeStr = newMatch.time || matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const matchToUse = matchFromList || newMatch;
+      const matchDate = new Date(matchToUse.date);
+      const timeStr = matchToUse.time || matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       setMatchDateTime(`${matchDate.toLocaleDateString()} ${timeStr}`);
-      setMatchVenue(newMatch.ground || '');
+      setMatchVenue(matchToUse.ground || '');
       
       setShowMatchForm(false);
       setSuccess('Match created successfully!');

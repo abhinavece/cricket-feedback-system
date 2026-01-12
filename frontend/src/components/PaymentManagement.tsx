@@ -41,7 +41,10 @@ import {
   sendPaymentRequests,
   recordPayment,
   markPaymentUnpaid,
-  getPaymentScreenshot
+  getPaymentScreenshot,
+  deletePayment,
+  getPlayers,
+  createPlayer
 } from '../services/api';
 
 interface PaymentHistoryEntry {
@@ -61,7 +64,8 @@ interface SquadMember {
   effectiveAmount?: number;
   amountPaid: number;
   dueAmount: number;
-  paymentStatus: 'pending' | 'paid' | 'partial' | 'due';
+  owedAmount?: number; // Amount owed back to player when overpaid
+  paymentStatus: 'pending' | 'paid' | 'partial' | 'due' | 'overpaid';
   paymentHistory: PaymentHistoryEntry[];
   dueDate?: string | null;
   messageSentAt: string | null;
@@ -87,6 +91,7 @@ interface Payment {
   status: 'draft' | 'sent' | 'partial' | 'completed';
   totalCollected: number;
   totalPending: number;
+  totalOwed?: number;
   membersCount: number;
   paidCount: number;
   createdAt: string;
@@ -139,10 +144,16 @@ const PaymentManagement: React.FC = () => {
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerPhone, setNewPlayerPhone] = useState('');
   const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [filteredPlayers, setFilteredPlayers] = useState<any[]>([]);
+  const [playerSearchTerm, setPlayerSearchTerm] = useState('');
+  const [showCreatePlayerForm, setShowCreatePlayerForm] = useState(false);
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
   const [editAmount, setEditAmount] = useState<number>(0);
   const [viewingScreenshot, setViewingScreenshot] = useState<{memberId: string; playerName: string} | null>(null);
   const [screenshotError, setScreenshotError] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [showPendingTooltip, setShowPendingTooltip] = useState(false);
   
   // Payment modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -224,7 +235,8 @@ const PaymentManagement: React.FC = () => {
         setTempSquad(result.squad);
         setSuccess(`Loaded ${result.count} players from availability`);
       } else {
-        setError('No confirmed players found for this match');
+        // Don't show error - just inform user they can add players manually
+        setSuccess('No confirmed players yet. You can add players manually below.');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load squad');
@@ -370,17 +382,106 @@ const PaymentManagement: React.FC = () => {
     }
   };
 
-  const handleAddPlayer = async () => {
-    if (!newPlayerName || !newPlayerPhone) {
-      setError('Name and phone are required');
+  // Fetch all players for the selection list
+  const fetchPlayers = async (search?: string) => {
+    try {
+      const players = await getPlayers(search);
+      if (search) {
+        setFilteredPlayers(players);
+      } else {
+        setAllPlayers(players);
+        setFilteredPlayers(players);
+      }
+      return players;
+    } catch (err) {
+      console.error('Failed to fetch players:', err);
+      return [];
+    }
+  };
+
+  // Validate 10-digit Indian phone format (without country code)
+  const validateIndianPhoneNumber = (phone: string) => {
+    // Remove any non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Check if it's exactly 10 digits
+    return /^\d{10}$/.test(digitsOnly);
+  };
+
+  // Handle player search with backend API
+  const handlePlayerSearch = async (searchTerm: string) => {
+    setPlayerSearchTerm(searchTerm);
+    if (searchTerm.trim()) {
+      await fetchPlayers(searchTerm);
+    } else {
+      await fetchPlayers();
+    }
+  };
+  
+  // Create a new player directly in database
+  const handleCreatePlayer = async () => {
+    if (!newPlayerName) {
+      setError('Player name is required');
       return;
     }
+    
+    if (!newPlayerPhone) {
+      setError('Phone number is required');
+      return;
+    }
+    
+    if (!validateIndianPhoneNumber(newPlayerPhone)) {
+      setError('Please enter a valid 10-digit Indian phone number');
+      return;
+    }
+    
+    setIsCreatingPlayer(true);
+    try {
+      const player = await createPlayer({
+        name: newPlayerName,
+        phone: newPlayerPhone
+      });
+      
+      setAllPlayers([...allPlayers, player]);
+      setFilteredPlayers([...allPlayers, player]);
+      setNewPlayerName('');
+      setNewPlayerPhone('');
+      setShowCreatePlayerForm(false);
+      setSuccess('Player created successfully');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create player');
+    } finally {
+      setIsCreatingPlayer(false);
+    }
+  };
+
+  // Add player to payment or temp squad
+  const handleAddPlayer = async (playerName?: string, playerPhone?: string) => {
+    // Use passed params or fall back to state
+    const name = playerName || newPlayerName;
+    const phone = playerPhone || newPlayerPhone;
+    
+    if (!name) {
+      setError('Player name is required');
+      return;
+    }
+    
+    if (!phone) {
+      setError('Phone number is required');
+      return;
+    }
+    
+    if (!validateIndianPhoneNumber(phone)) {
+      setError('Please enter a valid 10-digit Indian phone number');
+      return;
+    }
+    
     if (payment) {
       setLoading(true);
       try {
         const result = await addPaymentMember(payment._id, {
-          playerName: newPlayerName,
-          playerPhone: newPlayerPhone
+          playerName: name,
+          playerPhone: phone
         });
         
         // Update all squad members (rebalancing affects all non-adjusted members)
@@ -410,10 +511,11 @@ const PaymentManagement: React.FC = () => {
         setLoading(false);
       }
     } else {
-      setTempSquad([...tempSquad, { playerName: newPlayerName, playerPhone: newPlayerPhone }]);
+      setTempSquad([...tempSquad, { playerName: name, playerPhone: phone }]);
       setShowAddPlayer(false);
       setNewPlayerName('');
       setNewPlayerPhone('');
+      setShowCreatePlayerForm(false);
     }
   };
 
@@ -467,6 +569,22 @@ const PaymentManagement: React.FC = () => {
     }
   };
 
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!window.confirm('Delete this payment record? This action cannot be undone.')) return;
+    setLoading(true);
+    try {
+      await deletePayment(paymentId);
+      setSuccess('Payment deleted');
+      setPayment(null);
+      setSelectedMatchId('');
+      fetchDashboardData();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleMemberSelection = (memberId: string) => {
     const newSelected = new Set(selectedMembers);
     if (newSelected.has(memberId)) {
@@ -497,6 +615,7 @@ const PaymentManagement: React.FC = () => {
       case 'pending': case 'draft': case 'sent': return 'text-yellow-400 bg-yellow-500/20';
       case 'partial': return 'text-orange-400 bg-orange-500/20';
       case 'due': return 'text-red-400 bg-red-500/20';
+      case 'overpaid': return 'text-blue-400 bg-blue-500/20';
       default: return 'text-slate-400 bg-slate-500/20';
     }
   };
@@ -506,6 +625,7 @@ const PaymentManagement: React.FC = () => {
       case 'paid': case 'completed': return <CheckCircle2 className="w-4 h-4" />;
       case 'pending': case 'draft': case 'sent': return <Clock className="w-4 h-4" />;
       case 'partial': return <TrendingUp className="w-4 h-4" />;
+      case 'overpaid': return <IndianRupee className="w-4 h-4" />;
       default: return <AlertCircle className="w-4 h-4" />;
     }
   };
@@ -601,22 +721,38 @@ const PaymentManagement: React.FC = () => {
                 />
               </div>
             </div>
-            <button
-              onClick={handleLoadSquad}
-              disabled={loadingSquad}
-              className="w-full sm:w-auto mb-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
-            >
-              {loadingSquad ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Load from Availability
-            </button>
-            {tempSquad.length > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-400">Squad ({tempSquad.length} players)</span>
-                  <button onClick={() => setShowAddPlayer(true)} className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
-                    <UserPlus className="w-4 h-4" /> Add Player
-                  </button>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={handleLoadSquad}
+                disabled={loadingSquad}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                {loadingSquad ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Load from Availability
+              </button>
+              <button
+                onClick={async () => {
+                  await fetchPlayers();
+                  setShowAddPlayer(true);
+                }}
+                className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <UserPlus className="w-4 h-4" /> Add Player Manually
+              </button>
+            </div>
+            
+            {/* Squad List */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-slate-400">Squad ({tempSquad.length} players)</span>
+              </div>
+              {tempSquad.length === 0 ? (
+                <div className="p-4 bg-slate-700/20 border border-dashed border-white/10 rounded-xl text-center">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-slate-500" />
+                  <p className="text-sm text-slate-400">No players added yet</p>
+                  <p className="text-xs text-slate-500 mt-1">Load from availability or add players manually</p>
                 </div>
+              ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {tempSquad.map((player, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
@@ -635,8 +771,8 @@ const PaymentManagement: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
             <button
               onClick={handleCreatePayment}
               disabled={loading || !totalAmount || tempSquad.length === 0}
@@ -659,8 +795,25 @@ const PaymentManagement: React.FC = () => {
                   <IndianRupee className="w-4 h-4 text-emerald-400" />
                   Payment Summary
                 </h3>
-                <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
-                  {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                <div className="flex items-center gap-2">
+                  <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
+                    {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                  </div>
+                  <button
+                    onClick={() => fetchPayment(selectedMatchId!)}
+                    disabled={loading}
+                    className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg transition-colors disabled:opacity-50"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => handleDeletePayment(payment._id)}
+                    className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                    title="Delete Payment"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -701,6 +854,20 @@ const PaymentManagement: React.FC = () => {
                   <span className="text-emerald-400 font-medium">{Math.round((payment.totalCollected / payment.totalAmount) * 100)}%</span>
                 </div>
               </div>
+
+              {/* Overdue Payments Section */}
+              {payment.totalOwed && payment.totalOwed > 0 && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <h4 className="font-semibold text-red-400">Refunds Due</h4>
+                  </div>
+                  <div className="text-2xl font-bold text-red-400 mb-2">₹{payment.totalOwed}</div>
+                  <div className="text-xs text-red-300">
+                    {payment.squadMembers.filter(m => m.owedAmount && m.owedAmount > 0).length} player(s) have overpaid
+                  </div>
+                </div>
+              )}
               <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
@@ -776,6 +943,9 @@ const PaymentManagement: React.FC = () => {
                             )}
                             {member.dueAmount > 0 && (
                               <span className="text-yellow-400">Due: ₹{member.dueAmount}</span>
+                            )}
+                            {(member.owedAmount && member.owedAmount > 0) && (
+                              <span className="text-blue-400">Owed: ₹{member.owedAmount}</span>
                             )}
                           </div>
                           {member.messageSentAt && (
@@ -857,7 +1027,7 @@ const PaymentManagement: React.FC = () => {
         {/* Add Player Modal */}
         {showAddPlayer && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md">
+            <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[85vh] overflow-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <UserPlus className="w-5 h-5 text-emerald-400" /> Add Player
@@ -866,35 +1036,93 @@ const PaymentManagement: React.FC = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Player Name</label>
-                  <input
-                    type="text"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
-                    placeholder="Enter name"
-                    className="w-full px-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+              
+              {showCreatePlayerForm ? (
+                // Create New Player Form
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Player Name</label>
+                    <input
+                      type="text"
+                      value={newPlayerName}
+                      onChange={(e) => setNewPlayerName(e.target.value)}
+                      placeholder="Enter name"
+                      className="w-full px-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={newPlayerPhone}
+                      onChange={(e) => setNewPlayerPhone(e.target.value)}
+                      placeholder="9876543210"
+                      className="w-full px-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowCreatePlayerForm(false)}
+                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleCreatePlayer}
+                      disabled={!newPlayerName || !newPlayerPhone || isCreatingPlayer}
+                      className="flex-1 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+                    >
+                      {isCreatingPlayer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} 
+                      Create Player
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={newPlayerPhone}
-                    onChange={(e) => setNewPlayerPhone(e.target.value)}
-                    placeholder="9876543210"
-                    className="w-full px-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+              ) : (
+                // Select Existing Player or Create New
+                <div className="space-y-4">
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={playerSearchTerm}
+                      placeholder="Search players..."
+                      className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white"
+                      onChange={(e) => handlePlayerSearch(e.target.value)}
+                    />
+                  </div>
+                  
+                  {/* Players list */}
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {filteredPlayers.map((player) => (
+                      <div
+                        key={player._id}
+                        className="flex items-center justify-between p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl cursor-pointer transition-colors"
+                        onClick={() => {
+                          // Add player directly with their info
+                          handleAddPlayer(player.name, player.phone.replace(/^\+/, ''));
+                        }}
+                      >
+                        <div>
+                          <div className="text-white font-medium">{player.name}</div>
+                          <div className="text-xs text-slate-400">{player.phone}</div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Create new player option */}
+                  <div className="border-t border-white/10 pt-4">
+                    <button
+                      onClick={() => setShowCreatePlayerForm(true)}
+                      className="w-full py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" /> Create New Player
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={handleAddPlayer}
-                  disabled={!newPlayerName || !newPlayerPhone}
-                  className="w-full py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> Add Player
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -1096,11 +1324,52 @@ const PaymentManagement: React.FC = () => {
           </div>
           <div className="text-xl sm:text-2xl font-bold text-emerald-400">₹{dashboardStats.totalCollected.toLocaleString()}</div>
         </div>
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+        <div 
+          className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4 relative cursor-pointer hover:bg-slate-800/70 transition-colors"
+          onMouseEnter={() => setShowPendingTooltip(true)}
+          onMouseLeave={() => setShowPendingTooltip(false)}
+          onClick={() => setShowPendingTooltip(!showPendingTooltip)}
+        >
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
             <Clock className="w-4 h-4" /> Pending
+            <span className="text-[10px] opacity-60">(hover for details)</span>
           </div>
           <div className="text-xl sm:text-2xl font-bold text-yellow-400">₹{dashboardStats.totalPending.toLocaleString()}</div>
+          
+          {/* Pending Amount Tooltip */}
+          {showPendingTooltip && dashboardStats.totalPending > 0 && (
+            <div className="absolute top-full left-0 mt-2 z-50 bg-slate-900 border border-white/20 rounded-xl p-3 shadow-xl min-w-[280px] max-h-[300px] overflow-auto">
+              <div className="text-xs font-semibold text-white mb-2">Matches with Pending Amounts</div>
+              <div className="space-y-2">
+                {matchesWithPayments
+                  .filter(m => m.payment && m.payment.totalPending > 0)
+                  .map(match => (
+                    <div 
+                      key={match._id} 
+                      className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-700/50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMatchId(match._id);
+                        setShowPendingTooltip(false);
+                      }}
+                    >
+                      <div>
+                        <div className="text-sm text-white font-medium">{match.opponent || 'TBD'}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-yellow-400 font-semibold text-sm">₹{match.payment?.totalPending}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {match.payment?.squadMembers?.filter((m: SquadMember) => m.paymentStatus !== 'paid' && m.paymentStatus !== 'overpaid').length || 0} unpaid
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
@@ -1125,11 +1394,39 @@ const PaymentManagement: React.FC = () => {
             </div>
             <div className="text-lg font-bold text-emerald-400">₹{dashboardStats.totalCollected.toLocaleString()}</div>
           </div>
-          <div>
+          <div 
+            className="relative cursor-pointer"
+            onClick={() => setShowPendingTooltip(!showPendingTooltip)}
+          >
             <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
               <Clock className="w-3 h-3" /> Pending
             </div>
             <div className="text-lg font-bold text-yellow-400">₹{dashboardStats.totalPending.toLocaleString()}</div>
+            
+            {/* Mobile Pending Tooltip */}
+            {showPendingTooltip && dashboardStats.totalPending > 0 && (
+              <div className="absolute top-full left-0 mt-2 z-50 bg-slate-900 border border-white/20 rounded-xl p-3 shadow-xl min-w-[200px] max-h-[250px] overflow-auto">
+                <div className="text-xs font-semibold text-white mb-2">Pending by Match</div>
+                <div className="space-y-2">
+                  {matchesWithPayments
+                    .filter(m => m.payment && m.payment.totalPending > 0)
+                    .map(match => (
+                      <div 
+                        key={match._id} 
+                        className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedMatchId(match._id);
+                          setShowPendingTooltip(false);
+                        }}
+                      >
+                        <div className="text-xs text-white">{match.opponent || 'TBD'}</div>
+                        <div className="text-yellow-400 font-semibold text-xs">₹{match.payment?.totalPending}</div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
@@ -1263,11 +1560,31 @@ const PaymentManagement: React.FC = () => {
                           <div className="text-yellow-400 font-semibold">₹{payment.totalPending}</div>
                           <div className="text-xs text-slate-400">pending</div>
                         </div>
+                        {payment.totalOwed && payment.totalOwed > 0 && (
+                          <div className="text-right">
+                            <div className="text-red-400 font-semibold">₹{payment.totalOwed}</div>
+                            <div className="text-xs text-slate-400">refund</div>
+                          </div>
+                        )}
                         <div className="text-right">
                           <div className="text-white font-semibold">{payment.paidCount}/{payment.membersCount}</div>
                           <div className="text-xs text-slate-400">paid</div>
                         </div>
                       </div>
+                    )}
+
+                    {/* Delete Button (only if payment exists) */}
+                    {payment && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePayment(payment._id);
+                        }}
+                        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete Payment"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
 
                     {/* Arrow */}
@@ -1281,6 +1598,9 @@ const PaymentManagement: React.FC = () => {
                         <span className="text-emerald-400">₹{payment.totalCollected}</span>
                         <span>{payment.paidCount}/{payment.membersCount} paid</span>
                         <span className="text-yellow-400">₹{payment.totalPending}</span>
+                        {payment.totalOwed && payment.totalOwed > 0 && (
+                          <span className="text-red-400">₹{payment.totalOwed} refund</span>
+                        )}
                       </div>
                       <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                         <div 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell } from 'lucide-react';
-import { getMatchAvailability, sendReminder } from '../services/api';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown } from 'lucide-react';
+import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability } from '../services/api';
 import { matchApi } from '../services/matchApi';
 
 interface Match {
@@ -80,6 +80,15 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [filterStatus, setFilterStatus] = useState<'all' | 'responded' | 'pending' | 'yes' | 'no' | 'tentative'>('all');
   const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad'>('overview');
   const [sendingReminder, setSendingReminder] = useState(false);
+  
+  // Availability management state
+  const [editingAvailabilityId, setEditingAvailabilityId] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [allPlayers, setAllPlayers] = useState<Array<{_id: string; name: string; phone: string}>>([]);
+  const [selectedPlayersToAdd, setSelectedPlayersToAdd] = useState<string[]>([]);
+  const [addingPlayers, setAddingPlayers] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
 
   const loadMatchAndAvailability = React.useCallback(async () => {
     try {
@@ -203,6 +212,72 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
     alert('Squad list copied to clipboard!');
   };
 
+  // Availability management handlers
+  const handleUpdateAvailabilityStatus = async (availabilityId: string, newStatus: 'yes' | 'no' | 'tentative') => {
+    try {
+      setUpdatingStatus(true);
+      await updateAvailability(availabilityId, { response: newStatus });
+      setActionMessage({ type: 'success', text: 'Status updated successfully' });
+      setEditingAvailabilityId(null);
+      loadMatchAndAvailability();
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to update availability:', err);
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update status' });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleDeleteAvailability = async (availabilityId: string, playerName: string) => {
+    if (!window.confirm(`Remove ${playerName} from availability tracking?`)) return;
+    try {
+      setUpdatingStatus(true);
+      await deleteAvailability(availabilityId);
+      setActionMessage({ type: 'success', text: `${playerName} removed from tracking` });
+      loadMatchAndAvailability();
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to delete availability:', err);
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to remove player' });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleOpenAddPlayerModal = async () => {
+    try {
+      const players = await getPlayers();
+      // Filter out players already in availability
+      const existingPlayerIds = new Set(availabilities.map(a => a.playerId));
+      const availableToAdd = players.filter((p: any) => !existingPlayerIds.has(p._id));
+      setAllPlayers(availableToAdd);
+      setSelectedPlayersToAdd([]);
+      setShowAddPlayerModal(true);
+    } catch (err) {
+      console.error('Failed to load players:', err);
+      setActionMessage({ type: 'error', text: 'Failed to load players' });
+    }
+  };
+
+  const handleAddPlayersToAvailability = async () => {
+    if (selectedPlayersToAdd.length === 0) return;
+    try {
+      setAddingPlayers(true);
+      await createAvailability(match._id, selectedPlayersToAdd);
+      setActionMessage({ type: 'success', text: `Added ${selectedPlayersToAdd.length} player(s) to availability tracking` });
+      setShowAddPlayerModal(false);
+      setSelectedPlayersToAdd([]);
+      loadMatchAndAvailability();
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to add players:', err);
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to add players' });
+    } finally {
+      setAddingPlayers(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/10">
@@ -307,6 +382,15 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                 <Copy className="w-3 h-3 md:w-4 md:h-4" />
                 <span className="hidden sm:inline">Copy Squad</span>
                 <span className="sm:hidden">Copy</span>
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => onDelete(match._id)}
+                className="px-2 py-1.5 md:px-4 md:py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-rose-500/30"
+              >
+                <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Delete</span>
               </button>
             )}
           </div>
@@ -560,7 +644,19 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           {activeTab === 'responses' && (
             <div className="space-y-4">
               
-              {/* Search and Filter */}
+              {/* Action Message */}
+              {actionMessage && (
+                <div className={`p-3 rounded-lg flex items-center gap-2 ${
+                  actionMessage.type === 'success' 
+                    ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400' 
+                    : 'bg-rose-500/20 border border-rose-500/30 text-rose-400'
+                }`}>
+                  {actionMessage.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  <span className="text-sm">{actionMessage.text}</span>
+                </div>
+              )}
+              
+              {/* Search, Filter and Add Player */}
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -584,6 +680,13 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                   <option value="no">Declined</option>
                   <option value="tentative">Tentative</option>
                 </select>
+                <button
+                  onClick={handleOpenAddPlayerModal}
+                  className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg flex items-center gap-2 transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Add Player</span>
+                </button>
               </div>
 
               {/* Player List */}
@@ -647,6 +750,59 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                               )}
                             </div>
                           </div>
+                        </div>
+                        
+                        {/* Action buttons for availability management */}
+                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 ml-2">
+                          {editingAvailabilityId === avail._id ? (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleUpdateAvailabilityStatus(avail._id, 'yes')}
+                                disabled={updatingStatus}
+                                className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded transition-all"
+                              >
+                                Yes
+                              </button>
+                              <button
+                                onClick={() => handleUpdateAvailabilityStatus(avail._id, 'tentative')}
+                                disabled={updatingStatus}
+                                className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs rounded transition-all"
+                              >
+                                Maybe
+                              </button>
+                              <button
+                                onClick={() => handleUpdateAvailabilityStatus(avail._id, 'no')}
+                                disabled={updatingStatus}
+                                className="px-2 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded transition-all"
+                              >
+                                No
+                              </button>
+                              <button
+                                onClick={() => setEditingAvailabilityId(null)}
+                                className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition-all"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setEditingAvailabilityId(avail._id)}
+                                className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded transition-all"
+                                title="Change status"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAvailability(avail._id, avail.playerName)}
+                                disabled={updatingStatus}
+                                className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded transition-all"
+                                title="Remove player"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -820,6 +976,95 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           </div>
         </div>
       </div>
+
+      {/* Add Player Modal */}
+      {showAddPlayerModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-emerald-400" />
+                Add Players to Availability
+              </h3>
+              <button
+                onClick={() => setShowAddPlayerModal(false)}
+                className="p-1 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {allPlayers.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>All players are already in availability tracking</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-3 text-sm text-slate-400">
+                  Select players to add ({selectedPlayersToAdd.length} selected)
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                  {allPlayers.map((player) => {
+                    const isSelected = selectedPlayersToAdd.includes(player._id);
+                    return (
+                      <div
+                        key={player._id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedPlayersToAdd(prev => prev.filter(id => id !== player._id));
+                          } else {
+                            setSelectedPlayersToAdd(prev => [...prev, player._id]);
+                          }
+                        }}
+                        className={`p-3 rounded-lg cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'bg-emerald-500/20 border border-emerald-500/30' 
+                            : 'bg-slate-700/50 border border-transparent hover:border-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                            isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'
+                          }`}>
+                            {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">{player.name}</p>
+                            <p className="text-xs text-slate-400">{player.phone}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowAddPlayerModal(false)}
+                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddPlayersToAvailability}
+                    disabled={selectedPlayersToAdd.length === 0 || addingPlayers}
+                    className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    {addingPlayers ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        Add ({selectedPlayersToAdd.length})
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

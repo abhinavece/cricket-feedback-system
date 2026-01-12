@@ -83,8 +83,14 @@ export const permanentDeleteFeedback = async (id: string) => {
   return response.data;
 };
 
-export const getPlayers = async (): Promise<Player[]> => {
-  const response = await api.get('/players');
+export const getPlayers = async (search?: string): Promise<Player[]> => {
+  const params = search ? { search } : {};
+  const response = await api.get('/players', { params });
+  return response.data;
+};
+
+export const searchPlayers = async (search: string): Promise<Player[]> => {
+  const response = await api.get('/players', { params: { search } });
   return response.data;
 };
 
@@ -178,6 +184,16 @@ export const getPlayerAvailability = async (playerId: string) => {
 
 export const updateAvailability = async (id: string, data: { response: string; messageContent?: string }) => {
   const response = await api.put(`/availability/${id}`, data);
+  return response.data;
+};
+
+export const createAvailability = async (matchId: string, playerIds: string[]) => {
+  const response = await api.post('/availability', { matchId, playerIds });
+  return response.data;
+};
+
+export const deleteAvailability = async (id: string) => {
+  const response = await api.delete(`/availability/${id}`);
   return response.data;
 };
 
