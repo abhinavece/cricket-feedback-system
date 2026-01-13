@@ -9,7 +9,9 @@ const playerSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    unique: true,
+    index: true
   },
   role: {
     type: String,

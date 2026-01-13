@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player.js');
 const auth = require('../middleware/auth.js');
+const { getOrCreatePlayer, formatPhoneNumber, updatePlayer: updatePlayerService } = require('../services/playerService');
 
 // GET /api/players - Get all active players (for WhatsApp messaging)
 // Supports search query parameter for filtering by name
@@ -58,8 +59,18 @@ router.post('/', auth, async (req, res) => {
   try {
     const { name, phone, notes } = req.body;
     
+    if (!name || !phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and phone are required'
+      });
+    }
+    
+    // Use centralized player service
+    const formattedPhone = formatPhoneNumber(phone);
+    
     // Check if player with same phone already exists
-    const existingPlayer = await Player.findOne({ phone });
+    const existingPlayer = await Player.findOne({ phone: formattedPhone });
     if (existingPlayer) {
       return res.status(400).json({
         success: false,
@@ -67,16 +78,13 @@ router.post('/', auth, async (req, res) => {
       });
     }
     
-    // Create player
-    const player = new Player({
-      name,
+    // Create new player using service
+    const { player } = await getOrCreatePlayer({
       phone,
-      role: 'player', // Default role
-      team: 'Unknown Team',
-      notes
+      name,
+      notes,
+      team: 'Mavericks XI'
     });
-    
-    await player.save();
     
     res.status(201).json({
       success: true,
@@ -87,7 +95,7 @@ router.post('/', auth, async (req, res) => {
     console.error('Error adding player:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to add player'
+      error: error.message || 'Failed to add player'
     });
   }
 });
@@ -106,9 +114,25 @@ router.put('/:id', auth, async (req, res) => {
       });
     }
 
+    // If phone is being updated, check for duplicates
+    if (phone) {
+      const formattedPhone = formatPhoneNumber(phone);
+      const existingPlayer = await Player.findOne({ 
+        phone: formattedPhone,
+        _id: { $ne: req.params.id }
+      });
+      
+      if (existingPlayer) {
+        return res.status(400).json({
+          success: false,
+          error: `Another player already exists with this number. Name: "${existingPlayer.name}"`
+        });
+      }
+      player.phone = formattedPhone;
+    }
+
     // Update fields if provided
     if (name) player.name = name;
-    if (phone) player.phone = phone;
     if (notes !== undefined) player.notes = notes;
     if (team) player.team = team;
     if (role) player.role = role;
@@ -125,7 +149,7 @@ router.put('/:id', auth, async (req, res) => {
     console.error('Error updating player:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update player'
+      error: error.message || 'Failed to update player'
     });
   }
 });

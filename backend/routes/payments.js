@@ -7,6 +7,7 @@ const Player = require('../models/Player');
 const Availability = require('../models/Availability');
 const Message = require('../models/Message');
 const axios = require('axios');
+const { getOrCreatePlayer, formatPhoneNumber } = require('../services/playerService');
 
 // GET /api/payments - Get all payment records (optimized with pagination)
 router.get('/', auth, async (req, res) => {
@@ -260,14 +261,23 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    // Format squad members
-    const formattedMembers = squadMembers.map(member => ({
-      playerId: member.playerId || null,
-      playerName: member.playerName,
-      playerPhone: formatPhoneNumber(member.playerPhone),
-      adjustedAmount: member.adjustedAmount !== undefined ? member.adjustedAmount : null,
-      paymentStatus: 'pending',
-      notes: member.notes || ''
+    // Ensure all squad members exist in Player collection and get their playerIds
+    const formattedMembers = await Promise.all(squadMembers.map(async (member) => {
+      // Use centralized player service to get or create player
+      const { player } = await getOrCreatePlayer({
+        phone: member.playerPhone,
+        name: member.playerName,
+        updateIfExists: false // Don't overwrite existing player data
+      });
+      
+      return {
+        playerId: player._id,
+        playerName: player.name, // Use name from Player collection
+        playerPhone: player.phone, // Use formatted phone from Player collection
+        adjustedAmount: member.adjustedAmount !== undefined ? member.adjustedAmount : null,
+        paymentStatus: 'pending',
+        notes: member.notes || ''
+      };
     }));
 
     const payment = await MatchPayment.create({
@@ -316,9 +326,10 @@ router.put('/:id', auth, async (req, res) => {
 
     if (squadMembers) {
       // Update or add squad members
-      squadMembers.forEach(newMember => {
+      for (const newMember of squadMembers) {
+        const formattedPhone = formatPhoneNumber(newMember.playerPhone);
         const existingIndex = payment.squadMembers.findIndex(
-          m => m.playerPhone === formatPhoneNumber(newMember.playerPhone)
+          m => m.playerPhone === formattedPhone
         );
 
         if (existingIndex >= 0) {
@@ -337,17 +348,23 @@ router.put('/:id', auth, async (req, res) => {
             existing.notes = newMember.notes;
           }
         } else {
-          // Add new member
+          // Add new member - ensure player exists in Player collection
+          const { player } = await getOrCreatePlayer({
+            phone: newMember.playerPhone,
+            name: newMember.playerName,
+            updateIfExists: false
+          });
+          
           payment.squadMembers.push({
-            playerId: newMember.playerId || null,
-            playerName: newMember.playerName,
-            playerPhone: formatPhoneNumber(newMember.playerPhone),
+            playerId: player._id,
+            playerName: player.name,
+            playerPhone: player.phone,
             adjustedAmount: newMember.adjustedAmount !== undefined ? newMember.adjustedAmount : null,
             paymentStatus: newMember.paymentStatus || 'pending',
             notes: newMember.notes || ''
           });
         }
-      });
+      }
     }
 
     await payment.save();
@@ -789,34 +806,17 @@ router.post('/:id/add-member', auth, async (req, res) => {
       });
     }
 
-    const formattedPhone = formatPhoneNumber(playerPhone);
-
-    // Save player permanently to Player collection if not exists
-    const Player = require('../models/Player');
-    let savedPlayerId = playerId;
-    
-    if (!playerId) {
-      // Check if player exists in database
-      let existingPlayer = await Player.findOne({ phone: formattedPhone });
-      
-      if (!existingPlayer) {
-        // Create new player in database
-        existingPlayer = await Player.create({
-          name: playerName,
-          phone: formattedPhone,
-          role: 'player',
-          team: 'Mavericks XI',
-          isActive: true
-        });
-      }
-      
-      savedPlayerId = existingPlayer._id;
-    }
+    // Use centralized player service to get or create player
+    const { player } = await getOrCreatePlayer({
+      phone: playerPhone,
+      name: playerName,
+      updateIfExists: false
+    });
 
     payment.squadMembers.push({
-      playerId: savedPlayerId,
-      playerName,
-      playerPhone: formattedPhone,
+      playerId: player._id,
+      playerName: player.name,
+      playerPhone: player.phone,
       adjustedAmount: adjustedAmount !== undefined ? adjustedAmount : null,
       paymentStatus: 'pending'
     });
@@ -1105,15 +1105,5 @@ router.delete('/:id', auth, async (req, res) => {
     });
   }
 });
-
-// Helper function to format phone number
-function formatPhoneNumber(phone) {
-  if (!phone) return '';
-  let formatted = phone.replace(/\D/g, '');
-  if (!formatted.startsWith('91') && formatted.length === 10) {
-    formatted = '91' + formatted;
-  }
-  return formatted;
-}
 
 module.exports = router;
