@@ -1125,4 +1125,145 @@ router.post('/send-reminder', auth, async (req, res) => {
   }
 });
 
+// POST /api/whatsapp/send-image - Send image to players via WhatsApp
+router.post('/send-image', auth, async (req, res) => {
+  try {
+    const { playerIds, imageBase64, caption, matchTitle } = req.body;
+    
+    if (!playerIds || !Array.isArray(playerIds) || playerIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Player IDs are required'
+      });
+    }
+    
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: 'Image data is required'
+      });
+    }
+    
+    // Get player details
+    const Player = require('../models/Player');
+    const players = await Player.find({ '_id': { $in: playerIds } }).select('name phone');
+    
+    // WhatsApp API configuration
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const apiVersion = 'v19.0';
+    
+    if (!accessToken || !phoneNumberId) {
+      return res.status(500).json({
+        success: false,
+        error: 'WhatsApp API not properly configured'
+      });
+    }
+    
+    // First, upload the image to WhatsApp Media API
+    const FormData = require('form-data');
+    const formData = new FormData();
+    
+    // Convert base64 to buffer
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    formData.append('file', imageBuffer, {
+      filename: 'squad-image.png',
+      contentType: 'image/png'
+    });
+    formData.append('messaging_product', 'whatsapp');
+    formData.append('type', 'image/png');
+    
+    console.log('Uploading image to WhatsApp Media API...');
+    
+    const uploadResponse = await axios.post(
+      `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/media`,
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+    
+    const mediaId = uploadResponse.data.id;
+    console.log('Image uploaded successfully, media ID:', mediaId);
+    
+    // Send the image to each player
+    const results = [];
+    let sentCount = 0;
+    
+    for (const player of players) {
+      try {
+        let formattedPhone = player.phone.replace(/\D/g, '');
+        if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+          formattedPhone = '91' + formattedPhone;
+        }
+        
+        const payload = {
+          messaging_product: 'whatsapp',
+          to: formattedPhone,
+          type: 'image',
+          image: {
+            id: mediaId,
+            caption: caption || `Squad availability for ${matchTitle || 'upcoming match'}`
+          }
+        };
+        
+        const response = await axios.post(
+          `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+          payload,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        console.log(`Image sent to ${player.name} (${formattedPhone})`);
+        sentCount++;
+        
+        results.push({
+          playerId: player._id,
+          name: player.name,
+          phone: player.phone,
+          status: 'sent',
+          messageId: response.data.messages?.[0]?.id
+        });
+        
+      } catch (error) {
+        console.error(`Failed to send image to ${player.name}:`, error.response?.data || error.message);
+        results.push({
+          playerId: player._id,
+          name: player.name,
+          phone: player.phone,
+          status: 'failed',
+          error: error.response?.data?.error?.message || error.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Squad image sent to ${sentCount} of ${players.length} players`,
+      data: {
+        sent: sentCount,
+        total: players.length,
+        results
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error sending WhatsApp image:', error.response?.data || error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send image',
+      details: error.response?.data?.error?.message || error.message
+    });
+  }
+});
+
 module.exports = router;

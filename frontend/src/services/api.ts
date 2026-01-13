@@ -129,6 +129,16 @@ export const getMessageHistory = async (phone: string) => {
   return response.data;
 };
 
+export const sendWhatsAppImage = async (payload: {
+  playerIds: string[];
+  imageBase64: string;
+  caption?: string;
+  matchTitle?: string;
+}) => {
+  const response = await api.post('/whatsapp/send-image', payload);
+  return response.data;
+};
+
 // Match APIs
 export const getMatches = async () => {
   // Use lightweight summary endpoint for listing views (80% smaller payload)

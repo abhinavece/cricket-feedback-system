@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown } from 'lucide-react';
-import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability } from '../services/api';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon } from 'lucide-react';
+import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
+import SquadImageGenerator from './SquadImageGenerator';
+import WhatsAppImageShareModal from './WhatsAppImageShareModal';
 
 interface Match {
   _id: string;
@@ -89,6 +91,10 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [selectedPlayersToAdd, setSelectedPlayersToAdd] = useState<string[]>([]);
   const [addingPlayers, setAddingPlayers] = useState(false);
   const [actionMessage, setActionMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
+  
+  // Squad Image Share state
+  const [showWhatsAppShareModal, setShowWhatsAppShareModal] = useState(false);
+  const [squadImageBlob, setSquadImageBlob] = useState<Blob | null>(null);
 
   const loadMatchAndAvailability = React.useCallback(async () => {
     try {
@@ -210,6 +216,38 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
     
     navigator.clipboard.writeText(squadText);
     alert('Squad list copied to clipboard!');
+  };
+
+  // Handle WhatsApp image share
+  const handleShareSquadImage = (imageBlob: Blob) => {
+    setSquadImageBlob(imageBlob);
+    setShowWhatsAppShareModal(true);
+  };
+
+  const handleSendWhatsAppImage = async (playerIds: string[], imageBlob: Blob) => {
+    // Convert blob to base64
+    return new Promise<void>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result as string;
+          const matchTitle = `${match.opponent || 'Match'} - ${matchDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+          
+          await sendWhatsAppImage({
+            playerIds,
+            imageBase64: base64,
+            caption: `🏏 Squad Availability\n${match.opponent || 'Match'} @ ${match.ground}\n📅 ${matchDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`,
+            matchTitle
+          });
+          
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read image'));
+      reader.readAsDataURL(imageBlob);
+    });
   };
 
   // Availability management handlers
@@ -815,7 +853,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           {/* Squad Builder Tab */}
           {activeTab === 'squad' && (
             <div className="space-y-4">
-              {/* Mobile: Compact summary */}
+              {/* Squad Summary - Mobile: Compact summary */}
               <div className="md:hidden bg-slate-800/50 border border-white/10 rounded-lg p-4 mb-4">
                 <h4 className="font-bold text-white mb-3">Squad Summary</h4>
                 <div className="space-y-2">
@@ -842,6 +880,48 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                       <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (unavailableSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Squad Summary - Desktop Only */}
+              <div className="hidden md:block bg-slate-800/50 border border-white/10 rounded-lg p-4">
+                <h4 className="font-bold text-white mb-2">Squad Summary</h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-black text-emerald-400">{availableSquad.length}</p>
+                    <p className="text-xs text-slate-400">Confirmed</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-amber-400">{tentativeSquad.length}</p>
+                    <p className="text-xs text-slate-400">Tentative</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-rose-400">{unavailableSquad.length}</p>
+                    <p className="text-xs text-slate-400">Declined</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Generate Squad Image Section */}
+              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+                      <ImageIcon className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Share Squad Image</h4>
+                      <p className="text-xs text-slate-400">Generate & share beautiful squad availability image</p>
+                    </div>
+                  </div>
+                  <SquadImageGenerator
+                    match={match}
+                    availableSquad={availableSquad}
+                    tentativeSquad={tentativeSquad}
+                    unavailableSquad={unavailableSquad}
+                    onShareWhatsApp={handleShareSquadImage}
+                    teamName="Mavericks XI"
+                  />
                 </div>
               </div>
 
@@ -908,25 +988,6 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                     {unavailableSquad.length === 0 && (
                       <p className="text-sm text-slate-500 text-center py-4">No declined players</p>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Squad Summary - Desktop Only */}
-              <div className="hidden md:block bg-slate-800/50 border border-white/10 rounded-lg p-4">
-                <h4 className="font-bold text-white mb-2">Squad Summary</h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-black text-emerald-400">{availableSquad.length}</p>
-                    <p className="text-xs text-slate-400">Confirmed</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-amber-400">{tentativeSquad.length}</p>
-                    <p className="text-xs text-slate-400">Tentative</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-rose-400">{unavailableSquad.length}</p>
-                    <p className="text-xs text-slate-400">Declined</p>
                   </div>
                 </div>
               </div>
@@ -1065,6 +1126,18 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           </div>
         </div>
       )}
+
+      {/* WhatsApp Image Share Modal */}
+      <WhatsAppImageShareModal
+        isOpen={showWhatsAppShareModal}
+        onClose={() => {
+          setShowWhatsAppShareModal(false);
+          setSquadImageBlob(null);
+        }}
+        imageBlob={squadImageBlob}
+        matchTitle={`${match.opponent || 'Match'} @ ${match.ground}`}
+        onSend={handleSendWhatsAppImage}
+      />
     </div>
   );
 };
