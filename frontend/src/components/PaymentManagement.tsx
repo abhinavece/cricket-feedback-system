@@ -150,6 +150,7 @@ const PaymentManagement: React.FC = () => {
   const [playerSearchTerm, setPlayerSearchTerm] = useState('');
   const [showCreatePlayerForm, setShowCreatePlayerForm] = useState(false);
   const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<number>(0);
   const [viewingScreenshot, setViewingScreenshot] = useState<{memberId: string; playerName: string} | null>(null);
   const [screenshotError, setScreenshotError] = useState(false);
@@ -163,8 +164,11 @@ const PaymentManagement: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'bank_transfer' | 'other'>('upi');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const hasFetchedInitial = React.useRef(false);
 
   useEffect(() => {
+    if (hasFetchedInitial.current) return;
+    hasFetchedInitial.current = true;
     fetchDashboardData();
   }, []);
 
@@ -227,14 +231,36 @@ const PaymentManagement: React.FC = () => {
     }
   }, [selectedMatchId, fetchPayment]);
 
+  // Load all players when Add Player modal opens
+  useEffect(() => {
+    if (showAddPlayer) {
+      setModalError(null);
+      setPlayerSearchTerm('');
+      fetchPlayers('');
+    }
+  }, [showAddPlayer]);
+
   const handleLoadSquad = async () => {
     if (!selectedMatchId) return;
     setLoadingSquad(true);
     try {
       const result = await loadSquadFromAvailability(selectedMatchId);
       if (result.squad && result.squad.length > 0) {
-        setTempSquad(result.squad);
-        setSuccess(`Loaded ${result.count} players from availability`);
+        // Filter out duplicates from loaded squad
+        const uniqueSquad = result.squad.filter((newPlayer: any) => {
+          const newPhone = sanitizeIndianPhoneNumber(newPlayer.playerPhone);
+          return !tempSquad.some(existing => {
+            const existingPhone = sanitizeIndianPhoneNumber(existing.playerPhone);
+            return existingPhone === newPhone || existingPhone === `91${newPhone}` || `91${existingPhone}` === newPhone;
+          });
+        });
+        
+        if (uniqueSquad.length > 0) {
+          setTempSquad([...tempSquad, ...uniqueSquad]);
+          setSuccess(`Loaded ${uniqueSquad.length} players from availability${uniqueSquad.length < result.squad.length ? ` (${result.squad.length - uniqueSquad.length} duplicates skipped)` : ''}`);
+        } else {
+          setSuccess('All players from availability are already in the squad');
+        }
       } else {
         // Don't show error - just inform user they can add players manually
         setSuccess('No confirmed players yet. You can add players manually below.');
@@ -387,13 +413,27 @@ const PaymentManagement: React.FC = () => {
   const fetchPlayers = async (search?: string) => {
     try {
       const players = await getPlayers(search);
+      
+      // Filter out players already in the squad
+      const existingPhones = new Set(
+        (payment?.squadMembers || tempSquad).map(m => {
+          const phone = sanitizeIndianPhoneNumber(m.playerPhone);
+          return [phone, `91${phone}`];
+        }).flat()
+      );
+      
+      const availablePlayers = players.filter(player => {
+        const playerPhone = sanitizeIndianPhoneNumber(player.phone);
+        return !existingPhones.has(playerPhone) && !existingPhones.has(`91${playerPhone}`);
+      });
+      
       if (search) {
-        setFilteredPlayers(players);
+        setFilteredPlayers(availablePlayers);
       } else {
-        setAllPlayers(players);
-        setFilteredPlayers(players);
+        setAllPlayers(availablePlayers);
+        setFilteredPlayers(availablePlayers);
       }
-      return players;
+      return availablePlayers;
     } catch (err) {
       console.error('Failed to fetch players:', err);
       return [];
@@ -403,11 +443,7 @@ const PaymentManagement: React.FC = () => {
   // Handle player search with backend API
   const handlePlayerSearch = async (searchTerm: string) => {
     setPlayerSearchTerm(searchTerm);
-    if (searchTerm.trim()) {
-      await fetchPlayers(searchTerm);
-    } else {
-      await fetchPlayers();
-    }
+    await fetchPlayers(searchTerm);
   };
   
   // Create a new player directly in database
@@ -465,6 +501,25 @@ const PaymentManagement: React.FC = () => {
     }
     
     const sanitizedPhone = sanitizeIndianPhoneNumber(phone);
+    
+    // Check for duplicates in existing squad
+    if (payment) {
+      const isDuplicate = payment.squadMembers.some(
+        member => member.playerPhone === sanitizedPhone || member.playerPhone === `91${sanitizedPhone}`
+      );
+      if (isDuplicate) {
+        setModalError(`${name} is already in the squad`);
+        return;
+      }
+    } else {
+      const isDuplicate = tempSquad.some(
+        member => member.playerPhone === sanitizedPhone || member.playerPhone === `91${sanitizedPhone}`
+      );
+      if (isDuplicate) {
+        setModalError(`${name} is already in the squad`);
+        return;
+      }
+    }
     
     if (payment) {
       setLoading(true);
@@ -1020,6 +1075,14 @@ const PaymentManagement: React.FC = () => {
                 </button>
               </div>
               
+              {/* Modal Error Message */}
+              {modalError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-red-400">{modalError}</p>
+                </div>
+              )}
+              
               {showCreatePlayerForm ? (
                 // Create New Player Form
                 <div className="space-y-4">
@@ -1074,7 +1137,7 @@ const PaymentManagement: React.FC = () => {
                     <input
                       type="text"
                       value={playerSearchTerm}
-                      placeholder="Search players..."
+                      placeholder="Search player by name..."
                       className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white"
                       onChange={(e) => handlePlayerSearch(e.target.value)}
                     />

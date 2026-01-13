@@ -301,4 +301,87 @@ export const getPaymentScreenshot = (paymentId: string, memberId: string) => {
   return `${API_BASE_URL}/payments/${paymentId}/screenshot/${memberId}`;
 };
 
+// Player Payment History APIs
+export interface PlayerPaymentSummary {
+  playerId: string;
+  playerName: string;
+  playerPhone: string;
+  totalMatches: number;
+  totalPaid: number;
+  totalDue: number;
+  freeMatches: number;
+  pendingMatches: number;
+}
+
+export interface PaymentTransaction {
+  type: 'payment' | 'refund';
+  amount: number;
+  date: string;
+  method?: string;
+  notes?: string;
+}
+
+export interface MatchPaymentHistory {
+  paymentId: string;
+  matchId: string;
+  matchDate: string;
+  opponent: string;
+  ground: string;
+  slot?: string;
+  effectiveAmount: number;
+  amountPaid: number;
+  dueAmount: number;
+  owedAmount: number;
+  paymentStatus: string;
+  isFreePlayer: boolean;
+  transactions: PaymentTransaction[];
+}
+
+export interface DueMatch {
+  matchId: string;
+  paymentId: string;
+  matchDate: string;
+  opponent: string;
+  dueAmount: number;
+}
+
+export interface PlayerPaymentHistoryResponse {
+  success: boolean;
+  playerId: string;
+  playerName: string;
+  playerPhone: string;
+  summary: {
+    totalMatches: number;
+    totalPaid: number;
+    totalDue: number;
+    freeMatches: number;
+    netContribution: number;
+  };
+  dueMatches: DueMatch[];
+  matchHistory: MatchPaymentHistory[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+export const getPlayersPaymentSummary = async (search?: string): Promise<{ players: PlayerPaymentSummary[]; total: number }> => {
+  const params = search ? { search } : {};
+  const response = await api.get('/payments/players-summary', { params });
+  return response.data;
+};
+
+export const getPlayerPaymentHistory = async (
+  playerId: string, 
+  page = 1, 
+  limit = 20
+): Promise<PlayerPaymentHistoryResponse> => {
+  const response = await api.get(`/payments/player-history/${playerId}`, { 
+    params: { page, limit } 
+  });
+  return response.data;
+};
+
 export default api;

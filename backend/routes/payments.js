@@ -180,6 +180,232 @@ router.get('/summary', auth, async (req, res) => {
   }
 });
 
+// GET /api/payments/players-summary - Get all players with payment summary stats
+// NOTE: This route MUST be defined BEFORE /:id to avoid route conflict
+router.get('/players-summary', auth, async (req, res) => {
+  try {
+    const { search } = req.query;
+    
+    // Get all active players
+    let playerQuery = { isActive: true };
+    if (search) {
+      playerQuery.name = { $regex: search, $options: 'i' };
+    }
+    
+    const players = await Player.find(playerQuery)
+      .select('_id name phone')
+      .sort({ name: 1 })
+      .lean();
+
+    // Get payment summary for each player using aggregation
+    const playerSummaries = await Promise.all(players.map(async (player) => {
+      const summary = await MatchPayment.aggregate([
+        {
+          $match: {
+            $or: [
+              { 'squadMembers.playerId': player._id },
+              { 'squadMembers.playerPhone': player.phone }
+            ]
+          }
+        },
+        { $unwind: '$squadMembers' },
+        {
+          $match: {
+            $or: [
+              { 'squadMembers.playerId': player._id },
+              { 'squadMembers.playerPhone': player.phone }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalMatches: { $sum: 1 },
+            totalPaid: { $sum: '$squadMembers.amountPaid' },
+            totalDue: { $sum: '$squadMembers.dueAmount' },
+            freeMatches: {
+              $sum: { $cond: [{ $eq: ['$squadMembers.adjustedAmount', 0] }, 1, 0] }
+            },
+            pendingMatches: {
+              $sum: { $cond: [{ $gt: ['$squadMembers.dueAmount', 0] }, 1, 0] }
+            }
+          }
+        }
+      ]);
+
+      const stats = summary[0] || {
+        totalMatches: 0,
+        totalPaid: 0,
+        totalDue: 0,
+        freeMatches: 0,
+        pendingMatches: 0
+      };
+
+      return {
+        playerId: player._id,
+        playerName: player.name,
+        playerPhone: player.phone,
+        ...stats
+      };
+    }));
+
+    // Filter out players with no payment history
+    const playersWithHistory = playerSummaries.filter(p => p.totalMatches > 0);
+
+    res.json({
+      success: true,
+      players: playersWithHistory,
+      total: playersWithHistory.length
+    });
+  } catch (error) {
+    console.error('Error fetching players summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch players summary'
+    });
+  }
+});
+
+// GET /api/payments/player-history/:playerId - Get detailed payment history for a player
+// NOTE: This route MUST be defined BEFORE /:id to avoid route conflict
+router.get('/player-history/:playerId', auth, async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    // Get player details
+    const player = await Player.findById(playerId).select('_id name phone').lean();
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        error: 'Player not found'
+      });
+    }
+    
+    // Use aggregation pipeline for efficient data retrieval
+    const matchHistory = await MatchPayment.aggregate([
+      {
+        $match: {
+          $or: [
+            { 'squadMembers.playerId': player._id },
+            { 'squadMembers.playerPhone': player.phone }
+          ]
+        }
+      },
+      { $unwind: '$squadMembers' },
+      {
+        $match: {
+          $or: [
+            { 'squadMembers.playerId': player._id },
+            { 'squadMembers.playerPhone': player.phone }
+          ]
+        }
+      },
+      {
+        $lookup: {
+          from: 'matches',
+          localField: 'matchId',
+          foreignField: '_id',
+          as: 'match',
+          pipeline: [
+            { $project: { date: 1, opponent: 1, ground: 1, slot: 1 } }
+          ]
+        }
+      },
+      { $unwind: '$match' },
+      {
+        $project: {
+          paymentId: '$_id',
+          matchId: '$match._id',
+          matchDate: '$match.date',
+          opponent: '$match.opponent',
+          ground: '$match.ground',
+          slot: '$match.slot',
+          effectiveAmount: {
+            $cond: [
+              { $ne: ['$squadMembers.adjustedAmount', null] },
+              '$squadMembers.adjustedAmount',
+              '$squadMembers.calculatedAmount'
+            ]
+          },
+          amountPaid: '$squadMembers.amountPaid',
+          dueAmount: '$squadMembers.dueAmount',
+          owedAmount: '$squadMembers.owedAmount',
+          paymentStatus: '$squadMembers.paymentStatus',
+          isFreePlayer: { $eq: ['$squadMembers.adjustedAmount', 0] },
+          transactions: {
+            $filter: {
+              input: '$squadMembers.paymentHistory',
+              as: 'ph',
+              cond: { $ne: ['$$ph.isValidPayment', false] }
+            }
+          }
+        }
+      },
+      { $sort: { matchDate: -1 } }
+    ]);
+
+    // Calculate summary
+    const summary = {
+      totalMatches: matchHistory.length,
+      totalPaid: matchHistory.reduce((sum, m) => sum + (m.amountPaid || 0), 0),
+      totalDue: matchHistory.reduce((sum, m) => sum + (m.dueAmount || 0), 0),
+      freeMatches: matchHistory.filter(m => m.isFreePlayer).length,
+      netContribution: matchHistory.reduce((sum, m) => sum + (m.amountPaid || 0), 0)
+    };
+
+    // Extract due matches
+    const dueMatches = matchHistory
+      .filter(m => m.dueAmount > 0)
+      .map(m => ({
+        matchId: m.matchId,
+        paymentId: m.paymentId,
+        matchDate: m.matchDate,
+        opponent: m.opponent,
+        dueAmount: m.dueAmount
+      }));
+
+    // Format transactions for each match
+    const formattedHistory = matchHistory.map(m => ({
+      ...m,
+      transactions: (m.transactions || []).map(t => ({
+        type: 'payment',
+        amount: t.amount,
+        date: t.paidAt,
+        method: t.paymentMethod || 'upi',
+        notes: t.notes || ''
+      })).sort((a, b) => new Date(b.date) - new Date(a.date))
+    }));
+
+    // Paginate match history
+    const paginatedHistory = formattedHistory.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+
+    res.json({
+      success: true,
+      playerId: player._id,
+      playerName: player.name,
+      playerPhone: player.phone,
+      summary,
+      dueMatches,
+      matchHistory: paginatedHistory,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: matchHistory.length,
+        hasMore: pageNum * limitNum < matchHistory.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching player payment history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payment history'
+    });
+  }
+});
+
 // GET /api/payments/:id - Get single payment by ID (optimized)
 router.get('/:id', auth, async (req, res) => {
   try {

@@ -48,6 +48,7 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const hasFetchedInitial = useRef(false);
   const [newPlayer, setNewPlayer] = useState({ name: '', phone: '', notes: '' });
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
@@ -276,6 +277,8 @@ const WhatsAppMessagingTab: React.FC = () => {
   };
 
   useEffect(() => {
+    if (hasFetchedInitial.current) return;
+    hasFetchedInitial.current = true;
     fetchPlayers();
     fetchMatches();
   }, []);

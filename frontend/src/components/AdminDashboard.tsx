@@ -10,7 +10,7 @@ const UserManagement = lazy(() => import('./UserManagement'));
 const WhatsAppMessagingTab = lazy(() => import('./WhatsAppMessagingTab'));
 const MatchManagement = lazy(() => import('./MatchManagement'));
 const PaymentManagement = lazy(() => import('./PaymentManagement'));
-const PlayerPaymentHistory = lazy(() => import('./PlayerPaymentHistory'));
+const HistoryTab = lazy(() => import('./HistoryTab'));
 
 // Tab loading spinner
 const TabLoadingSpinner = () => (
@@ -57,6 +57,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>(propActiveTab);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const hasFetchedInitial = React.useRef(false);
 
   // Sync activeTab with prop changes from parent
   useEffect(() => {
@@ -135,8 +136,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   }, []);
 
-  // Initial load
+  // Initial load - only once
   useEffect(() => {
+    if (hasFetchedInitial.current) return;
+    hasFetchedInitial.current = true;
     console.log('[AdminDashboard] Component mounted, fetching initial feedback');
     fetchData(1, false);
   }, [fetchData]);
@@ -946,7 +949,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
         {activeTab === 'player-history' && user?.role === 'admin' && (
           <Suspense fallback={<TabLoadingSpinner />}>
-            <PlayerPaymentHistory />
+            <HistoryTab />
           </Suspense>
         )}
         {activeTab === 'users' && (

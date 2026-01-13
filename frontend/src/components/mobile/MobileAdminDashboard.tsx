@@ -12,7 +12,7 @@ const MobileWhatsAppTab = lazy(() => import('./MobileWhatsAppTab'));
 
 // Reuse desktop components for tabs that don't have mobile versions yet
 const UserManagement = lazy(() => import('../UserManagement'));
-const PlayerPaymentHistory = lazy(() => import('../PlayerPaymentHistory'));
+const MobileHistoryTab = lazy(() => import('./MobileHistoryTab'));
 
 const TabLoadingSpinner = () => (
   <div className="flex items-center justify-center py-16">
@@ -161,11 +161,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           {activeTab === 'matches' && <MobileMatchesTab />}
           {activeTab === 'payments' && <MobilePaymentsTab />}
           {activeTab === 'whatsapp' && <MobileWhatsAppTab />}
-          {activeTab === 'player-history' && (
-            <div className="mobile-tab-wrapper">
-              <PlayerPaymentHistory />
-            </div>
-          )}
+          {activeTab === 'player-history' && <MobileHistoryTab />}
           {activeTab === 'users' && (
             <div className="mobile-tab-wrapper">
               <UserManagement />

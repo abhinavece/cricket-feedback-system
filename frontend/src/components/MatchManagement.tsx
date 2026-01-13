@@ -55,6 +55,7 @@ const MatchManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const hasFetchedInitial = React.useRef(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -122,8 +123,10 @@ const MatchManagement: React.FC = () => {
     }
   }, []);
 
-  // Initial load
+  // Initial load - only once
   useEffect(() => {
+    if (hasFetchedInitial.current) return;
+    hasFetchedInitial.current = true;
     console.log('[MatchManagement] Component mounted, fetching initial matches');
     fetchMatches(1, false);
   }, [fetchMatches]);

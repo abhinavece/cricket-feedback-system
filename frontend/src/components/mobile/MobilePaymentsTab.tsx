@@ -219,6 +219,17 @@ const MobilePaymentsTab: React.FC = () => {
   // Action handlers
   const handleAddPlayer = async () => {
     if (!detailPayment || !newPlayerName || !newPlayerPhone) return;
+    
+    // Check for duplicates
+    const sanitizedPhone = sanitizeIndianPhoneNumber(newPlayerPhone);
+    const isDuplicate = detailPayment.squadMembers?.some(
+      member => member.playerPhone === sanitizedPhone || member.playerPhone === `91${sanitizedPhone}`
+    );
+    if (isDuplicate) {
+      setError(`${newPlayerName} is already in the squad`);
+      return;
+    }
+    
     setActionLoading(true);
     try {
       const result = await addPaymentMember(detailPayment._id, {
@@ -341,8 +352,21 @@ const MobilePaymentsTab: React.FC = () => {
     try {
       const result = await loadSquadFromAvailability(selectedMatch._id);
       if (result.squad && result.squad.length > 0) {
-        setTempSquad(result.squad);
-        setSuccess(`Loaded ${result.count} players`);
+        // Filter out duplicates from loaded squad
+        const uniqueSquad = result.squad.filter((newPlayer: any) => {
+          const newPhone = sanitizeIndianPhoneNumber(newPlayer.playerPhone);
+          return !tempSquad.some(existing => {
+            const existingPhone = sanitizeIndianPhoneNumber(existing.playerPhone);
+            return existingPhone === newPhone || existingPhone === `91${newPhone}` || `91${existingPhone}` === newPhone;
+          });
+        });
+        
+        if (uniqueSquad.length > 0) {
+          setTempSquad([...tempSquad, ...uniqueSquad]);
+          setSuccess(`Loaded ${uniqueSquad.length} players${uniqueSquad.length < result.squad.length ? ` (${result.squad.length - uniqueSquad.length} duplicates skipped)` : ''}`);
+        } else {
+          setSuccess('All players already in squad');
+        }
       } else {
         setSuccess('No confirmed players. Add manually below.');
       }
@@ -434,6 +458,15 @@ const MobilePaymentsTab: React.FC = () => {
     }
     
     const sanitizedPhone = sanitizeIndianPhoneNumber(phone);
+    
+    // Check for duplicates in temp squad
+    const isDuplicate = tempSquad.some(
+      member => member.playerPhone === sanitizedPhone || member.playerPhone === `91${sanitizedPhone}`
+    );
+    if (isDuplicate) {
+      setError(`${name} is already in the squad`);
+      return;
+    }
     
     setTempSquad(prev => [...prev, { playerName: name, playerPhone: sanitizedPhone }]);
     setManualPlayerName('');
@@ -1129,7 +1162,7 @@ const MobilePaymentsTab: React.FC = () => {
                     value={playerSearchTerm}
                     onChange={(e) => handlePlayerSearchMobile(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
-                    placeholder="Search players..."
+                    placeholder="Search players by name..."
                   />
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 </div>
@@ -1166,7 +1199,6 @@ const MobilePaymentsTab: React.FC = () => {
           </div>
         </div>
       )}
-
       <style>{`
         @keyframes slide-up {
           from { transform: translateY(100%); }
