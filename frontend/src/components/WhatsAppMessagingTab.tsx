@@ -150,7 +150,6 @@ const WhatsAppMessagingTab: React.FC = () => {
     } catch (err) {
       console.error('Failed to create match:', err);
       setError('Failed to create match. Please try again.');
-      setTimeout(() => setError(null), 3000);
     } finally {
       setCreatingMatch(false);
     }
@@ -184,11 +183,9 @@ const WhatsAppMessagingTab: React.FC = () => {
         notes: editingPlayer.notes?.trim() || undefined,
       });
       console.log('Update successful');
-      setSuccess('Player updated successfully');
       setEditingPlayer(null);
       setShowPlayerModal(false);
       await fetchPlayers();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       console.error('Update failed:', err);
       setError(err?.response?.data?.error || 'Failed to update player');
@@ -206,7 +203,6 @@ const WhatsAppMessagingTab: React.FC = () => {
       console.log('Sending delete request for player:', playerToDelete._id);
       await deletePlayer(playerToDelete._id);
       console.log('Delete successful');
-      setSuccess('Player deleted successfully');
       setPlayerToDelete(null);
       // Remove from selection if it was selected
       setSelectedPlayers(prev => prev.filter(id => id !== playerToDelete._id));
@@ -1638,13 +1634,17 @@ const WhatsAppMessagingTab: React.FC = () => {
                     <input
                       type="tel"
                       value={editingPlayer ? editingPlayer.phone : newPlayer.phone}
-                      onChange={(e) => editingPlayer
-                        ? setEditingPlayer(prev => prev ? ({ ...prev, phone: e.target.value }) : null)
-                        : setNewPlayer((prev) => ({ ...prev, phone: e.target.value }))
-                      }
+                      onChange={(e) => {
+                        // Only allow digits and limit to 10 characters
+                        const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        editingPlayer
+                          ? setEditingPlayer(prev => prev ? ({ ...prev, phone: digitsOnly }) : null)
+                          : setNewPlayer((prev) => ({ ...prev, phone: digitsOnly }));
+                      }}
                       className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors"
-                      placeholder="+91 90000 00000"
+                      placeholder="9876543210"
                       inputMode="tel"
+                      maxLength={10}
                       required
                     />
                   </div>
@@ -1689,9 +1689,9 @@ const WhatsAppMessagingTab: React.FC = () => {
               </button>
               <button 
                 type="button" 
-                className="px-4 py-2 text-sm font-medium text-white bg-[#128C7E] hover:bg-[#075E54] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#128C7E] transition-colors flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 text-sm font-medium text-white bg-[#128C7E] hover:bg-[#075E54] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg focus:outline-none focus:ring-2 focus:ring-[#128C7E] transition-colors flex items-center gap-1.5 shadow-sm"
                 onClick={editingPlayer ? handleUpdatePlayer : handleAddPlayer}
-                disabled={isUpdating}
+                disabled={isUpdating || !(editingPlayer ? editingPlayer.name.trim() && validateIndianPhoneNumber(editingPlayer.phone) : newPlayer.name.trim() && validateIndianPhoneNumber(newPlayer.phone))}
               >
                 {isUpdating ? (
                   <>

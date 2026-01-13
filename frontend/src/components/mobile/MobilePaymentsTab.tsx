@@ -378,17 +378,14 @@ const MobilePaymentsTab: React.FC = () => {
   // Create new player in database
   const handleCreatePlayer = async () => {
     if (!manualPlayerName) {
-      setError('Player name is required');
       return;
     }
     
     if (!manualPlayerPhone) {
-      setError('Phone number is required');
       return;
     }
     
     if (!validateIndianPhoneNumber(manualPlayerPhone)) {
-      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
     
@@ -425,17 +422,14 @@ const MobilePaymentsTab: React.FC = () => {
     const phone = playerPhone || manualPlayerPhone;
     
     if (!name) {
-      setError('Player name is required');
       return;
     }
     
     if (!phone) {
-      setError('Phone number is required');
       return;
     }
     
     if (!validateIndianPhoneNumber(phone)) {
-      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
     
@@ -896,12 +890,17 @@ const MobilePaymentsTab: React.FC = () => {
                 type="tel"
                 placeholder="Phone Number"
                 value={newPlayerPhone}
-                onChange={(e) => setNewPlayerPhone(e.target.value)}
+                onChange={(e) => {
+                  // Only allow digits and limit to 10 characters
+                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setNewPlayerPhone(digitsOnly);
+                }}
+                maxLength={10}
                 className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
               />
               <button
                 onClick={handleAddPlayer}
-                disabled={actionLoading || !newPlayerName || !newPlayerPhone}
+                disabled={actionLoading || !newPlayerName || !newPlayerPhone || !validateIndianPhoneNumber(newPlayerPhone)}
                 className="w-full py-2.5 bg-emerald-500 rounded-lg text-white font-medium disabled:opacity-50"
               >
                 {actionLoading ? 'Adding...' : 'Add Player'}

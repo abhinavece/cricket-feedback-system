@@ -413,17 +413,14 @@ const PaymentManagement: React.FC = () => {
   // Create a new player directly in database
   const handleCreatePlayer = async () => {
     if (!newPlayerName) {
-      setError('Player name is required');
       return;
     }
     
     if (!newPlayerPhone) {
-      setError('Phone number is required');
       return;
     }
     
     if (!validateIndianPhoneNumber(newPlayerPhone)) {
-      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
     
@@ -456,17 +453,14 @@ const PaymentManagement: React.FC = () => {
     const phone = playerPhone || newPlayerPhone;
     
     if (!name) {
-      setError('Player name is required');
       return;
     }
     
     if (!phone) {
-      setError('Phone number is required');
       return;
     }
     
     if (!validateIndianPhoneNumber(phone)) {
-      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
     
@@ -1044,8 +1038,13 @@ const PaymentManagement: React.FC = () => {
                     <input
                       type="tel"
                       value={newPlayerPhone}
-                      onChange={(e) => setNewPlayerPhone(e.target.value)}
+                      onChange={(e) => {
+                        // Only allow digits and limit to 10 characters
+                        const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setNewPlayerPhone(digitsOnly);
+                      }}
                       placeholder="9876543210"
+                      maxLength={10}
                       className="w-full px-4 py-2 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
@@ -1058,7 +1057,7 @@ const PaymentManagement: React.FC = () => {
                     </button>
                     <button
                       onClick={handleCreatePlayer}
-                      disabled={!newPlayerName || !newPlayerPhone || isCreatingPlayer}
+                      disabled={!newPlayerName || !newPlayerPhone || !validateIndianPhoneNumber(newPlayerPhone) || isCreatingPlayer}
                       className="flex-1 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
                     >
                       {isCreatingPlayer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} 
