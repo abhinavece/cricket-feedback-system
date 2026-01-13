@@ -3,6 +3,7 @@ import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updat
 import type { Player } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 import MatchForm from './MatchForm';
+import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
 
 interface TemplateConfig {
   id: string;
@@ -163,6 +164,15 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Name and WhatsApp number are required.');
       return;
     }
+    
+    // Validate and sanitize phone number
+    if (!validateIndianPhoneNumber(editingPlayer.phone)) {
+      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
+      return;
+    }
+    
+    const sanitizedPhone = sanitizeIndianPhoneNumber(editingPlayer.phone);
+    
     try {
       setIsUpdating(true);
       setError(null);
@@ -170,12 +180,13 @@ const WhatsAppMessagingTab: React.FC = () => {
       console.log('Sending update request for player:', editingPlayer._id);
       await updatePlayer(editingPlayer._id, {
         name: editingPlayer.name.trim(),
-        phone: editingPlayer.phone.trim(),
+        phone: sanitizedPhone,
         notes: editingPlayer.notes?.trim() || undefined,
       });
       console.log('Update successful');
       setSuccess('Player updated successfully');
       setEditingPlayer(null);
+      setShowPlayerModal(false);
       await fetchPlayers();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -301,14 +312,24 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Name and WhatsApp number are required.');
       return;
     }
+    
+    // Validate and sanitize phone number
+    if (!validateIndianPhoneNumber(newPlayer.phone)) {
+      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
+      return;
+    }
+    
+    const sanitizedPhone = sanitizeIndianPhoneNumber(newPlayer.phone);
+    
     try {
       setError(null);
       await createPlayer({
         name: newPlayer.name.trim(),
-        phone: newPlayer.phone.trim(),
+        phone: sanitizedPhone,
         notes: newPlayer.notes.trim() || undefined,
       });
       setNewPlayer({ name: '', phone: '', notes: '' });
+      setShowPlayerModal(false);
       await fetchPlayers();
     } catch (err: any) {
       console.error(err);
@@ -1005,6 +1026,15 @@ const WhatsAppMessagingTab: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
+                          <button
+                            onClick={() => setPlayerToDelete(player)}
+                            className="p-1.5 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-all active:scale-95 text-sm shadow-sm"
+                            title="Delete player"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1073,6 +1103,15 @@ const WhatsAppMessagingTab: React.FC = () => {
                               <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
                             </svg>
                             Chat
+                          </button>
+                          <button
+                            onClick={() => setPlayerToDelete(player)}
+                            className="p-1.5 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-all active:scale-95 text-sm shadow-sm"
+                            title="Delete player"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </div>

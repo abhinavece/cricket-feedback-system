@@ -21,6 +21,7 @@ import {
   Plus, Edit2, Trash2, Send, Image, MapPin, Calendar, CreditCard, Loader2, Trophy,
   Search, Users, UserPlus
 } from 'lucide-react';
+import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../../utils/phoneValidation';
 
 interface SquadMember {
   _id: string;
@@ -387,15 +388,17 @@ const MobilePaymentsTab: React.FC = () => {
     }
     
     if (!validateIndianPhoneNumber(manualPlayerPhone)) {
-      setError('Please enter a valid 10-digit Indian phone number');
+      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
+    
+    const sanitizedPhone = sanitizeIndianPhoneNumber(manualPlayerPhone);
     
     setIsCreatingPlayer(true);
     try {
       await createPlayer({
         name: manualPlayerName,
-        phone: manualPlayerPhone,
+        phone: sanitizedPhone,
         notes: ''
       });
       
@@ -416,15 +419,6 @@ const MobilePaymentsTab: React.FC = () => {
     }
   };
 
-  // Validate 10-digit Indian phone format (without country code)
-  const validateIndianPhoneNumber = (phone: string) => {
-    // Remove any non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Check if it's exactly 10 digits
-    return /^\d{10}$/.test(digitsOnly);
-  };
-
   const handleAddManualPlayer = (playerName?: string, playerPhone?: string) => {
     // Use passed parameters or fall back to state
     const name = playerName || manualPlayerName;
@@ -441,11 +435,13 @@ const MobilePaymentsTab: React.FC = () => {
     }
     
     if (!validateIndianPhoneNumber(phone)) {
-      setError('Please enter a valid 10-digit Indian phone number');
+      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
     
-    setTempSquad(prev => [...prev, { playerName: name, playerPhone: phone }]);
+    const sanitizedPhone = sanitizeIndianPhoneNumber(phone);
+    
+    setTempSquad(prev => [...prev, { playerName: name, playerPhone: sanitizedPhone }]);
     setManualPlayerName('');
     setManualPlayerPhone('');
     setShowManualAdd(false);

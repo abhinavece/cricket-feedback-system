@@ -34,7 +34,10 @@ const LoadingSpinner = () => (
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>('feedback');
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>(() => {
+    const savedTab = localStorage.getItem('activeTab');
+    return (savedTab as any) || 'feedback';
+  });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +56,11 @@ function AppContent() {
       setCurrentView('admin');
     }
   }, [isAuthenticated]);
+
+  // Persist active tab to localStorage
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
 
   const handleSubmit = async (data: FeedbackFormData) => {
     setLoading(true);

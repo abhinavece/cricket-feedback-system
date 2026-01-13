@@ -28,6 +28,7 @@ import {
   Eye,
   Filter
 } from 'lucide-react';
+import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
 import {
   getMatches,
   getPaymentByMatch,
@@ -399,15 +400,6 @@ const PaymentManagement: React.FC = () => {
     }
   };
 
-  // Validate 10-digit Indian phone format (without country code)
-  const validateIndianPhoneNumber = (phone: string) => {
-    // Remove any non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Check if it's exactly 10 digits
-    return /^\d{10}$/.test(digitsOnly);
-  };
-
   // Handle player search with backend API
   const handlePlayerSearch = async (searchTerm: string) => {
     setPlayerSearchTerm(searchTerm);
@@ -431,15 +423,17 @@ const PaymentManagement: React.FC = () => {
     }
     
     if (!validateIndianPhoneNumber(newPlayerPhone)) {
-      setError('Please enter a valid 10-digit Indian phone number');
+      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
+    
+    const sanitizedPhone = sanitizeIndianPhoneNumber(newPlayerPhone);
     
     setIsCreatingPlayer(true);
     try {
       const player = await createPlayer({
         name: newPlayerName,
-        phone: newPlayerPhone
+        phone: sanitizedPhone
       });
       
       setAllPlayers([...allPlayers, player]);
@@ -472,16 +466,18 @@ const PaymentManagement: React.FC = () => {
     }
     
     if (!validateIndianPhoneNumber(phone)) {
-      setError('Please enter a valid 10-digit Indian phone number');
+      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
       return;
     }
+    
+    const sanitizedPhone = sanitizeIndianPhoneNumber(phone);
     
     if (payment) {
       setLoading(true);
       try {
         const result = await addPaymentMember(payment._id, {
           playerName: name,
-          playerPhone: phone
+          playerPhone: sanitizedPhone
         });
         
         // Update all squad members (rebalancing affects all non-adjusted members)
@@ -817,8 +813,8 @@ const PaymentManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Compact Grid - 2x2 on mobile, 4 columns on desktop */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Compact Grid - 2x2 on mobile, 5 columns on desktop */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {/* Total */}
                 <div className="p-2.5 bg-slate-700/40 rounded-lg">
                   <div className="text-xs text-slate-400 mb-0.5">Total</div>
@@ -834,6 +830,13 @@ const PaymentManagement: React.FC = () => {
                   <div className="text-xs text-yellow-400 mb-0.5">Pending</div>
                   <div className="text-base font-bold text-yellow-400">₹{payment.totalPending}</div>
                 </div>
+                {/* Refunds Due */}
+                {payment.totalOwed && payment.totalOwed > 0 && (
+                  <div className="p-2.5 bg-red-500/15 rounded-lg">
+                    <div className="text-xs text-red-400 mb-0.5">Refunds Due</div>
+                    <div className="text-base font-bold text-red-400">₹{payment.totalOwed}</div>
+                  </div>
+                )}
                 {/* Paid Count */}
                 <div className="p-2.5 bg-slate-700/40 rounded-lg">
                   <div className="text-xs text-slate-400 mb-0.5">Paid / Total</div>
@@ -854,20 +857,6 @@ const PaymentManagement: React.FC = () => {
                   <span className="text-emerald-400 font-medium">{Math.round((payment.totalCollected / payment.totalAmount) * 100)}%</span>
                 </div>
               </div>
-
-              {/* Overdue Payments Section */}
-              {payment.totalOwed && payment.totalOwed > 0 && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertCircle className="w-5 h-5 text-red-400" />
-                    <h4 className="font-semibold text-red-400">Refunds Due</h4>
-                  </div>
-                  <div className="text-2xl font-bold text-red-400 mb-2">₹{payment.totalOwed}</div>
-                  <div className="text-xs text-red-300">
-                    {payment.squadMembers.filter(m => m.owedAmount && m.owedAmount > 0).length} player(s) have overpaid
-                  </div>
-                </div>
-              )}
               <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
