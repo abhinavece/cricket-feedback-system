@@ -423,6 +423,7 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
     // Return all squad members (rebalancing affects all non-adjusted members)
     const squadMembersData = payment.squadMembers.map(member => ({
       _id: member._id,
+      playerId: member.playerId, // Added playerId to the response mapping
       playerName: member.playerName,
       playerPhone: member.playerPhone,
       calculatedAmount: member.calculatedAmount,
@@ -731,6 +732,7 @@ router.delete('/:id/member/:memberId', auth, async (req, res) => {
     // Return all squad members (rebalancing affects all non-adjusted members)
     const squadMembersData = payment.squadMembers.map(member => ({
       _id: member._id,
+      playerId: member.playerId,
       playerName: member.playerName,
       playerPhone: member.playerPhone,
       calculatedAmount: member.calculatedAmount,
@@ -789,15 +791,6 @@ router.post('/:id/add-member', auth, async (req, res) => {
 
     const formattedPhone = formatPhoneNumber(playerPhone);
 
-    // Check if member already exists in payment
-    const exists = payment.squadMembers.some(m => m.playerPhone === formattedPhone);
-    if (exists) {
-      return res.status(400).json({
-        success: false,
-        error: 'Player already exists in this payment record'
-      });
-    }
-
     // Save player permanently to Player collection if not exists
     const Player = require('../models/Player');
     let savedPlayerId = playerId;
@@ -833,6 +826,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
     // Return all squad members (rebalancing affects all non-adjusted members)
     const squadMembersData = payment.squadMembers.map(member => ({
       _id: member._id,
+      playerId: member.playerId,
       playerName: member.playerName,
       playerPhone: member.playerPhone,
       calculatedAmount: member.calculatedAmount,
