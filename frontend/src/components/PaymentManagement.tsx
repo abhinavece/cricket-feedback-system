@@ -331,6 +331,7 @@ const PaymentManagement: React.FC = () => {
         if (result.paymentSummary) {
           updatedPayment.totalCollected = result.paymentSummary.totalCollected;
           updatedPayment.totalPending = result.paymentSummary.totalPending;
+          updatedPayment.totalOwed = result.paymentSummary.totalOwed;
           updatedPayment.paidCount = result.paymentSummary.paidCount;
           updatedPayment.status = result.paymentSummary.status;
         }
@@ -387,6 +388,7 @@ const PaymentManagement: React.FC = () => {
           if (result.paymentSummary) {
             updatedPayment.totalCollected = result.paymentSummary.totalCollected;
             updatedPayment.totalPending = result.paymentSummary.totalPending;
+            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
             updatedPayment.paidCount = result.paymentSummary.paidCount;
             updatedPayment.status = result.paymentSummary.status;
           }
@@ -538,6 +540,7 @@ const PaymentManagement: React.FC = () => {
           if (result.paymentSummary) {
             updatedPayment.totalCollected = result.paymentSummary.totalCollected;
             updatedPayment.totalPending = result.paymentSummary.totalPending;
+            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
             updatedPayment.paidCount = result.paymentSummary.paidCount;
             updatedPayment.membersCount = result.paymentSummary.membersCount;
             updatedPayment.status = result.paymentSummary.status;
@@ -582,6 +585,7 @@ const PaymentManagement: React.FC = () => {
         if (result.paymentSummary) {
           updatedPayment.totalCollected = result.paymentSummary.totalCollected;
           updatedPayment.totalPending = result.paymentSummary.totalPending;
+          updatedPayment.totalOwed = result.paymentSummary.totalOwed;
           updatedPayment.paidCount = result.paymentSummary.paidCount;
           updatedPayment.membersCount = result.paymentSummary.membersCount;
           updatedPayment.status = result.paymentSummary.status;
@@ -1301,6 +1305,7 @@ const PaymentManagement: React.FC = () => {
                           if (result.paymentSummary) {
                             updatedPayment.totalCollected = result.paymentSummary.totalCollected;
                             updatedPayment.totalPending = result.paymentSummary.totalPending;
+                            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
                             updatedPayment.paidCount = result.paymentSummary.paidCount;
                             updatedPayment.status = result.paymentSummary.status;
                           }
