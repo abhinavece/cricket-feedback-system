@@ -8,6 +8,7 @@ const Availability = require('../models/Availability');
 const Message = require('../models/Message');
 const axios = require('axios');
 const { getOrCreatePlayer, formatPhoneNumber } = require('../services/playerService');
+const { getTotalOutstandingForPlayer } = require('../services/paymentDistributionService');
 
 // GET /api/payments - Get all payment records (optimized with pagination)
 router.get('/', auth, async (req, res) => {
@@ -1132,24 +1133,33 @@ router.post('/:id/send-requests', auth, async (req, res) => {
     for (const member of membersToSend) {
       try {
         const amount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
-        
+
         // Format phone number consistently (remove + and ensure 91 prefix)
         let formattedPhone = member.playerPhone.replace(/\D/g, '');
         if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
           formattedPhone = '91' + formattedPhone;
         }
-        
-        // Create payment request message
-        const message = `🏏 *Payment Request - Mavericks XI*\n\n` +
+
+        // Get total outstanding across all matches for this player
+        const outstanding = await getTotalOutstandingForPlayer(formattedPhone);
+
+        // Create payment request message with total outstanding
+        let message = `🏏 *Payment Request - Mavericks XI*\n\n` +
           `Hi ${member.playerName},\n\n` +
           `Please pay your match fee for:\n` +
           `📅 *Date:* ${matchDate}\n` +
           `🆚 *Opponent:* ${match.opponent || 'TBD'}\n` +
           `📍 *Ground:* ${match.ground}\n` +
           `⏰ *Slot:* ${match.slot}\n\n` +
-          `💰 *Amount to Pay:* ₹${amount}\n\n` +
-          `Please upload a screenshot of your payment in reply to this message.\n\n` +
-          `Thank you! 🙏`;
+          `💰 *Amount for this match:* ₹${amount}`;
+
+        // Add total outstanding if player has dues on multiple matches
+        if (outstanding.matchCount > 1) {
+          message += `\n\n📊 *Total Outstanding: ₹${outstanding.totalDue} (${outstanding.matchCount} matches)*`;
+          message += `\n_Pay full amount in one transaction - it will auto-distribute._`;
+        }
+
+        message += `\n\nPlease upload a screenshot of your payment in reply to this message.\n\nThank you! 🙏`;
 
         const whatsappApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
 
@@ -1239,6 +1249,7 @@ router.post('/:id/send-requests', auth, async (req, res) => {
 });
 
 // GET /api/payments/:id/screenshot/:memberId - Get screenshot image (public for img src)
+// Handles both direct screenshots and references to screenshots stored elsewhere
 router.get('/:id/screenshot/:memberId', async (req, res) => {
   try {
     const payment = await MatchPayment.findById(req.params.id);
@@ -1250,7 +1261,27 @@ router.get('/:id/screenshot/:memberId', async (req, res) => {
     }
 
     const member = payment.squadMembers.id(req.params.memberId);
-    if (!member || !member.screenshotImage) {
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        error: 'Member not found'
+      });
+    }
+
+    // Check if this member has a screenshot reference (from distributed payment)
+    if (member.screenshotRef?.sourcePaymentId && member.screenshotRef?.sourceMemberId) {
+      const sourcePayment = await MatchPayment.findById(member.screenshotRef.sourcePaymentId);
+      if (sourcePayment) {
+        const sourceMember = sourcePayment.squadMembers.id(member.screenshotRef.sourceMemberId);
+        if (sourceMember?.screenshotImage) {
+          res.set('Content-Type', sourceMember.screenshotContentType || 'image/jpeg');
+          return res.send(sourceMember.screenshotImage);
+        }
+      }
+    }
+
+    // Direct screenshot on this member
+    if (!member.screenshotImage) {
       return res.status(404).json({
         success: false,
         error: 'Screenshot not found'
@@ -1328,6 +1359,175 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete payment'
+    });
+  }
+});
+
+// GET /api/payments/review-required - Get all payments requiring admin review
+router.get('/review-required', auth, async (req, res) => {
+  try {
+    const payments = await MatchPayment.find({
+      'squadMembers.requiresReview': true
+    }).populate('matchId', 'date opponent ground');
+
+    // Extract members that need review
+    const reviewItems = [];
+    for (const payment of payments) {
+      for (const member of payment.squadMembers) {
+        if (member.requiresReview) {
+          reviewItems.push({
+            paymentId: payment._id,
+            memberId: member._id,
+            matchId: payment.matchId?._id,
+            matchInfo: {
+              date: payment.matchId?.date,
+              opponent: payment.matchId?.opponent,
+              ground: payment.matchId?.ground
+            },
+            playerName: member.playerName,
+            playerPhone: member.playerPhone,
+            expectedAmount: member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount,
+            ocrExtractedAmount: member.ocrExtractedAmount,
+            ocrConfidence: member.ocrConfidence,
+            reviewReason: member.reviewReason,
+            amountPaid: member.amountPaid,
+            dueAmount: member.dueAmount,
+            hasScreenshot: !!(member.screenshotImage || member.screenshotRef?.sourcePaymentId),
+            screenshotReceivedAt: member.screenshotReceivedAt
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: reviewItems,
+      count: reviewItems.length
+    });
+  } catch (error) {
+    console.error('Error fetching review required payments:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payments requiring review'
+    });
+  }
+});
+
+// PUT /api/payments/:id/member/:memberId/resolve-review - Resolve admin review
+router.put('/:id/member/:memberId/resolve-review', auth, async (req, res) => {
+  try {
+    const { action, correctedAmount, notes } = req.body;
+    // action: 'accept' (accept OCR amount), 'override' (use correctedAmount), 'reject' (mark unpaid)
+
+    const payment = await MatchPayment.findById(req.params.id);
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment record not found'
+      });
+    }
+
+    const member = payment.squadMembers.id(req.params.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        error: 'Member not found'
+      });
+    }
+
+    switch (action) {
+      case 'accept':
+        // Accept the OCR extracted amount as-is
+        member.requiresReview = false;
+        member.reviewReason = null;
+        if (notes) member.notes = notes;
+        break;
+
+      case 'override':
+        // Override with admin-provided amount
+        if (typeof correctedAmount !== 'number' || correctedAmount < 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Valid correctedAmount is required for override action'
+          });
+        }
+
+        // Clear existing payment history and add corrected amount
+        member.paymentHistory = member.paymentHistory.map(p => ({
+          ...p.toObject(),
+          isValidPayment: false
+        }));
+
+        member.paymentHistory.push({
+          amount: correctedAmount,
+          paidAt: new Date(),
+          paymentMethod: 'upi',
+          notes: notes || 'Admin corrected amount',
+          isValidPayment: true
+        });
+
+        member.requiresReview = false;
+        member.reviewReason = null;
+        break;
+
+      case 'reject':
+        // Mark as unpaid, remove screenshot
+        member.paymentHistory = member.paymentHistory.map(p => ({
+          ...p.toObject(),
+          isValidPayment: false
+        }));
+        member.screenshotImage = null;
+        member.screenshotContentType = null;
+        member.screenshotMediaId = null;
+        member.screenshotReceivedAt = null;
+        member.screenshotRef = null;
+        member.requiresReview = false;
+        member.reviewReason = null;
+        if (notes) member.notes = notes;
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid action. Use: accept, override, or reject'
+        });
+    }
+
+    await payment.save();
+
+    res.json({
+      success: true,
+      message: `Review resolved with action: ${action}`,
+      data: {
+        memberId: member._id,
+        playerName: member.playerName,
+        amountPaid: member.amountPaid,
+        dueAmount: member.dueAmount,
+        paymentStatus: member.paymentStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error resolving review:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to resolve review'
+    });
+  }
+});
+
+// GET /api/payments/player/:phone/outstanding - Get total outstanding for a player
+router.get('/player/:phone/outstanding', auth, async (req, res) => {
+  try {
+    const outstanding = await getTotalOutstandingForPlayer(req.params.phone);
+    res.json({
+      success: true,
+      data: outstanding
+    });
+  } catch (error) {
+    console.error('Error fetching outstanding:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch outstanding amount'
     });
   }
 });

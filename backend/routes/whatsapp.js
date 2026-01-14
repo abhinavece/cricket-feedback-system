@@ -459,7 +459,11 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
   }
 }
 
-// Process payment screenshot uploads
+// Import OCR and distribution services
+const { extractAmountFromScreenshot } = require('../services/ocrService');
+const { getPendingPaymentsForPlayer, distributePaymentFIFO, buildDistributionConfirmation } = require('../services/paymentDistributionService');
+
+// Process payment screenshot uploads with OCR and multi-match distribution
 async function processPaymentScreenshot(from, imageId, messageId, contextId, caption) {
   try {
     console.log('\n=== PROCESSING PAYMENT SCREENSHOT ===');
@@ -482,47 +486,17 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       from
     ];
 
-    // Find the payment request message this is replying to
-    let paymentMessage = null;
+    // Check if player has any pending payments
+    const pendingPayments = await getPendingPaymentsForPlayer(formattedPhone);
 
-    // METHOD 1: Try to find by context ID
-    if (contextId) {
-      console.log('🔍 Looking up payment request by context ID...');
-      paymentMessage = await Message.findOne({
-        messageId: contextId,
-        direction: 'outgoing',
-        messageType: 'payment_request'
-      });
+    if (pendingPayments.length === 0) {
+      console.log('❌ No pending payments found for this player');
 
-      if (paymentMessage) {
-        console.log(`✅ Found payment request by context ID`);
-        console.log(`   Payment ID: ${paymentMessage.paymentId}`);
-        console.log(`   Member ID: ${paymentMessage.paymentMemberId}`);
-      }
-    }
-
-    // METHOD 2: Fallback to recent payment request by phone
-    if (!paymentMessage) {
-      console.log('🔍 Falling back to phone number lookup...');
-      paymentMessage = await Message.findOne({
-        to: { $in: phoneVariants },
-        messageType: 'payment_request',
-        direction: 'outgoing'
-      }).sort({ timestamp: -1 });
-
-      if (paymentMessage) {
-        console.log(`✅ Found payment request by phone fallback`);
-      }
-    }
-
-    if (!paymentMessage || !paymentMessage.paymentId) {
-      console.log('❌ No matching payment request found - saving as general image');
-      
       // Save as general incoming message
       await Message.create({
         from: formattedPhone,
         to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: caption || '[Image received]',
+        text: caption || '[Image received - no pending payments]',
         direction: 'incoming',
         messageId: messageId,
         timestamp: new Date(),
@@ -531,7 +505,7 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       return;
     }
 
-    console.log(`\n📸 Processing screenshot for payment: ${paymentMessage.paymentId}`);
+    console.log(`📋 Found ${pendingPayments.length} pending payment(s) for player`);
 
     // Download the image from WhatsApp
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -562,64 +536,61 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     const imageBuffer = Buffer.from(imageResponse.data);
     console.log(`Image downloaded, size: ${imageBuffer.length} bytes`);
 
-    // Step 3: Update the payment record
-    const payment = await MatchPayment.findById(paymentMessage.paymentId);
-    if (!payment) {
-      console.log('❌ Payment record not found');
+    // Step 3: Extract amount using OCR
+    console.log('\n🔍 Running OCR to extract payment amount...');
+    const ocrResult = await extractAmountFromScreenshot(imageBuffer);
+    let extractedAmount = ocrResult.amount;
+
+    // If OCR fails to extract amount, use the total due amount as fallback
+    if (!extractedAmount || extractedAmount <= 0) {
+      const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
+      console.log(`⚠️ OCR could not extract amount, using total due: ₹${totalDue}`);
+      extractedAmount = totalDue;
+    }
+
+    // Step 4: Distribute payment across matches (FIFO)
+    const screenshotData = {
+      buffer: imageBuffer,
+      contentType: mimeType,
+      mediaId: imageId
+    };
+
+    const ocrData = {
+      confidence: ocrResult.confidence,
+      rawText: ocrResult.rawText
+    };
+
+    const distributionResult = await distributePaymentFIFO(
+      formattedPhone,
+      extractedAmount,
+      screenshotData,
+      ocrData
+    );
+
+    if (!distributionResult.success) {
+      console.log('❌ Payment distribution failed');
       return;
     }
-
-    // Find the member by phone or member ID
-    let member = null;
-    if (paymentMessage.paymentMemberId) {
-      member = payment.squadMembers.id(paymentMessage.paymentMemberId);
-    }
-    
-    if (!member) {
-      // Try to find by phone
-      member = payment.squadMembers.find(m => 
-        phoneVariants.includes(m.playerPhone) || 
-        m.playerPhone.includes(formattedPhone.slice(-10))
-      );
-    }
-
-    if (!member) {
-      console.log('❌ Could not find matching member in payment record');
-      return;
-    }
-
-    console.log(`✅ Found member: ${member.playerName}`);
-
-    // Update member with screenshot
-    member.screenshotImage = imageBuffer;
-    member.screenshotContentType = mimeType;
-    member.screenshotMediaId = imageId;
-    member.screenshotReceivedAt = new Date();
-    member.paymentStatus = 'paid';
-    member.paidAt = new Date();
-
-    await payment.save();
-
-    console.log(`✅ Payment screenshot saved for ${member.playerName}`);
-    console.log(`   Status updated to: paid`);
 
     // Save incoming message record
+    const primaryDistribution = distributionResult.distributions[0];
     await Message.create({
       from: formattedPhone,
       to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-      text: caption || '[Payment screenshot received]',
+      text: caption || `[Payment screenshot - ₹${extractedAmount} distributed to ${distributionResult.matchesAffected} match(es)]`,
       direction: 'incoming',
       messageId: messageId,
       timestamp: new Date(),
       messageType: 'payment_screenshot',
-      matchId: paymentMessage.matchId,
-      paymentId: payment._id,
-      paymentMemberId: member._id
+      matchId: primaryDistribution?.matchId,
+      paymentId: primaryDistribution?.paymentId,
+      paymentMemberId: primaryDistribution?.memberId
     });
 
-    // Send confirmation message
+    // Build and send confirmation message
+    // Pass pendingPayments to show ALL matches, not just ones that received payment
+    const confirmMessage = buildDistributionConfirmation(distributionResult, pendingPayments);
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const confirmMessage = `✅ Thank you ${member.playerName}! Your payment screenshot has been received and verified.\n\n💰 Amount: ₹${member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount}\n\nYour payment status is now marked as *Paid*. 🙏`;
 
     try {
       await axios.post(

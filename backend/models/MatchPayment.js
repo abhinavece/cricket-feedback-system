@@ -32,6 +32,25 @@ const paymentHistorySchema = new mongoose.Schema({
   screenshotContentType: {
     type: String,
     default: null
+  },
+  // OCR tracking for distributed payments
+  ocrExtractedAmount: {
+    type: Number,
+    default: null
+  },
+  distributedAmount: {
+    type: Number,
+    default: null  // Amount allocated to THIS match from a larger payment
+  },
+  sourcePaymentInfo: {
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MatchPayment'
+    },
+    memberId: {
+      type: mongoose.Schema.Types.ObjectId
+    },
+    totalAmount: Number  // Total OCR amount from the original payment
   }
 }, { _id: true, timestamps: true });
 
@@ -113,6 +132,41 @@ const paymentMemberSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  // Screenshot reference (for multi-match payments where image stored elsewhere)
+  screenshotRef: {
+    sourcePaymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MatchPayment'
+    },
+    sourceMemberId: {
+      type: mongoose.Schema.Types.ObjectId
+    },
+    originalAmount: Number  // Full payment amount from screenshot
+  },
+  // OCR tracking
+  ocrExtractedAmount: {
+    type: Number,
+    default: null  // Amount detected by OCR from screenshot
+  },
+  ocrConfidence: {
+    type: Number,
+    default: null  // 0-100 confidence score from OCR
+  },
+  requiresReview: {
+    type: Boolean,
+    default: false  // Flag for admin attention
+  },
+  reviewReason: {
+    type: String,
+    enum: ['ocr_mismatch', 'partial_payment', 'overpayment', null],
+    default: null
+  },
+  // Track if payment was auto-distributed from another match payment
+  distributedFromPaymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MatchPayment',
+    default: null
   }
 }, { _id: true });
 
