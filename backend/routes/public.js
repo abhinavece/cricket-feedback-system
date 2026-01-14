@@ -90,28 +90,41 @@ router.get('/:token', async (req, res) => {
         });
       }
       
+      // Calculate per person amount if not stored
+      const memberCount = payment.squadMembers?.length || 1;
+      const perPerson = payment.perPersonAmount || Math.ceil(payment.totalAmount / memberCount);
+      
       data = {
         type: 'payment',
         viewType: publicLink.viewType,
         payment: {
           _id: payment._id,
-          match: payment.matchId,
+          match: payment.matchId ? {
+            opponent: payment.matchId.opponent,
+            date: payment.matchId.date,
+            time: payment.matchId.time,
+            ground: payment.matchId.ground
+          } : null,
           title: payment.title,
-          totalAmount: payment.totalAmount,
-          perPersonAmount: payment.perPersonAmount,
-          totalCollected: payment.totalCollected,
-          totalPending: payment.totalPending,
-          totalOwed: payment.totalOwed,
-          paidCount: payment.paidCount,
+          totalAmount: payment.totalAmount || 0,
+          perPersonAmount: perPerson,
+          totalCollected: payment.totalCollected || 0,
+          totalPending: payment.totalPending || 0,
+          totalOwed: payment.totalOwed || 0,
+          paidCount: payment.paidCount || 0,
+          membersCount: payment.membersCount || memberCount,
           status: payment.status,
           squadMembers: (payment.squadMembers || []).map(member => ({
             playerId: member.playerId,
             playerName: member.playerName,
-            amount: member.calculatedAmount || member.amount,
-            paidAmount: member.amountPaid || 0,
-            owedAmount: member.owedAmount || 0,
-            dueAmount: member.dueAmount || 0,
-            status: member.status
+            playerPhone: member.playerPhone,
+            amount: member.calculatedAmount ?? 0,
+            paidAmount: member.amountPaid ?? 0,
+            owedAmount: member.owedAmount ?? 0,
+            dueAmount: member.dueAmount ?? 0,
+            adjustedAmount: member.adjustedAmount,
+            isFreePlayer: member.adjustedAmount === 0,
+            status: member.paymentStatus || 'pending'
           })),
           createdAt: payment.createdAt
         }

@@ -6,10 +6,13 @@ import axios from 'axios';
 interface SquadMember {
   playerId: string;
   playerName: string;
+  playerPhone?: string;
   amount: number;
   paidAmount: number;
   owedAmount: number;
   dueAmount: number;
+  adjustedAmount?: number | null;
+  isFreePlayer?: boolean;
   status: 'pending' | 'partial' | 'paid' | 'overpaid';
 }
 
@@ -22,7 +25,7 @@ interface MatchInfo {
 
 interface PaymentData {
   _id: string;
-  match: MatchInfo;
+  match: MatchInfo | null;
   title: string;
   totalAmount: number;
   perPersonAmount: number;
@@ -30,6 +33,7 @@ interface PaymentData {
   totalPending: number;
   totalOwed: number;
   paidCount: number;
+  membersCount: number;
   status: string;
   squadMembers: SquadMember[];
   createdAt: string;
@@ -126,15 +130,37 @@ const PublicPaymentView: React.FC = () => {
     }
   };
 
-  // Compute status from amounts since API doesn't return status field
+  // Use status from API, with fallback calculation
   const getMemberStatus = (m: SquadMember) => {
-    if (m.paidAmount >= m.amount || m.owedAmount > 0) return 'paid';
-    if (m.paidAmount > 0) return 'partial';
+    if (m.status && m.status !== 'pending') return m.status;
+    if (m.isFreePlayer) return 'paid';
+    const amount = m.amount || 0;
+    const paid = m.paidAmount || 0;
+    if (paid >= amount && amount > 0) return 'paid';
+    if (m.owedAmount > 0) return 'overpaid';
+    if (paid > 0) return 'partial';
     return 'pending';
   };
 
-  const paidMembers = payment.squadMembers.filter(m => getMemberStatus(m) === 'paid');
-  const pendingMembers = payment.squadMembers.filter(m => getMemberStatus(m) === 'pending' || getMemberStatus(m) === 'partial');
+  // Separate members into paid (including overpaid, free players) and pending (including partial)
+  const paidMembers = payment.squadMembers.filter(m => {
+    const status = getMemberStatus(m);
+    return status === 'paid' || status === 'overpaid';
+  });
+  const pendingMembers = payment.squadMembers.filter(m => {
+    const status = getMemberStatus(m);
+    return status === 'pending' || status === 'partial';
+  });
+  
+  // Get display amount for pending members
+  const getPendingAmount = (m: SquadMember) => {
+    // Use dueAmount directly from API if available
+    if (m.dueAmount !== undefined && m.dueAmount !== null) return m.dueAmount;
+    // Fallback calculation
+    const amount = m.amount || 0;
+    const paid = m.paidAmount || 0;
+    return Math.max(0, amount - paid);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -193,7 +219,7 @@ const PublicPaymentView: React.FC = () => {
             <p className="text-xs text-slate-400 mt-1">Pending</p>
           </div>
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 text-center">
-            <p className="text-2xl md:text-3xl font-bold text-blue-400">₹{payment.perPersonAmount}</p>
+            <p className="text-2xl md:text-3xl font-bold text-blue-400">₹{payment.perPersonAmount || Math.ceil((payment.totalAmount || 0) / (payment.membersCount || payment.squadMembers.length || 1))}</p>
             <p className="text-xs text-slate-400 mt-1">Per Person</p>
           </div>
         </div>
@@ -203,17 +229,17 @@ const PublicPaymentView: React.FC = () => {
           <div className="flex justify-between text-sm mb-2">
             <span className="text-slate-400">Collection Progress</span>
             <span className="text-white font-medium">
-              {payment.paidCount} / {payment.squadMembers.length} paid
+              {payment.paidCount || 0} / {payment.membersCount || payment.squadMembers.length} paid
             </span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
-              style={{ width: `${(payment.totalCollected / payment.totalAmount) * 100}%` }}
+              style={{ width: `${Math.min(100, payment.totalAmount > 0 ? ((payment.totalCollected || 0) / payment.totalAmount) * 100 : 0)}%` }}
             ></div>
           </div>
           <p className="text-right text-xs text-slate-500 mt-1">
-            {Math.round((payment.totalCollected / payment.totalAmount) * 100)}% collected
+            {payment.totalAmount > 0 ? Math.round(((payment.totalCollected || 0) / payment.totalAmount) * 100) : 0}% collected
           </p>
         </div>
 
@@ -229,9 +255,23 @@ const PublicPaymentView: React.FC = () => {
             </div>
             <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
               {paidMembers.map((member, idx) => (
-                <div key={member.playerId} className="bg-slate-800/50 rounded-lg px-3 py-2 flex justify-between items-center">
-                  <span className="text-white font-medium text-sm">{idx + 1}. {member.playerName}</span>
-                  <span className="text-emerald-400 text-sm font-medium">₹{member.paidAmount}</span>
+                <div key={member.playerId || idx} className="bg-slate-800/50 rounded-lg px-3 py-2 flex justify-between items-center">
+                  <div>
+                    <span className="text-white font-medium text-sm">{idx + 1}. {member.playerName}</span>
+                    {member.isFreePlayer && (
+                      <span className="text-purple-400 text-xs ml-2">(Free)</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    {member.isFreePlayer ? (
+                      <span className="text-purple-400 text-sm font-medium">FREE</span>
+                    ) : (
+                      <span className="text-emerald-400 text-sm font-medium">₹{member.paidAmount || 0}</span>
+                    )}
+                    {(member.owedAmount || 0) > 0 && (
+                      <span className="text-blue-400 text-xs block">+₹{member.owedAmount} refund</span>
+                    )}
+                  </div>
                 </div>
               ))}
               {paidMembers.length === 0 && (
@@ -250,10 +290,15 @@ const PublicPaymentView: React.FC = () => {
             </div>
             <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
               {pendingMembers.map((member, idx) => (
-                <div key={member.playerId} className="bg-slate-800/50 rounded-lg px-3 py-2 flex justify-between items-center">
-                  <span className="text-white font-medium text-sm">{idx + 1}. {member.playerName}</span>
+                <div key={member.playerId || idx} className="bg-slate-800/50 rounded-lg px-3 py-2 flex justify-between items-center">
+                  <div>
+                    <span className="text-white font-medium text-sm">{idx + 1}. {member.playerName}</span>
+                    {(member.paidAmount || 0) > 0 && (
+                      <span className="text-slate-500 text-xs ml-2">(Paid: ₹{member.paidAmount})</span>
+                    )}
+                  </div>
                   <span className="text-amber-400 text-sm font-medium">
-                    ₹{member.amount - member.paidAmount} due
+                    ₹{getPendingAmount(member)} due
                   </span>
                 </div>
               ))}
