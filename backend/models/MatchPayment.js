@@ -161,6 +161,10 @@ const matchPaymentSchema = new mongoose.Schema({
     type: Number,
     default: 0 // Sum of all owedAmount (money to be refunded)
   },
+  perPersonAmount: {
+    type: Number,
+    default: 0 // Equal share for non-adjusted members
+  },
   membersCount: {
     type: Number,
     default: 0
@@ -219,6 +223,9 @@ matchPaymentSchema.methods.recalculateAmounts = function() {
   // Step 2: Calculate equal share for non-adjusted members
   const remainingAmount = this.totalAmount - totalAdjusted;
   const equalShare = nonAdjustedCount > 0 ? Math.ceil(remainingAmount / nonAdjustedCount) : 0;
+  
+  // Store the per-person amount (what non-adjusted players pay)
+  this.perPersonAmount = equalShare;
   
   // Step 3: Update each member's calculatedAmount and payment details
   this.squadMembers.forEach(member => {

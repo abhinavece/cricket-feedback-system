@@ -90,9 +90,8 @@ router.get('/:token', async (req, res) => {
         });
       }
       
-      // Calculate per person amount if not stored
-      const memberCount = payment.squadMembers?.length || 1;
-      const perPerson = payment.perPersonAmount || Math.ceil(payment.totalAmount / memberCount);
+      // Use stored perPersonAmount (calculated based on adjusted vs non-adjusted members)
+      const perPerson = payment.perPersonAmount || 0;
       
       data = {
         type: 'payment',
