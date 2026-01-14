@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!user) return false;
 
     const permissions = {
-      viewer: ['submit_feedback'],
+      viewer: ['submit_feedback', 'view_dashboard'],
       editor: ['submit_feedback', 'view_dashboard', 'edit_feedback'],
       admin: ['submit_feedback', 'view_dashboard', 'edit_feedback', 'manage_users', 'delete_feedback'],
     };

@@ -324,6 +324,7 @@ const SettingsPage: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
                       WhatsApp Number <span className="text-red-400">*</span>
+                      {isEditing && <span className="text-slate-500 text-xs ml-2">(cannot be changed)</span>}
                     </label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -335,7 +336,8 @@ const SettingsPage: React.FC = () => {
                         onChange={handlePhoneChange}
                         placeholder="9876543210"
                         maxLength={10}
-                        className="w-full pl-20 pr-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50"
+                        disabled={isEditing}
+                        className={`w-full pl-20 pr-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 ${isEditing ? 'opacity-60 cursor-not-allowed' : ''}`}
                       />
                     </div>
                   </div>

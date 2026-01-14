@@ -7,7 +7,7 @@ const { formatPhoneNumber } = require('../services/playerService');
 
 // GET /api/profile - Get current user's profile
 router.get('/', auth, async (req, res) => {
-  console.log('GET /api/profile - Fetching user profile');
+  console.log('GET /api/profile - Fetching user profile for:', req.user._id);
   try {
     const user = await User.findById(req.user._id).populate('playerId');
     
@@ -18,6 +18,21 @@ router.get('/', auth, async (req, res) => {
       });
     }
 
+    let player = user.playerId;
+    
+    // If user doesn't have playerId linked, check if there's a player with this userId
+    if (!player) {
+      player = await Player.findOne({ userId: user._id });
+      
+      // If found, link it to user
+      if (player) {
+        user.playerId = player._id;
+        user.profileComplete = true;
+        await user.save();
+        console.log('Auto-linked existing player to user:', player.name);
+      }
+    }
+
     const profile = {
       user: {
         _id: user._id,
@@ -25,18 +40,18 @@ router.get('/', auth, async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
-        profileComplete: user.profileComplete
+        profileComplete: user.profileComplete || !!player
       },
-      player: user.playerId ? {
-        _id: user.playerId._id,
-        name: user.playerId.name,
-        phone: user.playerId.phone,
-        role: user.playerId.role,
-        team: user.playerId.team,
-        cricHeroesId: user.playerId.cricHeroesId,
-        about: user.playerId.about,
-        battingStyle: user.playerId.battingStyle,
-        bowlingStyle: user.playerId.bowlingStyle
+      player: player ? {
+        _id: player._id,
+        name: player.name,
+        phone: player.phone,
+        role: player.role,
+        team: player.team,
+        cricHeroesId: player.cricHeroesId,
+        about: player.about,
+        battingStyle: player.battingStyle,
+        bowlingStyle: player.bowlingStyle
       } : null
     };
 
@@ -174,11 +189,11 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// PUT /api/profile - Update existing profile
+// PUT /api/profile - Update existing profile (phone number cannot be changed)
 router.put('/', auth, async (req, res) => {
   console.log('PUT /api/profile - Updating user profile:', req.body);
   try {
-    const { name, phone, playerRole, team, cricHeroesId, about, battingStyle, bowlingStyle } = req.body;
+    const { name, playerRole, team, cricHeroesId, about, battingStyle, bowlingStyle } = req.body;
     
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -188,48 +203,23 @@ router.put('/', auth, async (req, res) => {
       });
     }
 
-    if (!user.playerId) {
+    // Find player - either linked via playerId or via userId
+    let player = null;
+    if (user.playerId) {
+      player = await Player.findById(user.playerId);
+    }
+    if (!player) {
+      player = await Player.findOne({ userId: user._id });
+    }
+    
+    if (!player) {
       return res.status(400).json({
         success: false,
         error: 'No profile exists. Use POST to create.'
       });
     }
 
-    const player = await Player.findById(user.playerId);
-    if (!player) {
-      return res.status(404).json({
-        success: false,
-        error: 'Player record not found'
-      });
-    }
-
-    // If phone is being updated, validate it
-    if (phone) {
-      const formattedPhone = formatPhoneNumber(phone);
-      if (!formattedPhone || formattedPhone.length < 10) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid phone number format'
-        });
-      }
-
-      // Check if new phone already exists for another player
-      const existingPlayer = await Player.findOne({ 
-        phone: formattedPhone,
-        _id: { $ne: player._id }
-      });
-      
-      if (existingPlayer) {
-        return res.status(400).json({
-          success: false,
-          error: `Phone number already registered to another player: ${existingPlayer.name}`
-        });
-      }
-
-      player.phone = formattedPhone;
-    }
-
-    // Update fields
+    // Update fields (phone number is NOT updateable)
     if (name) player.name = name.trim();
     if (playerRole) player.role = playerRole;
     if (team) player.team = team;
@@ -240,6 +230,13 @@ router.put('/', auth, async (req, res) => {
 
     await player.save();
 
+    // Ensure user is linked to player
+    if (!user.playerId) {
+      user.playerId = player._id;
+      user.profileComplete = true;
+      await user.save();
+    }
+
     res.json({
       success: true,
       data: {
@@ -248,7 +245,7 @@ router.put('/', auth, async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
-          profileComplete: user.profileComplete
+          profileComplete: true
         },
         player
       },

@@ -268,9 +268,11 @@ const MobileSettingsTab: React.FC<MobileSettingsTabProps> = ({ onLogout }) => {
                 </div>
               </div>
 
-              {/* Phone */}
+              {/* Phone - Not editable */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">WhatsApp Number</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  WhatsApp Number <span className="text-slate-500 text-xs">(cannot be changed)</span>
+                </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <span className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-400 text-sm">+91</span>
@@ -278,9 +280,8 @@ const MobileSettingsTab: React.FC<MobileSettingsTabProps> = ({ onLogout }) => {
                     type="tel"
                     name="phone"
                     value={formData.phone?.replace(/^91/, '') || ''}
-                    onChange={handlePhoneChange}
-                    maxLength={10}
-                    className="w-full pl-20 pr-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+                    disabled
+                    className="w-full pl-20 pr-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 opacity-60 cursor-not-allowed"
                   />
                 </div>
               </div>
