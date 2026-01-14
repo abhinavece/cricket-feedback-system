@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { getStats } from '../../services/api';
+import { getStats, getProfile } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp } from 'lucide-react';
+import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings } from 'lucide-react';
 
 // Lazy load tab content - only loaded when tab is selected
 const MobileFeedbackTab = lazy(() => import('./MobileFeedbackTab'));
@@ -9,6 +9,8 @@ const MobileMatchesTab = lazy(() => import('./MobileMatchesTab'));
 const MobilePaymentsTab = lazy(() => import('./MobilePaymentsTab'));
 const MobileContactTeam = lazy(() => import('./MobileContactTeam'));
 const MobileWhatsAppTab = lazy(() => import('./MobileWhatsAppTab'));
+const MobileSettingsTab = lazy(() => import('./MobileSettingsTab'));
+const MobileProfileSetup = lazy(() => import('./MobileProfileSetup'));
 
 // Reuse desktop components for tabs that don't have mobile versions yet
 const UserManagement = lazy(() => import('../UserManagement'));
@@ -29,36 +31,44 @@ interface FeedbackStats {
 }
 
 interface MobileAdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
+  onLogout?: () => void;
 }
 
 const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
   activeTab: propActiveTab = 'feedback',
-  onTabChange
+  onTabChange,
+  onLogout
 }) => {
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(propActiveTab);
-  const { user, hasPermission } = useAuth();
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+  const { user, hasPermission, logout } = useAuth();
 
   useEffect(() => {
     setActiveTab(propActiveTab);
   }, [propActiveTab]);
 
-  // Fetch only stats on initial load - tabs lazy load their own data
+  // Fetch stats and profile status on initial load
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const statsData = await getStats();
+        const [statsData, profileData] = await Promise.all([
+          getStats(),
+          getProfile()
+        ]);
         setStats(statsData);
+        setProfileComplete(profileData.data.user.profileComplete);
       } catch (err) {
-        console.error('Error fetching stats:', err);
+        console.error('Error fetching data:', err);
+        setProfileComplete(false);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchData();
   }, []);
 
   const handleTabChange = (tab: typeof activeTab) => {
@@ -74,13 +84,27 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     { id: 'payments', label: 'Payments', icon: Wallet },
     { id: 'player-history', label: 'History', icon: History },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  // Admin users see all tabs, viewers only see feedback
+  // Admin users see all tabs, viewers only see feedback + settings
   const isViewer = user?.role === 'viewer';
   const visibleTabs = user?.role === 'admin' 
     ? allTabs 
-    : allTabs.filter(tab => tab.id === 'feedback');
+    : allTabs.filter(tab => tab.id === 'feedback' || tab.id === 'settings');
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      logout();
+    }
+  };
+
+  const handleProfileCreated = () => {
+    setProfileComplete(true);
+    handleTabChange('feedback');
+  };
 
   if (loading) {
     return (
@@ -90,8 +114,23 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     );
   }
 
-  // Show contact page for viewers trying to access admin-only tabs
-  if (isViewer && activeTab !== 'feedback') {
+  // Show profile setup for viewers without profile (except admins)
+  if (isViewer && profileComplete === false && activeTab !== 'settings') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
+        <Suspense fallback={<TabLoadingSpinner />}>
+          <MobileProfileSetup 
+            userName={user?.name} 
+            userEmail={user?.email}
+            onProfileCreated={handleProfileCreated}
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
+  // Show contact page for viewers trying to access admin-only tabs (but not settings)
+  if (isViewer && activeTab !== 'feedback' && activeTab !== 'settings') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
         <Suspense fallback={<TabLoadingSpinner />}>
@@ -166,6 +205,9 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
             <div className="mobile-tab-wrapper">
               <UserManagement />
             </div>
+          )}
+          {activeTab === 'settings' && (
+            <MobileSettingsTab onLogout={handleLogout} />
           )}
         </Suspense>
       </div>

@@ -39,7 +39,7 @@ const LoadingSpinner = () => (
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>(() => {
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings'>(() => {
     const savedTab = localStorage.getItem('activeTab');
     return (savedTab as any) || 'feedback';
   });

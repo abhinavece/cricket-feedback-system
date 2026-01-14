@@ -126,8 +126,15 @@ const PublicPaymentView: React.FC = () => {
     }
   };
 
-  const paidMembers = payment.squadMembers.filter(m => m.status === 'paid' || m.status === 'overpaid');
-  const pendingMembers = payment.squadMembers.filter(m => m.status === 'pending' || m.status === 'partial');
+  // Compute status from amounts since API doesn't return status field
+  const getMemberStatus = (m: SquadMember) => {
+    if (m.paidAmount >= m.amount || m.owedAmount > 0) return 'paid';
+    if (m.paidAmount > 0) return 'partial';
+    return 'pending';
+  };
+
+  const paidMembers = payment.squadMembers.filter(m => getMemberStatus(m) === 'paid');
+  const pendingMembers = payment.squadMembers.filter(m => getMemberStatus(m) === 'pending' || getMemberStatus(m) === 'partial');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

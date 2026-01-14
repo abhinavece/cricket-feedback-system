@@ -16,8 +16,8 @@ interface NavigationProps {
     role: 'viewer' | 'editor' | 'admin';
   } | null;
   onLogout: () => void;
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
   onToggleDevice?: () => void;
 }
 

@@ -11,6 +11,7 @@ const WhatsAppMessagingTab = lazy(() => import('./WhatsAppMessagingTab'));
 const MatchManagement = lazy(() => import('./MatchManagement'));
 const PaymentManagement = lazy(() => import('./PaymentManagement'));
 const HistoryTab = lazy(() => import('./HistoryTab'));
+const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 
 // Tab loading spinner
 const TabLoadingSpinner = () => (
@@ -36,8 +37,8 @@ interface FeedbackStats {
 }
 
 interface AdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -54,7 +55,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history'>(propActiveTab);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings'>(propActiveTab);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const hasFetchedInitial = React.useRef(false);
@@ -321,6 +322,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return { title: 'Messaging Hub', desc: 'Blast WhatsApp updates to your team' };
       case 'users':
         return { title: 'User Directory', desc: 'Manage access and roles for the platform' };
+      case 'settings':
+        return { title: 'Settings', desc: 'Manage your account and player profile' };
       default:
         return { title: 'Admin Dashboard', desc: 'Manage cricket feedback and user data' };
     }
@@ -427,6 +430,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </>
             )}
+            <button
+              onClick={() => { setActiveTab('settings'); onTabChange?.('settings'); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              Settings
+            </button>
           </nav>
 
           {/* Mobile: Clean Segmented Control */}
@@ -955,6 +968,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'users' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <UserManagement />
+          </Suspense>
+        )}
+        {activeTab === 'settings' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <SettingsPage />
           </Suspense>
         )}
       </div>

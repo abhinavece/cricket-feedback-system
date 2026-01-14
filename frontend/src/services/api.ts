@@ -424,4 +424,57 @@ export const listPublicLinks = async (resourceType: string, resourceId: string) 
   return response.data;
 };
 
+// Profile APIs
+export interface PlayerProfile {
+  _id: string;
+  name: string;
+  phone: string;
+  role: string;
+  team: string;
+  cricHeroesId?: string;
+  about?: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+}
+
+export interface UserProfile {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  profileComplete: boolean;
+}
+
+export interface ProfileData {
+  user: UserProfile;
+  player: PlayerProfile | null;
+}
+
+export interface ProfileCreateData {
+  name: string;
+  phone: string;
+  playerRole?: string;
+  team?: string;
+  cricHeroesId?: string;
+  about?: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+}
+
+export const getProfile = async (): Promise<{ success: boolean; data: ProfileData }> => {
+  const response = await api.get('/profile');
+  return response.data;
+};
+
+export const createProfile = async (data: ProfileCreateData): Promise<{ success: boolean; data: ProfileData; message: string }> => {
+  const response = await api.post('/profile', data);
+  return response.data;
+};
+
+export const updateProfile = async (data: Partial<ProfileCreateData>): Promise<{ success: boolean; data: ProfileData; message: string }> => {
+  const response = await api.put('/profile', data);
+  return response.data;
+};
+
 export default api;

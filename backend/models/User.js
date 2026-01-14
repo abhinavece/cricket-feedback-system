@@ -31,6 +31,15 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  playerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Player',
+    default: null,
+  },
+  profileComplete: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleAuth from '../GoogleAuth';
-import { Menu, X, Home, Settings, LogOut, LogIn, Monitor } from 'lucide-react';
+import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User } from 'lucide-react';
 
 interface MobileNavigationProps {
   currentView: 'form' | 'admin';
@@ -14,8 +14,8 @@ interface MobileNavigationProps {
     role: 'viewer' | 'editor' | 'admin';
   } | null;
   onLogout: () => void;
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
   onToggleDevice?: () => void;
 }
 
@@ -111,7 +111,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
               <button
                 onClick={handleAdminClick}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  currentView === 'admin'
+                  currentView === 'admin' && activeTab !== 'settings'
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : 'text-slate-300 hover:bg-slate-800'
                 }`}
@@ -119,6 +119,24 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
                 <Settings className="w-4 h-4" />
                 Dashboard
               </button>
+
+              {user && (
+                <button
+                  onClick={() => { 
+                    onViewChange('admin'); 
+                    onTabChange?.('settings'); 
+                    setIsMenuOpen(false); 
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                    currentView === 'admin' && activeTab === 'settings'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  My Profile
+                </button>
+              )}
 
               <div className="h-px bg-white/10 my-2" />
               
