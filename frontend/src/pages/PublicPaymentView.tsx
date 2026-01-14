@@ -9,6 +9,7 @@ interface SquadMember {
   amount: number;
   paidAmount: number;
   owedAmount: number;
+  dueAmount: number;
   status: 'pending' | 'partial' | 'paid' | 'overpaid';
 }
 
@@ -30,7 +31,7 @@ interface PaymentData {
   totalOwed: number;
   paidCount: number;
   status: string;
-  squad: SquadMember[];
+  squadMembers: SquadMember[];
   createdAt: string;
 }
 
@@ -50,8 +51,9 @@ const PublicPaymentView: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        // REACT_APP_API_URL already includes /api, so we just append /public/token
         const apiUrl = process.env.REACT_APP_API_URL || '';
-        const response = await axios.get(`${apiUrl}/api/public/${token}`);
+        const response = await axios.get(`${apiUrl}/public/${token}`);
         
         if (response.data.success) {
           setData(response.data.data);
@@ -124,8 +126,8 @@ const PublicPaymentView: React.FC = () => {
     }
   };
 
-  const paidMembers = payment.squad.filter(m => m.status === 'paid' || m.status === 'overpaid');
-  const pendingMembers = payment.squad.filter(m => m.status === 'pending' || m.status === 'partial');
+  const paidMembers = payment.squadMembers.filter(m => m.status === 'paid' || m.status === 'overpaid');
+  const pendingMembers = payment.squadMembers.filter(m => m.status === 'pending' || m.status === 'partial');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -194,7 +196,7 @@ const PublicPaymentView: React.FC = () => {
           <div className="flex justify-between text-sm mb-2">
             <span className="text-slate-400">Collection Progress</span>
             <span className="text-white font-medium">
-              {payment.paidCount} / {payment.squad.length} paid
+              {payment.paidCount} / {payment.squadMembers.length} paid
             </span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">

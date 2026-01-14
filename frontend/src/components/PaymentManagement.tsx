@@ -862,7 +862,11 @@ const PaymentManagement: React.FC = () => {
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                   </button>
                   <button
-                    onClick={() => setShowShareLinkModal(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setShowShareLinkModal(true);
+                    }}
                     className="p-1.5 bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 rounded-lg transition-colors"
                     title="Share Payment Link"
                   >
@@ -1347,6 +1351,15 @@ const PaymentManagement: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Share Link Modal - in detail view */}
+        <ShareLinkModal
+          isOpen={showShareLinkModal && !!payment}
+          onClose={() => setShowShareLinkModal(false)}
+          resourceType="payment"
+          resourceId={payment?._id || ''}
+          resourceTitle={payment ? `Payment: ${selectedMatch?.opponent || 'Match'} - ₹${payment.totalAmount}` : ''}
+        />
       </div>
     );
   }
@@ -1685,14 +1698,6 @@ const PaymentManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Share Link Modal - rendered outside payment conditional */}
-      <ShareLinkModal
-        isOpen={showShareLinkModal && !!payment}
-        onClose={() => setShowShareLinkModal(false)}
-        resourceType="payment"
-        resourceId={payment?._id || ''}
-        resourceTitle={payment ? `Payment: ${selectedMatch?.opponent || 'Match'} - ₹${payment.totalAmount}` : ''}
-      />
     </div>
   );
 };

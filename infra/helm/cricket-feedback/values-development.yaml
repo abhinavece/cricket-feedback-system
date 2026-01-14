@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "v95"
+    tag: "v96"
   replicaCount: 1
   resources:
     limits:
@@ -18,7 +18,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "v96"
+    tag: "v97"
   replicaCount: 1
   resources:
     limits:

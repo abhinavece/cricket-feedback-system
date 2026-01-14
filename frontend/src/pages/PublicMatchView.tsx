@@ -55,8 +55,9 @@ const PublicMatchView: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        // REACT_APP_API_URL already includes /api, so we just append /public/token
         const apiUrl = process.env.REACT_APP_API_URL || '';
-        const response = await axios.get(`${apiUrl}/api/public/${token}`);
+        const response = await axios.get(`${apiUrl}/public/${token}`);
         
         if (response.data.success) {
           setData(response.data.data);

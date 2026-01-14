@@ -405,8 +405,12 @@ export const generatePublicLink = async (payload: {
   return response.data;
 };
 
+// Get public resource - uses direct axios call without auth interceptors
+// This endpoint is publicly accessible without authentication
 export const getPublicResource = async (token: string) => {
-  const response = await api.get(`/public/${token}`);
+  // API_BASE_URL already includes /api (e.g., http://localhost:5002/api)
+  // Just append /public/token to it
+  const response = await axios.get(`${API_BASE_URL}/public/${token}`);
   return response.data;
 };
 

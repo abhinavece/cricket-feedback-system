@@ -104,12 +104,13 @@ router.get('/:token', async (req, res) => {
           totalOwed: payment.totalOwed,
           paidCount: payment.paidCount,
           status: payment.status,
-          squad: payment.squad.map(member => ({
+          squadMembers: (payment.squadMembers || []).map(member => ({
             playerId: member.playerId,
             playerName: member.playerName,
-            amount: member.amount,
-            paidAmount: member.paidAmount,
-            owedAmount: member.owedAmount,
+            amount: member.calculatedAmount || member.amount,
+            paidAmount: member.amountPaid || 0,
+            owedAmount: member.owedAmount || 0,
+            dueAmount: member.dueAmount || 0,
             status: member.status
           })),
           createdAt: payment.createdAt
