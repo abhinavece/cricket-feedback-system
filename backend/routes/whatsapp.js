@@ -7,6 +7,66 @@ const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
 
+/**
+ * Send WhatsApp message and log to database
+ * @param {string} toPhone - Recipient phone number
+ * @param {string} messageText - Message body text
+ * @param {Object} metadata - Optional metadata for logging
+ * @returns {Promise<string|null>} - Message ID or null if failed
+ */
+async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const apiVersion = process.env.WHATSAPP_API_VERSION || 'v18.0';
+
+  let messageId = null;
+
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: toPhone,
+        type: 'text',
+        text: { body: messageText, preview_url: false }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    messageId = response.data?.messages?.[0]?.id;
+    console.log(`✅ Message sent to ${toPhone}`);
+  } catch (err) {
+    console.error(`⚠️ Failed to send message to ${toPhone}:`, err.message);
+    throw err;
+  }
+
+  // Log to Message collection
+  try {
+    await Message.create({
+      from: phoneNumberId,
+      to: toPhone,
+      text: messageText,
+      direction: 'outgoing',
+      messageId: messageId,
+      timestamp: new Date(),
+      messageType: metadata.messageType || 'general',
+      matchId: metadata.matchId || null,
+      matchTitle: metadata.matchTitle || null,
+      paymentId: metadata.paymentId || null,
+      playerId: metadata.playerId || null,
+      playerName: metadata.playerName || null
+    });
+  } catch (logErr) {
+    console.error('⚠️ Failed to log outgoing message:', logErr.message);
+  }
+
+  return messageId;
+}
+
 // Webhook verification endpoint (GET)
 // Facebook sends a GET request to verify the webhook
 router.get('/webhook', (req, res) => {
@@ -89,7 +149,8 @@ router.post('/webhook', (req, res) => {
                 }
                 
                 // Process the message asynchronously with context
-                processIncomingMessage(from, text, message.id, contextId).catch(err => {
+                // Pass message.type to distinguish button/interactive from text messages
+                processIncomingMessage(from, text, message.id, contextId, message.type).catch(err => {
                   console.error('Error in processIncomingMessage:', err);
                 });
               }
@@ -109,13 +170,14 @@ router.post('/webhook', (req, res) => {
 });
 
 // Process incoming messages
-async function processIncomingMessage(from, text, messageId, contextId = null) {
+async function processIncomingMessage(from, text, messageId, contextId = null, messageType = 'text') {
   try {
     console.log('\n=== PROCESSING INCOMING MESSAGE ===');
     console.log(`From: ${from}`);
     console.log(`Text: "${text}"`);
     console.log(`Message ID: ${messageId}`);
     console.log(`Context ID: ${contextId || 'Not provided'}`);
+    console.log(`Message Type: ${messageType}`);
 
     // Check if this is a response to an availability request
     const Player = require('../models/Player');
@@ -247,29 +309,54 @@ async function processIncomingMessage(from, text, messageId, contextId = null) {
     // This ensures we never update availability for invalid/unrelated messages
     if (recentAvailabilityMessage && recentAvailabilityMessage.matchId && contextValidated) {
       console.log(`\n✅ Processing availability response for match: ${recentAvailabilityMessage.matchId}`);
-      
-      // Determine response type from button text
-      let response = 'pending';
+
+      // Determine if this is a button/interactive response vs free text
+      const isButtonResponse = messageType === 'button' || messageType === 'interactive';
       const lowerText = text.toLowerCase().trim();
-      
-      console.log(`Analyzing response text: "${lowerText}"`);
-      
-      // More comprehensive response detection
-      if (lowerText === 'yes' || lowerText === 'available' || lowerText.includes('confirm') || 
-          lowerText.includes('i am available') || lowerText.includes('i can play') ||
-          lowerText.includes('count me in') || lowerText === 'y') {
-        response = 'yes';
-      } else if (lowerText === 'no' || lowerText === 'not available' || lowerText.includes('decline') ||
-                 lowerText.includes('cannot') || lowerText.includes('can\'t') || 
-                 lowerText.includes('unavailable') || lowerText === 'n') {
-        response = 'no';
-      } else if (lowerText === 'tentative' || lowerText === 'maybe' || lowerText.includes('not sure') ||
-                 lowerText.includes('might') || lowerText.includes('possibly')) {
-        response = 'tentative';
+
+      // Determine response type based on message type
+      let response = null; // null means "don't update availability"
+
+      if (isButtonResponse) {
+        // Button responses - trust the exact text from button
+        console.log(`📱 Button response received: "${text}"`);
+        if (lowerText === 'yes' || lowerText === 'available') {
+          response = 'yes';
+        } else if (lowerText === 'no' || lowerText === 'not available') {
+          response = 'no';
+        } else if (lowerText === 'tentative' || lowerText === 'maybe') {
+          response = 'tentative';
+        }
+      } else {
+        // Text message - ONLY accept exact matches to prevent false positives
+        console.log(`💬 Text response received: "${text}"`);
+        const exactMatches = {
+          'yes': 'yes',
+          'y': 'yes',
+          'available': 'yes',
+          'no': 'no',
+          'n': 'no',
+          'not available': 'no',
+          'tentative': 'tentative',
+          'maybe': 'tentative'
+        };
+        response = exactMatches[lowerText] || null;
+
+        if (!response) {
+          console.log(`   ℹ️ Text "${lowerText}" is not an exact match - ignoring for availability`);
+        }
       }
-      
-      console.log(`Detected response type: ${response}`);
-      
+
+      console.log(`Detected response type: ${response || 'none (not a valid response)'}`);
+
+      // Only update availability if we got a valid response
+      if (!response) {
+        console.log(`⚠️ Message not recognized as availability response - skipping update`);
+        console.log(`   Message is still saved as general incoming message`);
+        console.log('=== END MESSAGE PROCESSING (NOT AN AVAILABILITY RESPONSE) ===\n');
+        return; // Don't proceed with availability update
+      }
+
       // Find player by phone - try multiple formats
       let player = await Player.findOne({ phone: { $regex: formattedPhone.slice(-10) } });
       
@@ -539,14 +626,67 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     // Step 3: Extract amount using OCR
     console.log('\n🔍 Running OCR to extract payment amount...');
     const ocrResult = await extractAmountFromScreenshot(imageBuffer);
-    let extractedAmount = ocrResult.amount;
 
-    // If OCR fails to extract amount, use the total due amount as fallback
-    if (!extractedAmount || extractedAmount <= 0) {
+    // If OCR fails to extract amount, flag for admin review (don't assume full payment)
+    if (!ocrResult.success || !ocrResult.amount || ocrResult.amount <= 0) {
+      console.log('⚠️ OCR failed - flagging for admin review');
+
+      // Store screenshot in oldest pending match and flag for review
+      const primaryPayment = await MatchPayment.findById(pendingPayments[0].paymentId);
+      const primaryMember = primaryPayment?.squadMembers.id(pendingPayments[0].memberId);
+
+      if (primaryMember) {
+        primaryMember.screenshotImage = imageBuffer;
+        primaryMember.screenshotContentType = mimeType || 'image/jpeg';
+        primaryMember.screenshotMediaId = imageId;
+        primaryMember.screenshotReceivedAt = new Date();
+        primaryMember.requiresReview = true;
+        primaryMember.reviewReason = 'ocr_failed';
+        await primaryPayment.save();
+        console.log('📸 Screenshot stored and flagged for admin review');
+      }
+
+      // Save incoming message record
+      await Message.create({
+        from: formattedPhone,
+        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        text: caption || '[Payment screenshot - pending admin review]',
+        direction: 'incoming',
+        messageId: messageId,
+        timestamp: new Date(),
+        messageType: 'payment_screenshot',
+        matchId: pendingPayments[0].matchId,
+        paymentId: primaryPayment?._id
+      });
+
+      // Calculate total outstanding for acknowledgment message
       const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
-      console.log(`⚠️ OCR could not extract amount, using total due: ₹${totalDue}`);
-      extractedAmount = totalDue;
+
+      // Send acknowledgment (NOT confirmation of payment)
+      const ackMessage = `📸 *Screenshot Received*\n\n` +
+        `Hi ${pendingPayments[0].playerName},\n\n` +
+        `We've received your payment screenshot.\n\n` +
+        `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
+        `_Admin will verify the amount and update your balance._`;
+
+      try {
+        await sendAndLogMessage(formattedPhone, ackMessage, {
+          messageType: 'payment_acknowledgment',
+          matchId: pendingPayments[0].matchId,
+          paymentId: primaryPayment?._id,
+          playerName: pendingPayments[0].playerName
+        });
+      } catch (ackErr) {
+        console.error('⚠️ Failed to send acknowledgment:', ackErr.message);
+      }
+
+      console.log('=== END PAYMENT SCREENSHOT PROCESSING (OCR FAILED) ===\n');
+      return; // Don't proceed with auto-distribution
     }
+
+    // OCR succeeded - continue with distribution
+    const extractedAmount = ocrResult.amount;
+    console.log(`💰 OCR extracted amount: ₹${extractedAmount}`);
 
     // Step 4: Distribute payment across matches (FIFO)
     const screenshotData = {
@@ -590,25 +730,14 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     // Build and send confirmation message
     // Pass pendingPayments to show ALL matches, not just ones that received payment
     const confirmMessage = buildDistributionConfirmation(distributionResult, pendingPayments);
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
     try {
-      await axios.post(
-        `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
-        {
-          messaging_product: 'whatsapp',
-          to: formattedPhone,
-          type: 'text',
-          text: { body: confirmMessage, preview_url: false }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      console.log('✅ Confirmation message sent');
+      await sendAndLogMessage(formattedPhone, confirmMessage, {
+        messageType: 'payment_confirmation',
+        matchId: primaryDistribution?.matchId,
+        paymentId: primaryDistribution?.paymentId,
+        playerName: distributionResult.playerName
+      });
     } catch (confirmErr) {
       console.error('⚠️ Failed to send confirmation:', confirmErr.message);
     }

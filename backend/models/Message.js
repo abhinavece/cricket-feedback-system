@@ -45,7 +45,7 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['general', 'availability_request', 'availability_response', 'availability_reminder', 'match_update', 'payment_request', 'payment_screenshot'],
+    enum: ['general', 'availability_request', 'availability_response', 'availability_reminder', 'match_update', 'payment_request', 'payment_screenshot', 'payment_confirmation', 'payment_acknowledgment'],
     default: 'general',
     index: true
   },

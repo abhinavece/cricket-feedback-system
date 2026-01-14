@@ -4,31 +4,76 @@
  * Extracts payment amounts from UPI/bank transfer screenshots.
  * Uses Google Cloud Vision for accurate text detection.
  * Free tier: 1000 requests/month
+ *
+ * NOTE: OCR is completely optional. If credentials are not configured,
+ * the service gracefully returns null and admin manually enters amounts.
  */
 
-const vision = require('@google-cloud/vision');
+const fs = require('fs');
+const path = require('path');
 
-// Initialize client with service account credentials
-// Expects either GOOGLE_CLOUD_KEYFILE env var or google-cloud-key.json in project root
+// Check if Google Cloud Vision is available
+let vision = null;
 let client = null;
+let initialized = false; // Track if we've attempted initialization
 
-const getVisionClient = () => {
-  if (client) return client;
+// Determine credentials path
+const getCredentialsPath = () => {
+  if (process.env.GOOGLE_CLOUD_KEYFILE) {
+    const envPath = process.env.GOOGLE_CLOUD_KEYFILE;
+    if (fs.existsSync(envPath)) {
+      return envPath;
+    }
+    console.log(`⚠️ GOOGLE_CLOUD_KEYFILE set to ${envPath} but file not found`);
+    return null;
+  }
+  // Check common locations
+  const possiblePaths = [
+    './google-cloud-key.json',
+    path.join(process.cwd(), 'google-cloud-key.json'),
+    '/app/google-cloud-key.json'
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return null;
+};
 
-  const keyFilename = process.env.GOOGLE_CLOUD_KEYFILE || './google-cloud-key.json';
+// Initialize only if credentials exist
+const initializeVision = () => {
+  // If already attempted initialization, return cached result
+  if (initialized) {
+    return client;
+  }
+
+  initialized = true;
+  const keyFilename = getCredentialsPath();
+
+  if (!keyFilename) {
+    console.log('ℹ️ Google Cloud Vision credentials not found - OCR disabled');
+    console.log('   To enable OCR, set GOOGLE_CLOUD_KEYFILE env var or add google-cloud-key.json');
+    client = null;
+    return null;
+  }
 
   try {
+    vision = require('@google-cloud/vision');
     client = new vision.ImageAnnotatorClient({
       keyFilename
     });
-    console.log('✅ Google Cloud Vision client initialized');
+    console.log('✅ Google Cloud Vision client initialized with:', keyFilename);
+    return client;
   } catch (error) {
     console.error('❌ Failed to initialize Google Cloud Vision:', error.message);
-    console.error('   Make sure GOOGLE_CLOUD_KEYFILE env var is set or google-cloud-key.json exists');
     client = null;
+    return null;
   }
+};
 
-  return client;
+const getVisionClient = () => {
+  return initializeVision();
 };
 
 /**
