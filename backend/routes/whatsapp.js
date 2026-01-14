@@ -271,28 +271,15 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
       }
     }
 
-    // METHOD 2: Fallback to phone number matching ONLY if NO contextId was provided
-    // If contextId was provided but invalid, we should NOT fallback - this prevents wrong matches
-    if (!recentAvailabilityMessage && !contextIdProvided) {
-      console.log(`\n🔍 METHOD 2: No context ID provided, falling back to phone number matching...`);
-      console.log(`Searching for messages with phone variants:`, phoneVariants);
-
-      // Find the most recent availability request sent to this number
-      // Only match actual availability_request or availability_reminder messages
-      recentAvailabilityMessage = await Message.findOne({
-        to: { $in: phoneVariants },
-        messageType: { $in: ['availability_request', 'availability_reminder'] },
-        direction: 'outgoing',
-        matchId: { $exists: true, $ne: null } // Must have a matchId
-      }).sort({ timestamp: -1 });
-
-      if (recentAvailabilityMessage) {
-        contextValidated = true;
-        console.log(`✅ Found availability request via phone fallback`);
+    // NO FALLBACK: Only context.id based matching is allowed
+    // If no valid context.id, the message will NOT update availability
+    if (!recentAvailabilityMessage) {
+      if (contextIdProvided) {
+        console.log(`\n⚠️ Context ID was provided but invalid - message will NOT update availability`);
+      } else {
+        console.log(`\n⚠️ No context ID provided - message will NOT update availability`);
       }
-    } else if (!recentAvailabilityMessage && contextIdProvided) {
-      console.log(`\n⚠️ Context ID was provided but invalid - NOT falling back to phone matching`);
-      console.log(`   This protects against updating wrong availability records`);
+      console.log(`   Only replies to availability requests (with valid context.id) can update availability`);
     }
 
     console.log(`\n📊 Context Validation Summary:`);

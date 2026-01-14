@@ -159,7 +159,7 @@ const paymentMemberSchema = new mongoose.Schema({
   },
   reviewReason: {
     type: String,
-    enum: ['ocr_mismatch', 'partial_payment', 'overpayment', null],
+    enum: ['ocr_mismatch', 'partial_payment', 'overpayment', 'ocr_failed', null],
     default: null
   },
   // Track if payment was auto-distributed from another match payment
