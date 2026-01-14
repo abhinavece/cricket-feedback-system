@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2 } from 'lucide-react';
 import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
 import SquadImageGenerator from './SquadImageGenerator';
 import WhatsAppImageShareModal from './WhatsAppImageShareModal';
+import ShareLinkModal from './ShareLinkModal';
 
 interface Match {
   _id: string;
@@ -95,6 +96,9 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   // Squad Image Share state
   const [showWhatsAppShareModal, setShowWhatsAppShareModal] = useState(false);
   const [squadImageBlob, setSquadImageBlob] = useState<Blob | null>(null);
+  
+  // Public Share Link state
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
 
   const loadMatchAndAvailability = React.useCallback(async () => {
     try {
@@ -422,6 +426,13 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                 <span className="sm:hidden">Copy</span>
               </button>
             )}
+            <button
+              onClick={() => setShowShareLinkModal(true)}
+              className="px-2 py-1.5 md:px-4 md:py-2 bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-pink-500/30"
+            >
+              <Share2 className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Share</span>
+            </button>
             {onDelete && (
               <button
                 onClick={() => onDelete(match._id)}
@@ -1137,6 +1148,15 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         imageBlob={squadImageBlob}
         matchTitle={`${match.opponent || 'Match'} @ ${match.ground}`}
         onSend={handleSendWhatsAppImage}
+      />
+
+      {/* Public Share Link Modal */}
+      <ShareLinkModal
+        isOpen={showShareLinkModal}
+        onClose={() => setShowShareLinkModal(false)}
+        resourceType="match"
+        resourceId={match._id}
+        resourceTitle={`${match.opponent || 'Match'} @ ${match.ground} - ${new Date(match.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
       />
     </div>
   );

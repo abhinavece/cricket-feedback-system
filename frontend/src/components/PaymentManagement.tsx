@@ -26,8 +26,10 @@ import {
   TrendingUp,
   Search,
   Eye,
-  Filter
+  Filter,
+  Share2
 } from 'lucide-react';
+import ShareLinkModal from './ShareLinkModal';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
 import {
   getMatches,
@@ -165,6 +167,9 @@ const PaymentManagement: React.FC = () => {
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const hasFetchedInitial = React.useRef(false);
+  
+  // Share Link modal
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
 
   useEffect(() => {
     if (hasFetchedInitial.current) return;
@@ -855,6 +860,13 @@ const PaymentManagement: React.FC = () => {
                     title="Refresh"
                   >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => setShowShareLinkModal(true)}
+                    className="p-1.5 bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 rounded-lg transition-colors"
+                    title="Share Payment Link"
+                  >
+                    <Share2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeletePayment(payment._id)}
@@ -1672,6 +1684,15 @@ const PaymentManagement: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Share Link Modal - rendered outside payment conditional */}
+      <ShareLinkModal
+        isOpen={showShareLinkModal && !!payment}
+        onClose={() => setShowShareLinkModal(false)}
+        resourceType="payment"
+        resourceId={payment?._id || ''}
+        resourceTitle={payment ? `Payment: ${selectedMatch?.opponent || 'Match'} - ₹${payment.totalAmount}` : ''}
+      />
     </div>
   );
 };

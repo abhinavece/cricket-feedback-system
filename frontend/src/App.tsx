@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { submitFeedback } from './services/api';
@@ -6,6 +7,10 @@ import { isMobileDevice } from './hooks/useDevice';
 import type { FeedbackForm as FeedbackFormData } from './types';
 import { Smartphone, Monitor } from 'lucide-react';
 import './theme.css';
+
+// Public pages (no auth required)
+const PublicMatchView = lazy(() => import('./pages/PublicMatchView'));
+const PublicPaymentView = lazy(() => import('./pages/PublicPaymentView'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -164,11 +169,22 @@ function AppContent() {
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || 'your-google-client-id'}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <BrowserRouter>
+      <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || 'your-google-client-id'}>
+        <AuthProvider>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              {/* Public share routes - no auth required */}
+              <Route path="/share/match/:token" element={<PublicMatchView />} />
+              <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+              
+              {/* Main app route */}
+              <Route path="/*" element={<AppContent />} />
+            </Routes>
+          </Suspense>
+        </AuthProvider>
+      </GoogleOAuthProvider>
+    </BrowserRouter>
   );
 }
 

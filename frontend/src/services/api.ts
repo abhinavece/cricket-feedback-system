@@ -394,4 +394,30 @@ export const getPlayerPaymentHistory = async (
   return response.data;
 };
 
+// Public Link APIs
+export const generatePublicLink = async (payload: {
+  resourceType: 'match' | 'payment';
+  resourceId: string;
+  viewType?: 'full' | 'squad' | 'overview' | 'payment';
+  expiresInDays?: number;
+}) => {
+  const response = await api.post('/public/generate', payload);
+  return response.data;
+};
+
+export const getPublicResource = async (token: string) => {
+  const response = await api.get(`/public/${token}`);
+  return response.data;
+};
+
+export const deactivatePublicLink = async (token: string) => {
+  const response = await api.delete(`/public/${token}`);
+  return response.data;
+};
+
+export const listPublicLinks = async (resourceType: string, resourceId: string) => {
+  const response = await api.get(`/public/list/${resourceType}/${resourceId}`);
+  return response.data;
+};
+
 export default api;
