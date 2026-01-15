@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 // Get API base URL from environment
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 interface SSEEvent {
   type: string;
@@ -100,10 +100,11 @@ export function useSSE({
     if (eventSourceRef.current?.readyState === EventSource.OPEN) return;
     if (eventSourceRef.current?.readyState === EventSource.CONNECTING) return;
 
-    // Get auth token
-    const token = localStorage.getItem('token');
+    // Get auth token (stored as 'authToken' in this app)
+    const token = localStorage.getItem('authToken');
     if (!token) {
       console.warn('SSE: No auth token found, skipping connection');
+      setStatus('disconnected');
       return;
     }
 
