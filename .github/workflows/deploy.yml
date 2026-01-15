@@ -261,8 +261,10 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
 
-      - name: Build Helm dependencies
+      - name: Add Helm repos and build dependencies
         run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
           helm dependency build ./infra/helm/cricket-feedback
 
       - name: Deploy via Helm
