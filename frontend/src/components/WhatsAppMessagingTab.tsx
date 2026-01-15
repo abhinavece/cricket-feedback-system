@@ -338,17 +338,47 @@ const WhatsAppMessagingTab: React.FC = () => {
   const handleSendHistoryMessage = async () => {
     if (!historyNewMessage.trim() || !historyPlayer) return;
     
+    const messageText = historyNewMessage.trim();
+    const tempId = `temp-${Date.now()}`;
+    
+    // Optimistic update - add message to UI immediately
+    const optimisticMessage = {
+      _id: tempId,
+      direction: 'outgoing',
+      text: messageText,
+      timestamp: new Date().toISOString(),
+      status: 'sending'
+    };
+    setHistoryMessages(prev => [...prev, optimisticMessage]);
+    setHistoryNewMessage('');
+    
+    // Scroll to bottom
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+    
     try {
       setSendingHistoryMessage(true);
-      await sendWhatsAppMessage({
+      const response = await sendWhatsAppMessage({
         playerIds: [historyPlayer._id],
-        message: historyNewMessage.trim(),
+        message: messageText,
         previewUrl: false
       });
-      setHistoryNewMessage('');
-      // Polling will update the UI
+      
+      // Update optimistic message with real data
+      setHistoryMessages(prev => prev.map(msg => 
+        msg._id === tempId 
+          ? { ...msg, _id: response.results?.[0]?.messageId || tempId, status: 'sent' }
+          : msg
+      ));
     } catch (err: any) {
       console.error(err);
+      // Mark message as failed
+      setHistoryMessages(prev => prev.map(msg => 
+        msg._id === tempId 
+          ? { ...msg, status: 'failed' }
+          : msg
+      ));
       setError(err?.response?.data?.error || 'Failed to send message');
     } finally {
       setSendingHistoryMessage(false);

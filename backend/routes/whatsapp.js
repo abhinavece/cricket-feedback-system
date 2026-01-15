@@ -612,24 +612,39 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       phone: { $regex: formattedPhone.slice(-10) }
     });
     
-    // Get image URL from WhatsApp Media API
+    // Get image URL and download image data from WhatsApp Media API
     let imageUrl = null;
+    let imageData = null;
+    let mimeType = 'image/jpeg';
+    
     try {
       const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
       const apiVersion = 'v19.0';
       const mediaUrl = `https://graph.facebook.com/${apiVersion}/${imageId}`;
       
+      // Step 1: Get media info (URL and mime type)
       const mediaResponse = await axios.get(mediaUrl, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       
       imageUrl = mediaResponse.data.url;
-      console.log(`Image URL obtained: ${imageUrl ? 'Yes' : 'No'}`);
+      mimeType = mediaResponse.data.mime_type || 'image/jpeg';
+      console.log(`Image URL obtained: ${imageUrl ? 'Yes' : 'No'}, MIME: ${mimeType}`);
+      
+      // Step 2: Download and cache the actual image data
+      if (imageUrl) {
+        const imageResponse = await axios.get(imageUrl, {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          responseType: 'arraybuffer'
+        });
+        imageData = Buffer.from(imageResponse.data);
+        console.log(`Image data cached: ${imageData.length} bytes`);
+      }
     } catch (err) {
-      console.error('Failed to get image URL:', err.message);
+      console.error('Failed to get/cache image:', err.message);
     }
     
-    // Save image message to database
+    // Save image message to database (with cached image data)
     const savedMessage = await Message.create({
       from: formattedPhone,
       to: process.env.WHATSAPP_PHONE_NUMBER_ID,
@@ -642,11 +657,27 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       playerName: player?.name || null,
       imageId: imageId,
       imageUrl: imageUrl,
-      imageMimeType: 'image/jpeg',
+      imageMimeType: mimeType,
+      imageData: imageData,
       caption: caption || null
     });
     
     console.log(`✅ Image message saved to history (ID: ${savedMessage._id})`);
+    
+    // Broadcast SSE event for incoming image message
+    sseManager.broadcast('messages', {
+      type: 'message:received',
+      messageId: savedMessage._id.toString(),
+      from: formattedPhone,
+      text: caption || '[Image]',
+      playerName: player?.name || null,
+      playerId: player?._id?.toString() || null,
+      direction: 'incoming',
+      timestamp: savedMessage.timestamp,
+      imageId: imageId,
+      messageType: 'image'
+    });
+    
     return savedMessage;
   } catch (error) {
     console.error('❌ Error saving image message:', error.message);
@@ -1524,7 +1555,7 @@ router.post('/send-image', auth, async (req, res) => {
   }
 });
 
-// GET /api/whatsapp/media/:mediaId - Proxy endpoint to fetch WhatsApp media (no auth for img tags)
+// GET /api/whatsapp/media/:mediaId - Serve cached image or fetch from WhatsApp (no auth for img tags)
 router.get('/media/:mediaId', async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -1536,6 +1567,18 @@ router.get('/media/:mediaId', async (req, res) => {
       });
     }
     
+    // First, try to find cached image in database
+    const cachedMessage = await Message.findOne({ imageId: mediaId });
+    
+    if (cachedMessage && cachedMessage.imageData) {
+      console.log(`Serving cached image for mediaId: ${mediaId}`);
+      res.set('Content-Type', cachedMessage.imageMimeType || 'image/jpeg');
+      res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      return res.send(cachedMessage.imageData);
+    }
+    
+    // Fallback: Try to fetch from WhatsApp (for old messages without cached data)
+    console.log(`Cache miss for mediaId: ${mediaId}, fetching from WhatsApp...`);
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
     const apiVersion = 'v19.0';
     
@@ -1554,17 +1597,29 @@ router.get('/media/:mediaId', async (req, res) => {
       responseType: 'arraybuffer'
     });
     
-    // Step 3: Send the image to client
+    const imageBuffer = Buffer.from(imageResponse.data);
+    
+    // Step 3: Cache the image for future requests (if message exists)
+    if (cachedMessage) {
+      cachedMessage.imageData = imageBuffer;
+      cachedMessage.imageMimeType = mimeType;
+      await cachedMessage.save();
+      console.log(`Cached image data for mediaId: ${mediaId}`);
+    }
+    
+    // Step 4: Send the image to client
     res.set('Content-Type', mimeType);
     res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-    res.send(Buffer.from(imageResponse.data));
+    res.send(imageBuffer);
     
   } catch (error) {
     console.error('Error fetching WhatsApp media:', error.response?.data || error.message);
-    res.status(500).json({
+    
+    // Return a placeholder image or error
+    res.status(404).json({
       success: false,
-      error: 'Failed to fetch media',
-      details: error.response?.data?.error?.message || error.message
+      error: 'Image not available',
+      details: 'The image may have expired or is no longer accessible'
     });
   }
 });

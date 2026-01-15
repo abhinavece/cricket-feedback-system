@@ -70,6 +70,10 @@ const messageSchema = new mongoose.Schema({
   imageMimeType: {
     type: String
   },
+  // Cached image data (to avoid WhatsApp URL expiry issues)
+  imageData: {
+    type: Buffer
+  },
   caption: {
     type: String
   },
