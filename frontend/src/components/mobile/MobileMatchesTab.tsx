@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getMatches, getMatch, createMatch, updateMatch, deleteMatch, getMatchAvailability, updateAvailability, deleteAvailability, createAvailability, getPlayers } from '../../services/api';
 import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy, UserPlus, Users } from 'lucide-react';
+import { matchEvents } from '../../utils/matchEvents';
 
 interface Match {
   _id: string;
@@ -116,6 +117,8 @@ const MobileMatchesTab: React.FC = () => {
       }
       resetForm();
       fetchMatches(true);
+      // Notify other components about match change
+      matchEvents.emit();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save match');
     } finally {
@@ -131,6 +134,8 @@ const MobileMatchesTab: React.FC = () => {
       setSuccess('Match deleted');
       setSelectedMatch(null);
       fetchMatches(true);
+      // Notify other components about match change
+      matchEvents.emit();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete match');
     } finally {

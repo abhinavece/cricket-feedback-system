@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updatePlayer, deletePlayer, getUpcomingMatches, createMatch } from '../services/api';
 import type { Player } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 import MatchForm from './MatchForm';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
+import { matchEvents } from '../utils/matchEvents';
 
 interface TemplateConfig {
   id: string;
@@ -68,6 +69,9 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
   const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [oldestTimestamp, setOldestTimestamp] = useState<string | null>(null);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [showMatchForm, setShowMatchForm] = useState(false);
   const [creatingMatch, setCreatingMatch] = useState(false);
@@ -217,12 +221,18 @@ const WhatsAppMessagingTab: React.FC = () => {
 
   // Single player deletion only
 
-  const fetchHistory = async (player: Player) => {
+  const fetchHistory = async (player: Player, isInitial = true) => {
     try {
-      setLoadingHistory(true);
-      setHistoryPlayer(player);
-      const response = await getMessageHistory(player.phone);
+      if (isInitial) {
+        setLoadingHistory(true);
+        setHistoryPlayer(player);
+        setHistoryMessages([]);
+        setOldestTimestamp(null);
+      }
+      const response = await getMessageHistory(player.phone, { limit: 10 });
       setHistoryMessages(response.data || []);
+      setHasMoreHistory(response.pagination?.hasMore || false);
+      setOldestTimestamp(response.pagination?.oldestTimestamp || null);
       setLastSynced(new Date());
     } catch (err) {
       console.error(err);
@@ -232,16 +242,55 @@ const WhatsAppMessagingTab: React.FC = () => {
     }
   };
 
-  // Auto-refresh history when modal is open
+  // Load more older messages
+  const loadMoreHistory = async () => {
+    if (!historyPlayer || !oldestTimestamp || loadingMoreHistory) return;
+    
+    try {
+      setLoadingMoreHistory(true);
+      const response = await getMessageHistory(historyPlayer.phone, { 
+        limit: 10, 
+        before: oldestTimestamp 
+      });
+      
+      if (response.data && response.data.length > 0) {
+        // Prepend older messages
+        setHistoryMessages(prev => [...response.data, ...prev]);
+        setOldestTimestamp(response.pagination?.oldestTimestamp || null);
+        setHasMoreHistory(response.pagination?.hasMore || false);
+      } else {
+        setHasMoreHistory(false);
+      }
+    } catch (err) {
+      console.error('Failed to load more messages:', err);
+    } finally {
+      setLoadingMoreHistory(false);
+    }
+  };
+
+  // Auto-refresh history when modal is open (only fetch newest messages)
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (historyPlayer) {
       console.log(`Setting up polling for ${historyPlayer.phone}`);
       interval = setInterval(async () => {
         try {
-          const response = await getMessageHistory(historyPlayer.phone);
+          const response = await getMessageHistory(historyPlayer.phone, { limit: 10 });
           if (response.success && response.data) {
-            setHistoryMessages(response.data);
+            // Only update if we have new messages (compare last message timestamp)
+            setHistoryMessages(prev => {
+              const newMessages = response.data || [];
+              if (newMessages.length === 0) return prev;
+              
+              // Merge: keep older messages, add new ones
+              const lastOldTimestamp = prev.length > 0 ? new Date(prev[prev.length - 1].timestamp).getTime() : 0;
+              const newerMessages = newMessages.filter((m: any) => new Date(m.timestamp).getTime() > lastOldTimestamp);
+              
+              if (newerMessages.length > 0) {
+                return [...prev, ...newerMessages];
+              }
+              return prev;
+            });
             setLastSynced(new Date());
           }
         } catch (err) {
@@ -281,6 +330,15 @@ const WhatsAppMessagingTab: React.FC = () => {
     hasFetchedInitial.current = true;
     fetchPlayers();
     fetchMatches();
+  }, []);
+
+  // Listen for match changes from other components (unified CRUD sync)
+  useEffect(() => {
+    const unsubscribe = matchEvents.subscribe(() => {
+      console.log('[WhatsAppMessagingTab] Match event received, refreshing matches');
+      fetchMatches();
+    });
+    return unsubscribe;
   }, []);
 
   const stats = useMemo(() => {
@@ -760,11 +818,37 @@ const WhatsAppMessagingTab: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
+                  {/* Load More Button */}
+                  {hasMoreHistory && (
+                    <div className="flex justify-center py-2">
+                      <button
+                        onClick={loadMoreHistory}
+                        disabled={loadingMoreHistory}
+                        className="px-4 py-2 text-xs font-medium text-[#128C7E] bg-white rounded-full shadow-sm hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {loadingMoreHistory ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                            </svg>
+                            Load older messages
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  
                   {historyMessages.map((msg, idx) => {
                     const isIncoming = msg.direction === 'incoming';
+                    const hasImage = msg.imageId;
                     return (
                       <div 
-                        key={idx} 
+                        key={msg._id || idx} 
                         className={`flex flex-col ${isIncoming ? 'items-start' : 'items-end'} max-w-[85%] ${isIncoming ? 'self-start' : 'self-end'}`}
                       >
                         <div className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed ${
@@ -779,7 +863,33 @@ const WhatsAppMessagingTab: React.FC = () => {
                               : '-right-2 border-t-[#dcf8c6] border-r-[10px] border-r-transparent'
                           }`}></div>
                           
-                          <div className="whitespace-pre-wrap">{msg.text}</div>
+                          {/* Image display */}
+                          {hasImage && (
+                            <div className="mb-2">
+                              <img 
+                                src={`${process.env.REACT_APP_API_URL || ''}/api/whatsapp/media/${msg.imageId}`}
+                                alt="Shared image"
+                                className="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/api/whatsapp/media/${msg.imageId}`, '_blank')}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className="hidden flex items-center gap-2 p-3 bg-gray-100 rounded-lg text-gray-500 text-sm">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Image unavailable</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Text/Caption */}
+                          {msg.text && msg.text !== '[Image]' && (
+                            <div className="whitespace-pre-wrap">{msg.text}</div>
+                          )}
                           
                           <div className="flex items-center justify-end gap-1 mt-1">
                             <span className="text-[10px] opacity-50 font-medium tabular-nums">

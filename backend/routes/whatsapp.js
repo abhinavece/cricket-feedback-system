@@ -135,6 +135,11 @@ router.post('/webhook', (req, res) => {
                 const imageId = message.image?.id;
                 const caption = message.image?.caption || '';
                 
+                // Save image message to history first
+                saveImageMessage(from, imageId, message.id, caption).catch(err => {
+                  console.error('Error saving image message:', err);
+                });
+                
                 processPaymentScreenshot(from, imageId, message.id, contextId, caption).catch(err => {
                   console.error('Error in processPaymentScreenshot:', err);
                 });
@@ -533,6 +538,65 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
   }
 }
 
+// Save image message to history for display in chat
+async function saveImageMessage(from, imageId, messageId, caption) {
+  try {
+    console.log('\n=== SAVING IMAGE MESSAGE TO HISTORY ===');
+    
+    // Format phone number
+    let formattedPhone = from.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+    
+    // Find associated player
+    const Player = require('../models/Player');
+    const player = await Player.findOne({
+      phone: { $regex: formattedPhone.slice(-10) }
+    });
+    
+    // Get image URL from WhatsApp Media API
+    let imageUrl = null;
+    try {
+      const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      const apiVersion = 'v19.0';
+      const mediaUrl = `https://graph.facebook.com/${apiVersion}/${imageId}`;
+      
+      const mediaResponse = await axios.get(mediaUrl, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      
+      imageUrl = mediaResponse.data.url;
+      console.log(`Image URL obtained: ${imageUrl ? 'Yes' : 'No'}`);
+    } catch (err) {
+      console.error('Failed to get image URL:', err.message);
+    }
+    
+    // Save image message to database
+    const savedMessage = await Message.create({
+      from: formattedPhone,
+      to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+      text: caption || '[Image]',
+      direction: 'incoming',
+      messageId: messageId,
+      timestamp: new Date(),
+      messageType: 'payment_screenshot',
+      playerId: player?._id || null,
+      playerName: player?.name || null,
+      imageId: imageId,
+      imageUrl: imageUrl,
+      imageMimeType: 'image/jpeg',
+      caption: caption || null
+    });
+    
+    console.log(`✅ Image message saved to history (ID: ${savedMessage._id})`);
+    return savedMessage;
+  } catch (error) {
+    console.error('❌ Error saving image message:', error.message);
+    throw error;
+  }
+}
+
 // Import OCR and distribution services
 const { extractAmountFromScreenshot } = require('../services/ocrService');
 const { getPendingPaymentsForPlayer, distributePaymentFIFO, buildDistributionConfirmation } = require('../services/paymentDistributionService');
@@ -737,10 +801,11 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
   }
 }
 
-// GET /api/whatsapp/messages/:phone - Get message history for a phone number
+// GET /api/whatsapp/messages/:phone - Get message history for a phone number (with pagination)
 router.get('/messages/:phone', auth, async (req, res) => {
   try {
     const { phone } = req.params;
+    const { limit = 10, before } = req.query; // before = timestamp cursor for pagination
     
     // Disable caching for this endpoint
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -748,7 +813,7 @@ router.get('/messages/:phone', auth, async (req, res) => {
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
 
-    console.log(`Fetching message history for phone: ${phone}`);
+    console.log(`Fetching message history for phone: ${phone}, limit: ${limit}, before: ${before || 'none'}`);
     
     // Format phone number to match how it's stored
     let formattedPhone = phone.replace(/\D/g, '');
@@ -756,20 +821,46 @@ router.get('/messages/:phone', auth, async (req, res) => {
       formattedPhone = '91' + formattedPhone;
     }
     
-    console.log(`Querying messages for formatted phone: ${formattedPhone}`);
-
-    const messages = await Message.find({
+    // Build query
+    const query = {
       $or: [
         { from: formattedPhone },
         { to: formattedPhone }
       ]
-    }).sort({ timestamp: 1 });
+    };
+    
+    // If 'before' timestamp is provided, get messages older than that
+    if (before) {
+      query.timestamp = { $lt: new Date(before) };
+    }
 
-    console.log(`Found ${messages.length} messages for ${formattedPhone}`);
+    // Get total count for this phone (without pagination)
+    const totalCount = await Message.countDocuments({
+      $or: [
+        { from: formattedPhone },
+        { to: formattedPhone }
+      ]
+    });
+
+    // Fetch messages - newest first, then reverse for display
+    const messages = await Message.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit));
+
+    // Reverse to show oldest first in the returned batch
+    messages.reverse();
+
+    console.log(`Found ${messages.length} messages for ${formattedPhone} (total: ${totalCount})`);
 
     res.json({
       success: true,
-      data: messages
+      data: messages,
+      pagination: {
+        total: totalCount,
+        returned: messages.length,
+        hasMore: messages.length > 0 && totalCount > messages.length,
+        oldestTimestamp: messages.length > 0 ? messages[0].timestamp : null
+      }
     });
   } catch (error) {
     console.error('Error fetching message history:', error);
@@ -1348,6 +1439,51 @@ router.post('/send-image', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to send image',
+      details: error.response?.data?.error?.message || error.message
+    });
+  }
+});
+
+// GET /api/whatsapp/media/:mediaId - Proxy endpoint to fetch WhatsApp media (no auth for img tags)
+router.get('/media/:mediaId', async (req, res) => {
+  try {
+    const { mediaId } = req.params;
+    
+    if (!mediaId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Media ID is required'
+      });
+    }
+    
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const apiVersion = 'v19.0';
+    
+    // Step 1: Get media URL from WhatsApp
+    const mediaUrl = `https://graph.facebook.com/${apiVersion}/${mediaId}`;
+    const mediaResponse = await axios.get(mediaUrl, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    
+    const imageDownloadUrl = mediaResponse.data.url;
+    const mimeType = mediaResponse.data.mime_type || 'image/jpeg';
+    
+    // Step 2: Download the actual image
+    const imageResponse = await axios.get(imageDownloadUrl, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      responseType: 'arraybuffer'
+    });
+    
+    // Step 3: Send the image to client
+    res.set('Content-Type', mimeType);
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    res.send(Buffer.from(imageResponse.data));
+    
+  } catch (error) {
+    console.error('Error fetching WhatsApp media:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch media',
       details: error.response?.data?.error?.message || error.message
     });
   }

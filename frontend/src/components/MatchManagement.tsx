@@ -7,6 +7,7 @@ import ConfirmDialog from './ConfirmDialog';
 import MatchAvailabilityDashboard from './MatchAvailabilityDashboard';
 import MatchDetailModal from './MatchDetailModal';
 import { matchApi } from '../services/matchApi';
+import { matchEvents } from '../utils/matchEvents';
 
 interface Match {
   _id: string;
@@ -211,6 +212,8 @@ const MatchManagement: React.FC = () => {
       setEditingMatch(null);
       console.log('[MatchManagement] Match saved, refreshing list');
       fetchMatches(1, false);
+      // Notify other components about match change
+      matchEvents.emit();
     } catch (error) {
       console.error('Error saving match:', error);
     }
@@ -226,6 +229,8 @@ const MatchManagement: React.FC = () => {
           await matchApi.deleteMatch(matchId);
           console.log('[MatchManagement] Match deleted, refreshing list');
           fetchMatches(1, false);
+          // Notify other components about match change
+          matchEvents.emit();
         } catch (error) {
           console.error('Error deleting match:', error);
         }

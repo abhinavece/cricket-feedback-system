@@ -60,6 +60,19 @@ const messageSchema = new mongoose.Schema({
   templateUsed: {
     type: String
   },
+  // Image message fields
+  imageId: {
+    type: String
+  },
+  imageUrl: {
+    type: String
+  },
+  imageMimeType: {
+    type: String
+  },
+  caption: {
+    type: String
+  },
   availabilityId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Availability'

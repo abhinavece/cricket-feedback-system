@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getPlayers, sendWhatsAppMessage, getUpcomingMatches } from '../../services/api';
 import type { Player } from '../../types';
 import { Send, Users, Calendar, Check, CheckCheck, RefreshCw, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
+import { matchEvents } from '../../utils/matchEvents';
 
 interface Match {
   _id: string;
@@ -48,6 +49,15 @@ const MobileWhatsAppTab: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // Listen for match changes from other components (unified CRUD sync)
+  useEffect(() => {
+    const unsubscribe = matchEvents.subscribe(() => {
+      console.log('[MobileWhatsAppTab] Match event received, refreshing matches');
+      fetchData(true);
+    });
+    return unsubscribe;
   }, []);
 
   const handleSelectAll = () => {

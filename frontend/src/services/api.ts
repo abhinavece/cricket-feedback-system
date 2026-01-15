@@ -124,8 +124,13 @@ export const sendWhatsAppMessage = async (payload: {
   return response.data;
 };
 
-export const getMessageHistory = async (phone: string) => {
-  const response = await api.get(`/whatsapp/messages/${phone}?t=${Date.now()}`);
+export const getMessageHistory = async (phone: string, options?: { limit?: number; before?: string }) => {
+  const params = new URLSearchParams();
+  params.append('t', Date.now().toString());
+  if (options?.limit) params.append('limit', options.limit.toString());
+  if (options?.before) params.append('before', options.before);
+  
+  const response = await api.get(`/whatsapp/messages/${phone}?${params.toString()}`);
   return response.data;
 };
 
