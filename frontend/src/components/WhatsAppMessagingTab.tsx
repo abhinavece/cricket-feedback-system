@@ -927,10 +927,10 @@ const WhatsAppMessagingTab: React.FC = () => {
                           {hasImage && (
                             <div className="mb-2">
                               <img 
-                                src={`${process.env.REACT_APP_API_URL || ''}/api/whatsapp/media/${msg.imageId}`}
+                                src={`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`}
                                 alt="Shared image"
                                 className="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/api/whatsapp/media/${msg.imageId}`, '_blank')}
+                                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`, '_blank')}
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = 'none';
