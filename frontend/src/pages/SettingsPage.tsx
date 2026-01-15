@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { getProfile, updateProfile, createProfile, ProfileData, ProfileCreateData } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import WebhookProxyManager from '../components/WebhookProxyManager';
 
 const BATTING_STYLES = [
   { value: '', label: 'Not specified' },
@@ -534,6 +535,14 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Webhook Proxy Manager - Admin Only */}
+      {user?.role === 'admin' && (
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Developer Tools</h2>
+          <WebhookProxyManager />
+        </div>
+      )}
     </div>
   );
 };

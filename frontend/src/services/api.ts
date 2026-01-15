@@ -482,4 +482,55 @@ export const updateProfile = async (data: Partial<ProfileCreateData>): Promise<{
   return response.data;
 };
 
+// Webhook Proxy APIs
+export interface WebhookProxyConfig {
+  localRoutingEnabled: boolean;
+  localServerUrl: string;
+  localRoutingPhones: string[];
+  productionWebhookUrl: string;
+  stats: {
+    totalEventsReceived: number;
+    eventsRoutedToLocal: number;
+    eventsRoutedToProd: number;
+    lastEventAt: string | null;
+    lastLocalRouteAt: string | null;
+  };
+  lastModifiedAt: string;
+}
+
+export const getWebhookProxyConfig = async (): Promise<{ success: boolean; data: WebhookProxyConfig }> => {
+  const response = await api.get('/webhook-proxy/config');
+  return response.data;
+};
+
+export const updateWebhookProxyConfig = async (data: Partial<WebhookProxyConfig>): Promise<{ success: boolean; data: WebhookProxyConfig; message: string }> => {
+  const response = await api.put('/webhook-proxy/config', data);
+  return response.data;
+};
+
+export const toggleWebhookLocalRouting = async (): Promise<{ success: boolean; data: { localRoutingEnabled: boolean }; message: string }> => {
+  const response = await api.post('/webhook-proxy/toggle-local');
+  return response.data;
+};
+
+export const addWebhookProxyPhone = async (phone: string): Promise<{ success: boolean; data: { phone: string; localRoutingPhones: string[] }; message: string }> => {
+  const response = await api.post('/webhook-proxy/add-phone', { phone });
+  return response.data;
+};
+
+export const removeWebhookProxyPhone = async (phone: string): Promise<{ success: boolean; data: { localRoutingPhones: string[] }; message: string }> => {
+  const response = await api.delete(`/webhook-proxy/remove-phone/${phone}`);
+  return response.data;
+};
+
+export const getWebhookProxyStats = async (): Promise<{ success: boolean; data: WebhookProxyConfig['stats'] & { localRoutingEnabled: boolean; configuredPhones: number } }> => {
+  const response = await api.get('/webhook-proxy/stats');
+  return response.data;
+};
+
+export const testWebhookLocalConnection = async (): Promise<{ success: boolean; message: string; data: { url: string; statusCode?: number; error?: string } }> => {
+  const response = await api.post('/webhook-proxy/test-local');
+  return response.data;
+};
+
 export default api;
