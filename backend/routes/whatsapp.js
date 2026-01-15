@@ -6,6 +6,7 @@ const Message = require('../models/Message');
 const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
+const sseManager = require('../utils/sseManager');
 
 /**
  * Send WhatsApp message and log to database
@@ -46,7 +47,7 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
 
   // Log to Message collection
   try {
-    await Message.create({
+    const savedMsg = await Message.create({
       from: phoneNumberId,
       to: toPhone,
       text: messageText,
@@ -59,6 +60,18 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
       paymentId: metadata.paymentId || null,
       playerId: metadata.playerId || null,
       playerName: metadata.playerName || null
+    });
+
+    // Broadcast SSE event for outgoing message
+    sseManager.broadcast('messages', {
+      type: 'message:sent',
+      messageId: savedMsg._id.toString(),
+      to: toPhone,
+      text: messageText,
+      playerName: metadata.playerName || null,
+      direction: 'outgoing',
+      messageType: metadata.messageType || 'general',
+      timestamp: savedMsg.timestamp
     });
   } catch (logErr) {
     console.error('⚠️ Failed to log outgoing message:', logErr.message);
@@ -224,6 +237,18 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
       } else {
         console.log(`   No player association (unknown sender)`);
       }
+
+      // Broadcast SSE event for new message
+      sseManager.broadcast('messages', {
+        type: 'message:received',
+        messageId: savedMessage._id.toString(),
+        from: formattedPhone,
+        text: text,
+        playerName: player?.name || null,
+        playerId: player?._id?.toString() || null,
+        direction: 'incoming',
+        timestamp: savedMessage.timestamp
+      });
     } catch (saveErr) {
       // Log error but continue processing - don't fail the whole flow
       console.error(`⚠️ Failed to persist message immediately:`, saveErr.message);
@@ -443,6 +468,22 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
             console.log(`   Squad Status: ${match.squadStatus}`);
             console.log(`   Last Update: ${match.lastAvailabilityUpdate}`);
 
+            // Broadcast SSE event for real-time updates
+            sseManager.broadcastToMatch(match._id.toString(), {
+              type: 'availability:update',
+              matchId: match._id.toString(),
+              playerId: player._id.toString(),
+              playerName: player.name,
+              response: response,
+              respondedAt: availability.respondedAt,
+              stats: {
+                confirmed: match.confirmedPlayers,
+                declined: match.declinedPlayers,
+                tentative: match.tentativePlayers,
+                pending: match.noResponsePlayers
+              }
+            });
+
             // Update the saved incoming message to link it to the match context
             if (savedMessage) {
               try {
@@ -499,6 +540,22 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
             
             await match.save();
             console.log(`✅ Match updated via fallback method`);
+
+            // Broadcast SSE event for real-time updates (fallback method)
+            sseManager.broadcastToMatch(match._id.toString(), {
+              type: 'availability:update',
+              matchId: match._id.toString(),
+              playerId: availability.playerId?.toString() || null,
+              playerName: availability.playerName,
+              response: response,
+              respondedAt: availability.respondedAt,
+              stats: {
+                confirmed: match.confirmedPlayers,
+                declined: match.declinedPlayers,
+                tentative: match.tentativePlayers,
+                pending: match.noResponsePlayers
+              }
+            });
 
             // Update the saved incoming message to link it to the match context
             if (savedMessage) {
@@ -731,6 +788,15 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
         console.error('⚠️ Failed to send acknowledgment:', ackErr.message);
       }
 
+      // Broadcast SSE event for payment requiring review
+      sseManager.broadcast('payments', {
+        type: 'payment:review_required',
+        paymentId: primaryPayment?._id?.toString(),
+        matchId: pendingPayments[0].matchId?.toString(),
+        playerName: pendingPayments[0].playerName,
+        reason: 'ocr_failed'
+      });
+
       console.log('=== END PAYMENT SCREENSHOT PROCESSING (OCR FAILED) ===\n');
       return; // Don't proceed with auto-distribution
     }
@@ -792,6 +858,20 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     } catch (confirmErr) {
       console.error('⚠️ Failed to send confirmation:', confirmErr.message);
     }
+
+    // Broadcast SSE event for payment updates
+    sseManager.broadcast('payments', {
+      type: 'payment:screenshot',
+      paymentId: primaryDistribution?.paymentId?.toString(),
+      matchId: primaryDistribution?.matchId?.toString(),
+      playerName: distributionResult.playerName,
+      amount: extractedAmount,
+      matchesAffected: distributionResult.matchesAffected,
+      distributions: distributionResult.distributions.map(d => ({
+        matchId: d.matchId?.toString(),
+        amount: d.amount
+      }))
+    });
 
     console.log('=== END PAYMENT SCREENSHOT PROCESSING ===\n');
 

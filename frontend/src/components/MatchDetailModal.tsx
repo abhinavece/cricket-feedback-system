@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff } from 'lucide-react';
 import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
 import SquadImageGenerator from './SquadImageGenerator';
 import WhatsAppImageShareModal from './WhatsAppImageShareModal';
 import ShareLinkModal from './ShareLinkModal';
+import { useSSE } from '../hooks/useSSE';
 
 interface Match {
   _id: string;
@@ -100,14 +101,15 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   // Public Share Link state
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
 
+  // Full data reload (for manual refresh)
   const loadMatchAndAvailability = React.useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Fetch fresh match data to get updated statistics
       const updatedMatch = await matchApi.getMatch(match._id);
       setMatch(updatedMatch);
-      
+
       // Fetch availability records if availability was sent
       if (updatedMatch.availabilitySent) {
         const response = await getMatchAvailability(match._id);
@@ -120,12 +122,79 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     }
   }, [match._id]);
 
+  // SSE subscriptions for this match
+  const sseSubscriptions = useMemo(() => [`match:${match._id}`], [match._id]);
+
+  // Handle SSE events for real-time updates
+  const handleSSEEvent = useCallback((event: any) => {
+    console.log('📡 SSE Event received:', event.type, event);
+
+    switch (event.type) {
+      case 'availability:update':
+        // Update single player's availability
+        setAvailabilities(prev =>
+          prev.map(a =>
+            a.playerId === event.playerId
+              ? { ...a, response: event.response, respondedAt: event.respondedAt }
+              : a
+          )
+        );
+        // Update match stats from SSE event
+        if (event.stats) {
+          setMatch(prev => ({
+            ...prev,
+            confirmedPlayers: event.stats.confirmed,
+            declinedPlayers: event.stats.declined,
+            tentativePlayers: event.stats.tentative,
+            noResponsePlayers: event.stats.pending,
+            lastAvailabilityUpdate: event.timestamp
+          }));
+        }
+        break;
+
+      case 'availability:new':
+        // New players added - reload full data to get complete records
+        loadMatchAndAvailability();
+        break;
+
+      case 'availability:delete':
+        // Remove player from list
+        setAvailabilities(prev => prev.filter(a => a.playerId !== event.playerId));
+        // Update match stats
+        if (event.stats) {
+          setMatch(prev => ({
+            ...prev,
+            confirmedPlayers: event.stats.confirmed,
+            declinedPlayers: event.stats.declined,
+            tentativePlayers: event.stats.tentative,
+            noResponsePlayers: event.stats.pending,
+            totalPlayersRequested: event.stats.total
+          }));
+        }
+        break;
+
+      case 'match:update':
+        // Update specific match field
+        setMatch(prev => ({ ...prev, [event.field]: event.value }));
+        break;
+
+      default:
+        console.log('📡 Unhandled SSE event type:', event.type);
+    }
+  }, [loadMatchAndAvailability]);
+
+  // SSE connection for real-time updates
+  const { isConnected: sseConnected, status: sseStatus } = useSSE({
+    subscriptions: sseSubscriptions,
+    onEvent: handleSSEEvent,
+    onConnect: () => console.log('📡 SSE connected for match:', match._id),
+    onError: (error) => console.error('📡 SSE error:', error),
+    enabled: true
+  });
+
+  // Initial data load only (no polling - SSE handles updates)
   useEffect(() => {
     loadMatchAndAvailability();
-    
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(loadMatchAndAvailability, 10000);
-    return () => clearInterval(interval);
   }, [loadMatchAndAvailability]);
 
   const matchDate = new Date(match.date);
@@ -1029,9 +1098,24 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           {/* Desktop: Full footer */}
           <div className="hidden md:flex items-center justify-between gap-2 text-xs text-slate-400">
             <div className="flex flex-row items-center gap-4">
-              <span className="flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Auto-refreshing every 10s
+              {/* SSE Connection Status */}
+              <span className={`flex items-center gap-1 ${sseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {sseConnected ? (
+                  <>
+                    <Wifi className="w-3 h-3" />
+                    Live updates active
+                  </>
+                ) : sseStatus === 'connecting' ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3 h-3" />
+                    Reconnecting...
+                  </>
+                )}
               </span>
               {match.lastAvailabilityUpdate && (
                 <span>

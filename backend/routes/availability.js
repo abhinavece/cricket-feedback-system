@@ -4,6 +4,7 @@ const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
 const auth = require('../middleware/auth');
+const sseManager = require('../utils/sseManager');
 
 // GET /api/availability/match/:matchId - Get all availability records for a match (optimized)
 router.get('/match/:matchId', auth, async (req, res) => {
@@ -149,6 +150,21 @@ router.post('/', auth, async (req, res) => {
       totalPlayersRequested: playerIds.length
     });
 
+    // Broadcast SSE event for new players added
+    const newRecords = availabilityRecords.filter(r => r.response === 'pending');
+    if (newRecords.length > 0) {
+      sseManager.broadcastToMatch(matchId.toString(), {
+        type: 'availability:new',
+        matchId: matchId.toString(),
+        newPlayers: newRecords.map(r => ({
+          playerId: r.playerId?.toString(),
+          playerName: r.playerName,
+          playerPhone: r.playerPhone
+        })),
+        totalAdded: newRecords.length
+      });
+    }
+
     res.json({
       success: true,
       message: `Created ${availabilityRecords.length} availability records`,
@@ -234,6 +250,22 @@ router.put('/:id', auth, async (req, res) => {
       }
 
       await match.save();
+
+      // Broadcast SSE event for real-time updates
+      sseManager.broadcastToMatch(match._id.toString(), {
+        type: 'availability:update',
+        matchId: match._id.toString(),
+        playerId: availability.playerId?.toString(),
+        playerName: availability.playerName,
+        response: response,
+        respondedAt: availability.respondedAt,
+        stats: {
+          confirmed: match.confirmedPlayers,
+          declined: match.declinedPlayers,
+          tentative: match.tentativePlayers,
+          pending: match.noResponsePlayers
+        }
+      });
     }
 
     res.json({
@@ -265,18 +297,38 @@ router.delete('/:id', auth, async (req, res) => {
 
     await Availability.findByIdAndDelete(id);
 
+    // Store info before deletion for SSE broadcast
+    const matchId = availability.matchId;
+    const playerId = availability.playerId;
+    const playerName = availability.playerName;
+
     // Update match statistics
-    const match = await Match.findById(availability.matchId);
+    const match = await Match.findById(matchId);
     if (match) {
       const allAvailabilities = await Availability.find({ matchId: match._id });
-      
+
       match.totalPlayersRequested = allAvailabilities.length;
       match.confirmedPlayers = allAvailabilities.filter(a => a.response === 'yes').length;
       match.declinedPlayers = allAvailabilities.filter(a => a.response === 'no').length;
       match.tentativePlayers = allAvailabilities.filter(a => a.response === 'tentative').length;
       match.noResponsePlayers = allAvailabilities.filter(a => a.response === 'pending').length;
-      
+
       await match.save();
+
+      // Broadcast SSE event for player removal
+      sseManager.broadcastToMatch(match._id.toString(), {
+        type: 'availability:delete',
+        matchId: match._id.toString(),
+        playerId: playerId?.toString(),
+        playerName: playerName,
+        stats: {
+          confirmed: match.confirmedPlayers,
+          declined: match.declinedPlayers,
+          tentative: match.tentativePlayers,
+          pending: match.noResponsePlayers,
+          total: match.totalPlayersRequested
+        }
+      });
     }
 
     res.json({
