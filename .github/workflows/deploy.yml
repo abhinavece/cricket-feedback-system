@@ -29,6 +29,9 @@ env:
   BACKEND_IMAGE: cricket-feedback-backend
   NAMESPACE: cricket-feedback
 
+permissions:
+  contents: write
+
 jobs:
   # Detect which components have changed
   detect-changes:
