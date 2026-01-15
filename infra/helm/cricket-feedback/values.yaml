@@ -126,6 +126,7 @@ frontend:
           name: cricket-secrets
           key: google-client-id
 
+
 # MongoDB configuration
 mongodb:
   enabled: true
