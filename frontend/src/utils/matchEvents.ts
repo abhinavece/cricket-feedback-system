@@ -1,4 +1,5 @@
 // Match event system for unified CRUD notifications across components
+import { useEffect } from 'react';
 
 type MatchEventCallback = () => void;
 
@@ -31,8 +32,6 @@ class MatchEventBus {
 export const matchEvents = new MatchEventBus();
 
 // Helper hook for React components
-import { useEffect } from 'react';
-
 export function useMatchEvents(onUpdate: MatchEventCallback): void {
   useEffect(() => {
     const unsubscribe = matchEvents.subscribe(onUpdate);

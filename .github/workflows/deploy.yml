@@ -261,6 +261,10 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
 
+      - name: Build Helm dependencies
+        run: |
+          helm dependency build ./infra/helm/cricket-feedback
+
       - name: Deploy via Helm
         run: |
           echo "Deploying to namespace: ${{ env.NAMESPACE }}"
