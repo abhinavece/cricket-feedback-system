@@ -5,6 +5,8 @@ import ConfirmDialog from './ConfirmDialog';
 import MatchForm from './MatchForm';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
 import { matchEvents } from '../utils/matchEvents';
+import { useSSE } from '../hooks/useSSE';
+import { Wifi, WifiOff, Loader2 } from 'lucide-react';
 
 interface TemplateConfig {
   id: string;
@@ -268,42 +270,70 @@ const WhatsAppMessagingTab: React.FC = () => {
     }
   };
 
-  // Auto-refresh history when modal is open (only fetch newest messages)
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (historyPlayer) {
-      console.log(`Setting up polling for ${historyPlayer.phone}`);
-      interval = setInterval(async () => {
-        try {
-          const response = await getMessageHistory(historyPlayer.phone, { limit: 10 });
-          if (response.success && response.data) {
-            // Only update if we have new messages (compare last message timestamp)
-            setHistoryMessages(prev => {
-              const newMessages = response.data || [];
-              if (newMessages.length === 0) return prev;
-              
-              // Merge: keep older messages, add new ones
-              const lastOldTimestamp = prev.length > 0 ? new Date(prev[prev.length - 1].timestamp).getTime() : 0;
-              const newerMessages = newMessages.filter((m: any) => new Date(m.timestamp).getTime() > lastOldTimestamp);
-              
-              if (newerMessages.length > 0) {
-                return [...prev, ...newerMessages];
-              }
-              return prev;
-            });
-            setLastSynced(new Date());
-          }
-        } catch (err) {
-          console.error('Auto-refresh failed:', err);
-        }
-      }, 3000); // Refresh every 3 seconds
-    }
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
+  // SSE subscriptions for real-time message updates
+  const sseSubscriptions = useMemo(() => {
+    if (!historyPlayer) return [];
+    // Subscribe to messages for this specific phone number
+    return ['messages', `phone:${historyPlayer.phone}`];
   }, [historyPlayer]);
+
+  // Handle SSE events for real-time chat updates
+  const handleSSEEvent = useCallback((event: any) => {
+    console.log('📡 SSE Chat Event:', event.type, event);
+    
+    // Handle new messages (sent or received)
+    if (event.type === 'message:received' || event.type === 'message:sent') {
+      const messageData = event.data || event;
+      
+      // Get phone from event (backend uses 'to' for outgoing, 'from' for incoming)
+      const eventPhone = messageData.to || messageData.from || messageData.phone;
+      
+      // Check if this message is for our current chat (compare last 10 digits)
+      if (historyPlayer && eventPhone) {
+        const playerLast10 = historyPlayer.phone.slice(-10);
+        const eventLast10 = eventPhone.slice(-10);
+        
+        if (playerLast10 === eventLast10) {
+          setHistoryMessages(prev => {
+            // Check if message already exists (avoid duplicates)
+            const exists = prev.some(m => 
+              m._id === messageData.messageId || 
+              m.messageId === messageData.messageId ||
+              m._id === messageData._id
+            );
+            if (exists) return prev;
+            
+            // Add new message to the end
+            const newMessage = {
+              _id: messageData.messageId || messageData._id,
+              messageId: messageData.messageId,
+              direction: messageData.direction || (event.type === 'message:sent' ? 'outgoing' : 'incoming'),
+              text: messageData.text || messageData.message,
+              timestamp: messageData.timestamp || new Date().toISOString(),
+              imageId: messageData.imageId,
+              status: messageData.status
+            };
+            
+            return [...prev, newMessage];
+          });
+          setLastSynced(new Date());
+          
+          // Auto-scroll to bottom for new messages
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+    }
+  }, [historyPlayer]);
+
+  // SSE connection for real-time chat updates
+  const { isConnected: sseConnected, status: sseStatus } = useSSE({
+    subscriptions: sseSubscriptions,
+    onEvent: handleSSEEvent,
+    onConnect: () => console.log('📡 SSE connected for chat:', historyPlayer?.phone),
+    enabled: !!historyPlayer // Only connect when chat is open
+  });
 
   const handleSendHistoryMessage = async () => {
     if (!historyNewMessage.trim() || !historyPlayer) return;
@@ -957,7 +987,26 @@ const WhatsAppMessagingTab: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+              {/* SSE Status */}
+              <span className={`flex items-center gap-1.5 text-xs font-medium ${sseConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {sseConnected ? (
+                  <>
+                    <Wifi className="w-3.5 h-3.5" />
+                    <span>Live updates</span>
+                  </>
+                ) : sseStatus === 'connecting' ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3.5 h-3.5" />
+                    <span>Offline</span>
+                  </>
+                )}
+              </span>
               <button 
                 onClick={() => setHistoryPlayer(null)}
                 className="px-6 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"

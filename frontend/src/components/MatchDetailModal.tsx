@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
 import SquadImageGenerator from './SquadImageGenerator';
@@ -476,15 +476,6 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                 <span className="sm:hidden">Rmd ({stats.pending})</span>
               </button>
             )}
-            <button
-              onClick={loadMatchAndAvailability}
-              disabled={loading}
-              className="px-2 py-1.5 md:px-4 md:py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-blue-500/30 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 md:w-4 md:h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
-              <span className="sm:hidden">↻</span>
-            </button>
             {availabilities.length > 0 && (
               <button
                 onClick={copySquadList}
@@ -1077,16 +1068,26 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
 
         {/* Footer */}
         <div className="bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 flex gap-3 justify-end">
-          {/* Mobile: Minimal footer */}
-          <div className="md:hidden flex items-center justify-between gap-2">
-            <button
-              onClick={loadMatchAndAvailability}
-              disabled={loading}
-              className="flex-1 px-2 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1 border border-blue-500/30 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
+          {/* Mobile: Minimal footer with SSE status */}
+          <div className="md:hidden flex items-center justify-between gap-2 w-full">
+            <span className={`flex items-center gap-1 text-xs ${sseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {sseConnected ? (
+                <>
+                  <Wifi className="w-3 h-3" />
+                  <span>Live</span>
+                </>
+              ) : sseStatus === 'connecting' ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Connecting</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3" />
+                  <span>Offline</span>
+                </>
+              )}
+            </span>
             <button
               onClick={onClose}
               className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-all"
