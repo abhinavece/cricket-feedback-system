@@ -234,6 +234,8 @@ jobs:
 
           Triggered by: ${{ github.event_name }}
           Run: ${{ github.run_number }}"
+            # Pull latest changes and rebase to avoid conflicts
+            git pull --rebase origin main
             git push
             echo "Committed and pushed version updates"
           fi
