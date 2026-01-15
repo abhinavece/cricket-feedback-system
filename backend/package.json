@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Cricket Feedback System Backend API",
   "main": "index.js",
   "scripts": {
