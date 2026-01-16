@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
-import { Calendar, Clock, MapPin, Users, Trophy, Edit3 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Trophy, Edit3, Navigation, Link, Tag, CheckCircle } from 'lucide-react';
 
 interface MatchFormData {
   date: string;
   time: string;
   slot: 'morning' | 'evening' | 'night' | 'custom';
   ground: string;
+  locationLink: string;
   opponent: string;
   cricHeroesMatchId: string;
   notes: string;
+  status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
+  matchType: 'practice' | 'tournament' | 'friendly';
 }
 
 interface MatchFormProps {
@@ -32,9 +35,12 @@ const MatchForm: React.FC<MatchFormProps> = ({
     time: '',
     slot: 'morning',
     ground: '',
+    locationLink: '',
     opponent: '',
     cricHeroesMatchId: '',
     notes: '',
+    status: 'draft',
+    matchType: 'practice',
     ...initialData
   });
 
@@ -185,6 +191,67 @@ const MatchForm: React.FC<MatchFormProps> = ({
                   <p className="mt-1 text-xs text-rose-400">{errors.ground}</p>
                 )}
               </div>
+
+              {/* Location Link */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <Navigation className="w-4 h-4 inline mr-1" />
+                  Google Maps Location Link
+                </label>
+                <input
+                  type="url"
+                  value={formData.locationLink}
+                  onChange={(e) => handleInputChange('locationLink', e.target.value)}
+                  placeholder="https://maps.google.com/... or https://goo.gl/maps/..."
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
+                />
+                <p className="mt-1 text-xs text-slate-500">Paste Google Maps link for easy directions</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Match Settings Section */}
+          <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl border border-white/5 p-6">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Tag className="w-5 h-5 text-slate-400" />
+              Match Settings
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Match Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <Trophy className="w-4 h-4 inline mr-1" />
+                  Match Type
+                </label>
+                <select
+                  value={formData.matchType}
+                  onChange={(e) => handleInputChange('matchType', e.target.value as any)}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
+                >
+                  <option value="practice">🏏 Practice Match</option>
+                  <option value="tournament">🏆 Tournament Match</option>
+                  <option value="friendly">🤝 Friendly Match</option>
+                </select>
+              </div>
+
+              {/* Match Status */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <CheckCircle className="w-4 h-4 inline mr-1" />
+                  Match Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange('status', e.target.value as any)}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
+                >
+                  <option value="draft">📝 Draft</option>
+                  <option value="confirmed">✅ Confirmed</option>
+                  <option value="completed">🏁 Completed</option>
+                  <option value="cancelled">❌ Cancelled</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -199,15 +266,16 @@ const MatchForm: React.FC<MatchFormProps> = ({
               {/* Opponent */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Opponent Team
+                  Opponent Team (Match Name)
                 </label>
                 <input
                   type="text"
                   value={formData.opponent}
                   onChange={(e) => handleInputChange('opponent', e.target.value)}
-                  placeholder="e.g., Warriors Cricket Club"
+                  placeholder="e.g., Warriors Cricket Club (leave empty for 'Practice Match')"
                   className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
                 />
+                <p className="mt-1 text-xs text-slate-500">If left empty, will display as "Practice Match"</p>
               </div>
 
               {/* CricHeroes Match ID */}

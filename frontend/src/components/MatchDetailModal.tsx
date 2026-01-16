@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2, Navigation, ExternalLink } from 'lucide-react';
 import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
 import SquadImageGenerator from './SquadImageGenerator';
@@ -16,6 +16,8 @@ interface Match {
   slot: string;
   opponent: string;
   ground: string;
+  locationLink?: string;
+  matchType?: 'practice' | 'tournament' | 'friendly';
   status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
   squad?: Array<{
     player: {
@@ -403,6 +405,17 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                   <span className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-bold border ${getStatusColor()}`}>
                     {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
                   </span>
+                  {match.matchType && (
+                    <span className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-bold border ${
+                      match.matchType === 'tournament' 
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' 
+                        : match.matchType === 'friendly'
+                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                        : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                    }`}>
+                      {match.matchType === 'tournament' ? '🏆' : match.matchType === 'friendly' ? '🤝' : '🏏'} {match.matchType.charAt(0).toUpperCase() + match.matchType.slice(1)}
+                    </span>
+                  )}
                   {match.availabilitySent && (
                     <span className="px-2 py-0.5 md:px-3 md:py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">
                       📤 Sent
@@ -439,7 +452,19 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
             </div>
             <div className="flex items-center gap-2 text-slate-300">
               <MapPin className="w-4 h-4 md:w-5 md:h-5 text-rose-400" />
-              <span className="text-xs md:text-sm truncate">{match.ground}</span>
+              {match.locationLink ? (
+                <a
+                  href={match.locationLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs md:text-sm text-rose-300 hover:text-rose-200 underline underline-offset-2 decoration-rose-400/50 hover:decoration-rose-300 transition-colors flex items-center gap-1"
+                >
+                  {match.ground}
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </a>
+              ) : (
+                <span className="text-xs md:text-sm truncate">{match.ground}</span>
+              )}
             </div>
           </div>
 

@@ -59,7 +59,9 @@ router.get('/:token', async (req, res) => {
           time: match.time,
           slot: match.slot,
           ground: match.ground,
+          locationLink: match.locationLink || '',
           status: match.status,
+          matchType: match.matchType || 'practice',
           teamName: match.teamName || 'Mavericks XI',
           availabilitySent: match.availabilitySent,
           statistics: match.statistics
@@ -81,7 +83,7 @@ router.get('/:token', async (req, res) => {
       
     } else if (publicLink.resourceType === 'payment') {
       const payment = await MatchPayment.findById(publicLink.resourceId)
-        .populate('matchId', 'opponent date time ground');
+        .populate('matchId', 'opponent date time ground locationLink');
       
       if (!payment) {
         return res.status(404).json({
@@ -102,7 +104,8 @@ router.get('/:token', async (req, res) => {
             opponent: payment.matchId.opponent,
             date: payment.matchId.date,
             time: payment.matchId.time,
-            ground: payment.matchId.ground
+            ground: payment.matchId.ground,
+            locationLink: payment.matchId.locationLink || ''
           } : null,
           title: payment.title,
           totalAmount: payment.totalAmount || 0,

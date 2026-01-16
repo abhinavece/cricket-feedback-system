@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, AlertCircle, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, AlertCircle, Users, Navigation, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 
 interface SquadMember {
@@ -21,6 +21,7 @@ interface MatchInfo {
   date: string;
   time: string;
   ground: string;
+  locationLink?: string;
 }
 
 interface PaymentData {
@@ -183,21 +184,33 @@ const PublicPaymentView: React.FC = () => {
       <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
         {/* Match Info Card */}
         {payment.match && (
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
-            <h2 className="text-lg font-semibold text-white mb-4 text-center">
+          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/10">
+            <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 text-center">
               vs {payment.match.opponent}
             </h2>
-            <div className="flex flex-wrap justify-center gap-4 md:gap-8 text-sm">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-3 sm:gap-6 text-sm">
               {matchDate && (
                 <div className="flex items-center gap-2 text-slate-300">
-                  <Calendar className="w-4 h-4 text-blue-400" />
-                  <span>{formatDate(matchDate)}</span>
+                  <Calendar className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  <span className="truncate">{formatDate(matchDate)}</span>
                 </div>
               )}
               {payment.match.ground && (
                 <div className="flex items-center gap-2 text-slate-300">
-                  <MapPin className="w-4 h-4 text-pink-400" />
-                  <span>{payment.match.ground}</span>
+                  <MapPin className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                  {payment.match.locationLink ? (
+                    <a
+                      href={payment.match.locationLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-pink-300 hover:text-pink-200 underline underline-offset-2 decoration-pink-400/50 hover:decoration-pink-300 transition-colors flex items-center gap-1.5 truncate"
+                    >
+                      <span className="truncate">{payment.match.ground}</span>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-60 flex-shrink-0" />
+                    </a>
+                  ) : (
+                    <span className="truncate">{payment.match.ground}</span>
+                  )}
                 </div>
               )}
             </div>
@@ -241,67 +254,67 @@ const PublicPaymentView: React.FC = () => {
           </p>
         </div>
 
-        {/* Squad Payment Status */}
-        <div className="grid md:grid-cols-2 gap-4">
+        {/* Squad Payment Status - Non-scrollable */}
+        <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
           {/* Paid */}
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl overflow-hidden">
-            <div className="bg-emerald-500/20 px-4 py-3 border-b border-emerald-500/30">
+            <div className="bg-emerald-500/20 px-3 sm:px-4 py-2.5 border-b border-emerald-500/30">
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-emerald-400" />
-                <span className="font-semibold text-emerald-400">Paid ({paidMembers.length})</span>
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                <span className="font-semibold text-emerald-400 text-sm sm:text-base">Paid ({paidMembers.length})</span>
               </div>
             </div>
-            <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
+            <div className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
               {paidMembers.map((member, idx) => (
-                <div key={member.playerId || idx} className="bg-slate-800/50 rounded-lg px-3 py-2 flex justify-between items-center">
-                  <div>
-                    <span className="text-white font-medium text-sm">{idx + 1}. {member.playerName}</span>
+                <div key={member.playerId || idx} className="bg-slate-800/50 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-white font-medium text-xs sm:text-sm truncate block">{idx + 1}. {member.playerName}</span>
                     {member.isFreePlayer && (
-                      <span className="text-purple-400 text-xs ml-2">(Free)</span>
+                      <span className="text-purple-400 text-[10px] sm:text-xs">(Free)</span>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0 ml-2">
                     {member.isFreePlayer ? (
-                      <span className="text-purple-400 text-sm font-medium">FREE</span>
+                      <span className="text-purple-400 text-xs sm:text-sm font-medium">FREE</span>
                     ) : (
-                      <span className="text-emerald-400 text-sm font-medium">₹{member.paidAmount || 0}</span>
+                      <span className="text-emerald-400 text-xs sm:text-sm font-medium">₹{member.paidAmount || 0}</span>
                     )}
                     {(member.owedAmount || 0) > 0 && (
-                      <span className="text-blue-400 text-xs block">+₹{member.owedAmount} refund</span>
+                      <span className="text-blue-400 text-[10px] sm:text-xs block">+₹{member.owedAmount} refund</span>
                     )}
                   </div>
                 </div>
               ))}
               {paidMembers.length === 0 && (
-                <p className="text-slate-500 text-center py-4 text-sm">No payments yet</p>
+                <p className="text-slate-500 text-center py-3 text-xs sm:text-sm">No payments yet</p>
               )}
             </div>
           </div>
 
           {/* Pending */}
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl overflow-hidden">
-            <div className="bg-amber-500/20 px-4 py-3 border-b border-amber-500/30">
+            <div className="bg-amber-500/20 px-3 sm:px-4 py-2.5 border-b border-amber-500/30">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-400" />
-                <span className="font-semibold text-amber-400">Pending ({pendingMembers.length})</span>
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                <span className="font-semibold text-amber-400 text-sm sm:text-base">Pending ({pendingMembers.length})</span>
               </div>
             </div>
-            <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
+            <div className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
               {pendingMembers.map((member, idx) => (
-                <div key={member.playerId || idx} className="bg-slate-800/50 rounded-lg px-3 py-2 flex justify-between items-center">
-                  <div>
-                    <span className="text-white font-medium text-sm">{idx + 1}. {member.playerName}</span>
+                <div key={member.playerId || idx} className="bg-slate-800/50 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-white font-medium text-xs sm:text-sm truncate block">{idx + 1}. {member.playerName}</span>
                     {(member.paidAmount || 0) > 0 && (
-                      <span className="text-slate-500 text-xs ml-2">(Paid: ₹{member.paidAmount})</span>
+                      <span className="text-slate-500 text-[10px] sm:text-xs">(Paid: ₹{member.paidAmount})</span>
                     )}
                   </div>
-                  <span className="text-amber-400 text-sm font-medium">
+                  <span className="text-amber-400 text-xs sm:text-sm font-medium flex-shrink-0 ml-2">
                     ₹{getPendingAmount(member)} due
                   </span>
                 </div>
               ))}
               {pendingMembers.length === 0 && (
-                <p className="text-slate-500 text-center py-4 text-sm">All payments collected!</p>
+                <p className="text-slate-500 text-center py-3 text-xs sm:text-sm">All payments collected!</p>
               )}
             </div>
           </div>

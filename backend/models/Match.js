@@ -58,10 +58,20 @@ const matchSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  locationLink: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['draft', 'confirmed', 'cancelled', 'completed'],
     default: 'draft'
+  },
+  matchType: {
+    type: String,
+    enum: ['practice', 'tournament', 'friendly'],
+    default: 'practice'
   },
   squad: [squadResponseSchema],
   createdBy: {

@@ -18,7 +18,9 @@ interface Match {
   slot: string;
   opponent: string;
   ground: string;
+  locationLink?: string;
   status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
+  matchType?: 'practice' | 'tournament' | 'friendly';
   squad?: Array<{
     player: {
       _id: string;
@@ -291,9 +293,12 @@ const MatchManagement: React.FC = () => {
           time: editingMatch.time,
           slot: editingMatch.slot as 'morning' | 'evening' | 'night' | 'custom',
           ground: editingMatch.ground,
+          locationLink: editingMatch.locationLink || '',
           opponent: editingMatch.opponent,
           cricHeroesMatchId: editingMatch.cricHeroesMatchId,
-          notes: editingMatch.notes
+          notes: editingMatch.notes,
+          status: editingMatch.status,
+          matchType: editingMatch.matchType || 'practice'
         } : undefined}
         onSubmit={handleFormSubmit}
         onCancel={() => {

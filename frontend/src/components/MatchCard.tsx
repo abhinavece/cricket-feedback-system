@@ -33,7 +33,9 @@ interface MatchCardProps {
     slot: string;
     opponent: string;
     ground: string;
+    locationLink?: string;
     status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
+    matchType?: 'practice' | 'tournament' | 'friendly';
     squad?: SquadMember[]; // Optional - only present in full endpoint
     squadStats?: SquadStats; // Pre-computed stats from summary endpoint
     createdBy: {
@@ -137,11 +139,22 @@ const MatchCard: React.FC<MatchCardProps> = ({
       className="group relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-black/20 cursor-pointer"
       onClick={() => onView(match)}
     >
-      {/* Status Badge */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Status & Match Type Badges */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-1.5 items-end">
         <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor()}`}>
           {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
         </span>
+        {match.matchType && (
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            match.matchType === 'tournament' 
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' 
+              : match.matchType === 'friendly'
+              ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+              : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+          }`}>
+            {match.matchType === 'tournament' ? '🏆' : match.matchType === 'friendly' ? '🤝' : '🏏'} {match.matchType.charAt(0).toUpperCase() + match.matchType.slice(1)}
+          </span>
+        )}
       </div>
 
       {/* Header */}

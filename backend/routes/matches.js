@@ -152,7 +152,7 @@ router.get('/:id', auth, async (req, res) => {
 // Create new match
 router.post('/', auth, async (req, res) => {
   try {
-    const { date, slot, ground, time, opponent, cricHeroesMatchId, notes } = req.body;
+    const { date, slot, ground, locationLink, time, opponent, cricHeroesMatchId, notes, matchType, status } = req.body;
     
     // Validate required fields
     if (!date || !slot || !ground) {
@@ -180,10 +180,13 @@ router.post('/', auth, async (req, res) => {
       date,
       slot,
       ground,
+      locationLink: locationLink || '',
       time: time || '',
       opponent: opponent || '',
       cricHeroesMatchId: cricHeroesMatchId || '',
       notes: notes || '',
+      matchType: matchType || 'practice',
+      status: status || 'draft',
       createdBy: req.user.id
     });
     
@@ -213,7 +216,7 @@ router.post('/', auth, async (req, res) => {
 // Update match
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { date, time, slot, opponent, ground, status, cricHeroesMatchId, notes } = req.body;
+    const { date, time, slot, opponent, ground, locationLink, status, matchType, cricHeroesMatchId, notes } = req.body;
     
     const match = await Match.findById(req.params.id);
     if (!match) {
@@ -226,7 +229,9 @@ router.put('/:id', auth, async (req, res) => {
     if (slot) match.slot = slot;
     if (opponent !== undefined) match.opponent = opponent;
     if (ground) match.ground = ground;
+    if (locationLink !== undefined) match.locationLink = locationLink;
     if (status) match.status = status;
+    if (matchType) match.matchType = matchType;
     if (cricHeroesMatchId !== undefined) match.cricHeroesMatchId = cricHeroesMatchId;
     if (notes !== undefined) match.notes = notes;
     
