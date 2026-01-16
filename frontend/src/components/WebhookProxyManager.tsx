@@ -218,10 +218,15 @@ const WebhookProxyManager: React.FC = () => {
 
       {/* Local Server Configuration */}
       <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <Server className="w-5 h-5 text-violet-400" />
-          <h3 className="text-lg font-semibold text-white">Local Development Server</h3>
+          <h3 className="text-lg font-semibold text-white">Local Development Server (via ngrok)</h3>
         </div>
+        
+        <p className="text-sm text-slate-400 mb-4">
+          Use <a href="https://ngrok.com" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">ngrok</a> to 
+          expose your local server. Run <code className="px-1.5 py-0.5 bg-slate-700 rounded text-xs">ngrok http 5002</code> and paste the public URL below.
+        </p>
 
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -231,7 +236,7 @@ const WebhookProxyManager: React.FC = () => {
                   type="text"
                   value={newLocalUrl}
                   onChange={(e) => setNewLocalUrl(e.target.value)}
-                  placeholder="http://localhost:5002 or http://192.168.1.100:5002"
+                  placeholder="https://abc123.ngrok-free.app"
                   className="flex-1 px-4 py-3 rounded-xl bg-slate-700/50 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
                 />
                 <button
@@ -297,9 +302,12 @@ const WebhookProxyManager: React.FC = () => {
             )}
           </div>
 
-          <p className="text-xs text-slate-500">
-            Tip: Use your machine's IP address (e.g., http://192.168.1.100:5002) if testing from a different device on the same network.
-          </p>
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-xs text-amber-300">
+              <strong>Important:</strong> Your local machine is not directly accessible from the K8s cluster. 
+              Use ngrok to create a tunnel: <code className="px-1 py-0.5 bg-slate-700 rounded">ngrok http 5002</code>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -404,21 +412,32 @@ const WebhookProxyManager: React.FC = () => {
 
       {/* Info Box */}
       <div className="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20 rounded-2xl p-6">
-        <h4 className="text-sm font-semibold text-violet-300 mb-2">How it works</h4>
-        <ul className="text-sm text-slate-400 space-y-2">
+        <h4 className="text-sm font-semibold text-violet-300 mb-3">How it works</h4>
+        <ul className="text-sm text-slate-400 space-y-2 mb-4">
           <li className="flex items-start gap-2">
             <span className="text-violet-400 mt-0.5">1.</span>
             <span>All WhatsApp webhook events <strong className="text-white">always go to production</strong> - no data is ever lost</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-violet-400 mt-0.5">2.</span>
-            <span>When local routing is <strong className="text-emerald-400">enabled</strong>, events from your configured phone numbers are <strong className="text-white">also</strong> forwarded to your local server</span>
+            <span>When local routing is <strong className="text-emerald-400">enabled</strong>, events from your configured phone numbers are <strong className="text-white">also</strong> forwarded to your ngrok URL</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-violet-400 mt-0.5">3.</span>
-            <span>Events from other users' phones will <strong className="text-white">only</strong> go to production (not affected by local routing)</span>
+            <span>ngrok tunnels the request to your <strong className="text-white">localhost:5002</strong></span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-violet-400 mt-0.5">4.</span>
+            <span>Events from other users' phones will <strong className="text-white">only</strong> go to production</span>
           </li>
         </ul>
+        
+        <h4 className="text-sm font-semibold text-violet-300 mb-2">Quick Start</h4>
+        <div className="bg-slate-800/50 rounded-lg p-3 font-mono text-xs text-slate-300 space-y-1">
+          <p><span className="text-slate-500"># Terminal 1:</span> cd backend && PORT=5002 npm run dev</p>
+          <p><span className="text-slate-500"># Terminal 2:</span> ngrok http 5002</p>
+          <p><span className="text-slate-500"># Then:</span> Copy the https URL and paste above</p>
+        </div>
       </div>
     </div>
   );

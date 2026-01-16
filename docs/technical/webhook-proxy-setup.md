@@ -11,28 +11,67 @@ The Webhook Proxy allows you to test WhatsApp webhook events on your local devel
 3. **One-Click Toggle**: Enable/disable local routing instantly from the admin UI
 4. **Real-Time Stats**: Monitor routing statistics in the dashboard
 
+## The Networking Challenge
+
+Your local machine (`localhost:5002`) is **NOT directly accessible** from the K8s cluster in OCI because:
+- Your machine is behind NAT/firewall
+- `localhost` from a K8s pod's perspective is the pod itself, not your machine
+
+**Solution**: Use **ngrok** to create a secure tunnel from your local machine to a public URL.
+
 ## Architecture
 
 ```
-                                    ┌──────────────────┐
-                                    │   Production     │
-                                    │   Backend        │
-                         ┌─────────►│   (Always)       │
-                         │          └──────────────────┘
-┌──────────┐    ┌────────┴───────┐
-│ WhatsApp │───►│ Webhook Proxy  │
-│ Cloud    │    │ (K8s Backend)  │
-└──────────┘    └────────┬───────┘
-                         │          ┌──────────────────┐
-                         │          │   Local Dev      │
-                         └─────────►│   (If phone      │
-                                    │    matches)      │
-                                    └──────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           OCI Cloud (K8s)                               │
+│  ┌──────────────┐     ┌─────────────────┐     ┌──────────────────────┐  │
+│  │   WhatsApp   │────►│  Webhook Proxy  │────►│  Production Backend  │  │
+│  │   Cloud API  │     │  (Entry Point)  │     │  (ALWAYS receives)   │  │
+│  └──────────────┘     └────────┬────────┘     └──────────────────────┘  │
+└────────────────────────────────┼────────────────────────────────────────┘
+                                 │
+                                 │ If phone matches, also forward to:
+                                 ▼
+                    ┌────────────────────────┐
+                    │   ngrok Cloud          │
+                    │   (Public URL)         │
+                    │   abc123.ngrok-free.app│
+                    └───────────┬────────────┘
+                                │
+                    ════════════╪════════════  Internet / Tunnel
+                                │
+┌───────────────────────────────┼─────────────────────────────────────────┐
+│  Your Local Machine           │                                         │
+│                    ┌──────────┴───────────┐                             │
+│                    │   ngrok client       │                             │
+│                    │   (running locally)  │                             │
+│                    └──────────┬───────────┘                             │
+│                               │                                         │
+│                    ┌──────────▼───────────┐                             │
+│                    │   Local Backend      │                             │
+│                    │   localhost:5002     │                             │
+│                    └──────────────────────┘                             │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Setup Steps
 
-### Step 1: Update Meta Developer Console
+### Step 1: Install ngrok (One-time)
+
+```bash
+# macOS
+brew install ngrok
+
+# Or download from https://ngrok.com/download
+```
+
+Sign up for a free account at [ngrok.com](https://ngrok.com) and authenticate:
+
+```bash
+ngrok config add-authtoken YOUR_AUTH_TOKEN
+```
+
+### Step 2: Update Meta Developer Console (One-time)
 
 1. Go to [Meta Developer Console](https://developers.facebook.com/)
 2. Navigate to your WhatsApp Business App
@@ -48,32 +87,46 @@ The Webhook Proxy allows you to test WhatsApp webhook events on your local devel
 5. Keep the same Verify Token
 6. Click **Verify and Save**
 
-### Step 2: Configure Local Development Server
+### Step 3: Start Local Backend
 
-1. Start your local backend:
-   ```bash
-   cd backend
-   npm run dev
-   # or specify a custom port
-   PORT=5002 npm run dev
-   ```
+```bash
+cd backend
+PORT=5002 npm run dev
+```
 
-2. If testing from the same machine, use `http://localhost:5002`
+### Step 4: Start ngrok Tunnel
 
-3. If testing from a different device on the same network:
-   - Find your machine's IP: `ifconfig | grep inet` or `ipconfig`
-   - Use `http://192.168.x.x:5002`
+In a new terminal:
 
-### Step 3: Configure Webhook Proxy (Admin UI)
+```bash
+ngrok http 5002
+```
 
-1. Log in to the admin dashboard
-2. Go to **Settings** (bottom of navigation)
-3. Scroll down to **Developer Tools > Webhook Proxy**
-4. Configure:
-   - **Local Server URL**: Your local backend URL (e.g., `http://192.168.1.100:5002`)
-   - **Test Connection**: Verify connectivity to your local server
-   - **Add Phone Numbers**: Add your WhatsApp number(s) for local routing
-5. **Enable Local Routing**: Toggle ON to start receiving events locally
+You'll see output like:
+```
+Session Status                online
+Forwarding                    https://abc123.ngrok-free.app -> http://localhost:5002
+```
+
+**Copy the HTTPS URL** (e.g., `https://abc123.ngrok-free.app`)
+
+> **Note**: The free ngrok URL changes each time you restart ngrok. For a static URL, upgrade to a paid plan or use [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) as an alternative.
+
+### Step 5: Configure Webhook Proxy (Admin UI)
+
+1. Go to production site: `https://mavericks11.duckdns.org`
+2. Login as admin
+3. Go to **Settings** → scroll to **Developer Tools** → **Webhook Proxy**
+4. Set **Local Server URL** to your ngrok URL (e.g., `https://abc123.ngrok-free.app`)
+5. Click **Test Connection** - should show "Local server is reachable"
+6. **Add your phone number** (e.g., `918087102325`)
+7. Toggle **Local Routing** to **ON**
+
+### Step 6: Test It!
+
+1. Send a WhatsApp message from your phone to the bot number
+2. Watch your local terminal - you should see the webhook event logged
+3. The event also went to production (check the proxy stats)
 
 ## API Endpoints
 
