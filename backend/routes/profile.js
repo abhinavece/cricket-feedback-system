@@ -9,7 +9,21 @@ const { formatPhoneNumber } = require('../services/playerService');
 router.get('/', auth, async (req, res) => {
   console.log('GET /api/profile - Fetching user profile for:', req.user._id);
   try {
-    const user = await User.findById(req.user._id).populate('playerId');
+    let user = await User.findById(req.user._id).populate('playerId');
+    
+    // If user not found and DISABLE_AUTH is true, use mock user for development
+    if (!user && process.env.DISABLE_AUTH === 'true') {
+      console.log('Using mock user for development mode');
+      user = {
+        _id: req.user._id,
+        name: req.user.name || 'Dev User',
+        email: req.user.email || 'dev@localhost',
+        avatar: null,
+        role: 'admin',
+        profileComplete: false,
+        playerId: null
+      };
+    }
     
     if (!user) {
       return res.status(404).json({
@@ -48,6 +62,7 @@ router.get('/', auth, async (req, res) => {
         phone: player.phone,
         role: player.role,
         team: player.team,
+        dateOfBirth: player.dateOfBirth,
         cricHeroesId: player.cricHeroesId,
         about: player.about,
         battingStyle: player.battingStyle,
@@ -72,17 +87,33 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   console.log('POST /api/profile - Creating user profile:', req.body);
   try {
-    const { name, phone, playerRole, team, cricHeroesId, about, battingStyle, bowlingStyle } = req.body;
+    const { name, phone, dateOfBirth, playerRole, team, cricHeroesId, about, battingStyle, bowlingStyle } = req.body;
     
     // Validate required fields
-    if (!name || !phone) {
+    if (!name || !phone || !dateOfBirth) {
       return res.status(400).json({
         success: false,
-        error: 'Name and phone are required'
+        error: 'Name, phone, and date of birth are required'
       });
     }
 
-    const user = await User.findById(req.user._id);
+    let user = await User.findById(req.user._id);
+    
+    // If user not found and DISABLE_AUTH is true, use mock user for development
+    if (!user && process.env.DISABLE_AUTH === 'true') {
+      console.log('Using mock user for development mode');
+      user = {
+        _id: req.user._id,
+        name: req.user.name || 'Dev User',
+        email: req.user.email || 'dev@localhost',
+        role: 'admin',
+        isActive: true,
+        playerId: null,
+        profileComplete: false,
+        save: async function() { return this; } // Mock save method
+      };
+    }
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -114,6 +145,7 @@ router.post('/', auth, async (req, res) => {
       if (!existingPlayer.userId) {
         existingPlayer.userId = user._id;
         existingPlayer.name = name.trim();
+        existingPlayer.dateOfBirth = new Date(dateOfBirth);
         if (cricHeroesId) existingPlayer.cricHeroesId = cricHeroesId;
         if (about) existingPlayer.about = about;
         if (battingStyle) existingPlayer.battingStyle = battingStyle;
@@ -151,6 +183,7 @@ router.post('/', auth, async (req, res) => {
     const player = await Player.create({
       name: name.trim(),
       phone: formattedPhone,
+      dateOfBirth: new Date(dateOfBirth),
       role: playerRole || 'player',
       team: team || 'Mavericks XI',
       userId: user._id,
@@ -193,9 +226,25 @@ router.post('/', auth, async (req, res) => {
 router.put('/', auth, async (req, res) => {
   console.log('PUT /api/profile - Updating user profile:', req.body);
   try {
-    const { name, playerRole, team, cricHeroesId, about, battingStyle, bowlingStyle } = req.body;
+    const { name, dateOfBirth, playerRole, team, cricHeroesId, about, battingStyle, bowlingStyle } = req.body;
     
-    const user = await User.findById(req.user._id);
+    let user = await User.findById(req.user._id);
+    
+    // If user not found and DISABLE_AUTH is true, use mock user for development
+    if (!user && process.env.DISABLE_AUTH === 'true') {
+      console.log('Using mock user for development mode');
+      user = {
+        _id: req.user._id,
+        name: req.user.name || 'Dev User',
+        email: req.user.email || 'dev@localhost',
+        role: 'admin',
+        isActive: true,
+        playerId: null,
+        profileComplete: false,
+        save: async function() { return this; } // Mock save method
+      };
+    }
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -221,6 +270,7 @@ router.put('/', auth, async (req, res) => {
 
     // Update fields (phone number is NOT updateable)
     if (name) player.name = name.trim();
+    if (dateOfBirth) player.dateOfBirth = new Date(dateOfBirth);
     if (playerRole) player.role = playerRole;
     if (team) player.team = team;
     if (cricHeroesId !== undefined) player.cricHeroesId = cricHeroesId || null;

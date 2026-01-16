@@ -12,11 +12,13 @@ import {
   RefreshCw,
   LogOut,
   Edit3,
-  X
+  X,
+  Calendar
 } from 'lucide-react';
 import { getProfile, updateProfile, createProfile, ProfileData, ProfileCreateData } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import WebhookProxyManager from '../components/WebhookProxyManager';
+import DateOfBirthPicker from '../components/DateOfBirthPicker';
 
 const BATTING_STYLES = [
   { value: '', label: 'Not specified' },
@@ -56,6 +58,7 @@ const SettingsPage: React.FC = () => {
   const [formData, setFormData] = useState<ProfileCreateData>({
     name: '',
     phone: '',
+    dateOfBirth: '',
     playerRole: 'player',
     team: 'Mavericks XI',
     cricHeroesId: '',
@@ -74,6 +77,7 @@ const SettingsPage: React.FC = () => {
         setFormData({
           name: response.data.player.name || '',
           phone: response.data.player.phone || '',
+          dateOfBirth: response.data.player.dateOfBirth || '',
           playerRole: response.data.player.role || 'player',
           team: response.data.player.team || 'Mavericks XI',
           cricHeroesId: response.data.player.cricHeroesId || '',
@@ -84,12 +88,17 @@ const SettingsPage: React.FC = () => {
       } else {
         setFormData(prev => ({
           ...prev,
-          name: response.data.user.name || ''
+          name: response.data.user.name || '',
+          dateOfBirth: ''
         }));
       }
     } catch (err: any) {
       console.error('Error fetching profile:', err);
-      setError('Failed to load profile');
+      if (err.response?.status === 404) {
+        setProfile(null);
+      } else {
+        setError('Failed to load profile');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +134,10 @@ const SettingsPage: React.FC = () => {
     }
     if (!formData.phone || formData.phone.length < 10) {
       setError('Valid phone number is required');
+      return;
+    }
+    if (!formData.dateOfBirth?.trim()) {
+      setError('Date of birth is required');
       return;
     }
 
@@ -165,6 +178,7 @@ const SettingsPage: React.FC = () => {
       setFormData({
         name: profile.player.name || '',
         phone: profile.player.phone || '',
+        dateOfBirth: profile.player.dateOfBirth || '',
         playerRole: profile.player.role || 'player',
         team: profile.player.team || 'Mavericks XI',
         cricHeroesId: profile.player.cricHeroesId || '',
@@ -182,6 +196,7 @@ const SettingsPage: React.FC = () => {
     setFormData({
       name: profile?.user?.name || user?.name || '',
       phone: '',
+      dateOfBirth: '',
       playerRole: 'player',
       team: 'Mavericks XI',
       cricHeroesId: '',
@@ -342,6 +357,16 @@ const SettingsPage: React.FC = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Date of Birth */}
+                <div className="md:col-span-2">
+                  <DateOfBirthPicker
+                    value={formData.dateOfBirth}
+                    onChange={(date) => setFormData(prev => ({ ...prev, dateOfBirth: date }))}
+                    label="Date of Birth"
+                    required={true}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

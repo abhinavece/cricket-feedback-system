@@ -57,6 +57,10 @@ const playerSchema = new mongoose.Schema({
     type: String,
     enum: ['right-arm-fast', 'right-arm-medium', 'right-arm-spin', 'left-arm-fast', 'left-arm-medium', 'left-arm-spin', 'none', null],
     default: null
+  },
+  dateOfBirth: {
+    type: Date,
+    required: true
   }
 }, {
   timestamps: true

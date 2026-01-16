@@ -912,6 +912,73 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
   }
 }
 
+// GET /api/whatsapp/conversations - Get all conversations with last message
+router.get('/conversations', auth, async (req, res) => {
+  try {
+    const Player = require('../models/Player');
+
+    // Get all active players
+    const players = await Player.find({ isActive: true })
+      .select('_id name phone')
+      .sort({ name: 1 });
+
+    // Get last message for each player
+    const conversationsPromises = players.map(async (player) => {
+      let formattedPhone = player.phone.replace(/\D/g, '');
+      if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+        formattedPhone = '91' + formattedPhone;
+      }
+
+      const lastMessage = await Message.findOne({
+        $or: [
+          { from: formattedPhone },
+          { to: formattedPhone }
+        ]
+      })
+        .sort({ timestamp: -1 })
+        .select('text timestamp direction')
+        .lean();
+
+      return {
+        player: {
+          _id: player._id,
+          name: player.name,
+          phone: player.phone
+        },
+        lastMessage: lastMessage ? {
+          text: lastMessage.text?.substring(0, 50) + (lastMessage.text?.length > 50 ? '...' : ''),
+          timestamp: lastMessage.timestamp,
+          direction: lastMessage.direction
+        } : null,
+        unreadCount: 0 // Placeholder for future unread tracking
+      };
+    });
+
+    const conversations = await Promise.all(conversationsPromises);
+
+    // Sort by last message timestamp (most recent first), then by name
+    conversations.sort((a, b) => {
+      if (a.lastMessage && b.lastMessage) {
+        return new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime();
+      }
+      if (a.lastMessage) return -1;
+      if (b.lastMessage) return 1;
+      return a.player.name.localeCompare(b.player.name);
+    });
+
+    res.json({
+      success: true,
+      data: conversations
+    });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch conversations'
+    });
+  }
+});
+
 // GET /api/whatsapp/messages/:phone - Get message history for a phone number (with pagination)
 router.get('/messages/:phone', auth, async (req, res) => {
   try {

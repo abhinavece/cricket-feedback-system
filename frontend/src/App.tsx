@@ -11,6 +11,7 @@ import './theme.css';
 // Public pages (no auth required)
 const PublicMatchView = lazy(() => import('./pages/PublicMatchView'));
 const PublicPaymentView = lazy(() => import('./pages/PublicPaymentView'));
+const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -39,7 +40,7 @@ const LoadingSpinner = () => (
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings'>(() => {
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings'>(() => {
     const savedTab = localStorage.getItem('activeTab');
     return (savedTab as any) || 'feedback';
   });
@@ -177,7 +178,10 @@ function App() {
               {/* Public share routes - no auth required */}
               <Route path="/share/match/:token" element={<PublicMatchView />} />
               <Route path="/share/payment/:token" element={<PublicPaymentView />} />
-              
+
+              {/* Player profile - requires auth */}
+              <Route path="/player/:playerId" element={<PlayerProfilePage />} />
+
               {/* Main app route */}
               <Route path="/*" element={<AppContent />} />
             </Routes>

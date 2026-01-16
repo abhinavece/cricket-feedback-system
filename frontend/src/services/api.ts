@@ -436,6 +436,7 @@ export interface PlayerProfile {
   phone: string;
   role: string;
   team: string;
+  dateOfBirth: string;
   cricHeroesId?: string;
   about?: string;
   battingStyle?: string;
@@ -459,6 +460,7 @@ export interface ProfileData {
 export interface ProfileCreateData {
   name: string;
   phone: string;
+  dateOfBirth: string;
   playerRole?: string;
   team?: string;
   cricHeroesId?: string;
@@ -530,6 +532,32 @@ export const getWebhookProxyStats = async (): Promise<{ success: boolean; data: 
 
 export const testWebhookLocalConnection = async (): Promise<{ success: boolean; message: string; data: { url: string; statusCode?: number; error?: string } }> => {
   const response = await api.post('/webhook-proxy/test-local');
+  return response.data;
+};
+
+// Player Public Profile API
+export interface PublicPlayerProfile {
+  _id: string;
+  name: string;
+  role: string;
+  team: string;
+  about?: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+  cricHeroesId?: string;
+  age: number | null;
+  isActive: boolean;
+  email?: string | null;
+}
+
+export const getPlayerProfile = async (playerId: string): Promise<{ success: boolean; data: PublicPlayerProfile }> => {
+  const response = await api.get(`/players/${playerId}/profile`);
+  return response.data;
+};
+
+// Get all conversations (for mobile chats tab)
+export const getAllConversations = async (): Promise<{ success: boolean; data: Array<{ player: { _id: string; name: string; phone: string }; lastMessage: { text: string; timestamp: string; direction: string } | null; unreadCount: number }> }> => {
+  const response = await api.get('/whatsapp/conversations');
   return response.data;
 };
 

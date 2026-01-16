@@ -8,9 +8,11 @@ import {
   CheckCircle,
   ChevronDown,
   Trophy,
-  Info
+  Info,
+  Calendar
 } from 'lucide-react';
 import { createProfile, ProfileCreateData } from '../../services/api';
+import DateOfBirthPicker from '../DateOfBirthPicker';
 
 interface MobileProfileSetupProps {
   userName?: string;
@@ -51,6 +53,7 @@ const MobileProfileSetup: React.FC<MobileProfileSetupProps> = ({
   const [formData, setFormData] = useState<ProfileCreateData>({
     name: userName || '',
     phone: '',
+    dateOfBirth: '',
     playerRole: 'player',
     team: 'Mavericks XI',
     cricHeroesId: '',
@@ -90,6 +93,10 @@ const MobileProfileSetup: React.FC<MobileProfileSetupProps> = ({
     }
     if (!formData.phone || formData.phone.length < 10) {
       setError('Please enter a valid 10-digit phone number');
+      return false;
+    }
+    if (!formData.dateOfBirth?.trim()) {
+      setError('Please select your date of birth');
       return false;
     }
     return true;
@@ -201,6 +208,14 @@ const MobileProfileSetup: React.FC<MobileProfileSetupProps> = ({
           </div>
           <p className="text-xs text-slate-500 mt-1">Used for match updates & availability requests</p>
         </div>
+
+        {/* Date of Birth Field */}
+        <DateOfBirthPicker
+          value={formData.dateOfBirth}
+          onChange={(date) => setFormData(prev => ({ ...prev, dateOfBirth: date }))}
+          label="Date of Birth"
+          required={true}
+        />
 
         {/* Player Role */}
         <div>

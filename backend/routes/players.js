@@ -32,6 +32,58 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// GET /api/players/:id/profile - Get public player profile (sanitized, no sensitive data)
+router.get('/:id/profile', auth, async (req, res) => {
+  console.log(`GET /api/players/${req.params.id}/profile - Fetching player profile`);
+  try {
+    const player = await Player.findById(req.params.id).populate('userId', 'email');
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        error: 'Player not found'
+      });
+    }
+
+    // Calculate age from dateOfBirth (don't expose exact date)
+    let age = null;
+    if (player.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(player.dateOfBirth);
+      age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+    }
+
+    // Return sanitized public profile (exclude phone, notes, exact DOB)
+    const publicProfile = {
+      _id: player._id,
+      name: player.name,
+      role: player.role,
+      team: player.team,
+      about: player.about,
+      battingStyle: player.battingStyle,
+      bowlingStyle: player.bowlingStyle,
+      cricHeroesId: player.cricHeroesId,
+      age: age,
+      isActive: player.isActive,
+      email: player.userId?.email || null
+    };
+
+    res.json({
+      success: true,
+      data: publicProfile
+    });
+  } catch (error) {
+    console.error('Error fetching player profile:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch player profile'
+    });
+  }
+});
+
 // GET /api/players/:id - Get a specific player
 router.get('/:id', auth, async (req, res) => {
   console.log(`GET /api/players/${req.params.id} - Fetching specific player`);

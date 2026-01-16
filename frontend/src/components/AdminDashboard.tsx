@@ -37,8 +37,8 @@ interface FeedbackStats {
 }
 
 interface AdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -55,7 +55,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'matches' | 'payments' | 'player-history' | 'settings'>(propActiveTab);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings'>(propActiveTab);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const hasFetchedInitial = React.useRef(false);

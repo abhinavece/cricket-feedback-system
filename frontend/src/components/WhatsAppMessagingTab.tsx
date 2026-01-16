@@ -3,6 +3,7 @@ import { createPlayer, getPlayers, sendWhatsAppMessage, getMessageHistory, updat
 import type { Player } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 import MatchForm from './MatchForm';
+import PlayerNameLink from './PlayerNameLink';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
 import { matchEvents } from '../utils/matchEvents';
 import { useSSE } from '../hooks/useSSE';
@@ -80,7 +81,7 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [historyNewMessage, setHistoryNewMessage] = useState('');
   const [sendingHistoryMessage, setSendingHistoryMessage] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Helper function to auto-capitalize text like WhatsApp
@@ -811,243 +812,6 @@ const WhatsAppMessagingTab: React.FC = () => {
         </div>
       )}
 
-      {/* Message History Modal */}
-      {historyPlayer && (
-        <div className="fixed inset-0 z-[1000] flex items-end justify-center p-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 md:items-center md:p-4">
-          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 animate-in slide-in-from-bottom duration-300 md:animate-in md:zoom-in-95 md:duration-300" style={{ maxHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
-            {/* Modal Header */}
-            <div className="p-4 md:p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#128C7E]/10 flex items-center justify-center text-[#128C7E] shrink-0">
-                  <svg className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-base md:text-lg font-bold text-gray-900 leading-tight">
-                    {historyPlayer.name}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-500 font-medium tabular-nums">{historyPlayer.phone}</span>
-                    {lastSynced && (
-                      <span className="flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold uppercase tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Live
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => fetchHistory(historyPlayer)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-                  title="Refresh conversation"
-                  disabled={loadingHistory}
-                >
-                  <svg className={`w-5 h-5 ${loadingHistory ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={() => setHistoryPlayer(null)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat" style={{ maxHeight: 'calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
-              {loadingHistory && historyMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full space-y-3">
-                  <div className="w-8 h-8 border-3 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
-                  <p className="text-sm font-medium text-gray-500">Loading conversation...</p>
-                </div>
-              ) : historyMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full opacity-40">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-600 font-medium">No messages yet</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {/* Load More Button */}
-                  {hasMoreHistory && (
-                    <div className="flex justify-center py-2">
-                      <button
-                        onClick={loadMoreHistory}
-                        disabled={loadingMoreHistory}
-                        className="px-4 py-2 text-xs font-medium text-[#128C7E] bg-white rounded-full shadow-sm hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
-                      >
-                        {loadingMoreHistory ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                            Load older messages
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  
-                  {historyMessages.map((msg, idx) => {
-                    const isIncoming = msg.direction === 'incoming';
-                    const hasImage = msg.imageId;
-                    return (
-                      <div 
-                        key={msg._id || idx} 
-                        className={`flex flex-col ${isIncoming ? 'items-start' : 'items-end'} max-w-[85%] ${isIncoming ? 'self-start' : 'self-end'}`}
-                      >
-                        <div className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed ${
-                          isIncoming 
-                            ? 'bg-white text-gray-800 rounded-tl-none' 
-                            : 'bg-[#dcf8c6] text-gray-800 rounded-tr-none'
-                        }`}>
-                          {/* Chat bubble tail effect */}
-                          <div className={`absolute top-0 w-0 h-0 border-t-[10px] ${
-                            isIncoming 
-                              ? '-left-2 border-t-white border-l-[10px] border-l-transparent' 
-                              : '-right-2 border-t-[#dcf8c6] border-r-[10px] border-r-transparent'
-                          }`}></div>
-                          
-                          {/* Image display */}
-                          {hasImage && (
-                            <div className="mb-2">
-                              <img 
-                                src={`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`}
-                                alt="Shared image"
-                                className="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`, '_blank')}
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  target.nextElementSibling?.classList.remove('hidden');
-                                }}
-                              />
-                              <div className="hidden flex items-center gap-2 p-3 bg-gray-100 rounded-lg text-gray-500 text-sm">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span>Image unavailable</span>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Text/Caption */}
-                          {msg.text && msg.text !== '[Image]' && (
-                            <div className="whitespace-pre-wrap">{msg.text}</div>
-                          )}
-                          
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            <span className="text-[10px] opacity-50 font-medium tabular-nums">
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {!isIncoming && (
-                              <span className="text-sky-500">
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                                </svg>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} className="h-2" />
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer - WhatsApp Input Style */}
-            <div className="p-2 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2 shrink-0">              
-              {/* Text Input */}
-              <div className="flex-1 relative min-w-0">
-                <textarea
-                  value={historyNewMessage}
-                  onChange={(e) => setHistoryNewMessage(autoCapitalize(e.target.value))}
-                  placeholder="Type a message"
-                  className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-24 min-h-[40px] overflow-hidden"
-                  rows={1}
-                  style={{
-                    width: '100%',
-                    maxWidth: '100%',
-                    boxSizing: 'border-box',
-                    overflowY: 'auto'
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendHistoryMessage();
-                    }
-                  }}
-                />
-              </div>
-              
-              {/* Send Button */}
-              <button
-                onClick={handleSendHistoryMessage}
-                disabled={!historyNewMessage.trim() || sendingHistoryMessage}
-                className={`w-10 h-10 rounded-full transition-all flex items-center justify-center shrink-0 ${
-                  sendingHistoryMessage
-                    ? 'bg-gray-300 text-white cursor-not-allowed'
-                    : 'bg-[#00a884] text-white hover:bg-[#008f72] active:scale-95 shadow-md'
-                }`}
-              >
-                {sendingHistoryMessage ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-
-            <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-              {/* SSE Status */}
-              <span className={`flex items-center gap-1.5 text-xs font-medium ${sseConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {sseConnected ? (
-                  <>
-                    <Wifi className="w-3.5 h-3.5" />
-                    <span>Live updates</span>
-                  </>
-                ) : sseStatus === 'connecting' ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-3.5 h-3.5" />
-                    <span>Offline</span>
-                  </>
-                )}
-              </span>
-              <button 
-                onClick={() => setHistoryPlayer(null)}
-                className="px-6 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 card">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1178,7 +942,11 @@ const WhatsAppMessagingTab: React.FC = () => {
                             {player.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-semibold text-white text-base">{player.name}</p>
+                            <PlayerNameLink
+                              playerId={player._id}
+                              playerName={player.name}
+                              className="font-semibold text-white text-base"
+                            />
                             <p className="text-sm text-secondary">{player.phone}</p>
                           </div>
                         </div>
@@ -1255,17 +1023,21 @@ const WhatsAppMessagingTab: React.FC = () => {
                           {player.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-white text-base truncate">{player.name}</p>
+                          <PlayerNameLink
+                            playerId={player._id}
+                            playerName={player.name}
+                            className="font-semibold text-white text-base truncate block"
+                          />
                           <p className="text-sm text-secondary truncate">{player.phone}</p>
                         </div>
                       </div>
-                      
+
                       {player.notes && (
                         <div className="px-3 py-1.5 bg-gray-800/40 rounded-lg mb-3">
                           <p className="text-xs text-secondary italic">{player.notes}</p>
                         </div>
                       )}
-                      
+
                       <div className="flex justify-between items-center">
                         <p className="text-xs text-gray-500">
                           {player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}
@@ -1761,6 +1533,237 @@ const WhatsAppMessagingTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Message History Modal */}
+      {historyPlayer && (
+        <div className="fixed inset-0 z-[1000] flex items-end justify-center p-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 md:items-center md:p-4">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 animate-in slide-in-from-bottom duration-300 md:animate-in md:zoom-in-95 md:duration-300" style={{ maxHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
+            {/* Modal Header */}
+            <div className="p-4 md:p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#128C7E]/10 flex items-center justify-center text-[#128C7E] shrink-0">
+                  <svg className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-gray-900 leading-tight">
+                    {historyPlayer.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-500 font-medium tabular-nums">{historyPlayer.phone}</span>
+                    {lastSynced && (
+                      <span className="flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold uppercase tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchHistory(historyPlayer)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+                  title="Refresh conversation"
+                  disabled={loadingHistory}
+                >
+                  <svg className={`w-5 h-5 ${loadingHistory ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setHistoryPlayer(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Area */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat" style={{ maxHeight: 'calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
+              {loadingHistory && historyMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full space-y-3">
+                  <div className="w-8 h-8 border-3 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
+                  <p className="text-sm font-medium text-gray-500">Loading conversation...</p>
+                </div>
+              ) : historyMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full opacity-40">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 font-medium">No messages yet</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {/* Load More Button */}
+                  {hasMoreHistory && (
+                    <div className="flex justify-center py-2">
+                      <button
+                        onClick={loadMoreHistory}
+                        disabled={loadingMoreHistory}
+                        className="px-4 py-2 text-xs font-medium text-[#128C7E] bg-white rounded-full shadow-sm hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {loadingMoreHistory ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                            </svg>
+                            Load older messages
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {historyMessages.map((msg, idx) => {
+                    const isIncoming = msg.direction === 'incoming';
+                    const hasImage = msg.imageId;
+                    return (
+                      <div
+                        key={msg._id || idx}
+                        className={`flex flex-col ${isIncoming ? 'items-start' : 'items-end'} max-w-[85%] ${isIncoming ? 'self-start' : 'self-end'}`}
+                      >
+                        <div className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed ${
+                          isIncoming
+                            ? 'bg-white text-gray-800 rounded-tl-none'
+                            : 'bg-[#dcf8c6] text-gray-800 rounded-tr-none'
+                        }`}>
+                          {/* Chat bubble tail effect */}
+                          <div className={`absolute top-0 w-0 h-0 border-t-[10px] ${
+                            isIncoming
+                              ? '-left-2 border-t-white border-l-[10px] border-l-transparent'
+                              : '-right-2 border-t-[#dcf8c6] border-r-[10px] border-r-transparent'
+                          }`}></div>
+
+                          {/* Image display */}
+                          {hasImage && (
+                            <div className="mb-2">
+                              <img
+                                src={`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`}
+                                alt="Shared image"
+                                className="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`, '_blank')}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Text/Caption */}
+                          {msg.text && msg.text !== '[Image]' && (
+                            <div className="whitespace-pre-wrap">{msg.text}</div>
+                          )}
+
+                          <div className="flex items-center justify-end gap-1 mt-1">
+                            <span className="text-[10px] opacity-50 font-medium tabular-nums">
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {!isIncoming && (
+                              <span className="text-sky-500">
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                                </svg>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} className="h-2" />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer - WhatsApp Input Style */}
+            <div className="p-2 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2 shrink-0">
+              {/* Text Input */}
+              <div className="flex-1 relative min-w-0">
+                <textarea
+                  value={historyNewMessage}
+                  onChange={(e) => setHistoryNewMessage(autoCapitalize(e.target.value))}
+                  placeholder="Type a message"
+                  className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-24 min-h-[40px] overflow-hidden"
+                  rows={1}
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    overflowY: 'auto'
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendHistoryMessage();
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Send Button */}
+              <button
+                onClick={handleSendHistoryMessage}
+                disabled={!historyNewMessage.trim() || sendingHistoryMessage}
+                className={`w-10 h-10 rounded-full transition-all flex items-center justify-center shrink-0 ${
+                  sendingHistoryMessage
+                    ? 'bg-gray-300 text-white cursor-not-allowed'
+                    : 'bg-[#00a884] text-white hover:bg-[#008f72] active:scale-95 shadow-md'
+                }`}
+              >
+                {sendingHistoryMessage ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+              {/* SSE Status */}
+              <span className={`flex items-center gap-1.5 text-xs font-medium ${sseConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {sseConnected ? (
+                  <>
+                    <Wifi className="w-3.5 h-3.5" />
+                    <span>Live updates</span>
+                  </>
+                ) : sseStatus === 'connecting' ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3.5 h-3.5" />
+                    <span>Offline</span>
+                  </>
+                )}
+              </span>
+              <button
+                onClick={() => setHistoryPlayer(null)}
+                className="px-6 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Player Add/Edit Modal */}
       {showPlayerModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
