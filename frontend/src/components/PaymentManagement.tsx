@@ -952,13 +952,11 @@ const PaymentManagement: React.FC = () => {
                       <div className="text-xs text-yellow-400 mb-0.5">Pending</div>
                       <div className="text-base font-bold text-yellow-400">₹{payment.totalPending}</div>
                     </div>
-                    {/* Refunds Due - only show if > 0 */}
-                    {(payment.totalOwed || 0) > 0 && (
-                      <div className="p-2.5 bg-red-500/15 rounded-lg">
-                        <div className="text-xs text-red-400 mb-0.5">Refunds Due</div>
-                        <div className="text-base font-bold text-red-400">₹{payment.totalOwed}</div>
-                      </div>
-                    )}
+                    {/* Refunds Due - always show */}
+                    <div className={`p-2.5 rounded-lg ${(payment.totalOwed || 0) > 0 ? 'bg-red-500/15' : 'bg-slate-700/40'}`}>
+                      <div className={`text-xs mb-0.5 ${(payment.totalOwed || 0) > 0 ? 'text-red-400' : 'text-slate-400'}`}>Refunds Due</div>
+                      <div className={`text-base font-bold ${(payment.totalOwed || 0) > 0 ? 'text-red-400' : 'text-slate-400'}`}>₹{payment.totalOwed || 0}</div>
+                    </div>
                     {/* Paid Count */}
                     <div className="p-2.5 bg-slate-700/40 rounded-lg">
                       <div className="text-xs text-slate-400 mb-0.5">Paid / Total</div>
