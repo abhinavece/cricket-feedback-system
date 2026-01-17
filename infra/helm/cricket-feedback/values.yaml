@@ -101,7 +101,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "2026.01.17.19"
+    tag: "2026.01.17.20"
   replicaCount: 1
   
   service:
