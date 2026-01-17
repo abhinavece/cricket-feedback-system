@@ -287,8 +287,13 @@ export const loadSquadFromAvailability = async (matchId: string) => {
   return response.data;
 };
 
-export const sendPaymentRequests = async (paymentId: string, memberIds?: string[]) => {
-  const response = await api.post(`/payments/${paymentId}/send-requests`, { memberIds });
+export const sendPaymentRequests = async (paymentId: string, memberIds?: string[], customMessage?: string) => {
+  const response = await api.post(`/payments/${paymentId}/send-requests`, { memberIds, customMessage });
+  return response.data;
+};
+
+export const settleOverpayment = async (paymentId: string, memberId: string) => {
+  const response = await api.post(`/payments/${paymentId}/member/${memberId}/settle-overpayment`);
   return response.data;
 };
 
@@ -329,11 +334,12 @@ export interface PlayerPaymentSummary {
 }
 
 export interface PaymentTransaction {
-  type: 'payment' | 'refund';
+  type: 'payment' | 'refund' | 'settlement' | 'adjusted' | 'invalid';
   amount: number;
   date: string;
   method?: string;
   notes?: string;
+  isValid?: boolean;
 }
 
 export interface MatchPaymentHistory {
@@ -345,6 +351,7 @@ export interface MatchPaymentHistory {
   slot?: string;
   effectiveAmount: number;
   amountPaid: number;
+  settledAmount?: number;
   dueAmount: number;
   owedAmount: number;
   paymentStatus: string;
@@ -368,6 +375,7 @@ export interface PlayerPaymentHistoryResponse {
   summary: {
     totalMatches: number;
     totalPaid: number;
+    totalSettled: number;
     totalDue: number;
     freeMatches: number;
     netContribution: number;

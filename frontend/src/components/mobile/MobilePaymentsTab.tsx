@@ -32,6 +32,7 @@ interface SquadMember {
   amountPaid: number;
   dueAmount: number;
   owedAmount?: number;
+  settledAmount?: number; // Amount that has been settled/refunded to player
   adjustedAmount: number | null;
   calculatedAmount: number;
   messageSentAt?: string | null;
@@ -871,8 +872,12 @@ const MobilePaymentsTab: React.FC = () => {
                           
                           {/* Payment Info Row */}
                           {member.amountPaid > 0 && (
-                            <div className="flex items-center gap-3 mt-1.5 pl-10 text-[10px]">
-                              <span className="text-emerald-400">Paid: ₹{member.amountPaid}</span>
+                            <div className="flex items-center gap-3 mt-1.5 pl-10 text-[10px] flex-wrap">
+                              <span className="text-emerald-400">
+                                Paid: ₹{(member.settledAmount || 0) > 0 
+                                  ? `${member.amountPaid - (member.settledAmount || 0)} (₹${member.amountPaid} - ₹${member.settledAmount} settled)` 
+                                  : member.amountPaid}
+                              </span>
                               {member.dueAmount > 0 && <span className="text-amber-400">Due: ₹{member.dueAmount}</span>}
                               {(member.owedAmount && member.owedAmount > 0) && <span className="text-blue-400">Owed: ₹{member.owedAmount}</span>}
                             </div>
@@ -958,13 +963,43 @@ const MobilePaymentsTab: React.FC = () => {
                 <span className="text-white">₹{paymentMember.adjustedAmount !== null ? paymentMember.adjustedAmount : paymentMember.calculatedAmount}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Paid:</span>
+                <span className="text-slate-400">Total Paid:</span>
                 <span className="text-emerald-400">₹{paymentMember.amountPaid}</span>
               </div>
-              <div className="flex justify-between text-xs border-t border-white/10 mt-2 pt-2">
-                <span className="text-slate-400">Remaining:</span>
-                <span className="text-amber-400">₹{paymentMember.dueAmount}</span>
-              </div>
+              {/* Show settled amount if any */}
+              {(paymentMember.settledAmount || 0) > 0 && (
+                <>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Settled (Refunded):</span>
+                    <span className="text-blue-400">-₹{paymentMember.settledAmount}</span>
+                  </div>
+                  <div className="flex justify-between text-xs border-t border-white/10 mt-1 pt-1">
+                    <span className="text-slate-400">Actual Contribution:</span>
+                    <span className="text-emerald-400">₹{paymentMember.amountPaid - (paymentMember.settledAmount || 0)}</span>
+                  </div>
+                </>
+              )}
+              {/* Show remaining due only if > 0 */}
+              {(paymentMember.dueAmount || 0) > 0 && (
+                <div className="flex justify-between text-xs border-t border-white/10 mt-2 pt-2">
+                  <span className="text-slate-400">Remaining:</span>
+                  <span className="text-amber-400">₹{paymentMember.dueAmount}</span>
+                </div>
+              )}
+              {/* Show owed amount for overpaid players only if > 0 */}
+              {(paymentMember.owedAmount || 0) > 0 && (
+                <div className="flex justify-between text-xs border-t border-white/10 mt-2 pt-2">
+                  <span className="text-slate-400">Owed to Player:</span>
+                  <span className="text-blue-400">₹{paymentMember.owedAmount}</span>
+                </div>
+              )}
+              {/* Show fully paid message when no due and no owed */}
+              {(paymentMember.dueAmount || 0) === 0 && (paymentMember.owedAmount || 0) === 0 && (paymentMember.amountPaid || 0) > 0 && (
+                <div className="flex justify-between text-xs border-t border-white/10 mt-2 pt-2">
+                  <span className="text-slate-400">Status:</span>
+                  <span className="text-emerald-400">✓ Fully Paid</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

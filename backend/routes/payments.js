@@ -9,6 +9,11 @@ const Message = require('../models/Message');
 const axios = require('axios');
 const { getOrCreatePlayer, formatPhoneNumber } = require('../services/playerService');
 const { getTotalOutstandingForPlayer } = require('../services/paymentDistributionService');
+const {
+  calculatePlayerSummary,
+  calculatePlayerMatchHistory,
+  calculateAmountPaidFromHistory
+} = require('../services/paymentCalculationService');
 
 // GET /api/payments - Get all payment records (optimized with pagination)
 router.get('/', auth, async (req, res) => {
@@ -24,11 +29,8 @@ router.get('/', auth, async (req, res) => {
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum);
 
-    // Force recalculation for each payment to fix legacy data
-    for (const payment of payments) {
-      payment.recalculateAmounts();
-      await payment.save();
-    }
+    // Note: Forced recalculation removed - use migration script to fix stale data
+    // Run: node backend/scripts/migratePaymentCalculations.js
 
     // Optimize payload by removing heavy data
     const optimizedPayments = payments.map(payment => {
@@ -90,9 +92,8 @@ router.get('/match/:matchId', auth, async (req, res) => {
       });
     }
 
-    // Force recalculation to ensure correct totals (fixes legacy data)
-    payment.recalculateAmounts();
-    await payment.save();
+    // Note: Forced recalculation removed - use migration script to fix stale data
+    // Run: node backend/scripts/migratePaymentCalculations.js
 
     // Convert to JSON and optimize payload
     const paymentObj = payment.toJSON();
@@ -135,11 +136,8 @@ router.get('/summary', auth, async (req, res) => {
     const payments = await MatchPayment.find({})
       .sort({ createdAt: -1 });
 
-    // Force recalculation for each payment to fix legacy data
-    for (const payment of payments) {
-      payment.recalculateAmounts();
-      await payment.save();
-    }
+    // Note: Forced recalculation removed - use migration script to fix stale data
+    // Run: node backend/scripts/migratePaymentCalculations.js
 
     // Return only essential fields for list view
     const summaryPayments = payments.map(payment => ({
@@ -183,16 +181,17 @@ router.get('/summary', auth, async (req, res) => {
 
 // GET /api/payments/players-summary - Get all players with payment summary stats
 // NOTE: This route MUST be defined BEFORE /:id to avoid route conflict
+// Uses centralized PaymentCalculationService for consistent calculations
 router.get('/players-summary', auth, async (req, res) => {
   try {
     const { search } = req.query;
-    
+
     // Get all active players
     let playerQuery = { isActive: true };
     if (search) {
       playerQuery.name = { $regex: search, $options: 'i' };
     }
-    
+
     const players = await Player.find(playerQuery)
       .select('_id name phone')
       .sort({ name: 1 })
@@ -200,7 +199,7 @@ router.get('/players-summary', auth, async (req, res) => {
 
     // Get payment summary for each player using aggregation
     const playerSummaries = await Promise.all(players.map(async (player) => {
-      const summary = await MatchPayment.aggregate([
+      const matchData = await MatchPayment.aggregate([
         {
           $match: {
             $or: [
@@ -219,34 +218,24 @@ router.get('/players-summary', auth, async (req, res) => {
           }
         },
         {
-          $group: {
-            _id: null,
-            totalMatches: { $sum: 1 },
-            totalPaid: { $sum: '$squadMembers.amountPaid' },
-            totalDue: { $sum: '$squadMembers.dueAmount' },
-            freeMatches: {
-              $sum: { $cond: [{ $eq: ['$squadMembers.adjustedAmount', 0] }, 1, 0] }
-            },
-            pendingMatches: {
-              $sum: { $cond: [{ $gt: ['$squadMembers.dueAmount', 0] }, 1, 0] }
-            }
+          $project: {
+            adjustedAmount: '$squadMembers.adjustedAmount',
+            calculatedAmount: '$squadMembers.calculatedAmount',
+            paymentHistory: '$squadMembers.paymentHistory',
+            settledAmount: '$squadMembers.settledAmount'
           }
         }
       ]);
 
-      const stats = summary[0] || {
-        totalMatches: 0,
-        totalPaid: 0,
-        totalDue: 0,
-        freeMatches: 0,
-        pendingMatches: 0
-      };
+      // Use centralized calculation service for consistent results
+      const summary = calculatePlayerSummary(matchData);
 
       return {
         playerId: player._id,
         playerName: player.name,
         playerPhone: player.phone,
-        ...stats
+        _id: null,
+        ...summary
       };
     }));
 
@@ -269,13 +258,14 @@ router.get('/players-summary', auth, async (req, res) => {
 
 // GET /api/payments/player-history/:playerId - Get detailed payment history for a player
 // NOTE: This route MUST be defined BEFORE /:id to avoid route conflict
+// Uses centralized PaymentCalculationService for consistent calculations
 router.get('/player-history/:playerId', auth, async (req, res) => {
   try {
     const { playerId } = req.params;
     const { page = 1, limit = 20 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     // Get player details
     const player = await Player.findById(playerId).select('_id name phone').lean();
     if (!player) {
@@ -284,8 +274,9 @@ router.get('/player-history/:playerId', auth, async (req, res) => {
         error: 'Player not found'
       });
     }
-    
+
     // Use aggregation pipeline for efficient data retrieval
+    // Include raw paymentHistory to calculate from source
     const matchHistory = await MatchPayment.aggregate([
       {
         $match: {
@@ -324,41 +315,23 @@ router.get('/player-history/:playerId', auth, async (req, res) => {
           opponent: '$match.opponent',
           ground: '$match.ground',
           slot: '$match.slot',
-          effectiveAmount: {
-            $cond: [
-              { $ne: ['$squadMembers.adjustedAmount', null] },
-              '$squadMembers.adjustedAmount',
-              '$squadMembers.calculatedAmount'
-            ]
-          },
-          amountPaid: '$squadMembers.amountPaid',
-          dueAmount: '$squadMembers.dueAmount',
-          owedAmount: '$squadMembers.owedAmount',
-          paymentStatus: '$squadMembers.paymentStatus',
-          isFreePlayer: { $eq: ['$squadMembers.adjustedAmount', 0] },
-          transactions: {
-            $filter: {
-              input: '$squadMembers.paymentHistory',
-              as: 'ph',
-              cond: { $ne: ['$$ph.isValidPayment', false] }
-            }
-          }
+          adjustedAmount: '$squadMembers.adjustedAmount',
+          calculatedAmount: '$squadMembers.calculatedAmount',
+          settledAmount: '$squadMembers.settledAmount',
+          paymentHistory: '$squadMembers.paymentHistory' // Raw history for calculation
         }
       },
       { $sort: { matchDate: -1 } }
     ]);
 
-    // Calculate summary
-    const summary = {
-      totalMatches: matchHistory.length,
-      totalPaid: matchHistory.reduce((sum, m) => sum + (m.amountPaid || 0), 0),
-      totalDue: matchHistory.reduce((sum, m) => sum + (m.dueAmount || 0), 0),
-      freeMatches: matchHistory.filter(m => m.isFreePlayer).length,
-      netContribution: matchHistory.reduce((sum, m) => sum + (m.amountPaid || 0), 0)
-    };
+    // Use centralized service to calculate stats from raw data
+    const calculatedHistory = calculatePlayerMatchHistory(matchHistory);
 
-    // Extract due matches
-    const dueMatches = matchHistory
+    // Calculate summary using centralized service
+    const summary = calculatePlayerSummary(matchHistory);
+
+    // Extract due matches from calculated data
+    const dueMatches = calculatedHistory
       .filter(m => m.dueAmount > 0)
       .map(m => ({
         matchId: m.matchId,
@@ -368,16 +341,40 @@ router.get('/player-history/:playerId', auth, async (req, res) => {
         dueAmount: m.dueAmount
       }));
 
-    // Format transactions for each match
-    const formattedHistory = matchHistory.map(m => ({
-      ...m,
-      transactions: (m.transactions || []).map(t => ({
-        type: 'payment',
-        amount: t.amount,
-        date: t.paidAt,
-        method: t.paymentMethod || 'upi',
-        notes: t.notes || ''
-      })).sort((a, b) => new Date(b.date) - new Date(a.date))
+    // Format transactions for each match - include settlements and mark them appropriately
+    const formattedHistory = calculatedHistory.map(m => ({
+      paymentId: m.paymentId,
+      matchId: m.matchId,
+      matchDate: m.matchDate,
+      opponent: m.opponent,
+      ground: m.ground,
+      slot: m.slot,
+      effectiveAmount: m.effectiveAmount,
+      amountPaid: m.amountPaid,
+      dueAmount: m.dueAmount,
+      owedAmount: m.owedAmount,
+      paymentStatus: m.paymentStatus,
+      isFreePlayer: m.isFreePlayer,
+      transactions: (m.paymentHistory || []).map(t => {
+        // Determine transaction type based on notes and isValidPayment
+        let type = 'payment';
+        if (t.notes && t.notes.includes('SETTLEMENT')) {
+          type = 'settlement';
+        } else if (t.notes && t.notes.includes('Adjusted due to settlement')) {
+          type = 'adjusted';
+        } else if (t.isValidPayment === false) {
+          type = 'invalid';
+        }
+
+        return {
+          type,
+          amount: t.amount,
+          date: t.paidAt,
+          method: t.paymentMethod || 'upi',
+          notes: t.notes || '',
+          isValid: t.isValidPayment !== false
+        };
+      }).sort((a, b) => new Date(a.date) - new Date(b.date))
     }));
 
     // Paginate match history
@@ -732,40 +729,59 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
       });
     }
 
-    // Override total amount paid with the user input
+    // ADD new payment to existing payments (cumulative)
     const parsedAmount = parseFloat(amount);
     
-    // Mark all existing payments as invalid
-    member.paymentHistory.forEach(payment => {
-      payment.isValidPayment = false;
-    });
-    
-    // Add new payment entry as valid
+    // Add new payment entry - this ADDS to existing valid payments
     member.paymentHistory.push({
       amount: parsedAmount,
       paidAt: paidAt ? new Date(paidAt) : new Date(),
       paymentMethod: paymentMethod || 'upi',
       notes: notes || '',
-      isValidPayment: true // Mark new payment as valid
+      isValidPayment: true
     });
     
-    // Calculate amountPaid from valid payments only
-    const validPayments = member.paymentHistory.filter(p => p.isValidPayment);
+    // Calculate amountPaid from ALL valid payments (cumulative sum)
+    const validPayments = member.paymentHistory.filter(p => p.isValidPayment !== false);
     member.amountPaid = validPayments.reduce((sum, p) => sum + p.amount, 0);
     
-    // Calculate due amount based on effective amount
+    // Calculate due amount and owed amount based on netPayment
+    // netPayment = amountPaid - settledAmount (effective contribution after refunds)
     const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
-    member.dueAmount = Math.max(0, effectiveAmount - member.amountPaid);
-    
+    const settledAmount = member.settledAmount || 0;
+    const netPayment = member.amountPaid - settledAmount;
+
+    if (netPayment < effectiveAmount) {
+      // Player still owes money
+      member.dueAmount = effectiveAmount - netPayment;
+      member.owedAmount = 0;
+    } else if (netPayment > effectiveAmount) {
+      // Player has overpaid (net contribution exceeds requirement)
+      member.dueAmount = 0;
+      member.owedAmount = netPayment - effectiveAmount;
+    } else {
+      // Exactly paid
+      member.dueAmount = 0;
+      member.owedAmount = 0;
+    }
+
     // Update payment status
     if (member.amountPaid === 0) {
       member.paymentStatus = 'pending';
-    } else if (member.amountPaid >= effectiveAmount) {
+    } else if (member.owedAmount > 0) {
+      // Player has overpaid and needs refund
+      member.paymentStatus = 'overpaid';
+    } else if (member.dueAmount === 0) {
+      // Fully paid (netPayment >= effectiveAmount)
       member.paymentStatus = 'paid';
-    } else {
+    } else if (netPayment > 0) {
+      // Partial payment
       member.paymentStatus = 'partial';
+    } else {
+      // Edge case: netPayment <= 0
+      member.paymentStatus = 'pending';
     }
-    
+
     // Set paid date
     member.paidAt = member.amountPaid > 0 ? (paidAt ? new Date(paidAt) : new Date()) : null;
 
@@ -773,12 +789,14 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
 
     // Return only the updated member data, not the entire payment object
     const updatedMember = payment.squadMembers.id(req.params.memberId);
-    
+
     // Get only the latest payment entry (without binary data)
-    const latestPayment = updatedMember.paymentHistory
-      .filter(p => p.isValidPayment !== false)
-      .sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt))[0];
-    
+    // Sort by paidAt descending, then by createdAt/updatedAt descending for stable ordering
+    const validPaymentsForLatest = updatedMember.paymentHistory.filter(p => p.isValidPayment !== false);
+    const latestPayment = validPaymentsForLatest.length > 0
+      ? validPaymentsForLatest[validPaymentsForLatest.length - 1] // Most recently added
+      : null;
+
     const memberData = {
       _id: updatedMember._id,
       playerName: updatedMember.playerName,
@@ -787,6 +805,8 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
       adjustedAmount: updatedMember.adjustedAmount,
       amountPaid: updatedMember.amountPaid,
       dueAmount: updatedMember.dueAmount,
+      owedAmount: updatedMember.owedAmount || 0,
+      settledAmount: updatedMember.settledAmount || 0, // Include settledAmount for visibility
       paymentStatus: updatedMember.paymentStatus,
       paidAt: updatedMember.paidAt,
       latestPayment: latestPayment ? {
@@ -890,6 +910,198 @@ router.post('/:id/member/:memberId/mark-unpaid', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to mark as unpaid'
+    });
+  }
+});
+
+// POST /api/payments/:id/member/:memberId/settle-overpayment - Settle overpayment and send WhatsApp notification
+router.post('/:id/member/:memberId/settle-overpayment', auth, async (req, res) => {
+  try {
+    const payment = await MatchPayment.findById(req.params.id)
+      .populate('matchId', 'date opponent ground slot matchId');
+    
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment record not found'
+      });
+    }
+
+    const member = payment.squadMembers.id(req.params.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        error: 'Squad member not found'
+      });
+    }
+
+    // Check if member has owed amount
+    if (!member.owedAmount || member.owedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No overpayment to settle for this player'
+      });
+    }
+
+    const settlementAmount = member.owedAmount;
+    const effectiveAmount = member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount;
+    const match = payment.matchId;
+    const matchDate = new Date(match.date).toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    // SETTLEMENT LOGIC:
+    // 1. Keep all existing payment entries as valid (they are real payments - show in history)
+    // 2. Set settledAmount to track the refund (used in calculations)
+    // 3. Add a settlement record entry for history display
+    
+    // Step 1: Set the settled amount (this will be used in recalculate to reduce owedAmount)
+    member.settledAmount = (member.settledAmount || 0) + settlementAmount;
+    
+    // Step 2: Add settlement record entry for history display (isValidPayment: false so it doesn't add to amountPaid)
+    member.paymentHistory.push({
+      amount: settlementAmount,
+      paidAt: new Date(),
+      paymentMethod: 'other',
+      notes: `✅ SETTLEMENT: ₹${settlementAmount} returned to player by Mavericks XI`,
+      isValidPayment: false // Won't affect amountPaid calculations, but will show in history
+    });
+
+    // Save - the pre-save hook will recalculate amounts correctly (using settledAmount)
+    await payment.save();
+
+    // Format phone number for WhatsApp
+    let formattedPhone = member.playerPhone.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+
+    // ISSUE 3: Check for pending amounts in other matches
+    const otherPendingAmount = await getTotalOutstandingForPlayer(formattedPhone);
+    // Exclude current match from pending calculation
+    const remainingPending = otherPendingAmount.totalDue - (member.dueAmount || 0);
+
+    // ISSUE 2: Send WhatsApp notification
+    let whatsappSent = false;
+    let messageId = null;
+    
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const apiVersion = 'v19.0';
+
+    if (accessToken && phoneNumberId) {
+      try {
+        // Build settlement message
+        let message = `💰 *Payment Settlement - Mavericks XI*\n\n` +
+          `Hi ${member.playerName},\n\n` +
+          `Great news! Your overpayment has been settled. 🎉\n\n` +
+          `📅 *Match:* ${match.opponent || 'TBD'} on ${matchDate}\n` +
+          `💵 *Settlement Amount:* ₹${settlementAmount}\n\n` +
+          `The balance of ₹${settlementAmount} has been returned/adjusted by Mavericks XI.\n\n` +
+          `Your payment for this match is now complete. ✅`;
+
+        // ISSUE 3: Add pending amount info if there's remaining pending from other matches
+        if (remainingPending > 0 && otherPendingAmount.matchCount > 1) {
+          message += `\n\n⚠️ *Note:* You still have a pending amount of *₹${remainingPending}* for ${otherPendingAmount.matchCount - 1} other match(es).`;
+        }
+
+        message += `\n\nThank you for being part of the team! 🏏`;
+
+        const whatsappApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+        const response = await axios.post(whatsappApiUrl, {
+          messaging_product: 'whatsapp',
+          to: formattedPhone,
+          type: 'text',
+          text: { body: message, preview_url: false }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        messageId = response.data?.messages?.[0]?.id;
+        whatsappSent = true;
+
+        // Save message to database
+        await Message.create({
+          from: phoneNumberId,
+          to: formattedPhone,
+          text: message,
+          direction: 'outgoing',
+          messageId: messageId,
+          timestamp: new Date(),
+          messageType: 'payment_settlement',
+          matchId: payment.matchId._id,
+          matchTitle: `${match.opponent || 'TBD'} - ${matchDate}`,
+          paymentId: payment._id,
+          paymentMemberId: member._id,
+          playerId: member.playerId,
+          playerName: member.playerName
+        });
+
+        console.log(`✅ Settlement notification sent to ${member.playerName} for ₹${settlementAmount}`);
+      } catch (whatsappError) {
+        console.error('Failed to send WhatsApp settlement notification:', whatsappError.response?.data || whatsappError.message);
+      }
+    }
+
+    // Reload payment to get recalculated values
+    const updatedPayment = await MatchPayment.findById(req.params.id);
+    const updatedMember = updatedPayment.squadMembers.id(req.params.memberId);
+    
+    // Get payment history for display (include settlement records)
+    const paymentHistoryForDisplay = updatedMember.paymentHistory.map(p => ({
+      amount: p.amount,
+      paidAt: p.paidAt,
+      paymentMethod: p.paymentMethod,
+      notes: p.notes,
+      isValidPayment: p.isValidPayment
+    }));
+    
+    const memberData = {
+      _id: updatedMember._id,
+      playerName: updatedMember.playerName,
+      playerPhone: updatedMember.playerPhone,
+      calculatedAmount: updatedMember.calculatedAmount,
+      adjustedAmount: updatedMember.adjustedAmount,
+      amountPaid: updatedMember.amountPaid,
+      dueAmount: updatedMember.dueAmount,
+      owedAmount: updatedMember.owedAmount,
+      settledAmount: updatedMember.settledAmount || 0,
+      paymentStatus: updatedMember.paymentStatus,
+      paidAt: updatedMember.paidAt,
+      paymentHistory: paymentHistoryForDisplay
+    };
+
+    res.json({
+      success: true,
+      member: memberData,
+      paymentSummary: {
+        totalAmount: updatedPayment.totalAmount,
+        totalCollected: updatedPayment.totalCollected,
+        totalPending: updatedPayment.totalPending,
+        totalOwed: updatedPayment.totalOwed,
+        paidCount: updatedPayment.paidCount,
+        membersCount: updatedPayment.membersCount,
+        status: updatedPayment.status
+      },
+      settlement: {
+        amount: settlementAmount,
+        whatsappSent,
+        messageId,
+        remainingPending: remainingPending > 0 ? remainingPending : 0
+      },
+      message: `Settlement of ₹${settlementAmount} completed${whatsappSent ? ' and notification sent' : ''}`
+    });
+  } catch (error) {
+    console.error('Error settling overpayment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to settle overpayment'
     });
   }
 });
@@ -1093,7 +1305,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
 // POST /api/payments/:id/send-requests - Send payment request messages
 router.post('/:id/send-requests', auth, async (req, res) => {
   try {
-    const { memberIds } = req.body; // Optional: specific members to send to
+    const { memberIds, customMessage } = req.body; // Optional: specific members to send to, custom message template
 
     const payment = await MatchPayment.findById(req.params.id)
       .populate('matchId', 'date opponent ground slot matchId');
@@ -1143,23 +1355,38 @@ router.post('/:id/send-requests', auth, async (req, res) => {
         // Get total outstanding across all matches for this player
         const outstanding = await getTotalOutstandingForPlayer(formattedPhone);
 
-        // Create payment request message with total outstanding
-        let message = `🏏 *Payment Request - Mavericks XI*\n\n` +
-          `Hi ${member.playerName},\n\n` +
-          `Please pay your match fee for:\n` +
-          `📅 *Date:* ${matchDate}\n` +
-          `🆚 *Opponent:* ${match.opponent || 'TBD'}\n` +
-          `📍 *Ground:* ${match.ground}\n` +
-          `⏰ *Slot:* ${match.slot}\n\n` +
-          `💰 *Amount for this match:* ₹${amount}`;
+        // Create payment request message - use custom message if provided, else default
+        let message;
+        if (customMessage) {
+          // Replace placeholders in custom message
+          message = customMessage
+            .replace(/{playerName}/g, member.playerName)
+            .replace(/{dueAmount}/g, member.dueAmount.toString())
+            .replace(/{amount}/g, amount.toString());
+          
+          // Add total outstanding if player has dues on multiple matches
+          if (outstanding.matchCount > 1) {
+            message += `\n\n📊 *Total Outstanding: ₹${outstanding.totalDue} (${outstanding.matchCount} matches)*`;
+          }
+        } else {
+          // Default message
+          message = `🏏 *Payment Request - Mavericks XI*\n\n` +
+            `Hi ${member.playerName},\n\n` +
+            `Please pay your match fee for:\n` +
+            `📅 *Date:* ${matchDate}\n` +
+            `🆚 *Opponent:* ${match.opponent || 'TBD'}\n` +
+            `📍 *Ground:* ${match.ground}\n` +
+            `⏰ *Slot:* ${match.slot}\n\n` +
+            `💰 *Amount for this match:* ₹${amount}`;
 
-        // Add total outstanding if player has dues on multiple matches
-        if (outstanding.matchCount > 1) {
-          message += `\n\n📊 *Total Outstanding: ₹${outstanding.totalDue} (${outstanding.matchCount} matches)*`;
-          message += `\n_Pay full amount in one transaction - it will auto-distribute._`;
+          // Add total outstanding if player has dues on multiple matches
+          if (outstanding.matchCount > 1) {
+            message += `\n\n📊 *Total Outstanding: ₹${outstanding.totalDue} (${outstanding.matchCount} matches)*`;
+            message += `\n_Pay full amount in one transaction - it will auto-distribute._`;
+          }
+
+          message += `\n\nPlease upload a screenshot of your payment in reply to this message.\n\nThank you! 🙏`;
         }
-
-        message += `\n\nPlease upload a screenshot of your payment in reply to this message.\n\nThank you! 🙏`;
 
         const whatsappApiUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
 

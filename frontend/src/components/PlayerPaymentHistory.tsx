@@ -183,25 +183,43 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+          {/* Actual Contribution (Net) */}
           <div className="p-3 bg-emerald-500/15 rounded-xl">
             <div className="flex items-center gap-2 text-xs text-emerald-400 mb-1">
-              <IndianRupee className="w-3 h-3" /> Total Paid
+              <IndianRupee className="w-3 h-3" /> Actual Paid
             </div>
-            <div className="text-xl font-bold text-emerald-400">₹{selectedPlayer.summary.totalPaid}</div>
+            <div className="text-xl font-bold text-emerald-400">₹{selectedPlayer.summary.netContribution || (selectedPlayer.summary.totalPaid - (selectedPlayer.summary.totalSettled || 0))}</div>
+            {(selectedPlayer.summary.totalSettled || 0) > 0 && (
+              <div className="text-xs text-slate-400 mt-0.5">
+                ₹{selectedPlayer.summary.totalPaid} - ₹{selectedPlayer.summary.totalSettled} settled
+              </div>
+            )}
           </div>
+          {/* Total Due */}
           <div className="p-3 bg-rose-500/15 rounded-xl">
             <div className="flex items-center gap-2 text-xs text-rose-400 mb-1">
               <Clock className="w-3 h-3" /> Total Due
             </div>
             <div className="text-xl font-bold text-rose-400">₹{selectedPlayer.summary.totalDue}</div>
           </div>
+          {/* Refunded */}
+          {(selectedPlayer.summary.totalSettled || 0) > 0 && (
+            <div className="p-3 bg-blue-500/15 rounded-xl">
+              <div className="flex items-center gap-2 text-xs text-blue-400 mb-1">
+                <CreditCard className="w-3 h-3" /> Refunded
+              </div>
+              <div className="text-xl font-bold text-blue-400">₹{selectedPlayer.summary.totalSettled}</div>
+            </div>
+          )}
+          {/* Matches */}
           <div className="p-3 bg-slate-700/40 rounded-xl">
             <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
               <Users className="w-3 h-3" /> Matches
             </div>
             <div className="text-xl font-bold text-white">{selectedPlayer.summary.totalMatches}</div>
           </div>
+          {/* Free Matches */}
           <div className="p-3 bg-purple-500/15 rounded-xl">
             <div className="flex items-center gap-2 text-xs text-purple-400 mb-1">
               <Gift className="w-3 h-3" /> Free
@@ -298,15 +316,28 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
 
               {/* Payment Summary */}
               {!match.isFreePlayer && (
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className={`grid ${(match.settledAmount || 0) > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-3`}>
                   <div className="p-2 bg-slate-700/30 rounded-lg text-center">
                     <div className="text-xs text-slate-400">Expected</div>
                     <div className="text-sm font-bold text-white">₹{match.effectiveAmount}</div>
                   </div>
                   <div className="p-2 bg-emerald-500/10 rounded-lg text-center">
                     <div className="text-xs text-emerald-400">Paid</div>
-                    <div className="text-sm font-bold text-emerald-400">₹{match.amountPaid}</div>
+                    <div className="text-sm font-bold text-emerald-400">
+                      ₹{(match.settledAmount || 0) > 0 
+                        ? match.amountPaid - (match.settledAmount || 0) 
+                        : match.amountPaid}
+                    </div>
+                    {(match.settledAmount || 0) > 0 && (
+                      <div className="text-[10px] text-slate-500">₹{match.amountPaid} - ₹{match.settledAmount}</div>
+                    )}
                   </div>
+                  {(match.settledAmount || 0) > 0 && (
+                    <div className="p-2 bg-blue-500/10 rounded-lg text-center">
+                      <div className="text-xs text-blue-400">Refunded</div>
+                      <div className="text-sm font-bold text-blue-400">₹{match.settledAmount}</div>
+                    </div>
+                  )}
                   <div className="p-2 bg-rose-500/10 rounded-lg text-center">
                     <div className="text-xs text-rose-400">Due</div>
                     <div className="text-sm font-bold text-rose-400">₹{match.dueAmount}</div>
@@ -314,26 +345,43 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
                 </div>
               )}
 
-              {/* Transactions */}
+              {/* Transactions - Payment Timeline */}
               {match.transactions.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs text-slate-400 font-medium">Transactions</p>
-                  {match.transactions.map((txn, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-slate-700/20 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{getPaymentMethodIcon(txn.method || 'other')}</span>
-                        <div>
-                          <p className="text-xs font-medium text-white">
-                            {txn.type === 'refund' ? 'Refund' : (txn.method || 'payment').replace('_', ' ').toUpperCase()}
-                          </p>
-                          <p className="text-xs text-slate-500">{formatDateTime(txn.date)}</p>
+                  <p className="text-xs text-slate-400 font-medium">Payment Timeline</p>
+                  {match.transactions.map((txn, idx) => {
+                    // Determine display based on transaction type and notes
+                    const isSettlement = txn.type === 'settlement' || (txn.notes && txn.notes.includes('SETTLEMENT'));
+                    const isPayment = txn.type === 'payment' || (txn.isValid && !isSettlement);
+                    
+                    // Show all valid payments and settlements
+                    if (!isPayment && !isSettlement) return null;
+                    
+                    return (
+                      <div key={idx} className={`flex items-center justify-between p-2 rounded-lg ${
+                        isSettlement ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-slate-700/20'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">
+                            {isSettlement ? '💸' : getPaymentMethodIcon(txn.method || 'other')}
+                          </span>
+                          <div>
+                            <p className={`text-xs font-medium ${isSettlement ? 'text-blue-400' : 'text-white'}`}>
+                              {isSettlement ? 'SETTLEMENT (Refund)' : 
+                                (txn.method || 'payment').replace('_', ' ').toUpperCase()}
+                            </p>
+                            <p className="text-xs text-slate-500">{formatDateTime(txn.date)}</p>
+                            {txn.notes && !isSettlement && (
+                              <p className="text-xs text-slate-400 mt-0.5">{txn.notes}</p>
+                            )}
+                          </div>
                         </div>
+                        <span className={`text-sm font-bold ${isSettlement ? 'text-blue-400' : 'text-emerald-400'}`}>
+                          {isSettlement ? '-' : '+'}₹{txn.amount}
+                        </span>
                       </div>
-                      <span className={`text-sm font-bold ${txn.type === 'refund' ? 'text-blue-400' : 'text-emerald-400'}`}>
-                        {txn.type === 'refund' ? '-' : '+'}₹{txn.amount}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

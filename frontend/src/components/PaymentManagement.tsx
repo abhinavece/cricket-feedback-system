@@ -47,7 +47,8 @@ import {
   getPaymentScreenshot,
   deletePayment,
   getPlayers,
-  createPlayer
+  createPlayer,
+  settleOverpayment
 } from '../services/api';
 
 interface PaymentHistoryEntry {
@@ -55,6 +56,7 @@ interface PaymentHistoryEntry {
   paidAt: string;
   paymentMethod: 'cash' | 'upi' | 'card' | 'bank_transfer' | 'other';
   notes: string;
+  isValidPayment?: boolean; // For distinguishing settlements from regular payments
 }
 
 interface SquadMember {
@@ -68,6 +70,7 @@ interface SquadMember {
   amountPaid: number;
   dueAmount: number;
   owedAmount?: number; // Amount owed back to player when overpaid
+  settledAmount?: number; // Amount that has been settled/refunded to player
   paymentStatus: 'pending' | 'paid' | 'partial' | 'due' | 'overpaid';
   paymentHistory: PaymentHistoryEntry[];
   dueDate?: string | null;
@@ -170,6 +173,11 @@ const PaymentManagement: React.FC = () => {
   
   // Share Link modal
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
+  
+  // Message Preview modal (ISSUE 5 & 6)
+  const [showMessagePreview, setShowMessagePreview] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState('');
+  const [previewMembers, setPreviewMembers] = useState<SquadMember[]>([]);
 
   useEffect(() => {
     if (hasFetchedInitial.current) return;
@@ -607,12 +615,47 @@ const PaymentManagement: React.FC = () => {
     }
   };
 
+  // Open message preview modal (ISSUE 5 & 6)
+  const handleOpenMessagePreview = () => {
+    if (!payment) return;
+    
+    // ISSUE 5: Validate that players are selected
+    if (selectedMembers.size === 0) {
+      setError('Please select at least one player to send payment reminder.');
+      return;
+    }
+    
+    // Get selected members with pending amounts
+    const membersToNotify = payment.squadMembers.filter(m => 
+      selectedMembers.has(m._id) && m.dueAmount > 0
+    );
+    
+    if (membersToNotify.length === 0) {
+      setError('No selected players have pending amounts to notify.');
+      return;
+    }
+    
+    // Generate default message template
+    const matchInfo = selectedMatch;
+    const defaultMessage = `🏏 *Mavericks XI - Payment Reminder*\n\n` +
+      `Hi {playerName},\n\n` +
+      `This is a friendly reminder for your pending payment of *₹{dueAmount}* for the match against *${matchInfo?.opponent || 'TBD'}* on ${matchInfo ? new Date(matchInfo.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}.\n\n` +
+      `Please complete the payment at your earliest convenience.\n\n` +
+      `Thank you! 🙏`;
+    
+    setPreviewMessage(defaultMessage);
+    setPreviewMembers(membersToNotify);
+    setShowMessagePreview(true);
+  };
+
+  // Actual send function after preview
   const handleSendPaymentRequests = async () => {
     if (!payment) return;
     const memberIds = selectedMembers.size > 0 ? Array.from(selectedMembers) : undefined;
     setSendingMessages(true);
+    setShowMessagePreview(false);
     try {
-      const result = await sendPaymentRequests(payment._id, memberIds);
+      const result = await sendPaymentRequests(payment._id, memberIds, previewMessage);
       await fetchPayment(selectedMatchId);
       setSelectedMembers(new Set());
       setSuccess(`Sent ${result.data.sent} payment requests`);
@@ -651,7 +694,10 @@ const PaymentManagement: React.FC = () => {
 
   const selectAllPending = () => {
     if (!payment) return;
-    const pendingIds = payment.squadMembers.filter(m => m.paymentStatus !== 'paid').map(m => m._id);
+    // Only select players who have amount due (exclude 'paid' and 'overpaid')
+    const pendingIds = payment.squadMembers
+      .filter(m => m.paymentStatus !== 'paid' && m.paymentStatus !== 'overpaid' && m.dueAmount > 0)
+      .map(m => m._id);
     setSelectedMembers(new Set(pendingIds));
   };
 
@@ -883,35 +929,44 @@ const PaymentManagement: React.FC = () => {
               </div>
 
               {/* Compact Grid - 2x2 on mobile, 5 columns on desktop */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {/* Total */}
-                <div className="p-2.5 bg-slate-700/40 rounded-lg">
-                  <div className="text-xs text-slate-400 mb-0.5">Total</div>
-                  <div className="text-base font-bold text-white">₹{payment.totalAmount}</div>
-                </div>
-                {/* Collected */}
-                <div className="p-2.5 bg-emerald-500/15 rounded-lg">
-                  <div className="text-xs text-emerald-400 mb-0.5">Collected</div>
-                  <div className="text-base font-bold text-emerald-400">₹{payment.totalCollected}</div>
-                </div>
-                {/* Pending */}
-                <div className="p-2.5 bg-yellow-500/15 rounded-lg">
-                  <div className="text-xs text-yellow-400 mb-0.5">Pending</div>
-                  <div className="text-base font-bold text-yellow-400">₹{payment.totalPending}</div>
-                </div>
-                {/* Refunds Due */}
-                {payment.totalOwed && payment.totalOwed > 0 && (
-                  <div className="p-2.5 bg-red-500/15 rounded-lg">
-                    <div className="text-xs text-red-400 mb-0.5">Refunds Due</div>
-                    <div className="text-base font-bold text-red-400">₹{payment.totalOwed}</div>
+              {(() => {
+                const totalSettled = payment.squadMembers.reduce((sum, m) => sum + (m.settledAmount || 0), 0);
+                const actualCollected = payment.totalCollected - totalSettled;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {/* Total */}
+                    <div className="p-2.5 bg-slate-700/40 rounded-lg">
+                      <div className="text-xs text-slate-400 mb-0.5">Total</div>
+                      <div className="text-base font-bold text-white">₹{payment.totalAmount}</div>
+                    </div>
+                    {/* Collected (Actual = Total Paid - Settled) */}
+                    <div className="p-2.5 bg-emerald-500/15 rounded-lg">
+                      <div className="text-xs text-emerald-400 mb-0.5">Collected</div>
+                      <div className="text-base font-bold text-emerald-400">₹{actualCollected}</div>
+                      {totalSettled > 0 && (
+                        <div className="text-xs text-slate-400 mt-0.5">(-₹{totalSettled} settled)</div>
+                      )}
+                    </div>
+                    {/* Pending */}
+                    <div className="p-2.5 bg-yellow-500/15 rounded-lg">
+                      <div className="text-xs text-yellow-400 mb-0.5">Pending</div>
+                      <div className="text-base font-bold text-yellow-400">₹{payment.totalPending}</div>
+                    </div>
+                    {/* Refunds Due - only show if > 0 */}
+                    {(payment.totalOwed || 0) > 0 && (
+                      <div className="p-2.5 bg-red-500/15 rounded-lg">
+                        <div className="text-xs text-red-400 mb-0.5">Refunds Due</div>
+                        <div className="text-base font-bold text-red-400">₹{payment.totalOwed}</div>
+                      </div>
+                    )}
+                    {/* Paid Count */}
+                    <div className="p-2.5 bg-slate-700/40 rounded-lg">
+                      <div className="text-xs text-slate-400 mb-0.5">Paid / Total</div>
+                      <div className="text-base font-bold text-white">{payment.paidCount}/{payment.membersCount}</div>
+                    </div>
                   </div>
-                )}
-                {/* Paid Count */}
-                <div className="p-2.5 bg-slate-700/40 rounded-lg">
-                  <div className="text-xs text-slate-400 mb-0.5">Paid / Total</div>
-                  <div className="text-base font-bold text-white">{payment.paidCount}/{payment.membersCount}</div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Progress Bar */}
               <div className="space-y-1.5">
@@ -961,7 +1016,7 @@ const PaymentManagement: React.FC = () => {
                     <Check className="w-4 h-4" /> Select Pending
                   </button>
                   <button
-                    onClick={handleSendPaymentRequests}
+                    onClick={handleOpenMessagePreview}
                     disabled={sendingMessages}
                     className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-1"
                   >
@@ -977,13 +1032,14 @@ const PaymentManagement: React.FC = () => {
                   return (
                     <div
                       key={member._id}
-                      className={`p-3 sm:p-4 rounded-xl border transition-all ${
-                        isSelected ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-700/30 border-transparent hover:border-white/10'
+                      className={`p-3 sm:p-4 rounded-xl border transition-all cursor-pointer ${
+                        isSelected ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-700/30 border-transparent hover:border-white/10 hover:bg-slate-700/50'
                       }`}
+                      onClick={() => handleOpenPaymentModal(member)}
                     >
                       <div className="flex items-start sm:items-center gap-3">
                         <button
-                          onClick={() => toggleMemberSelection(member._id)}
+                          onClick={(e) => { e.stopPropagation(); toggleMemberSelection(member._id); }}
                           className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center ${
                             isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-white/30 hover:border-white/50'
                           }`}
@@ -995,9 +1051,13 @@ const PaymentManagement: React.FC = () => {
                             <span className="font-medium text-white truncate">{member.playerName}</span>
                             <span className="text-xs text-slate-400">{member.playerPhone}</span>
                           </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs">
+                          <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
                             {member.amountPaid > 0 && (
-                              <span className="text-emerald-400">Paid: ₹{member.amountPaid}</span>
+                              <span className="text-emerald-400">
+                                Paid: ₹{(member.settledAmount || 0) > 0 
+                                  ? `${member.amountPaid - (member.settledAmount || 0)} (₹${member.amountPaid} - ₹${member.settledAmount} settled)` 
+                                  : member.amountPaid}
+                              </span>
                             )}
                             {member.dueAmount > 0 && (
                               <span className="text-yellow-400">Due: ₹{member.dueAmount}</span>
@@ -1013,7 +1073,7 @@ const PaymentManagement: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {editingMember === member._id ? (
                             <div className="flex items-center gap-1">
                               <input
@@ -1055,22 +1115,21 @@ const PaymentManagement: React.FC = () => {
                             </button>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleOpenPaymentModal(member)}
+                        <div
                           className={`px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-medium ${getStatusColor(member.paymentStatus)}`}
                         >
                           {getStatusIcon(member.paymentStatus)}
                           <span className="hidden sm:inline capitalize">{member.paymentStatus}</span>
-                        </button>
+                        </div>
                         {member.screenshotReceivedAt && (
                           <button
-                            onClick={() => { setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); setScreenshotError(false); }}
+                            onClick={(e) => { e.stopPropagation(); setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); setScreenshotError(false); }}
                             className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"
                           >
                             <Image className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleRemovePlayer(member._id)} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg">
+                        <button onClick={(e) => { e.stopPropagation(); handleRemovePlayer(member._id); }} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -1249,18 +1308,49 @@ const PaymentManagement: React.FC = () => {
                   )}
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Paid:</span>
+                  <span className="text-slate-400">Total Paid:</span>
                   <span className="text-emerald-400 font-semibold">₹{paymentMember.amountPaid || 0}</span>
                 </div>
-                <div className="flex justify-between text-sm border-t border-white/10 mt-2 pt-2">
-                  <span className="text-slate-400">Remaining:</span>
-                  <span className="text-yellow-400 font-semibold">₹{paymentMember.dueAmount || 0}</span>
-                </div>
+                {/* Show settled amount if any */}
+                {(paymentMember.settledAmount || 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Settled (Refunded):</span>
+                    <span className="text-blue-400 font-semibold">-₹{paymentMember.settledAmount}</span>
+                  </div>
+                )}
+                {/* Show actual paid = total paid - settled */}
+                {(paymentMember.settledAmount || 0) > 0 && (
+                  <div className="flex justify-between text-sm border-t border-white/10 mt-1 pt-1">
+                    <span className="text-slate-400">Actual Contribution:</span>
+                    <span className="text-emerald-400 font-semibold">₹{(paymentMember.amountPaid || 0) - (paymentMember.settledAmount || 0)}</span>
+                  </div>
+                )}
+                {/* Show remaining due only if > 0 */}
+                {(paymentMember.dueAmount || 0) > 0 && (
+                  <div className="flex justify-between text-sm border-t border-white/10 mt-2 pt-2">
+                    <span className="text-slate-400">Remaining:</span>
+                    <span className="text-yellow-400 font-semibold">₹{paymentMember.dueAmount}</span>
+                  </div>
+                )}
+                {/* Show owed amount for overpaid players only if > 0 */}
+                {(paymentMember.owedAmount || 0) > 0 && (
+                  <div className="flex justify-between text-sm border-t border-white/10 mt-2 pt-2">
+                    <span className="text-slate-400">Owed to Player:</span>
+                    <span className="text-blue-400 font-semibold">₹{paymentMember.owedAmount}</span>
+                  </div>
+                )}
+                {/* Show fully paid message when no due and no owed */}
+                {(paymentMember.dueAmount || 0) === 0 && (paymentMember.owedAmount || 0) === 0 && (paymentMember.amountPaid || 0) > 0 && (
+                  <div className="flex justify-between text-sm border-t border-white/10 mt-2 pt-2">
+                    <span className="text-slate-400">Status:</span>
+                    <span className="text-emerald-400 font-semibold">✓ Fully Paid</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Update Amount Paid</label>
+                  <label className="block text-sm text-slate-400 mb-2">Add Payment Amount</label>
                   <input
                     type="number"
                     value={paymentAmount || ''}
@@ -1275,11 +1365,32 @@ const PaymentManagement: React.FC = () => {
                         }
                       }
                     }}
-                    placeholder="Enter amount paid"
+                    placeholder="Enter payment amount"
                     min="0"
                     step="1"
                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
+                  {paymentAmount > 0 && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      {(() => {
+                        const effectiveAmount = paymentMember.adjustedAmount !== null ? paymentMember.adjustedAmount : paymentMember.calculatedAmount;
+                        const settledAmount = paymentMember.settledAmount || 0;
+                        const currentActualPaid = (paymentMember.amountPaid || 0) - settledAmount;
+                        const newTotalPaid = (paymentMember.amountPaid || 0) + paymentAmount;
+                        const newActualPaid = newTotalPaid - settledAmount;
+                        const diff = effectiveAmount - newActualPaid;
+                        return (
+                          <>
+                            New total paid: <span className="text-emerald-400 font-medium">₹{newTotalPaid}</span>
+                            {settledAmount > 0 && <span className="text-blue-400"> (Actual: ₹{newActualPaid})</span>}
+                            {diff > 0 && <span className="text-yellow-400"> → Due: ₹{diff}</span>}
+                            {diff < 0 && <span className="text-blue-400"> → Overpaid: ₹{Math.abs(diff)}</span>}
+                            {diff === 0 && <span className="text-emerald-400"> → Fully Paid</span>}
+                          </>
+                        );
+                      })()}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-3">
@@ -1295,7 +1406,7 @@ const PaymentManagement: React.FC = () => {
                     className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Update Payment
+                    Add Payment
                   </button>
                 </div>
 
@@ -1347,6 +1458,56 @@ const PaymentManagement: React.FC = () => {
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
                   Mark as Unpaid
                 </button>
+
+                {/* Settle Overpayment button - always visible, disabled when owedAmount is 0 */}
+                <button
+                  onClick={async () => {
+                    if (!payment || !paymentMember || !(paymentMember.owedAmount && paymentMember.owedAmount > 0)) return;
+                    setLoading(true);
+                    try {
+                      const result = await settleOverpayment(payment._id, paymentMember._id);
+                      if (result.success) {
+                        // Update the specific member in the payment state
+                        if (result.member) {
+                          const updatedPayment = { ...payment };
+                          const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
+                          if (memberIndex >= 0) {
+                            updatedPayment.squadMembers[memberIndex] = {
+                              ...updatedPayment.squadMembers[memberIndex],
+                              ...result.member
+                            };
+                          }
+                          
+                          // Update payment summary if provided
+                          if (result.paymentSummary) {
+                            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+                            updatedPayment.totalPending = result.paymentSummary.totalPending;
+                            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
+                            updatedPayment.paidCount = result.paymentSummary.paidCount;
+                            updatedPayment.status = result.paymentSummary.status;
+                          }
+                          
+                          setPayment(updatedPayment);
+                        }
+                        
+                        setSuccess(`Settlement of ₹${paymentMember.owedAmount} completed for ${paymentMember.playerName}. WhatsApp notification sent.`);
+                        setShowPaymentModal(false);
+                        setPaymentMember(null);
+                      } else {
+                        setError(result.error || 'Failed to settle overpayment');
+                      }
+                    } catch (err: any) {
+                      setError(err.response?.data?.error || err.message || 'Failed to settle overpayment');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading || !(paymentMember.owedAmount && paymentMember.owedAmount > 0)}
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <IndianRupee className="w-4 h-4" />}
+                  Settle Payment {(paymentMember.owedAmount || 0) > 0 ? `(₹${paymentMember.owedAmount})` : '(₹0)'}
+                </button>
               </div>
             </div>
           </div>
@@ -1360,6 +1521,89 @@ const PaymentManagement: React.FC = () => {
           resourceId={payment?._id || ''}
           resourceTitle={payment ? `Payment: ${selectedMatch?.opponent || 'Match'} - ₹${payment.totalAmount}` : ''}
         />
+
+        {/* Message Preview Modal (ISSUE 5 & 6) */}
+        {showMessagePreview && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-emerald-400" /> Preview & Edit Message
+                </h3>
+                <button onClick={() => setShowMessagePreview(false)} className="p-1 text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Recipients Summary */}
+              <div className="mb-4 p-3 bg-slate-700/30 rounded-xl">
+                <p className="text-sm text-slate-400 mb-2">
+                  Sending to <span className="text-white font-semibold">{previewMembers.length}</span> player{previewMembers.length !== 1 ? 's' : ''}:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {previewMembers.slice(0, 5).map(m => (
+                    <span key={m._id} className="px-2 py-1 bg-slate-600/50 rounded-lg text-xs text-white">
+                      {m.playerName} (₹{m.dueAmount})
+                    </span>
+                  ))}
+                  {previewMembers.length > 5 && (
+                    <span className="px-2 py-1 bg-slate-600/50 rounded-lg text-xs text-slate-400">
+                      +{previewMembers.length - 5} more
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Message Editor */}
+              <div className="mb-4">
+                <label className="block text-sm text-slate-400 mb-2">
+                  Message Template
+                  <span className="text-xs text-slate-500 ml-2">
+                    (Use {'{playerName}'} and {'{dueAmount}'} as placeholders)
+                  </span>
+                </label>
+                <textarea
+                  value={previewMessage}
+                  onChange={(e) => setPreviewMessage(e.target.value)}
+                  rows={8}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-mono"
+                  placeholder="Enter your message..."
+                />
+              </div>
+
+              {/* Preview for first player */}
+              {previewMembers.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm text-slate-400 mb-2">Preview (for {previewMembers[0].playerName})</label>
+                  <div className="p-3 bg-[#dcf8c6] rounded-xl text-sm text-gray-800 whitespace-pre-wrap">
+                    {previewMessage
+                      .replace(/{playerName}/g, previewMembers[0].playerName)
+                      .replace(/{dueAmount}/g, previewMembers[0].dueAmount.toString())
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowMessagePreview(false)}
+                  className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendPaymentRequests}
+                  disabled={sendingMessages || !previewMessage.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  {sendingMessages ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Send to {previewMembers.length} Player{previewMembers.length !== 1 ? 's' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

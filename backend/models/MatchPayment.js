@@ -1,4 +1,8 @@
 const mongoose = require('mongoose');
+const {
+  calculatePerPersonShares,
+  calculateMemberStats
+} = require('../services/paymentCalculationService');
 
 const paymentHistorySchema = new mongoose.Schema({
   amount: {
@@ -89,6 +93,10 @@ const paymentMemberSchema = new mongoose.Schema({
   owedAmount: {
     type: Number,
     default: 0 // Amount owed back to player (when overpaid)
+  },
+  settledAmount: {
+    type: Number,
+    default: 0 // Amount that has been settled/refunded to player
   },
   paymentStatus: {
     type: String,
@@ -239,7 +247,8 @@ matchPaymentSchema.index({ 'squadMembers.playerPhone': 1 });
 matchPaymentSchema.index({ 'squadMembers.outgoingMessageId': 1 });
 
 // Method to recalculate amounts when members change
-// 
+// Uses centralized PaymentCalculationService for consistent calculations
+//
 // Field Definitions:
 // - calculatedAmount: The amount this player should pay
 //   - If adjustedAmount is set (including 0): calculatedAmount = adjustedAmount
@@ -259,100 +268,50 @@ matchPaymentSchema.methods.recalculateAmounts = function() {
     this.totalCollected = 0;
     this.totalPending = 0;
     this.totalOwed = 0;
+    this.perPersonAmount = 0;
     return;
   }
 
-  // Step 1: Calculate totals for adjusted members
-  let totalAdjusted = 0;
-  let nonAdjustedCount = 0;
-  
-  this.squadMembers.forEach(member => {
-    if (member.adjustedAmount !== null) {
-      totalAdjusted += member.adjustedAmount;
-    } else {
-      nonAdjustedCount++;
-    }
-  });
+  // Step 1: Calculate equal share using centralized service
+  const { equalShare } = calculatePerPersonShares(this.totalAmount, this.squadMembers);
 
-  // Step 2: Calculate equal share for non-adjusted members
-  const remainingAmount = this.totalAmount - totalAdjusted;
-  const equalShare = nonAdjustedCount > 0 ? Math.ceil(remainingAmount / nonAdjustedCount) : 0;
-  
   // Store the per-person amount (what non-adjusted players pay)
   this.perPersonAmount = equalShare;
-  
-  // Step 3: Update each member's calculatedAmount and payment details
+
+  // Step 2: Update each member using centralized calculation
   this.squadMembers.forEach(member => {
-    // calculatedAmount depends on whether player has adjustedAmount
-    // - Adjusted player (including free player with 0): calculatedAmount = adjustedAmount
-    // - Non-adjusted player: calculatedAmount = equal share of remaining
-    if (member.adjustedAmount !== null) {
-      member.calculatedAmount = member.adjustedAmount;
-    } else {
-      member.calculatedAmount = equalShare;
-    }
-    
-    // Calculate total paid from valid payment history only
-    const validPayments = member.paymentHistory.filter(p => p.isValidPayment !== false);
-    const totalPaid = validPayments.reduce((sum, payment) => sum + payment.amount, 0);
-    member.amountPaid = totalPaid;
-    
-    // Calculate dueAmount and owedAmount based on calculatedAmount
-    const difference = member.calculatedAmount - totalPaid;
-    
-    if (difference > 0) {
-      // Player still owes money
-      member.dueAmount = difference;
-      member.owedAmount = 0;
-    } else if (difference < 0) {
-      // Player has overpaid, we owe them money
-      member.dueAmount = 0;
-      member.owedAmount = Math.abs(difference);
-    } else {
-      // Exactly paid
-      member.dueAmount = 0;
-      member.owedAmount = 0;
-    }
-    
-    // Update payment status
-    if (member.calculatedAmount === 0) {
-      // Free player - always considered paid
-      member.paymentStatus = totalPaid > 0 ? 'overpaid' : 'paid';
-    } else if (totalPaid === 0) {
-      member.paymentStatus = 'pending';
-    } else if (totalPaid > member.calculatedAmount) {
-      member.paymentStatus = 'overpaid';
-    } else if (totalPaid === member.calculatedAmount) {
-      member.paymentStatus = 'paid';
-    } else {
-      member.paymentStatus = 'partial';
-    }
-    
-    // Update paidAt to last payment date
-    if (member.paymentHistory.length > 0) {
-      const lastPayment = member.paymentHistory[member.paymentHistory.length - 1];
-      member.paidAt = lastPayment.paidAt;
+    const stats = calculateMemberStats(member, equalShare);
+
+    member.calculatedAmount = stats.calculatedAmount;
+    member.amountPaid = stats.amountPaid;
+    member.dueAmount = stats.dueAmount;
+    member.owedAmount = stats.owedAmount;
+    member.paymentStatus = stats.paymentStatus;
+
+    // Update paidAt from stats if available
+    if (stats.paidAt) {
+      member.paidAt = stats.paidAt;
     }
   });
 
-  // Step 4: Update payment statistics
+  // Step 3: Update payment statistics
   this.membersCount = this.squadMembers.length;
-  this.paidCount = this.squadMembers.filter(m => 
+  this.paidCount = this.squadMembers.filter(m =>
     m.paymentStatus === 'paid' || m.paymentStatus === 'overpaid'
   ).length;
-  
+
   // Sum of all amounts paid
   this.totalCollected = this.squadMembers.reduce((sum, m) => sum + (m.amountPaid || 0), 0);
-  
+
   // Sum of all due amounts (money yet to collect)
   this.totalPending = this.squadMembers.reduce((sum, m) => sum + (m.dueAmount || 0), 0);
-  
+
   // Sum of all owed amounts (money to refund)
   this.totalOwed = this.squadMembers.reduce((sum, m) => sum + (m.owedAmount || 0), 0);
 
-  // Step 5: Update overall payment status
+  // Step 4: Update overall payment status
   const hasPartial = this.squadMembers.some(m => m.paymentStatus === 'partial');
-  
+
   if (this.paidCount === this.membersCount) {
     this.status = 'completed';
   } else if (this.paidCount > 0 || hasPartial) {

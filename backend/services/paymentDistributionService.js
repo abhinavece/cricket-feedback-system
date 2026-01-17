@@ -4,14 +4,18 @@
  * Handles FIFO distribution of payments across multiple matches.
  * When a player pays an amount that covers multiple matches,
  * this service distributes the payment to oldest matches first.
+ *
+ * Uses centralized PaymentCalculationService for consistent calculations.
  */
 
 const MatchPayment = require('../models/MatchPayment');
 const Match = require('../models/Match');
 const { formatPhoneNumber } = require('./playerService');
+const { calculateAmountPaidFromHistory } = require('./paymentCalculationService');
 
 /**
  * Get all pending payments for a player, sorted by match date (oldest first - FIFO)
+ * Uses centralized calculation to compute dueAmount from payment history
  * @param {string} playerPhone - Player's phone number
  * @returns {Promise<Array>} - Array of pending payment info sorted by match date
  */
@@ -29,13 +33,13 @@ const getPendingPaymentsForPlayer = async (playerPhone) => {
     '91' + formattedPhone.slice(-10)
   ];
 
-  // Find all MatchPayments where this player has dueAmount > 0
+  // Find all MatchPayments where this player is a member
+  // Don't filter by dueAmount > 0 here - we'll calculate it fresh
   const payments = await MatchPayment.find({
-    'squadMembers.playerPhone': { $in: phoneVariants },
-    'squadMembers.dueAmount': { $gt: 0 }
+    'squadMembers.playerPhone': { $in: phoneVariants }
   }).populate('matchId', 'date opponent ground slot');
 
-  // Extract matching members and sort by match date
+  // Extract matching members and calculate dueAmount fresh from payment history
   const pendingPayments = [];
 
   for (const payment of payments) {
@@ -44,23 +48,36 @@ const getPendingPaymentsForPlayer = async (playerPhone) => {
       m.playerPhone.includes(formattedPhone.slice(-10))
     );
 
-    if (member && member.dueAmount > 0) {
-      pendingPayments.push({
-        paymentId: payment._id,
-        memberId: member._id,
-        matchId: payment.matchId?._id,
-        matchDate: payment.matchId?.date,
-        matchInfo: {
-          opponent: payment.matchId?.opponent || 'TBD',
-          ground: payment.matchId?.ground || '',
-          slot: payment.matchId?.slot || '',
-          date: payment.matchId?.date
-        },
-        dueAmount: member.dueAmount,
-        playerName: member.playerName,
-        playerPhone: member.playerPhone,
-        calculatedAmount: member.adjustedAmount !== null ? member.adjustedAmount : member.calculatedAmount
-      });
+    if (member) {
+      // Calculate effective amount (what they should pay)
+      const effectiveAmount = member.adjustedAmount !== null
+        ? member.adjustedAmount
+        : member.calculatedAmount;
+
+      // Calculate amount paid from payment history using centralized function
+      const amountPaid = calculateAmountPaidFromHistory(member.paymentHistory || []);
+
+      // Calculate due amount
+      const dueAmount = Math.max(0, effectiveAmount - amountPaid);
+
+      if (dueAmount > 0) {
+        pendingPayments.push({
+          paymentId: payment._id,
+          memberId: member._id,
+          matchId: payment.matchId?._id,
+          matchDate: payment.matchId?.date,
+          matchInfo: {
+            opponent: payment.matchId?.opponent || 'TBD',
+            ground: payment.matchId?.ground || '',
+            slot: payment.matchId?.slot || '',
+            date: payment.matchId?.date
+          },
+          dueAmount,
+          playerName: member.playerName,
+          playerPhone: member.playerPhone,
+          calculatedAmount: effectiveAmount
+        });
+      }
     }
   }
 
