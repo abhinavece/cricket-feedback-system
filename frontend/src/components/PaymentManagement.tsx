@@ -169,6 +169,7 @@ const PaymentManagement: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'bank_transfer' | 'other'>('upi');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [showUnpaidConfirmation, setShowUnpaidConfirmation] = useState(false);
   const hasFetchedInitial = React.useRef(false);
   
   // Share Link modal
@@ -363,11 +364,9 @@ const PaymentManagement: React.FC = () => {
 
   const handleOpenPaymentModal = (member: SquadMember) => {
     setPaymentMember(member);
-    // Default to remaining due amount or full amount
-    const effectiveAmount = member.adjustedAmount || member.calculatedAmount || 0;
-    const amountPaid = member.amountPaid || 0;
-    const remaining = effectiveAmount - amountPaid;
-    setPaymentAmount(remaining > 0 ? remaining : effectiveAmount);
+    // Default to remaining due amount only, empty if fully paid or overpaid
+    const dueAmount = member.dueAmount || 0;
+    setPaymentAmount(dueAmount > 0 ? dueAmount : 0);
     setPaymentMethod('upi');
     setPaymentNotes('');
     setPaymentDate(new Date().toISOString().split('T')[0]);
@@ -1050,17 +1049,17 @@ const PaymentManagement: React.FC = () => {
                             <span className="text-xs text-slate-400">{member.playerPhone}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
-                            {member.amountPaid > 0 && (
+                            {(member.amountPaid || 0) > 0 && (
                               <span className="text-emerald-400">
                                 Paid: ₹{(member.settledAmount || 0) > 0 
                                   ? `${member.amountPaid - (member.settledAmount || 0)} (₹${member.amountPaid} - ₹${member.settledAmount} settled)` 
                                   : member.amountPaid}
                               </span>
                             )}
-                            {member.dueAmount > 0 && (
+                            {(member.dueAmount || 0) > 0 && (
                               <span className="text-yellow-400">Due: ₹{member.dueAmount}</span>
                             )}
-                            {(member.owedAmount && member.owedAmount > 0) && (
+                            {(member.owedAmount || 0) > 0 && (
                               <span className="text-blue-400">Owed: ₹{member.owedAmount}</span>
                             )}
                           </div>
@@ -1351,7 +1350,7 @@ const PaymentManagement: React.FC = () => {
                   <label className="block text-sm text-slate-400 mb-2">Add Payment Amount</label>
                   <input
                     type="number"
-                    value={paymentAmount || ''}
+                    value={paymentAmount === 0 ? '' : paymentAmount}
                     onChange={(e) => {
                       const inputVal = e.target.value;
                       if (inputVal === '') {
@@ -1363,7 +1362,7 @@ const PaymentManagement: React.FC = () => {
                         }
                       }
                     }}
-                    placeholder="Enter payment amount"
+                    placeholder={`Remaining: ₹${(paymentMember.dueAmount || 0) > 0 ? (paymentMember.dueAmount || 0) : 0}`}
                     min="0"
                     step="1"
                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1409,47 +1408,7 @@ const PaymentManagement: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={async () => {
-                    if (!payment || !paymentMember) return;
-                    setLoading(true);
-                    try {
-                      const result = await markPaymentUnpaid(payment._id, paymentMember._id);
-                      if (result.success) {
-                        // Update the specific member in the payment state
-                        if (result.member) {
-                          const updatedPayment = { ...payment };
-                          const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
-                          if (memberIndex >= 0) {
-                            updatedPayment.squadMembers[memberIndex] = {
-                              ...updatedPayment.squadMembers[memberIndex],
-                              ...result.member
-                            };
-                          }
-                          
-                          // Update payment summary if provided
-                          if (result.paymentSummary) {
-                            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
-                            updatedPayment.totalPending = result.paymentSummary.totalPending;
-                            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
-                            updatedPayment.paidCount = result.paymentSummary.paidCount;
-                            updatedPayment.status = result.paymentSummary.status;
-                          }
-                          
-                          setPayment(updatedPayment);
-                        }
-                        
-                        setSuccess(`Marked as unpaid for ${paymentMember.playerName}`);
-                        setShowPaymentModal(false);
-                        setPaymentMember(null);
-                      } else {
-                        setError(result.error || 'Failed to mark as unpaid');
-                      }
-                    } catch (err: any) {
-                      setError(err.response?.data?.error || err.message || 'Failed to mark as unpaid');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  onClick={() => setShowUnpaidConfirmation(true)}
                   disabled={loading}
                   className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
@@ -1505,6 +1464,82 @@ const PaymentManagement: React.FC = () => {
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <IndianRupee className="w-4 h-4" />}
                   Settle Payment {(paymentMember.owedAmount || 0) > 0 ? `(₹${paymentMember.owedAmount})` : '(₹0)'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mark as Unpaid Confirmation Dialog */}
+        {showUnpaidConfirmation && paymentMember && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-red-500/20 rounded-lg">
+                  <AlertCircle className="w-6 h-6 text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Mark as Unpaid?</h3>
+              </div>
+              
+              <p className="text-sm text-slate-300 mb-6">
+                Are you sure you want to mark <span className="font-semibold text-white">{paymentMember.playerName}</span>'s payment as unpaid? This will revert their payment status and they will need to pay again.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUnpaidConfirmation(false)}
+                  className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!payment || !paymentMember) return;
+                    setLoading(true);
+                    try {
+                      const result = await markPaymentUnpaid(payment._id, paymentMember._id);
+                      if (result.success) {
+                        // Update the specific member in the payment state
+                        if (result.member) {
+                          const updatedPayment = { ...payment };
+                          const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
+                          if (memberIndex >= 0) {
+                            updatedPayment.squadMembers[memberIndex] = {
+                              ...updatedPayment.squadMembers[memberIndex],
+                              ...result.member
+                            };
+                          }
+                          
+                          // Update payment summary if provided
+                          if (result.paymentSummary) {
+                            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+                            updatedPayment.totalPending = result.paymentSummary.totalPending;
+                            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
+                            updatedPayment.paidCount = result.paymentSummary.paidCount;
+                            updatedPayment.status = result.paymentSummary.status;
+                          }
+                          
+                          setPayment(updatedPayment);
+                        }
+                        
+                        setSuccess(`Marked as unpaid for ${paymentMember.playerName}`);
+                        setShowPaymentModal(false);
+                        setPaymentMember(null);
+                        setShowUnpaidConfirmation(false);
+                      } else {
+                        setError(result.error || 'Failed to mark as unpaid');
+                      }
+                    } catch (err: any) {
+                      setError(err.response?.data?.error || err.message || 'Failed to mark as unpaid');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
+                  Mark as Unpaid
                 </button>
               </div>
             </div>
