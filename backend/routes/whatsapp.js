@@ -80,6 +80,79 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
   return messageId;
 }
 
+/**
+ * Send auto-response message based on availability response
+ * @param {string} toPhone - Recipient phone number
+ * @param {string} response - Availability response (yes, no, tentative)
+ * @param {Object} match - Match document with details
+ * @param {string} playerName - Player's name for personalization
+ */
+async function sendAvailabilityAutoResponse(toPhone, response, match, playerName) {
+  console.log(`\n📤 Sending auto-response for ${response} response to ${toPhone}`);
+  
+  // Format match date and time
+  const matchDate = new Date(match.date);
+  const dateStr = matchDate.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+  const timeStr = match.time || matchDate.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  // Build location info with Google Maps link if available
+  let locationInfo = match.ground || 'the venue';
+  if (match.locationLink) {
+    locationInfo = `${match.ground}\n📍 ${match.locationLink}`;
+  }
+  
+  let autoMessage = '';
+  
+  if (response === 'yes') {
+    // Confirmed - Thank them and provide match details
+    autoMessage = `🎉 *Thanks for confirming, ${playerName}!*\n\n` +
+      `We're excited to have you on the team! 🏏\n\n` +
+      `📅 *${dateStr}*\n` +
+      `⏰ *${timeStr}*\n` +
+      `📍 *${locationInfo}*\n\n` +
+      `See you on the ground! Let's make it a great match! 💪`;
+  } else if (response === 'no') {
+    // Declined - Acknowledge and ask about future availability
+    autoMessage = `👍 *Thanks for letting us know, ${playerName}!*\n\n` +
+      `We understand you can't make it this time. No worries!\n\n` +
+      `🤔 If your plans change, just reply back and let us know.\n\n` +
+      `Hope to see you in the next match! 🏏`;
+  } else if (response === 'tentative') {
+    // Tentative - Request confirmation closer to match date
+    const hoursUntilMatch = Math.floor((matchDate.getTime() - Date.now()) / (1000 * 60 * 60));
+    const confirmByDate = new Date(matchDate.getTime() - (48 * 60 * 60 * 1000)); // 48 hours before
+    const confirmByStr = confirmByDate.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    
+    autoMessage = `⏳ *Got it, ${playerName}!*\n\n` +
+      `We've marked you as tentative for this match.\n\n` +
+      `📅 *Match:* ${dateStr} at ${timeStr}\n` +
+      `📍 *Venue:* ${match.ground || 'TBA'}\n\n` +
+      `🙏 Please confirm your availability by *${confirmByStr}* so we can finalize the squad.\n\n` +
+      `Just reply *"Available"* or *"Not Available"* when you know for sure!`;
+  }
+  
+  if (autoMessage) {
+    await sendAndLogMessage(toPhone, autoMessage, {
+      messageType: 'availability_auto_response',
+      matchId: match._id,
+      matchTitle: match.opponent || 'Practice Match',
+      playerName: playerName
+    });
+    console.log(`✅ Auto-response sent for ${response} response`);
+  }
+}
+
 // Webhook verification endpoint (GET)
 // Facebook sends a GET request to verify the webhook
 router.get('/webhook', (req, res) => {
@@ -484,6 +557,13 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
               }
             });
 
+            // Send auto-response based on availability response
+            try {
+              await sendAvailabilityAutoResponse(formattedPhone, response, match, player.name);
+            } catch (autoRespErr) {
+              console.error(`⚠️ Failed to send auto-response:`, autoRespErr.message);
+            }
+
             // Update the saved incoming message to link it to the match context
             if (savedMessage) {
               try {
@@ -556,6 +636,13 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
                 pending: match.noResponsePlayers
               }
             });
+
+            // Send auto-response based on availability response (fallback method)
+            try {
+              await sendAvailabilityAutoResponse(formattedPhone, response, match, availability.playerName);
+            } catch (autoRespErr) {
+              console.error(`⚠️ Failed to send auto-response:`, autoRespErr.message);
+            }
 
             // Update the saved incoming message to link it to the match context
             if (savedMessage) {

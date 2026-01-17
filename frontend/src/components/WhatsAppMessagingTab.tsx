@@ -19,19 +19,32 @@ interface TemplateConfig {
   header?: string;
   footer?: string;
   buttons?: string[];
+  hasImage?: boolean;
 }
 
 const TEMPLATES: TemplateConfig[] = [
   {
     id: 'mavericks_team_availability',
     name: 'mavericks_team_availability',
-    label: 'Team Availability',
+    label: 'Team Availability (Basic)',
     header: 'Mavericks XI Team Availability',
     format: 'Hi {{1}},\n\nWe have an upcoming match scheduled at {{2}} on {{3}}.\n\nAre you available for the match?',
     footer: 'Select an option to confirm your availability',
     expectedParams: 3,
     language: 'en',
     buttons: ['Yes', 'No']
+  },
+  {
+    id: 'team_availability_check_new',
+    name: 'team_availability_check_new',
+    label: 'Team Availability (With Image)',
+    header: '🏏 Mavericks XI - Match Availability',
+    format: 'Hey {{1}}! 👋\n\n📍 *{{2}}*\n📅 *{{3}}*\n\nPlease confirm your availability for this match.',
+    footer: 'Tap a button below to respond',
+    expectedParams: 3,
+    language: 'en',
+    buttons: ['Available', 'Not Available', 'Tentative'],
+    hasImage: true
   },
   {
     id: 'custom',
@@ -518,6 +531,22 @@ const WhatsAppMessagingTab: React.FC = () => {
                   { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
                   { type: 'text', text: matchDateTime.trim() },
                   { type: 'text', text: matchVenue.trim() }
+                ]
+              }
+            ]
+          };
+        } else if (selectedTemplate.id === 'team_availability_check_new') {
+          // New template with image header - parameters: playerName, GroundName, Date_Time_Slot
+          payload.template = {
+            name: selectedTemplate.name,
+            languageCode: templateLanguage.trim() || selectedTemplate.language,
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
+                  { type: 'text', text: matchVenue.trim() },  // Ground name
+                  { type: 'text', text: matchDateTime.trim() } // Date, time & slot
                 ]
               }
             ]
@@ -1241,26 +1270,26 @@ const WhatsAppMessagingTab: React.FC = () => {
                     </div>
                   )}
 
-                  {selectedTemplate.id === 'mavericks_team_availability' ? (
+                  {(selectedTemplate.id === 'mavericks_team_availability' || selectedTemplate.id === 'team_availability_check_new') ? (
                     <div className="space-y-4">
                       <div>
-                        <label className="form-label text-sm">Match Time & Date</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={matchDateTime}
-                          onChange={(e) => setMatchDateTime(e.target.value)}
-                          placeholder="Sunday, 2:00 PM. 11th Jan, 2026"
-                        />
-                      </div>
-                      <div>
-                        <label className="form-label text-sm">Venue</label>
+                        <label className="form-label text-sm">Venue / Ground Name</label>
                         <input
                           type="text"
                           className="form-control"
                           value={matchVenue}
                           onChange={(e) => setMatchVenue(e.target.value)}
                           placeholder="Nityansh Cricket Ground"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label text-sm">Date, Time & Slot</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={matchDateTime}
+                          onChange={(e) => setMatchDateTime(e.target.value)}
+                          placeholder="Sunday, 11th Jan 2026 | 2:00 PM | Morning Slot"
                         />
                       </div>
                     </div>
@@ -1300,38 +1329,55 @@ const WhatsAppMessagingTab: React.FC = () => {
                         <div className="p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat min-h-[200px] flex flex-col justify-center">
                           
                           <div className="flex flex-col items-end max-w-[90%] self-end">
-                            <div className="relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed bg-[#dcf8c6] text-gray-800 rounded-tr-none">
+                            <div className="relative rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed bg-[#dcf8c6] text-gray-800 rounded-tr-none overflow-hidden">
                               {/* Chat bubble tail */}
                               <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-[#dcf8c6] border-r-[10px] border-r-transparent"></div>
                               
-                              {selectedTemplate.header && (
-                                <p className="text-[14px] font-bold text-gray-900 mb-1 leading-tight border-b border-black/5 pb-1">
-                                  {selectedTemplate.header}
-                                </p>
+                              {/* Image Header for templates with hasImage */}
+                              {selectedTemplate.hasImage && (
+                                <div className="w-full h-32 bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 flex items-center justify-center relative overflow-hidden">
+                                  <div className="absolute inset-0 opacity-20">
+                                    <div className="absolute top-2 left-4 text-6xl">🏏</div>
+                                    <div className="absolute bottom-2 right-4 text-4xl">⚾</div>
+                                  </div>
+                                  <div className="text-center z-10">
+                                    <div className="text-3xl mb-1">🏏</div>
+                                    <p className="text-white font-bold text-lg tracking-wide">MAVERICKS XI</p>
+                                    <p className="text-emerald-100 text-xs">Cricket Team</p>
+                                  </div>
+                                </div>
                               )}
                               
-                              <div className="whitespace-pre-wrap">
-                                {selectedTemplate.format
-                                  .replace('{{1}}', players[0]?.name || 'Abhinav Singh')
-                                  .replace('{{2}}', matchDateTime || 'Sunday, 2:00 PM. 11th Jan, 2026')
-                                  .replace('{{3}}', matchVenue || 'Nityansh Cricket Ground')}
-                              </div>
-                              
-                              {selectedTemplate.footer && (
-                                <p className="text-[12px] text-gray-500 mt-2 italic border-t border-black/5 pt-1">
-                                  {selectedTemplate.footer}
-                                </p>
-                              )}
+                              <div className="px-3 py-2 md:px-4 md:py-2.5">
+                                {selectedTemplate.header && !selectedTemplate.hasImage && (
+                                  <p className="text-[14px] font-bold text-gray-900 mb-1 leading-tight border-b border-black/5 pb-1">
+                                    {selectedTemplate.header}
+                                  </p>
+                                )}
+                                
+                                <div className="whitespace-pre-wrap">
+                                  {selectedTemplate.format
+                                    .replace('{{1}}', players[0]?.name || 'Abhinav Singh')
+                                    .replace('{{2}}', matchVenue || 'Nityansh Cricket Ground')
+                                    .replace('{{3}}', matchDateTime || 'Sunday, 11th Jan 2026 | 2:00 PM')}
+                                </div>
+                                
+                                {selectedTemplate.footer && (
+                                  <p className="text-[12px] text-gray-500 mt-2 italic border-t border-black/5 pt-1">
+                                    {selectedTemplate.footer}
+                                  </p>
+                                )}
 
-                              <div className="flex justify-end items-center gap-1 mt-1">
-                                <span className="text-[10px] opacity-50 font-medium tabular-nums text-gray-600">
-                                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                <span className="text-sky-500">
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                                  </svg>
-                                </span>
+                                <div className="flex justify-end items-center gap-1 mt-1">
+                                  <span className="text-[10px] opacity-50 font-medium tabular-nums text-gray-600">
+                                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  <span className="text-sky-500">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                                    </svg>
+                                  </span>
+                                </div>
                               </div>
                             </div>
 
@@ -1341,20 +1387,26 @@ const WhatsAppMessagingTab: React.FC = () => {
                                 {selectedTemplate.buttons.map((btn, i) => (
                                   <div 
                                     key={i} 
-                                    className="bg-white rounded-xl py-2 flex items-center justify-center gap-2 shadow-sm border border-gray-200/50"
+                                    className={`bg-white rounded-xl py-2 flex items-center justify-center gap-2 shadow-sm border border-gray-200/50 ${
+                                      btn === 'Available' || btn === 'Yes' ? 'hover:bg-green-50' :
+                                      btn === 'Not Available' || btn === 'No' ? 'hover:bg-red-50' :
+                                      'hover:bg-amber-50'
+                                    }`}
                                   >
-                                    <svg className="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className={`w-4 h-4 ${
+                                      btn === 'Available' || btn === 'Yes' ? 'text-green-500' :
+                                      btn === 'Not Available' || btn === 'No' ? 'text-red-500' :
+                                      'text-amber-500'
+                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                     </svg>
-                                    <span className="text-sky-500 text-sm font-semibold">{btn}</span>
+                                    <span className={`text-sm font-semibold ${
+                                      btn === 'Available' || btn === 'Yes' ? 'text-green-500' :
+                                      btn === 'Not Available' || btn === 'No' ? 'text-red-500' :
+                                      'text-amber-500'
+                                    }`}>{btn}</span>
                                   </div>
                                 ))}
-                                <div className="bg-white rounded-xl py-2 flex items-center justify-center gap-2 shadow-sm border border-gray-200/50">
-                                  <svg className="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                  </svg>
-                                  <span className="text-sky-500 text-sm font-semibold">See all options</span>
-                                </div>
                               </div>
                             )}
                           </div>
