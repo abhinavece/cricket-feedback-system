@@ -1,0 +1,53 @@
+# Terraform State Files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform Directory
+.terraform/
+.terraform.lock.hcl
+
+# Sensitive Variable Files
+*.tfvars
+!*.tfvars.example
+*.auto.tfvars
+
+# Override Files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI Configuration
+.terraformrc
+terraform.rc
+
+# Crash Logs
+crash.log
+crash.*.log
+
+# Plan Files
+*.tfplan
+plan.out
+
+# Local Backend
+terraform.tfstate.d/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Kubeconfig
+kubeconfig
+*.kubeconfig
+
+# OCI Keys (never commit these!)
+*.pem
+*.key

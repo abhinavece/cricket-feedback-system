@@ -1,0 +1,25 @@
+# Development Environment Variables
+# Copy to terraform.tfvars and fill in values
+
+# OCI Provider Configuration
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaaxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..aaaaaaaaxxxxxxxx"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "us-phoenix-1"
+compartment_ocid = "ocid1.compartment.oc1..aaaaaaaaxxxxxxxx"
+
+# Application
+deploy_application = true
+backend_image_tag  = "v15"
+frontend_image_tag = "v10"
+ingress_host       = "129.153.86.8.sslip.io"
+
+# Secrets (use TF_VAR_ environment variables instead for security)
+# mongodb_password         = ""
+# jwt_secret               = ""
+# google_client_id         = ""
+# google_client_secret     = ""
+# whatsapp_access_token    = ""
+# whatsapp_phone_number_id = ""
+# admin_password           = ""

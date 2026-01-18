@@ -1,0 +1,27 @@
+# Production Environment Variables
+# Copy to terraform.tfvars and fill in values
+# NEVER commit terraform.tfvars to version control!
+
+# OCI Provider Configuration
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaaxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..aaaaaaaaxxxxxxxx"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "us-phoenix-1"
+compartment_ocid = "ocid1.compartment.oc1..aaaaaaaaxxxxxxxx"
+
+# Application
+deploy_application = true
+backend_image_tag  = "v15"
+frontend_image_tag = "v10"
+ingress_host       = "cricket.mavericksxi.com"
+
+# Secrets - USE ENVIRONMENT VARIABLES FOR PRODUCTION!
+# Export these before running terraform:
+#   export TF_VAR_mongodb_password="your-password"
+#   export TF_VAR_jwt_secret="your-secret"
+#   export TF_VAR_google_client_id="your-client-id"
+#   export TF_VAR_google_client_secret="your-client-secret"
+#   export TF_VAR_whatsapp_access_token="your-token"
+#   export TF_VAR_whatsapp_phone_number_id="your-phone-id"
+#   export TF_VAR_admin_password="your-admin-password"
