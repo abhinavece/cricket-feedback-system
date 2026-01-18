@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { auth, requireAdmin } = require('../middleware/auth');
 const webhookProxyService = require('../services/webhookProxyService');
 const WebhookProxyConfig = require('../models/WebhookProxyConfig');
 
@@ -93,10 +93,10 @@ router.post('/webhook', async (req, res) => {
  * GET /api/webhook-proxy/config
  * Get current proxy configuration
  */
-router.get('/config', auth, async (req, res) => {
+router.get('/config', auth, requireAdmin, async (req, res) => {
   try {
     const config = await WebhookProxyConfig.getConfig();
-    
+
     res.json({
       success: true,
       data: {
@@ -121,10 +121,10 @@ router.get('/config', auth, async (req, res) => {
  * PUT /api/webhook-proxy/config
  * Update proxy configuration
  */
-router.put('/config', auth, async (req, res) => {
+router.put('/config', auth, requireAdmin, async (req, res) => {
   try {
     const { localRoutingEnabled, localServerUrl, localRoutingPhones, productionWebhookUrl } = req.body;
-    
+
     const config = await WebhookProxyConfig.getConfig();
     
     if (typeof localRoutingEnabled === 'boolean') {
@@ -183,10 +183,10 @@ router.put('/config', auth, async (req, res) => {
  * POST /api/webhook-proxy/toggle-local
  * One-click toggle for local routing
  */
-router.post('/toggle-local', auth, async (req, res) => {
+router.post('/toggle-local', auth, requireAdmin, async (req, res) => {
   try {
     const config = await WebhookProxyConfig.getConfig();
-    
+
     config.localRoutingEnabled = !config.localRoutingEnabled;
     config.lastModifiedBy = req.user.id;
     config.lastModifiedAt = new Date();
@@ -218,10 +218,10 @@ router.post('/toggle-local', auth, async (req, res) => {
  * POST /api/webhook-proxy/add-phone
  * Add a phone number to local routing list
  */
-router.post('/add-phone', auth, async (req, res) => {
+router.post('/add-phone', auth, requireAdmin, async (req, res) => {
   try {
     const { phone } = req.body;
-    
+
     if (!phone) {
       return res.status(400).json({
         success: false,
@@ -280,7 +280,7 @@ router.post('/add-phone', auth, async (req, res) => {
  * DELETE /api/webhook-proxy/remove-phone/:phone
  * Remove a phone number from local routing list
  */
-router.delete('/remove-phone/:phone', auth, async (req, res) => {
+router.delete('/remove-phone/:phone', auth, requireAdmin, async (req, res) => {
   try {
     const { phone } = req.params;
     const normalizedPhone = phone.replace(/\D/g, '');
@@ -325,10 +325,10 @@ router.delete('/remove-phone/:phone', auth, async (req, res) => {
  * GET /api/webhook-proxy/stats
  * Get routing statistics
  */
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', auth, requireAdmin, async (req, res) => {
   try {
     const config = await WebhookProxyConfig.getConfig();
-    
+
     res.json({
       success: true,
       data: {
@@ -354,10 +354,10 @@ router.get('/stats', auth, async (req, res) => {
  * POST /api/webhook-proxy/test-local
  * Test connectivity to local development server
  */
-router.post('/test-local', auth, async (req, res) => {
+router.post('/test-local', auth, requireAdmin, async (req, res) => {
   try {
     const config = await WebhookProxyConfig.getConfig();
-    
+
     if (!config.localServerUrl) {
       return res.status(400).json({
         success: false,

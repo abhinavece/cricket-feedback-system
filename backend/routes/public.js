@@ -4,7 +4,7 @@ const PublicLink = require('../models/PublicLink');
 const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
 const Availability = require('../models/Availability');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // GET /api/public/:token - Access shared resource (NO AUTH REQUIRED)
 router.get('/:token', async (req, res) => {

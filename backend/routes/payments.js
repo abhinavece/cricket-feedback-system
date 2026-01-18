@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { auth, requireAdmin } = require('../middleware/auth');
 const MatchPayment = require('../models/MatchPayment');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
@@ -456,7 +456,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/payments - Create payment record for a match
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   try {
     const { matchId, totalAmount, squadMembers, notes } = req.body;
 
@@ -531,7 +531,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /api/payments/:id - Update payment record
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const { totalAmount, squadMembers, notes, status } = req.body;
 
@@ -612,7 +612,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // PUT /api/payments/:id/member/:memberId - Update single member
-router.put('/:id/member/:memberId', auth, async (req, res) => {
+router.put('/:id/member/:memberId', auth, requireAdmin, async (req, res) => {
   try {
     const { adjustedAmount, paymentStatus, notes, dueDate } = req.body;
 
@@ -702,7 +702,7 @@ router.put('/:id/member/:memberId', auth, async (req, res) => {
 });
 
 // POST /api/payments/:id/member/:memberId/add-payment - Record a partial/full payment
-router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
+router.post('/:id/member/:memberId/add-payment', auth, requireAdmin, async (req, res) => {
   try {
     const { amount, paymentMethod, notes, paidAt } = req.body;
 
@@ -841,7 +841,7 @@ router.post('/:id/member/:memberId/add-payment', auth, async (req, res) => {
 });
 
 // POST /api/payments/:id/member/:memberId/mark-unpaid - Mark payment as unpaid
-router.post('/:id/member/:memberId/mark-unpaid', auth, async (req, res) => {
+router.post('/:id/member/:memberId/mark-unpaid', auth, requireAdmin, async (req, res) => {
   try {
     const payment = await MatchPayment.findById(req.params.id);
     if (!payment) {
@@ -915,7 +915,7 @@ router.post('/:id/member/:memberId/mark-unpaid', auth, async (req, res) => {
 });
 
 // POST /api/payments/:id/member/:memberId/settle-overpayment - Settle overpayment and send WhatsApp notification
-router.post('/:id/member/:memberId/settle-overpayment', auth, async (req, res) => {
+router.post('/:id/member/:memberId/settle-overpayment', auth, requireAdmin, async (req, res) => {
   try {
     const payment = await MatchPayment.findById(req.params.id)
       .populate('matchId', 'date opponent ground slot matchId');
@@ -1172,7 +1172,7 @@ router.get('/player/:phone/history', auth, async (req, res) => {
 });
 
 // DELETE /api/payments/:id/member/:memberId - Remove member from payment
-router.delete('/:id/member/:memberId', auth, async (req, res) => {
+router.delete('/:id/member/:memberId', auth, requireAdmin, async (req, res) => {
   try {
     const payment = await MatchPayment.findById(req.params.id);
     if (!payment) {
@@ -1226,7 +1226,7 @@ router.delete('/:id/member/:memberId', auth, async (req, res) => {
 });
 
 // POST /api/payments/:id/add-member - Add new member (ad-hoc player)
-router.post('/:id/add-member', auth, async (req, res) => {
+router.post('/:id/add-member', auth, requireAdmin, async (req, res) => {
   try {
     const { playerName, playerPhone, playerId, adjustedAmount } = req.body;
 
@@ -1303,7 +1303,7 @@ router.post('/:id/add-member', auth, async (req, res) => {
 });
 
 // POST /api/payments/:id/send-requests - Send payment request messages
-router.post('/:id/send-requests', auth, async (req, res) => {
+router.post('/:id/send-requests', auth, requireAdmin, async (req, res) => {
   try {
     const { memberIds, customMessage } = req.body; // Optional: specific members to send to, custom message template
 
@@ -1527,7 +1527,7 @@ router.get('/:id/screenshot/:memberId', async (req, res) => {
 });
 
 // POST /api/payments/load-squad/:matchId - Load squad from availability
-router.post('/load-squad/:matchId', auth, async (req, res) => {
+router.post('/load-squad/:matchId', auth, requireAdmin, async (req, res) => {
   try {
     const { matchId } = req.params;
 
@@ -1567,7 +1567,7 @@ router.post('/load-squad/:matchId', auth, async (req, res) => {
 });
 
 // DELETE /api/payments/:id - Delete payment record
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const payment = await MatchPayment.findByIdAndDelete(req.params.id);
     if (!payment) {
@@ -1641,7 +1641,7 @@ router.get('/review-required', auth, async (req, res) => {
 });
 
 // PUT /api/payments/:id/member/:memberId/resolve-review - Resolve admin review
-router.put('/:id/member/:memberId/resolve-review', auth, async (req, res) => {
+router.put('/:id/member/:memberId/resolve-review', auth, requireAdmin, async (req, res) => {
   try {
     const { action, correctedAmount, notes } = req.body;
     // action: 'accept' (accept OCR amount), 'override' (use correctedAmount), 'reject' (mark unpaid)

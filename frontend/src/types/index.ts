@@ -20,6 +20,7 @@ export interface FeedbackSubmission extends FeedbackForm {
   _id: string;
   createdAt: string;
   updatedAt: string;
+  isRedacted?: boolean; // True when playerName is hidden for viewer role
 }
 
 export interface Player {

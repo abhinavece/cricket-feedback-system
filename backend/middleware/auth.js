@@ -7,15 +7,17 @@ const auth = async (req, res, next) => {
     if (process.env.DISABLE_AUTH === 'true') {
       console.log('⚠️ Auth bypassed - DISABLE_AUTH is enabled');
       const mongoose = require('mongoose');
-      // Create a mock admin user for local testing with valid ObjectId
+      const mockRole = process.env.MOCK_USER_ROLE || 'admin';
+      // Create a mock user for local testing with valid ObjectId
       req.user = {
         _id: new mongoose.Types.ObjectId(),
         id: new mongoose.Types.ObjectId().toString(),
         email: 'dev@localhost',
-        name: 'Local Dev Admin',
-        role: 'admin',
+        name: 'Local Dev User',
+        role: mockRole,
         isActive: true
       };
+      console.log('Mock user role:', mockRole);
       return next();
     }
 
@@ -57,4 +59,30 @@ const auth = async (req, res, next) => {
   }
 };
 
-module.exports = auth;
+/**
+ * Middleware: Require Admin Role
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin privileges required' });
+  }
+  next();
+};
+
+/**
+ * Middleware: Require Editor or Admin Role (blocks viewers)
+ */
+const requireEditor = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (req.user.role === 'viewer') {
+    return res.status(403).json({ error: 'Editor privileges required' });
+  }
+  next();
+};
+
+module.exports = { auth, requireAdmin, requireEditor };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getAllFeedback, deleteFeedback, getFeedbackById, getStats, getTrashFeedback, restoreFeedback, permanentDeleteFeedback } from '../../services/api';
 import type { FeedbackSubmission } from '../../types';
-import { Star, Trash2, ChevronRight, X, RefreshCw, RotateCcw, Archive } from 'lucide-react';
+import { Star, Trash2, ChevronRight, X, RefreshCw, RotateCcw, Archive, UserX } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface FeedbackStats {
   totalSubmissions: number;
@@ -12,6 +13,7 @@ interface FeedbackStats {
 }
 
 const MobileFeedbackTab: React.FC = () => {
+  const { isViewer } = useAuth();
   const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
@@ -218,16 +220,18 @@ const MobileFeedbackTab: React.FC = () => {
             >
               Active
             </button>
-            <button
-              onClick={() => setCurrentView('trash')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
-                currentView === 'trash'
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : 'bg-slate-800/50 text-slate-400'
-              }`}
-            >
-              <Archive className="w-3 h-3" /> Trash
-            </button>
+            {!isViewer() && (
+              <button
+                onClick={() => setCurrentView('trash')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+                  currentView === 'trash'
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    : 'bg-slate-800/50 text-slate-400'
+                }`}
+              >
+                <Archive className="w-3 h-3" /> Trash
+              </button>
+            )}
           </div>
           <button
             onClick={handleRefresh}
@@ -273,7 +277,14 @@ const MobileFeedbackTab: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-white text-sm truncate">{item.playerName}</span>
+                      {item.isRedacted ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-700/50 text-slate-400 text-sm rounded-full">
+                          <UserX className="w-3 h-3" />
+                          <span className="italic">Anonymous</span>
+                        </span>
+                      ) : (
+                        <span className="font-medium text-white text-sm truncate">{item.playerName}</span>
+                      )}
                       <span className="text-xs text-slate-500">{formatDate(item.matchDate)}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
@@ -289,12 +300,14 @@ const MobileFeedbackTab: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
-                      className="p-2 text-slate-500 hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!isViewer() && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
+                        className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <ChevronRight className="w-4 h-4 text-slate-600" />
                   </div>
                 </div>
@@ -379,7 +392,14 @@ const MobileFeedbackTab: React.FC = () => {
             <div className="sticky top-0 bg-slate-900 pt-3 pb-2 px-4 border-b border-white/5">
               <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-3" />
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white">{selectedFeedback.playerName}</h3>
+                {selectedFeedback.isRedacted ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-700/50 text-slate-400 text-lg rounded-full">
+                    <UserX className="w-4 h-4" />
+                    <span className="italic font-medium">Anonymous Feedback</span>
+                  </span>
+                ) : (
+                  <h3 className="text-lg font-bold text-white">{selectedFeedback.playerName}</h3>
+                )}
                 <button onClick={() => setSelectedFeedback(null)} className="p-2 text-slate-400">
                   <X className="w-5 h-5" />
                 </button>

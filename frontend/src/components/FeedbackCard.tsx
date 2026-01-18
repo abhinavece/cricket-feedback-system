@@ -1,4 +1,5 @@
 import React from 'react';
+import { UserX } from 'lucide-react';
 import { FeedbackSubmission } from '../types';
 
 interface FeedbackCardProps {
@@ -50,19 +51,31 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
               {/* Player Info */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="relative flex-shrink-0">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-lg ${
-                    avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 
-                    avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' : 
-                    'bg-gradient-to-br from-rose-400 to-pink-600'
-                  }`}>
-                    {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
-                  </div>
+                  {item.isRedacted ? (
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-700/50 shadow-lg">
+                      <UserX className="w-5 h-5 text-slate-400" />
+                    </div>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-lg ${
+                      avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' :
+                      avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' :
+                      'bg-gradient-to-br from-rose-400 to-pink-600'
+                    }`}>
+                      {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-black text-white tracking-tight leading-tight truncate">
-                    {item.playerName}
-                  </h3>
-                  <span className="text-[9px] font-bold text-slate-500">
+                  {item.isRedacted ? (
+                    <span className="inline-flex items-center gap-1 text-sm italic text-slate-400">
+                      Anonymous
+                    </span>
+                  ) : (
+                    <h3 className="text-sm font-black text-white tracking-tight leading-tight truncate">
+                      {item.playerName}
+                    </h3>
+                  )}
+                  <span className="text-[9px] font-bold text-slate-500 block">
                     {new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
@@ -149,24 +162,36 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
             )}
           </div>
 
-          {/* Desktop Header Section - Unchanged */}
+          {/* Desktop Header Section */}
           <div className="hidden sm:block">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="relative flex-shrink-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg transform rotate-2 group-hover:rotate-0 transition-transform duration-300 ${
-                    avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 
-                    avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' : 
-                    'bg-gradient-to-br from-rose-400 to-pink-600'
-                  }`}>
-                    {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
-                  </div>
+                  {item.isRedacted ? (
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-700/50 shadow-lg transform rotate-2 group-hover:rotate-0 transition-transform duration-300">
+                      <UserX className="w-5 h-5 text-slate-400" />
+                    </div>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg transform rotate-2 group-hover:rotate-0 transition-transform duration-300 ${
+                      avgRating >= 4 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' :
+                      avgRating >= 3 ? 'bg-gradient-to-br from-amber-400 to-orange-600' :
+                      'bg-gradient-to-br from-rose-400 to-pink-600'
+                    }`}>
+                      {item.playerName ? item.playerName.charAt(0).toUpperCase() : '?'}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-black text-white tracking-tight leading-tight truncate">
-                    {item.playerName}
-                  </h3>
-                  <span className="text-xs font-bold text-slate-500">
+                  {item.isRedacted ? (
+                    <span className="inline-flex items-center gap-1.5 text-base italic text-slate-400">
+                      Anonymous Feedback
+                    </span>
+                  ) : (
+                    <h3 className="text-base font-black text-white tracking-tight leading-tight truncate">
+                      {item.playerName}
+                    </h3>
+                  )}
+                  <span className="text-xs font-bold text-slate-500 block">
                     {new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>

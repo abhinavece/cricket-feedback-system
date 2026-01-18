@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Wallet,
   Users,
@@ -119,6 +120,8 @@ interface MatchWithPayment extends Match {
 }
 
 const PaymentManagement: React.FC = () => {
+  const { isViewer } = useAuth();
+
   // Dashboard state
   const [matchesWithPayments, setMatchesWithPayments] = useState<MatchWithPayment[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
@@ -917,13 +920,15 @@ const PaymentManagement: React.FC = () => {
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleDeletePayment(payment._id)}
-                    className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-                    title="Delete Payment"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!isViewer() && (
+                    <button
+                      onClick={() => handleDeletePayment(payment._id)}
+                      className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                      title="Delete Payment"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1005,22 +1010,24 @@ const PaymentManagement: React.FC = () => {
                   <Users className="w-5 h-5 text-emerald-400" />
                   Squad Members ({payment.squadMembers.length})
                 </h3>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setShowAddPlayer(true)} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm flex items-center gap-1">
-                    <UserPlus className="w-4 h-4" />
-                  </button>
-                  <button onClick={selectAllPending} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm flex items-center gap-1">
-                    <Check className="w-4 h-4" /> Select Pending
-                  </button>
-                  <button
-                    onClick={handleOpenMessagePreview}
-                    disabled={sendingMessages}
-                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-1"
-                  >
-                    {sendingMessages ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Send {selectedMembers.size > 0 && `(${selectedMembers.size})`}
-                  </button>
-                </div>
+                {!isViewer() && (
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setShowAddPlayer(true)} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm flex items-center gap-1">
+                      <UserPlus className="w-4 h-4" />
+                    </button>
+                    <button onClick={selectAllPending} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm flex items-center gap-1">
+                      <Check className="w-4 h-4" /> Select Pending
+                    </button>
+                    <button
+                      onClick={handleOpenMessagePreview}
+                      disabled={sendingMessages}
+                      className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-1"
+                    >
+                      {sendingMessages ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Send {selectedMembers.size > 0 && `(${selectedMembers.size})`}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 {payment.squadMembers.map((member) => {
@@ -1071,7 +1078,7 @@ const PaymentManagement: React.FC = () => {
                           )}
                         </div>
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          {editingMember === member._id ? (
+                          {!isViewer() && editingMember === member._id ? (
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
@@ -1098,7 +1105,7 @@ const PaymentManagement: React.FC = () => {
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
-                          ) : (
+                          ) : !isViewer() ? (
                             <button
                               onClick={() => { setEditingMember(member._id); setEditAmount(effectiveAmount); }}
                               className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300"
@@ -1110,6 +1117,10 @@ const PaymentManagement: React.FC = () => {
                               )}
                               <Edit2 className="w-3 h-3 opacity-50" />
                             </button>
+                          ) : (
+                            <span className={`font-semibold ${member.adjustedAmount === 0 ? 'text-purple-400' : 'text-emerald-400'}`}>
+                              {member.adjustedAmount === 0 ? 'FREE PLAYER' : `₹${effectiveAmount}`}
+                            </span>
                           )}
                         </div>
                         <div
@@ -1126,9 +1137,11 @@ const PaymentManagement: React.FC = () => {
                             <Image className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); handleRemovePlayer(member._id); }} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!isViewer() && (
+                          <button onClick={(e) => { e.stopPropagation(); handleRemovePlayer(member._id); }} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -1345,127 +1358,138 @@ const PaymentManagement: React.FC = () => {
                 )}
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-slate-400 mb-2">Add Payment Amount</label>
-                  <input
-                    type="number"
-                    value={paymentAmount === 0 ? '' : paymentAmount}
-                    onChange={(e) => {
-                      const inputVal = e.target.value;
-                      if (inputVal === '') {
-                        setPaymentAmount(0);
-                      } else {
-                        const val = parseFloat(inputVal);
-                        if (!isNaN(val) && val >= 0) {
-                          setPaymentAmount(val);
+              {!isViewer() ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Add Payment Amount</label>
+                    <input
+                      type="number"
+                      value={paymentAmount === 0 ? '' : paymentAmount}
+                      onChange={(e) => {
+                        const inputVal = e.target.value;
+                        if (inputVal === '') {
+                          setPaymentAmount(0);
+                        } else {
+                          const val = parseFloat(inputVal);
+                          if (!isNaN(val) && val >= 0) {
+                            setPaymentAmount(val);
+                          }
                         }
+                      }}
+                      placeholder={`Remaining: ₹${(paymentMember.dueAmount || 0) > 0 ? (paymentMember.dueAmount || 0) : 0}`}
+                      min="0"
+                      step="1"
+                      className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    {paymentAmount > 0 && (
+                      <p className="text-xs text-slate-400 mt-2">
+                        {(() => {
+                          const effectiveAmount = paymentMember.adjustedAmount !== null ? paymentMember.adjustedAmount : paymentMember.calculatedAmount;
+                          const settledAmount = paymentMember.settledAmount || 0;
+                          const currentActualPaid = (paymentMember.amountPaid || 0) - settledAmount;
+                          const newTotalPaid = (paymentMember.amountPaid || 0) + paymentAmount;
+                          const newActualPaid = newTotalPaid - settledAmount;
+                          const diff = effectiveAmount - newActualPaid;
+                          return (
+                            <>
+                              New total paid: <span className="text-emerald-400 font-medium">₹{newTotalPaid}</span>
+                              {settledAmount > 0 && <span className="text-blue-400"> (Actual: ₹{newActualPaid})</span>}
+                              {diff > 0 && <span className="text-yellow-400"> → Due: ₹{diff}</span>}
+                              {diff < 0 && <span className="text-blue-400"> → Overpaid: ₹{Math.abs(diff)}</span>}
+                              {diff === 0 && <span className="text-emerald-400"> → Fully Paid</span>}
+                            </>
+                          );
+                        })()}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowPaymentModal(false)}
+                      className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={handleRecordPayment}
+                      disabled={loading || !paymentAmount || paymentAmount <= 0}
+                      className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      Add Payment
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setShowUnpaidConfirmation(true)}
+                    disabled={loading}
+                    className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
+                    Mark as Unpaid
+                  </button>
+
+                {/* Settle Overpayment button - always visible, disabled when owedAmount is 0 */}
+                  <button
+                    onClick={async () => {
+                      if (!payment || !paymentMember || !(paymentMember.owedAmount && paymentMember.owedAmount > 0)) return;
+                      setLoading(true);
+                      try {
+                        const result = await settleOverpayment(payment._id, paymentMember._id);
+                        if (result.success) {
+                          // Update the specific member in the payment state
+                          if (result.member) {
+                            const updatedPayment = { ...payment };
+                            const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
+                            if (memberIndex >= 0) {
+                              updatedPayment.squadMembers[memberIndex] = {
+                                ...updatedPayment.squadMembers[memberIndex],
+                                ...result.member
+                              };
+                            }
+
+                            // Update payment summary if provided
+                            if (result.paymentSummary) {
+                              updatedPayment.totalCollected = result.paymentSummary.totalCollected;
+                              updatedPayment.totalPending = result.paymentSummary.totalPending;
+                              updatedPayment.totalOwed = result.paymentSummary.totalOwed;
+                              updatedPayment.paidCount = result.paymentSummary.paidCount;
+                              updatedPayment.status = result.paymentSummary.status;
+                            }
+
+                            setPayment(updatedPayment);
+                          }
+
+                          setSuccess(`Settlement of ₹${paymentMember.owedAmount} completed for ${paymentMember.playerName}. WhatsApp notification sent.`);
+                          setShowPaymentModal(false);
+                          setPaymentMember(null);
+                        } else {
+                          setError(result.error || 'Failed to settle overpayment');
+                        }
+                      } catch (err: any) {
+                        setError(err.response?.data?.error || err.message || 'Failed to settle overpayment');
+                      } finally {
+                        setLoading(false);
                       }
                     }}
-                    placeholder={`Remaining: ₹${(paymentMember.dueAmount || 0) > 0 ? (paymentMember.dueAmount || 0) : 0}`}
-                    min="0"
-                    step="1"
-                    className="w-full px-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  {paymentAmount > 0 && (
-                    <p className="text-xs text-slate-400 mt-2">
-                      {(() => {
-                        const effectiveAmount = paymentMember.adjustedAmount !== null ? paymentMember.adjustedAmount : paymentMember.calculatedAmount;
-                        const settledAmount = paymentMember.settledAmount || 0;
-                        const currentActualPaid = (paymentMember.amountPaid || 0) - settledAmount;
-                        const newTotalPaid = (paymentMember.amountPaid || 0) + paymentAmount;
-                        const newActualPaid = newTotalPaid - settledAmount;
-                        const diff = effectiveAmount - newActualPaid;
-                        return (
-                          <>
-                            New total paid: <span className="text-emerald-400 font-medium">₹{newTotalPaid}</span>
-                            {settledAmount > 0 && <span className="text-blue-400"> (Actual: ₹{newActualPaid})</span>}
-                            {diff > 0 && <span className="text-yellow-400"> → Due: ₹{diff}</span>}
-                            {diff < 0 && <span className="text-blue-400"> → Overpaid: ₹{Math.abs(diff)}</span>}
-                            {diff === 0 && <span className="text-emerald-400"> → Fully Paid</span>}
-                          </>
-                        );
-                      })()}
-                    </p>
-                  )}
+                    disabled={loading || !(paymentMember.owedAmount && paymentMember.owedAmount > 0)}
+                    className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <IndianRupee className="w-4 h-4" />}
+                    Settle Payment {(paymentMember.owedAmount || 0) > 0 ? `(₹${paymentMember.owedAmount})` : '(₹0)'}
+                  </button>
                 </div>
-
-                <div className="flex gap-3">
+              ) : (
+                <div className="mt-4">
                   <button
                     onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
+                    className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors"
                   >
                     Close
                   </button>
-                  <button
-                    onClick={handleRecordPayment}
-                    disabled={loading || !paymentAmount || paymentAmount <= 0}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Add Payment
-                  </button>
                 </div>
-
-                <button
-                  onClick={() => setShowUnpaidConfirmation(true)}
-                  disabled={loading}
-                  className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
-                  Mark as Unpaid
-                </button>
-
-                {/* Settle Overpayment button - always visible, disabled when owedAmount is 0 */}
-                <button
-                  onClick={async () => {
-                    if (!payment || !paymentMember || !(paymentMember.owedAmount && paymentMember.owedAmount > 0)) return;
-                    setLoading(true);
-                    try {
-                      const result = await settleOverpayment(payment._id, paymentMember._id);
-                      if (result.success) {
-                        // Update the specific member in the payment state
-                        if (result.member) {
-                          const updatedPayment = { ...payment };
-                          const memberIndex = updatedPayment.squadMembers.findIndex(m => m._id === paymentMember._id);
-                          if (memberIndex >= 0) {
-                            updatedPayment.squadMembers[memberIndex] = {
-                              ...updatedPayment.squadMembers[memberIndex],
-                              ...result.member
-                            };
-                          }
-                          
-                          // Update payment summary if provided
-                          if (result.paymentSummary) {
-                            updatedPayment.totalCollected = result.paymentSummary.totalCollected;
-                            updatedPayment.totalPending = result.paymentSummary.totalPending;
-                            updatedPayment.totalOwed = result.paymentSummary.totalOwed;
-                            updatedPayment.paidCount = result.paymentSummary.paidCount;
-                            updatedPayment.status = result.paymentSummary.status;
-                          }
-                          
-                          setPayment(updatedPayment);
-                        }
-                        
-                        setSuccess(`Settlement of ₹${paymentMember.owedAmount} completed for ${paymentMember.playerName}. WhatsApp notification sent.`);
-                        setShowPaymentModal(false);
-                        setPaymentMember(null);
-                      } else {
-                        setError(result.error || 'Failed to settle overpayment');
-                      }
-                    } catch (err: any) {
-                      setError(err.response?.data?.error || err.message || 'Failed to settle overpayment');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={loading || !(paymentMember.owedAmount && paymentMember.owedAmount > 0)}
-                  className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <IndianRupee className="w-4 h-4" />}
-                  Settle Payment {(paymentMember.owedAmount || 0) > 0 ? `(₹${paymentMember.owedAmount})` : '(₹0)'}
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -1931,8 +1955,8 @@ const PaymentManagement: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Delete Button (only if payment exists) */}
-                    {payment && (
+                    {/* Delete Button (only if payment exists and user is not viewer) */}
+                    {!isViewer() && payment && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

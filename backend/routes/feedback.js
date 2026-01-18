@@ -1,7 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const Feedback = require('../models/Feedback');
-const auth = require('../middleware/auth');
+const { auth, requireEditor } = require('../middleware/auth');
+
+/**
+ * Helper: Redact playerName for viewer role users
+ * Returns "Anonymous" for viewers to prevent name exposure
+ */
+const redactForViewer = (feedback, userRole) => {
+  if (userRole === 'viewer') {
+    return {
+      ...feedback,
+      playerName: 'Anonymous',
+      isRedacted: true
+    };
+  }
+  return feedback;
+};
+
+/**
+ * Helper: Redact playerName for an array of feedback items
+ */
+const redactFeedbackList = (feedbackList, userRole) => {
+  if (userRole === 'viewer') {
+    return feedbackList.map(item => ({
+      ...item,
+      playerName: 'Anonymous',
+      isRedacted: true
+    }));
+  }
+  return feedbackList;
+};
 
 // POST /api/feedback - Submit new feedback
 router.post('/', async (req, res) => {
@@ -116,7 +145,7 @@ router.get('/summary', auth, async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     // Select only essential fields for list view - exclude feedbackText and additionalComments
     const feedback = await Feedback.find({ isDeleted: false })
       .select('_id playerName matchDate batting bowling fielding teamSpirit issues createdAt')
@@ -124,12 +153,16 @@ router.get('/summary', auth, async (req, res) => {
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
       .lean(); // Use lean() for faster query - returns plain JS objects
-    
+
     const total = await Feedback.countDocuments({ isDeleted: false });
     const hasMore = (pageNum * limitNum) < total;
-    
+
+    // Redact playerName for viewer role
+    console.log('[Feedback Summary] User:', req.user.email, 'Role:', req.user.role, '- Redacting:', req.user.role === 'viewer');
+    const redactedFeedback = redactFeedbackList(feedback, req.user.role);
+
     res.json({
-      feedback,
+      feedback: redactedFeedback,
       pagination: {
         current: pageNum,
         pages: Math.ceil(total / limitNum),
@@ -163,9 +196,12 @@ router.get('/trash', auth, async (req, res) => {
     
     const total = await Feedback.countDocuments({ isDeleted: true });
     const hasMore = (pageNum * limitNum) < total;
-    
+
+    // Redact playerName for viewer role
+    const redactedFeedback = redactFeedbackList(deletedFeedback, req.user.role);
+
     res.json({
-      feedback: deletedFeedback,
+      feedback: redactedFeedback,
       pagination: {
         current: pageNum,
         pages: Math.ceil(total / limitNum),
@@ -183,12 +219,15 @@ router.get('/trash', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const feedback = await Feedback.findById(req.params.id).lean();
-    
+
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
     }
-    
-    res.json(feedback);
+
+    // Redact playerName for viewer role
+    const redactedFeedback = redactForViewer(feedback, req.user.role);
+
+    res.json(redactedFeedback);
   } catch (error) {
     console.error('Error fetching feedback:', error);
     res.status(500).json({
@@ -205,18 +244,21 @@ router.get('/', auth, async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     const feedback = await Feedback.find({ isDeleted: false })
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
       .lean(); // Use lean() for faster query
-    
+
     const total = await Feedback.countDocuments({ isDeleted: false });
     const hasMore = (pageNum * limitNum) < total;
-    
+
+    // Redact playerName for viewer role
+    const redactedFeedback = redactFeedbackList(feedback, req.user.role);
+
     res.json({
-      feedback,
+      feedback: redactedFeedback,
       pagination: {
         current: pageNum,
         pages: Math.ceil(total / limitNum),
@@ -234,7 +276,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Soft delete feedback (requires authentication)
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireEditor, async (req, res) => {
   try {
     const { id } = req.params;
     const { deletedBy } = req.body; // Optional admin identifier
@@ -267,7 +309,7 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // Restore feedback from trash (requires authentication)
-router.post('/:id/restore', auth, async (req, res) => {
+router.post('/:id/restore', auth, requireEditor, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -299,7 +341,7 @@ router.post('/:id/restore', auth, async (req, res) => {
 });
 
 // Permanently delete feedback (requires authentication)
-router.delete('/:id/permanent', auth, async (req, res) => {
+router.delete('/:id/permanent', auth, requireEditor, async (req, res) => {
   try {
     const { id } = req.params;
 

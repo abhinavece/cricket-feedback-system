@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { getMatches, getMatch, createMatch, updateMatch, deleteMatch, getMatchAvailability, updateAvailability, deleteAvailability, createAvailability, getPlayers } from '../../services/api';
 import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy, UserPlus, Users } from 'lucide-react';
 import { matchEvents } from '../../utils/matchEvents';
@@ -23,6 +24,7 @@ interface Match {
 }
 
 const MobileMatchesTab: React.FC = () => {
+  const { isViewer } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -297,12 +299,14 @@ const MobileMatchesTab: React.FC = () => {
           ))}
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleCreateMatch}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+          {!isViewer() && (
+            <button
+              onClick={handleCreateMatch}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -402,33 +406,37 @@ const MobileMatchesTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleEditMatch}
-                  className="flex-1 py-2 bg-slate-700 rounded-lg text-white text-xs font-medium flex items-center justify-center gap-1"
-                >
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                </button>
-                <button
-                  onClick={handleDeleteMatch}
-                  disabled={actionLoading}
-                  className="py-2 px-4 bg-red-500/20 rounded-lg text-red-400 text-xs font-medium flex items-center justify-center gap-1"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
-                </button>
-              </div>
+              {/* Action Buttons - only visible to non-viewers */}
+              {!isViewer() && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleEditMatch}
+                    className="flex-1 py-2 bg-slate-700 rounded-lg text-white text-xs font-medium flex items-center justify-center gap-1"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button
+                    onClick={handleDeleteMatch}
+                    disabled={actionLoading}
+                    className="py-2 px-4 bg-red-500/20 rounded-lg text-red-400 text-xs font-medium flex items-center justify-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+              )}
 
               {/* Availability List with CRUD */}
               <div className="bg-slate-800/50 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs text-slate-400">Availability ({availabilities.length})</p>
-                  <button
-                    onClick={handleOpenAddPlayer}
-                    className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs"
-                  >
-                    <UserPlus className="w-3 h-3" /> Add
-                  </button>
+                  {!isViewer() && (
+                    <button
+                      onClick={handleOpenAddPlayer}
+                      className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs"
+                    >
+                      <UserPlus className="w-3 h-3" /> Add
+                    </button>
+                  )}
                 </div>
                 {availabilities.length === 0 ? (
                   <div className="text-center py-4 text-slate-500 text-sm">
@@ -449,14 +457,14 @@ const MobileMatchesTab: React.FC = () => {
                             {avail.response === 'yes' ? '✓' : avail.response === 'no' ? '✗' : avail.response === 'tentative' ? '?' : '⏳'}
                           </span>
                         </div>
-                        {editingAvailId === avail._id ? (
+                        {!isViewer() && editingAvailId === avail._id ? (
                           <div className="flex gap-1">
                             <button onClick={() => handleUpdateAvailStatus(avail._id, 'yes')} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded">Y</button>
                             <button onClick={() => handleUpdateAvailStatus(avail._id, 'tentative')} className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded">?</button>
                             <button onClick={() => handleUpdateAvailStatus(avail._id, 'no')} className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded">N</button>
                             <button onClick={() => setEditingAvailId(null)} className="px-2 py-1 bg-slate-600 text-white text-xs rounded">✕</button>
                           </div>
-                        ) : (
+                        ) : !isViewer() ? (
                           <div className="flex gap-1">
                             <button onClick={() => setEditingAvailId(avail._id)} className="p-1.5 bg-slate-700 text-white rounded">
                               <Edit2 className="w-3 h-3" />
@@ -465,7 +473,7 @@ const MobileMatchesTab: React.FC = () => {
                               <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </div>

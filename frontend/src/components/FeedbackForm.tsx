@@ -178,7 +178,7 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
           {/* Ratings */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-300">⭐ Performance Ratings</h3>
+              <h3 className="text-lg font-bold text-gray-300">⭐ Your Performance Ratings</h3>
               <span className="text-xs px-2 py-1 bg-gray-600 text-gray-200 rounded-full font-bold">Required</span>
             </div>
             

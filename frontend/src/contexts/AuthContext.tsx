@@ -18,6 +18,9 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   hasPermission: (permission: string) => boolean;
+  canEdit: () => boolean;
+  isAdmin: () => boolean;
+  isViewer: () => boolean;
   loading: boolean;
 }
 
@@ -101,6 +104,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return permissions[user.role]?.includes(permission) || false;
   };
 
+  const canEdit = (): boolean => {
+    return user?.role === 'admin' || user?.role === 'editor';
+  };
+
+  const isAdmin = (): boolean => {
+    return user?.role === 'admin';
+  };
+
+  const isViewer = (): boolean => {
+    return user?.role === 'viewer';
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -108,6 +123,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     isAuthenticated: !!user,
     hasPermission,
+    canEdit,
+    isAdmin,
+    isViewer,
     loading,
   };
 

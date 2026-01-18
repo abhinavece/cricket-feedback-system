@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 // @ts-ignore
 import { Plus, Filter, Search, Calendar, Trophy, Users } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import MatchForm from './MatchForm';
 import MatchCard from './MatchCard';
 import ConfirmDialog from './ConfirmDialog';
@@ -52,6 +53,7 @@ interface Match {
 }
 
 const MatchManagement: React.FC = () => {
+  const { isViewer } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -323,13 +325,15 @@ const MatchManagement: React.FC = () => {
               <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1 hidden sm:block">Create and manage cricket matches with squad availability</p>
             </div>
             
-            <button
-              onClick={handleCreateMatch}
-              className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm sm:text-base font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2 w-full sm:w-auto justify-center"
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              Create Match
-            </button>
+            {!isViewer() && (
+              <button
+                onClick={handleCreateMatch}
+                className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm sm:text-base font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2 w-full sm:w-auto justify-center"
+              >
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                Create Match
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -518,7 +522,7 @@ const MatchManagement: React.FC = () => {
                 : 'Get started by creating your first match'
               }
             </p>
-            {!searchTerm && statusFilter === 'all' && (
+            {!isViewer() && !searchTerm && statusFilter === 'all' && (
               <button
                 onClick={handleCreateMatch}
                 className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2 mx-auto"
@@ -535,10 +539,10 @@ const MatchManagement: React.FC = () => {
                 <MatchCard
                   key={match._id}
                   match={match}
-                  onEdit={handleEditMatch}
-                  onDelete={handleDeleteMatch}
+                  onEdit={!isViewer() ? handleEditMatch : undefined}
+                  onDelete={!isViewer() ? handleDeleteMatch : undefined}
                   onView={handleViewMatch}
-                  onManageSquad={handleManageSquad}
+                  onManageSquad={!isViewer() ? handleManageSquad : undefined}
                   onViewAvailability={handleViewAvailability}
                 />
               ))}
@@ -574,15 +578,15 @@ const MatchManagement: React.FC = () => {
             console.log('[MatchManagement] Modal closed, refreshing matches');
             fetchMatches(1, false);
           }}
-          onEdit={(match) => {
+          onEdit={!isViewer() ? (match) => {
             setShowDetailModal(false);
             handleEditMatch(match);
-          }}
-          onDelete={(matchId) => {
+          } : undefined}
+          onDelete={!isViewer() ? (matchId) => {
             setShowDetailModal(false);
             handleDeleteMatch(matchId);
-          }}
-          onSendAvailability={handleSendAvailabilityFromDetail}
+          } : undefined}
+          onSendAvailability={!isViewer() ? handleSendAvailabilityFromDetail : undefined}
         />
       )}
 

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Match = require('../models/Match');
 const Player = require('../models/Player');
-const auth = require('../middleware/auth');
+const { auth, requireAdmin } = require('../middleware/auth');
 
 // Get matches summary (lightweight, for listing view)
 router.get('/summary', auth, async (req, res) => {
@@ -150,10 +150,10 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Create new match
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   try {
     const { date, slot, ground, locationLink, time, opponent, cricHeroesMatchId, notes, matchType, status } = req.body;
-    
+
     // Validate required fields
     if (!date || !slot || !ground) {
       return res.status(400).json({ 
@@ -214,10 +214,10 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Update match
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const { date, time, slot, opponent, ground, locationLink, status, matchType, cricHeroesMatchId, notes } = req.body;
-    
+
     const match = await Match.findById(req.params.id);
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
@@ -248,10 +248,10 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // Update squad response (optimized - returns only updated member, not entire match)
-router.put('/:id/squad/:playerId', auth, async (req, res) => {
+router.put('/:id/squad/:playerId', auth, requireAdmin, async (req, res) => {
   try {
     const { response, notes, returnFullMatch = false } = req.body;
-    
+
     if (!['yes', 'no', 'tentative'].includes(response)) {
       return res.status(400).json({ error: 'Invalid response' });
     }
@@ -300,10 +300,10 @@ router.put('/:id/squad/:playerId', auth, async (req, res) => {
 });
 
 // Bulk update squad responses
-router.put('/:id/squad/bulk', auth, async (req, res) => {
+router.put('/:id/squad/bulk', auth, requireAdmin, async (req, res) => {
   try {
     const { responses } = req.body; // [{ playerId, response, notes }]
-    
+
     if (!Array.isArray(responses)) {
       return res.status(400).json({ error: 'Responses must be an array' });
     }
@@ -338,7 +338,7 @@ router.put('/:id/squad/bulk', auth, async (req, res) => {
 });
 
 // Delete match
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const match = await Match.findById(req.params.id);
     if (!match) {

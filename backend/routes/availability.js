@@ -3,7 +3,7 @@ const router = express.Router();
 const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
-const auth = require('../middleware/auth');
+const { auth, requireEditor } = require('../middleware/auth');
 const sseManager = require('../utils/sseManager');
 
 // GET /api/availability/match/:matchId - Get all availability records for a match (optimized)
@@ -93,7 +93,7 @@ router.get('/player/:playerId', auth, async (req, res) => {
 });
 
 // POST /api/availability - Create availability record(s)
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireEditor, async (req, res) => {
   try {
     const { matchId, playerIds } = req.body;
 
@@ -180,7 +180,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /api/availability/:id - Update availability response
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireEditor, async (req, res) => {
   try {
     const { id } = req.params;
     const { response, messageContent, incomingMessageId } = req.body;
@@ -283,7 +283,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // DELETE /api/availability/:id - Delete availability record
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireEditor, async (req, res) => {
   try {
     const { id } = req.params;
 

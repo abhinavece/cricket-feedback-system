@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player.js');
 const User = require('../models/User.js');
-const auth = require('../middleware/auth.js');
+const { auth } = require('../middleware/auth.js');
 const { formatPhoneNumber } = require('../services/playerService');
 
 // GET /api/profile - Get current user's profile

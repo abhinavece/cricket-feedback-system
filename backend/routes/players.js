@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player.js');
-const auth = require('../middleware/auth.js');
+const { auth, requireAdmin } = require('../middleware/auth.js');
 const { getOrCreatePlayer, formatPhoneNumber, updatePlayer: updatePlayerService } = require('../services/playerService');
 
 // GET /api/players - Get all active players (for WhatsApp messaging)
@@ -106,7 +106,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/players - Add a new player
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   console.log('POST /api/players - Adding new player:', req.body);
   try {
     const { name, phone, notes } = req.body;
@@ -153,7 +153,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /api/players/:id - Update a player
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   console.log(`PUT /api/players/${req.params.id} - Updating player:`, req.body);
   try {
     const { name, phone, notes, team, role, isActive } = req.body;
@@ -207,7 +207,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // DELETE /api/players/:id - Delete a player (soft delete by setting isActive: false)
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
   console.log(`DELETE /api/players/${req.params.id} - Deleting player`);
   try {
     const player = await Player.findById(req.params.id);

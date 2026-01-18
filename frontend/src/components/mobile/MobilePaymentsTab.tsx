@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  getPayments, 
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  getPayments,
   getPaymentByMatch,
   updatePaymentMember,
   addPaymentMember,
@@ -78,6 +79,7 @@ interface DetailPayment {
 }
 
 const MobilePaymentsTab: React.FC = () => {
+  const { isViewer } = useAuth();
   const [matches, setMatches] = useState<MatchWithPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -767,30 +769,32 @@ const MobilePaymentsTab: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowAddPlayer(true)}
-                    className="flex-1 py-2 bg-slate-700 rounded-lg text-white text-xs font-medium flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add
-                  </button>
-                  <button
-                    onClick={handleSendRequests}
-                    disabled={sendingMessages}
-                    className="flex-1 py-2 bg-emerald-500/20 rounded-lg text-emerald-400 text-xs font-medium flex items-center justify-center gap-1"
-                  >
-                    {sendingMessages ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                    Send
-                  </button>
-                  <button
-                    onClick={handleDeletePayment}
-                    disabled={actionLoading}
-                    className="py-2 px-3 bg-red-500/20 rounded-lg text-red-400 text-xs font-medium flex items-center justify-center"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {/* Action Buttons - only visible to non-viewers */}
+                {!isViewer() && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowAddPlayer(true)}
+                      className="flex-1 py-2 bg-slate-700 rounded-lg text-white text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </button>
+                    <button
+                      onClick={handleSendRequests}
+                      disabled={sendingMessages}
+                      className="flex-1 py-2 bg-emerald-500/20 rounded-lg text-emerald-400 text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      {sendingMessages ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      Send
+                    </button>
+                    <button
+                      onClick={handleDeletePayment}
+                      disabled={actionLoading}
+                      className="py-2 px-3 bg-red-500/20 rounded-lg text-red-400 text-xs font-medium flex items-center justify-center"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Squad Members */}
                 <div className="bg-slate-800/30 rounded-xl p-3">
@@ -817,7 +821,7 @@ const MobilePaymentsTab: React.FC = () => {
                             
                             {/* Amount & Actions */}
                             <div className="flex items-center gap-1.5 ml-2">
-                              {editingMember === member._id ? (
+                              {!isViewer() && editingMember === member._id ? (
                                 <div className="flex items-center gap-1">
                                   <input
                                     type="number"
@@ -835,21 +839,26 @@ const MobilePaymentsTab: React.FC = () => {
                                 </div>
                               ) : (
                                 <>
-                                  <button
-                                    onClick={() => { setEditingMember(member._id); setEditAmount(effectiveAmt); }}
-                                    className="text-xs text-emerald-400 flex items-center gap-0.5"
-                                  >
-                                    {isFree ? <span className="text-purple-400">FREE</span> : `₹${effectiveAmt}`}
-                                    <Edit2 className="w-3 h-3 opacity-50" />
-                                  </button>
-                                  
-                                  <button
-                                    onClick={() => openPaymentModal(member)}
+                                  {!isViewer() ? (
+                                    <button
+                                      onClick={() => { setEditingMember(member._id); setEditAmount(effectiveAmt); }}
+                                      className="text-xs text-emerald-400 flex items-center gap-0.5"
+                                    >
+                                      {isFree ? <span className="text-purple-400">FREE</span> : `₹${effectiveAmt}`}
+                                      <Edit2 className="w-3 h-3 opacity-50" />
+                                    </button>
+                                  ) : (
+                                    <span className={`text-xs ${isFree ? 'text-purple-400' : 'text-emerald-400'}`}>
+                                      {isFree ? 'FREE' : `₹${effectiveAmt}`}
+                                    </span>
+                                  )}
+
+                                  <span
                                     className={`px-2 py-1 rounded text-[10px] font-medium ${getStatusColor(member.paymentStatus)}`}
                                   >
                                     {member.paymentStatus}
-                                  </button>
-                                  
+                                  </span>
+
                                   {member.screenshotReceivedAt && (
                                     <button
                                       onClick={() => setShowScreenshot({ memberId: member._id, name: member.playerName })}
@@ -858,13 +867,15 @@ const MobilePaymentsTab: React.FC = () => {
                                       <Image className="w-3.5 h-3.5" />
                                     </button>
                                   )}
-                                  
-                                  <button
-                                    onClick={() => handleRemovePlayer(member._id)}
-                                    className="p-1 text-red-400"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+
+                                  {!isViewer() && (
+                                    <button
+                                      onClick={() => handleRemovePlayer(member._id)}
+                                      className="p-1 text-red-400"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -1002,33 +1013,42 @@ const MobilePaymentsTab: React.FC = () => {
               )}
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-400 mb-1 block">Amount to Record</label>
-                <input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
-                />
+            {!isViewer() ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Amount to Record</label>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-700 rounded-lg text-white text-sm"
+                  />
+                </div>
+
+                <button
+                  onClick={handleRecordPayment}
+                  disabled={actionLoading || paymentAmount <= 0}
+                  className="w-full py-2.5 bg-emerald-500 rounded-lg text-white font-medium disabled:opacity-50"
+                >
+                  {actionLoading ? 'Recording...' : 'Record Payment'}
+                </button>
+
+                <button
+                  onClick={handleMarkUnpaid}
+                  disabled={actionLoading}
+                  className="w-full py-2.5 bg-red-500/20 rounded-lg text-red-400 font-medium"
+                >
+                  Mark as Unpaid
+                </button>
               </div>
-              
+            ) : (
               <button
-                onClick={handleRecordPayment}
-                disabled={actionLoading || paymentAmount <= 0}
-                className="w-full py-2.5 bg-emerald-500 rounded-lg text-white font-medium disabled:opacity-50"
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full py-2.5 bg-slate-700 rounded-lg text-white font-medium mt-3"
               >
-                {actionLoading ? 'Recording...' : 'Record Payment'}
+                Close
               </button>
-              
-              <button
-                onClick={handleMarkUnpaid}
-                disabled={actionLoading}
-                className="w-full py-2.5 bg-red-500/20 rounded-lg text-red-400 font-medium"
-              >
-                Mark as Unpaid
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}

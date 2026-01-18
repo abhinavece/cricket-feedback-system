@@ -89,11 +89,12 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  // Admin users see all tabs, viewers only see feedback + settings
+  // Admin users see all tabs, viewers see all except whatsapp, chats, and users
   const isViewer = user?.role === 'viewer';
-  const visibleTabs = user?.role === 'admin' 
-    ? allTabs 
-    : allTabs.filter(tab => tab.id === 'feedback' || tab.id === 'settings');
+  const adminOnlyTabs = ['whatsapp', 'chats', 'users'];
+  const visibleTabs = user?.role === 'admin'
+    ? allTabs
+    : allTabs.filter(tab => !adminOnlyTabs.includes(tab.id));
 
   const handleLogout = () => {
     if (onLogout) {

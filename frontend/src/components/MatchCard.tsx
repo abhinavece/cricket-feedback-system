@@ -55,10 +55,10 @@ interface MatchCardProps {
     lastAvailabilityUpdate?: string;
     squadStatus?: 'pending' | 'partial' | 'full';
   };
-  onEdit: (match: any) => void;
-  onDelete: (matchId: string) => void;
+  onEdit?: (match: any) => void;
+  onDelete?: (matchId: string) => void;
   onView: (match: any) => void;
-  onManageSquad: (match: any) => void;
+  onManageSquad?: (match: any) => void;
   onViewAvailability?: (match: any) => void;
 }
 
@@ -326,34 +326,40 @@ const MatchCard: React.FC<MatchCardProps> = ({
             <Eye className="w-3.5 h-3.5" />
             View
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onManageSquad(match);
-            }}
-            className="flex-1 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
-          >
-            <Users className="w-3.5 h-3.5" />
-            Squad
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(match);
-            }}
-            className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200"
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(match._id);
-            }}
-            className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-sm font-medium rounded-lg transition-all duration-200"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {onManageSquad && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onManageSquad(match);
+              }}
+              className="flex-1 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Squad
+            </button>
+          )}
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(match);
+              }}
+              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200"
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(match._id);
+              }}
+              className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-sm font-medium rounded-lg transition-all duration-200"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

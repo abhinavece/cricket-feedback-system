@@ -75,7 +75,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     message: '',
     onConfirm: () => {}
   });
-  const { user } = useAuth();
+  const { user, isViewer } = useAuth();
 
   const fetchData = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
@@ -377,58 +377,58 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               Feedback
             </button>
             {user?.role === 'admin' && (
-              <>
-                <button
-                  onClick={() => { setActiveTab('whatsapp'); onTabChange?.('whatsapp'); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === 'whatsapp'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  WhatsApp
-                </button>
-                <button
-                  onClick={() => { setActiveTab('matches'); onTabChange?.('matches'); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === 'matches'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  Matches
-                </button>
-                <button
-                  onClick={() => { setActiveTab('payments'); onTabChange?.('payments'); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === 'payments'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  Payments
-                </button>
-                <button
-                  onClick={() => { setActiveTab('player-history'); onTabChange?.('player-history'); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === 'player-history'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  History
-                </button>
-                <button
-                  onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === 'users'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  Users
-                </button>
-              </>
+              <button
+                onClick={() => { setActiveTab('whatsapp'); onTabChange?.('whatsapp'); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'whatsapp'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                WhatsApp
+              </button>
+            )}
+            <button
+              onClick={() => { setActiveTab('matches'); onTabChange?.('matches'); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'matches'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              Matches
+            </button>
+            <button
+              onClick={() => { setActiveTab('payments'); onTabChange?.('payments'); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'payments'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              Payments
+            </button>
+            <button
+              onClick={() => { setActiveTab('player-history'); onTabChange?.('player-history'); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'player-history'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              History
+            </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'users'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Users
+              </button>
             )}
             <button
               onClick={() => { setActiveTab('settings'); onTabChange?.('settings'); }}
@@ -458,60 +458,60 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <span className="hidden sm:inline">Feedback</span>
             </button>
             {user?.role === 'admin' && (
-              <>
-                <button
-                  onClick={() => setActiveTab('whatsapp')}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                    activeTab === 'whatsapp'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <span className="hidden sm:inline">WA</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('matches')}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                    activeTab === 'matches'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="hidden sm:inline">Match</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('payments')}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                    activeTab === 'payments'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <span className="hidden sm:inline">Pay</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('users')}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                    activeTab === 'users'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  <span className="hidden sm:inline">Users</span>
-                </button>
-              </>
+              <button
+                onClick={() => setActiveTab('whatsapp')}
+                className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                  activeTab === 'whatsapp'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className="hidden sm:inline">WA</span>
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('matches')}
+              className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'matches'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="hidden sm:inline">Match</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('payments')}
+              className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'payments'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span className="hidden sm:inline">Pay</span>
+            </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                  activeTab === 'users'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <span className="hidden sm:inline">Users</span>
+              </button>
             )}
           </div>
         </div>
@@ -553,21 +553,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <span>Active</span>
                       </div>
                     </button>
-                    <button
-                      onClick={() => setCurrentView('trash')}
-                      className={`flex-1 px-4 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                        currentView === 'trash'
-                          ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                          : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        <span>Trash</span>
-                      </div>
-                    </button>
+                    {!isViewer() && (
+                      <button
+                        onClick={() => setCurrentView('trash')}
+                        className={`flex-1 px-4 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                          currentView === 'trash'
+                            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                            : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>Trash</span>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -599,21 +601,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         Active
                       </div>
                     </button>
-                    <button
-                      onClick={() => setCurrentView('trash')}
-                      className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
-                        currentView === 'trash'
-                          ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                          : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Trash
-                      </div>
-                    </button>
+                    {!isViewer() && (
+                      <button
+                        onClick={() => setCurrentView('trash')}
+                        className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
+                          currentView === 'trash'
+                            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                            : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Trash
+                        </div>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -919,9 +923,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     item={item}
                     index={index}
                     onClick={handleFeedbackClick}
-                    onTrash={currentView === 'active' ? handleTrashClick : undefined}
-                    onRestore={currentView === 'trash' ? handleRestoreFeedback : undefined}
-                    onDelete={currentView === 'trash' ? handlePermanentDelete : undefined}
+                    onTrash={!isViewer() && currentView === 'active' ? handleTrashClick : undefined}
+                    onRestore={!isViewer() && currentView === 'trash' ? handleRestoreFeedback : undefined}
+                    onDelete={!isViewer() && currentView === 'trash' ? handlePermanentDelete : undefined}
                   />
                 ));
               })()}
@@ -955,12 +959,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <MatchManagement />
           </Suspense>
         )}
-        {activeTab === 'payments' && user?.role === 'admin' && (
+        {activeTab === 'payments' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <PaymentManagement />
           </Suspense>
         )}
-        {activeTab === 'player-history' && user?.role === 'admin' && (
+        {activeTab === 'player-history' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <HistoryTab />
           </Suspense>
@@ -1016,7 +1020,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="px-3 py-1 rounded-full bg-primary-green/10 text-primary-green text-[10px] font-bold uppercase tracking-widest border border-primary-green/20">Feedback Detail</span>
                     </div>
                     <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
-                      {item.playerName}
+                      {item.isRedacted ? (
+                        <span className="inline-flex items-center gap-2 text-slate-400 italic">
+                          Anonymous Feedback
+                        </span>
+                      ) : (
+                        item.playerName
+                      )}
                     </h2>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-secondary mt-3">
                       <span className="flex items-center gap-1.5">
@@ -1099,44 +1109,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4 justify-end pt-6 border-t border-white/5">
-                  <button 
-                    className="btn btn-outline h-14 md:h-auto order-2 md:order-1" 
+                  <button
+                    className="btn btn-outline h-14 md:h-auto order-2 md:order-1"
                     onClick={closeModal}
                     style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}
                   >
                     Close Detail
                   </button>
-                  {currentView === 'active' ? (
-                    <button
-                      className="btn btn-danger h-14 md:h-auto order-1 md:order-2"
-                      onClick={() => {
-                        handleDeleteFeedback(item._id);
-                        closeModal();
-                      }}
-                    >
-                      Move to Trash
-                    </button>
-                  ) : (
-                    <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2 w-full md:w-auto">
+                  {!isViewer() && (
+                    currentView === 'active' ? (
                       <button
-                        className="btn btn-outline h-14 md:h-auto"
+                        className="btn btn-danger h-14 md:h-auto order-1 md:order-2"
                         onClick={() => {
-                          handleRestoreFeedback(item._id);
+                          handleDeleteFeedback(item._id);
                           closeModal();
                         }}
                       >
-                        Restore Feedback
+                        Move to Trash
                       </button>
-                      <button
-                        className="btn btn-danger h-14 md:h-auto"
-                        onClick={() => {
-                          handlePermanentDelete(item._id);
-                          closeModal();
-                        }}
-                      >
-                        Delete Permanently
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2 w-full md:w-auto">
+                        <button
+                          className="btn btn-outline h-14 md:h-auto"
+                          onClick={() => {
+                            handleRestoreFeedback(item._id);
+                            closeModal();
+                          }}
+                        >
+                          Restore Feedback
+                        </button>
+                        <button
+                          className="btn btn-danger h-14 md:h-auto"
+                          onClick={() => {
+                            handlePermanentDelete(item._id);
+                            closeModal();
+                          }}
+                        >
+                          Delete Permanently
+                        </button>
+                      </div>
+                    )
                   )}
                 </div>
               </div>
