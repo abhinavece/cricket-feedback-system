@@ -249,6 +249,46 @@ lsof -ti:3000 | xargs kill -9 2>/dev/null || true  # Frontend
 lsof -ti:5000 | xargs kill -9 2>/dev/null || true  # Backend
 ```
 
+## Development Guidelines
+
+### CRITICAL: Role-Based Access Control
+**Before implementing ANY feature, ask the developer about accessibility by different user roles:**
+1. Which roles can access this feature? (viewer, editor, admin)
+2. What data should be visible/hidden for each role?
+3. Should certain fields be redacted for specific roles? (e.g., player names hidden for viewers)
+4. Are there admin-only actions or views?
+
+**Example questions to ask:**
+- "Who should be able to see player names in this feedback list - all users or only editors/admins?"
+- "Should this action be restricted to admin users only?"
+- "What information should be hidden from viewer role users?"
+
+### CRITICAL: Use Unified Services
+**Always use unified services for related functionality - never create duplicate logic in multiple places:**
+
+| Domain | Service Location | Functions |
+|--------|------------------|-----------|
+| Feedback | `backend/services/feedbackService.js` | `redactFeedbackItem`, `redactFeedbackList`, `getMatchFeedback`, `getPlayerFeedback`, stats |
+| Payment | `backend/services/paymentCalculationService.js`, `paymentDistributionService.js` | Payment calculations, distributions |
+| Player | `backend/services/playerService.js` | `getOrCreatePlayer`, `formatPhoneNumber`, `updatePlayer` |
+| OCR | `backend/services/ocrService.js` | Image text extraction |
+
+**Service usage rules:**
+1. Check if a service exists before creating new logic
+2. Add new functions to existing services, don't create duplicate helpers in routes
+3. All data redaction/transformation should go through services
+4. Services ensure consistent behavior across all endpoints
+
+**Example - Feedback redaction:**
+```javascript
+// CORRECT: Use unified service
+const feedbackService = require('../services/feedbackService');
+const redactedFeedback = feedbackService.redactFeedbackList(feedback, userRole);
+
+// WRONG: Creating local helper in route file
+const redactFeedback = (list, role) => { ... }; // Don't do this!
+```
+
 ## Recent Features Added
 
 ### Player Profile System

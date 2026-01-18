@@ -16,11 +16,37 @@ export interface FeedbackForm {
   additionalComments: string;
 }
 
+export interface MatchInfo {
+  _id: string;
+  opponent: string;
+  date: string;
+  ground: string;
+  slot?: string;
+  time?: string;
+}
+
 export interface FeedbackSubmission extends FeedbackForm {
   _id: string;
   createdAt: string;
   updatedAt: string;
   isRedacted?: boolean; // True when playerName is hidden for viewer role
+  feedbackType?: 'match' | 'general';
+  matchId?: string | MatchInfo; // Can be string (ID) or populated MatchInfo object
+  playerId?: string;
+  feedbackLinkId?: string;
+}
+
+export interface FeedbackLink {
+  _id: string;
+  token: string;
+  matchId: string;
+  isActive: boolean;
+  expiresAt: string | null;
+  accessCount: number;
+  submissionCount: number;
+  submittedPlayers: string[];
+  createdAt: string;
+  createdBy?: string;
 }
 
 export interface Player {

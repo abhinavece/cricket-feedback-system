@@ -1,6 +1,6 @@
 import React from 'react';
-import { UserX } from 'lucide-react';
-import { FeedbackSubmission } from '../types';
+import { UserX, Calendar, MapPin, Users } from 'lucide-react';
+import { FeedbackSubmission, MatchInfo } from '../types';
 
 interface FeedbackCardProps {
   item: FeedbackSubmission;
@@ -20,6 +20,23 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
   };
 
   const avgRating = calculateAverage(item);
+
+  // Helper to check if matchId is a populated object with match info
+  const getMatchInfo = (): MatchInfo | null => {
+    if (item.matchId && typeof item.matchId === 'object' && 'opponent' in item.matchId) {
+      return item.matchId as MatchInfo;
+    }
+    return null;
+  };
+
+  const matchInfo = getMatchInfo();
+  const isMatchFeedback = item.feedbackType === 'match' || matchInfo !== null;
+
+  // Format date for display
+  const formatMatchDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div
@@ -76,7 +93,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
                     </h3>
                   )}
                   <span className="text-[9px] font-bold text-slate-500 block">
-                    {new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {matchInfo ? formatMatchDate(matchInfo.date) : new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
               </div>
@@ -90,6 +107,20 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
                 </div>
               </div>
             </div>
+
+            {/* Mobile Match Info Chips */}
+            {matchInfo && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <Users className="w-3 h-3 text-blue-400" />
+                  <span className="text-[9px] font-bold text-blue-400">vs {matchInfo.opponent}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                  <MapPin className="w-3 h-3 text-pink-400" />
+                  <span className="text-[9px] font-bold text-pink-400 truncate max-w-[100px]">{matchInfo.ground}</span>
+                </div>
+              </div>
+            )}
 
             {/* Mobile Aggregated Performance Tile */}
             <div className="mb-2">
@@ -192,7 +223,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
                     </h3>
                   )}
                   <span className="text-xs font-bold text-slate-500 block">
-                    {new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {matchInfo ? formatMatchDate(matchInfo.date) : new Date(item.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
               </div>
@@ -223,6 +254,24 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
                 </div>
               </div>
             </div>
+
+            {/* Desktop Match Info Chips */}
+            {matchInfo && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <Users className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs font-bold text-blue-400">vs {matchInfo.opponent}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                  <MapPin className="w-3.5 h-3.5 text-pink-400" />
+                  <span className="text-xs font-bold text-pink-400">{matchInfo.ground}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <Calendar className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-xs font-bold text-purple-400">{formatMatchDate(matchInfo.date)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Desktop Performance Metrics Section */}

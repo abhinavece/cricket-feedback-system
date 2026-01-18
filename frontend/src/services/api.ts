@@ -569,4 +569,183 @@ export const getAllConversations = async (): Promise<{ success: boolean; data: A
   return response.data;
 };
 
+// ============================================================================
+// FEEDBACK LINK APIs (Match-Specific Feedback)
+// ============================================================================
+
+export interface FeedbackLinkInfo {
+  token: string;
+  url: string;
+  expiresAt: string | null;
+  isExisting?: boolean;
+  matchInfo?: {
+    opponent: string;
+    date: string;
+    ground: string;
+  };
+  accessCount?: number;
+  submissionCount?: number;
+}
+
+export interface MatchFeedbackStats {
+  totalSubmissions: number;
+  avgBatting: number;
+  avgBowling: number;
+  avgFielding: number;
+  avgTeamSpirit: number;
+  issues: {
+    venue: number;
+    equipment: number;
+    timing: number;
+    umpiring: number;
+    other: number;
+  };
+}
+
+export interface MatchFeedbackItem {
+  _id: string;
+  playerName: string;
+  batting: number;
+  bowling: number;
+  fielding: number;
+  teamSpirit: number;
+  feedbackText: string;
+  additionalComments?: string;
+  issues: {
+    venue: boolean;
+    equipment: boolean;
+    timing: boolean;
+    umpiring: boolean;
+    other: boolean;
+  };
+  createdAt: string;
+  playerId?: {
+    _id: string;
+    name: string;
+  };
+}
+
+export interface MatchFeedbackDashboard {
+  success: boolean;
+  match: {
+    _id: string;
+    opponent: string;
+    date: string;
+    time: string;
+    ground: string;
+    slot: string;
+  };
+  stats: MatchFeedbackStats;
+  feedback: MatchFeedbackItem[];
+  feedbackLink: {
+    token: string;
+    url: string;
+    expiresAt: string | null;
+    accessCount: number;
+    submissionCount: number;
+    isActive: boolean;
+  } | null;
+  pagination: {
+    current: number;
+    pages: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+export interface PlayerFeedbackStats {
+  totalFeedback: number;
+  avgBatting: number;
+  avgBowling: number;
+  avgFielding: number;
+  avgTeamSpirit: number;
+}
+
+export interface PlayerFeedbackItem {
+  _id: string;
+  playerName: string;
+  matchDate: string;
+  batting: number;
+  bowling: number;
+  fielding: number;
+  teamSpirit: number;
+  feedbackText: string;
+  additionalComments?: string;
+  issues: {
+    venue: boolean;
+    equipment: boolean;
+    timing: boolean;
+    umpiring: boolean;
+    other: boolean;
+  };
+  createdAt: string;
+  feedbackType: 'match' | 'general';
+  matchId?: {
+    _id: string;
+    opponent: string;
+    date: string;
+    ground: string;
+    slot: string;
+  };
+}
+
+export interface PlayerFeedbackHistoryResponse {
+  success: boolean;
+  player: {
+    _id: string;
+    name: string;
+  };
+  stats: PlayerFeedbackStats;
+  feedback: PlayerFeedbackItem[];
+  pagination: {
+    current: number;
+    pages: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+// Generate a feedback link for a match (Admin only)
+export const generateFeedbackLink = async (matchId: string): Promise<FeedbackLinkInfo> => {
+  const response = await api.post('/feedback/link/generate', { matchId });
+  return response.data;
+};
+
+// Get feedback link info (Public)
+export const getFeedbackLinkInfo = async (token: string, playerName?: string): Promise<any> => {
+  const params = playerName ? { playerName } : {};
+  const response = await api.get(`/feedback/link/${token}`, { params });
+  return response.data;
+};
+
+// Submit feedback via link (Public)
+export const submitMatchFeedback = async (token: string, data: any): Promise<any> => {
+  const response = await api.post(`/feedback/link/${token}/submit`, data);
+  return response.data;
+};
+
+// Get all feedback links for a match (Admin only)
+export const getMatchFeedbackLinks = async (matchId: string): Promise<{ success: boolean; links: any[] }> => {
+  const response = await api.get(`/feedback/link/${matchId}/links`);
+  return response.data;
+};
+
+// Deactivate a feedback link (Admin only)
+export const deleteFeedbackLink = async (token: string): Promise<any> => {
+  const response = await api.delete(`/feedback/link/${token}`);
+  return response.data;
+};
+
+// Get match feedback dashboard with stats
+export const getMatchFeedback = async (matchId: string, params?: { page?: number; limit?: number }): Promise<MatchFeedbackDashboard> => {
+  const response = await api.get(`/matches/${matchId}/feedback`, { params });
+  return response.data;
+};
+
+// Get player feedback history
+export const getPlayerFeedback = async (playerId: string, params?: { page?: number; limit?: number }): Promise<PlayerFeedbackHistoryResponse> => {
+  const response = await api.get(`/players/${playerId}/feedback`, { params });
+  return response.data;
+};
+
 export default api;
