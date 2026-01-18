@@ -10,6 +10,29 @@ const feedbackSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  // New fields for match-specific feedback
+  feedbackType: {
+    type: String,
+    enum: ['match', 'general'],
+    default: 'general',
+    index: true
+  },
+  matchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Match',
+    default: null,
+    index: true
+  },
+  feedbackLinkId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FeedbackLink',
+    default: null
+  },
+  playerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Player',
+    default: null
+  },
   batting: {
     type: Number,
     required: true,
@@ -76,5 +99,11 @@ feedbackSchema.index({ isDeleted: 1, batting: 1, bowling: 1, fielding: 1, teamSp
 
 // Index for player name search
 feedbackSchema.index({ playerName: 'text' });
+
+// Index for match feedback queries
+feedbackSchema.index({ matchId: 1, isDeleted: 1 });
+
+// Index for player feedback history
+feedbackSchema.index({ playerId: 1, isDeleted: 1 });
 
 module.exports = mongoose.model('Feedback', feedbackSchema);

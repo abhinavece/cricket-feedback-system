@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Match = require('../models/Match');
 const Player = require('../models/Player');
+const Feedback = require('../models/Feedback');
+const FeedbackLink = require('../models/FeedbackLink');
 const { auth, requireAdmin } = require('../middleware/auth');
+const feedbackService = require('../services/feedbackService');
 
 // Get matches summary (lightweight, for listing view)
 router.get('/summary', auth, async (req, res) => {
@@ -359,7 +362,7 @@ router.get('/:id/stats', auth, async (req, res) => {
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
-    
+
     const stats = {
       total: match.squad.length,
       yes: match.squad.filter(s => s.response === 'yes').length,
@@ -368,10 +371,69 @@ router.get('/:id/stats', auth, async (req, res) => {
       pending: match.squad.filter(s => s.response === 'pending').length,
       responseRate: Math.round((match.squad.filter(s => s.response !== 'pending').length / match.squad.length) * 100)
     };
-    
+
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/matches/:id/feedback - Get match feedback dashboard with stats
+// Uses unified feedbackService for role-based redaction
+router.get('/:id/feedback', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const matchId = req.params.id;
+    const userRole = req.user.role;
+
+    // Validate match exists
+    const match = await Match.findById(matchId).lean();
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Get active feedback link for this match
+    const feedbackLink = await FeedbackLink.findOne({
+      matchId: matchId,
+      isActive: true
+    }).lean();
+
+    // Use unified service for stats and feedback with role-based redaction
+    const stats = await feedbackService.getMatchFeedbackStats(matchId);
+    const { feedback, pagination } = await feedbackService.getMatchFeedback(
+      matchId,
+      { page, limit },
+      userRole
+    );
+
+    res.json({
+      success: true,
+      match: {
+        _id: match._id,
+        opponent: match.opponent,
+        date: match.date,
+        time: match.time,
+        ground: match.ground,
+        slot: match.slot
+      },
+      stats,
+      feedback,
+      feedbackLink: feedbackLink ? {
+        token: feedbackLink.token,
+        url: `/feedback/${feedbackLink.token}`,
+        expiresAt: feedbackLink.expiresAt,
+        accessCount: feedbackLink.accessCount,
+        submissionCount: feedbackLink.submissionCount,
+        isActive: feedbackLink.isActive
+      } : null,
+      pagination
+    });
+  } catch (error) {
+    console.error('Error fetching match feedback:', error);
+    res.status(500).json({
+      error: 'Failed to fetch match feedback',
+      details: error.message
+    });
   }
 });
 

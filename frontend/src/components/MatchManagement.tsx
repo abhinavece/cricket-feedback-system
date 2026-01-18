@@ -68,6 +68,7 @@ const MatchManagement: React.FC = () => {
   const [selectedMatchForAvailability, setSelectedMatchForAvailability] = useState<Match | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<Match | null>(null);
+  const [initialDetailTab, setInitialDetailTab] = useState<'overview' | 'responses' | 'squad' | 'feedback'>('overview');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -243,8 +244,9 @@ const MatchManagement: React.FC = () => {
     });
   };
 
-  const handleViewMatch = (match: Match) => {
+  const handleFeedback = (match: Match) => {
     setSelectedMatchForDetail(match);
+    setInitialDetailTab('feedback');
     setShowDetailModal(true);
   };
 
@@ -541,8 +543,7 @@ const MatchManagement: React.FC = () => {
                   match={match}
                   onEdit={!isViewer() ? handleEditMatch : undefined}
                   onDelete={!isViewer() ? handleDeleteMatch : undefined}
-                  onView={handleViewMatch}
-                  onManageSquad={!isViewer() ? handleManageSquad : undefined}
+                  onFeedback={handleFeedback}
                   onViewAvailability={handleViewAvailability}
                 />
               ))}
@@ -572,9 +573,11 @@ const MatchManagement: React.FC = () => {
       {showDetailModal && selectedMatchForDetail && (
         <MatchDetailModal
           match={selectedMatchForDetail}
+          initialTab={initialDetailTab}
           onClose={() => {
             setShowDetailModal(false);
             setSelectedMatchForDetail(null);
+            setInitialDetailTab('overview');
             console.log('[MatchManagement] Modal closed, refreshing matches');
             fetchMatches(1, false);
           }}

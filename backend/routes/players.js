@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player.js');
+const Feedback = require('../models/Feedback.js');
 const { auth, requireAdmin } = require('../middleware/auth.js');
 const { getOrCreatePlayer, formatPhoneNumber, updatePlayer: updatePlayerService } = require('../services/playerService');
+const feedbackService = require('../services/feedbackService');
 
 // GET /api/players - Get all active players (for WhatsApp messaging)
 // Supports search query parameter for filtering by name
@@ -231,6 +233,59 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete player'
+    });
+  }
+});
+
+// GET /api/players/:id/feedback - Get player's feedback history
+// Uses unified feedbackService for role-based redaction
+router.get('/:id/feedback', auth, async (req, res) => {
+  console.log(`GET /api/players/${req.params.id}/feedback - Fetching player feedback history`);
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const playerId = req.params.id;
+    const userRole = req.user.role;
+
+    // Find player
+    const player = await Player.findById(playerId);
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        error: 'Player not found'
+      });
+    }
+
+    // Build query to find feedback by playerId OR by playerName (case-insensitive)
+    const query = {
+      $or: [
+        { playerId: player._id },
+        { playerName: { $regex: new RegExp(`^${player.name}$`, 'i') } }
+      ]
+    };
+
+    // Use unified service for stats and feedback with role-based redaction
+    const stats = await feedbackService.getPlayerFeedbackStats(query);
+    const { feedback, pagination } = await feedbackService.getPlayerFeedback(
+      query,
+      { page, limit },
+      userRole
+    );
+
+    res.json({
+      success: true,
+      player: {
+        _id: player._id,
+        name: player.name
+      },
+      stats,
+      feedback,
+      pagination
+    });
+  } catch (error) {
+    console.error('Error fetching player feedback:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch player feedback'
     });
   }
 });

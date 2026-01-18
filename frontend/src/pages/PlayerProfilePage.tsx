@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Target, MessageCircle, ExternalLink, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, Users, Target, MessageCircle, ExternalLink, Loader2, Mail, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { getPlayerProfile, type PublicPlayerProfile } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import PlayerFeedbackHistory from '../components/PlayerFeedbackHistory';
 
 const PlayerProfilePage: React.FC = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -220,6 +221,21 @@ const PlayerProfilePage: React.FC = () => {
             </div>
             <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-slate-400" />
           </a>
+        )}
+
+        {/* Feedback History Section */}
+        {playerId && (
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/5">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Feedback History
+              </h3>
+            </div>
+            <div className="p-4">
+              <PlayerFeedbackHistory playerId={playerId} playerName={profile.name} />
+            </div>
+          </div>
         )}
 
         {/* Admin: Start Conversation Button */}

@@ -1,6 +1,6 @@
 import React from 'react';
 // @ts-ignore
-import { Calendar, Clock, MapPin, Users, Trophy, Edit, Trash2, Eye } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Trophy, Edit, Trash2, MessageSquare } from 'lucide-react';
 
 interface SquadMember {
   player: {
@@ -57,8 +57,7 @@ interface MatchCardProps {
   };
   onEdit?: (match: any) => void;
   onDelete?: (matchId: string) => void;
-  onView: (match: any) => void;
-  onManageSquad?: (match: any) => void;
+  onFeedback?: (match: any) => void;
   onViewAvailability?: (match: any) => void;
 }
 
@@ -66,8 +65,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   match,
   onEdit,
   onDelete,
-  onView,
-  onManageSquad,
+  onFeedback,
   onViewAvailability
 }) => {
   const getSquadStats = () => {
@@ -137,7 +135,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   return (
     <div 
       className="group relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-black/20 cursor-pointer"
-      onClick={() => onView(match)}
+      onClick={() => onFeedback && onFeedback(match)}
     >
       {/* Status & Match Type Badges */}
       <div className="absolute top-4 right-4 z-10 flex flex-col gap-1.5 items-end">
@@ -316,26 +314,17 @@ const MatchCard: React.FC<MatchCardProps> = ({
               Availability
             </button>
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(match);
-            }}
-            className="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            View
-          </button>
-          {onManageSquad && (
+          {onFeedback && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onManageSquad(match);
+                onFeedback(match);
               }}
               className="flex-1 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
+              title="View Match Feedback"
             >
-              <Users className="w-3.5 h-3.5" />
-              Squad
+              <MessageSquare className="w-3.5 h-3.5" />
+              Feedback
             </button>
           )}
           {onEdit && (
