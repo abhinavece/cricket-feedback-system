@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMatches, getMatch, createMatch, updateMatch, deleteMatch, getMatchAvailability, updateAvailability, deleteAvailability, createAvailability, getPlayers } from '../../services/api';
-import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy, UserPlus, Users } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy, UserPlus, Users, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { matchEvents } from '../../utils/matchEvents';
+import MatchFeedbackDashboard from '../MatchFeedbackDashboard';
 
 interface Match {
   _id: string;
@@ -53,6 +54,7 @@ const MobileMatchesTab: React.FC = () => {
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [selectedPlayersToAdd, setSelectedPlayersToAdd] = useState<string[]>([]);
+  const [showFeedbackSection, setShowFeedbackSection] = useState(false);
 
   const fetchMatches = async (isRefresh = false) => {
     try {
@@ -476,6 +478,29 @@ const MobileMatchesTab: React.FC = () => {
                         ) : null}
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Feedback Section - Collapsible */}
+              <div className="bg-slate-800/50 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setShowFeedbackSection(!showFeedbackSection)}
+                  className="w-full flex items-center justify-between p-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs text-slate-400">Match Feedback</span>
+                  </div>
+                  {showFeedbackSection ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  )}
+                </button>
+                {showFeedbackSection && (
+                  <div className="border-t border-white/5">
+                    <MatchFeedbackDashboard matchId={selectedMatch._id} matchOpponent={selectedMatch.opponent} />
                   </div>
                 )}
               </div>

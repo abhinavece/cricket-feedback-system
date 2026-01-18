@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2, Navigation, ExternalLink } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2, Navigation, ExternalLink, MessageSquare } from 'lucide-react';
 import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
 import SquadImageGenerator from './SquadImageGenerator';
 import WhatsAppImageShareModal from './WhatsAppImageShareModal';
 import ShareLinkModal from './ShareLinkModal';
+import MatchFeedbackDashboard from './MatchFeedbackDashboard';
 import { useSSE } from '../hooks/useSSE';
 
 interface Match {
@@ -84,7 +85,7 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'responded' | 'pending' | 'yes' | 'no' | 'tentative'>('all');
-  const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad' | 'feedback'>('overview');
   const [sendingReminder, setSendingReminder] = useState(false);
   
   // Availability management state
@@ -562,6 +563,17 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
             >
               <span className="hidden sm:inline">Squad Builder</span>
               <span className="sm:hidden">Squad</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all flex items-center gap-1 ${
+                activeTab === 'feedback'
+                  ? 'text-emerald-400 border-b-2 border-emerald-400'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Feedback</span>
             </button>
           </div>
         </div>
@@ -1088,6 +1100,11 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Feedback Tab */}
+          {activeTab === 'feedback' && (
+            <MatchFeedbackDashboard matchId={match._id} matchOpponent={match.opponent} />
           )}
         </div>
 

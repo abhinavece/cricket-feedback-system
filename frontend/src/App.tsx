@@ -12,6 +12,7 @@ import './theme.css';
 const PublicMatchView = lazy(() => import('./pages/PublicMatchView'));
 const PublicPaymentView = lazy(() => import('./pages/PublicPaymentView'));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
+const MatchFeedbackPage = lazy(() => import('./pages/MatchFeedbackPage'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -178,6 +179,7 @@ function App() {
               {/* Public share routes - no auth required */}
               <Route path="/share/match/:token" element={<PublicMatchView />} />
               <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+              <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
 
               {/* Player profile - requires auth */}
               <Route path="/player/:playerId" element={<PlayerProfilePage />} />

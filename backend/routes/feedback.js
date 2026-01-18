@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Feedback = require('../models/Feedback');
-const { auth, requireEditor } = require('../middleware/auth');
+const FeedbackLink = require('../models/FeedbackLink');
+const Match = require('../models/Match');
+const Player = require('../models/Player');
+const { auth, requireEditor, requireAdmin } = require('../middleware/auth');
 
 /**
  * Helper: Redact playerName for viewer role users
@@ -32,7 +35,7 @@ const redactFeedbackList = (feedbackList, userRole) => {
   return feedbackList;
 };
 
-// POST /api/feedback - Submit new feedback
+// POST /api/feedback - Submit new general feedback (NOT match-specific)
 router.post('/', async (req, res) => {
   try {
     const {
@@ -44,8 +47,17 @@ router.post('/', async (req, res) => {
       teamSpirit,
       feedbackText,
       issues,
-      additionalComments
+      additionalComments,
+      feedbackType,
+      matchId
     } = req.body;
+
+    // Reject match feedback through regular endpoint - must use feedback link
+    if (feedbackType === 'match' || matchId) {
+      return res.status(400).json({
+        error: 'Match feedback must be submitted through a feedback link'
+      });
+    }
 
     // Validate required fields
     if (!playerName || !matchDate || !feedbackText) {
@@ -148,7 +160,8 @@ router.get('/summary', auth, async (req, res) => {
 
     // Select only essential fields for list view - exclude feedbackText and additionalComments
     const feedback = await Feedback.find({ isDeleted: false })
-      .select('_id playerName matchDate batting bowling fielding teamSpirit issues createdAt')
+      .select('_id playerName matchDate batting bowling fielding teamSpirit issues createdAt feedbackType matchId feedbackLinkId')
+      .populate('matchId', 'opponent date time ground slot')
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
@@ -188,7 +201,8 @@ router.get('/trash', auth, async (req, res) => {
     
     // Exclude large text fields for list view - use /:id for full details
     const deletedFeedback = await Feedback.find({ isDeleted: true })
-      .select('_id playerName matchDate batting bowling fielding teamSpirit issues deletedAt deletedBy createdAt')
+      .select('_id playerName matchDate batting bowling fielding teamSpirit issues deletedAt deletedBy createdAt feedbackType matchId feedbackLinkId')
+      .populate('matchId', 'opponent date time ground slot')
       .sort({ deletedAt: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
@@ -246,6 +260,7 @@ router.get('/', auth, async (req, res) => {
     const limitNum = parseInt(limit);
 
     const feedback = await Feedback.find({ isDeleted: false })
+      .populate('matchId', 'opponent date time ground slot')
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
@@ -346,7 +361,7 @@ router.delete('/:id/permanent', auth, requireEditor, async (req, res) => {
     const { id } = req.params;
 
     const feedback = await Feedback.findById(id);
-    
+
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
     }
@@ -357,13 +372,306 @@ router.delete('/:id/permanent', auth, requireEditor, async (req, res) => {
 
     await Feedback.findByIdAndDelete(id);
 
-    res.json({ 
+    res.json({
       message: 'Feedback permanently deleted',
-      feedbackId: id 
+      feedbackId: id
     });
   } catch (error) {
     console.error('Error permanently deleting feedback:', error);
     res.status(500).json({ error: 'Failed to permanently delete feedback' });
+  }
+});
+
+// ============================================================================
+// FEEDBACK LINK ENDPOINTS (Match-Specific Feedback)
+// ============================================================================
+
+// POST /api/feedback/link/generate - Generate a feedback link for a match (Admin only)
+router.post('/link/generate', auth, requireAdmin, async (req, res) => {
+  try {
+    const { matchId } = req.body;
+
+    if (!matchId) {
+      return res.status(400).json({ error: 'matchId is required' });
+    }
+
+    // Validate match exists
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Check for existing active link for this match
+    let feedbackLink = await FeedbackLink.findOne({
+      matchId: matchId,
+      isActive: true
+    });
+
+    if (feedbackLink) {
+      // Reuse existing active link
+      return res.json({
+        success: true,
+        token: feedbackLink.token,
+        url: `/feedback/${feedbackLink.token}`,
+        expiresAt: feedbackLink.expiresAt,
+        isExisting: true,
+        matchInfo: {
+          opponent: match.opponent,
+          date: match.date,
+          ground: match.ground
+        },
+        submissionCount: feedbackLink.submissionCount,
+        accessCount: feedbackLink.accessCount
+      });
+    }
+
+    // Generate new token
+    const token = FeedbackLink.generateToken();
+
+    // Set expiry to match date + 7 days
+    const matchDate = new Date(match.date);
+    const expiresAt = new Date(matchDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+
+    // Create new feedback link
+    feedbackLink = new FeedbackLink({
+      token,
+      matchId: matchId,
+      expiresAt,
+      createdBy: req.user.id
+    });
+
+    await feedbackLink.save();
+
+    res.status(201).json({
+      success: true,
+      token: feedbackLink.token,
+      url: `/feedback/${feedbackLink.token}`,
+      expiresAt: feedbackLink.expiresAt,
+      isExisting: false,
+      matchInfo: {
+        opponent: match.opponent,
+        date: match.date,
+        ground: match.ground
+      }
+    });
+  } catch (error) {
+    console.error('Error generating feedback link:', error);
+    res.status(500).json({
+      error: 'Failed to generate feedback link',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/feedback/link/:token - Get match info for a feedback link (Public)
+router.get('/link/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { playerName } = req.query;
+
+    const feedbackLink = await FeedbackLink.findOne({ token }).populate('matchId');
+
+    if (!feedbackLink) {
+      return res.status(404).json({ error: 'Feedback link not found' });
+    }
+
+    // Validate link is active and not expired
+    if (!feedbackLink.isValid()) {
+      return res.status(410).json({
+        error: 'Feedback link has expired or been deactivated'
+      });
+    }
+
+    // Increment access count
+    feedbackLink.accessCount += 1;
+    await feedbackLink.save();
+
+    const match = feedbackLink.matchId;
+
+    // Check if player can submit (if playerName provided)
+    let canSubmit = true;
+    let alreadySubmitted = false;
+    if (playerName) {
+      canSubmit = feedbackLink.canPlayerSubmit(playerName);
+      alreadySubmitted = !canSubmit;
+    }
+
+    res.json({
+      success: true,
+      match: {
+        opponent: match.opponent || 'TBD',
+        date: match.date,
+        time: match.time || '',
+        ground: match.ground,
+        slot: match.slot
+      },
+      canSubmit,
+      alreadySubmitted,
+      expiresAt: feedbackLink.expiresAt
+    });
+  } catch (error) {
+    console.error('Error fetching feedback link:', error);
+    res.status(500).json({
+      error: 'Failed to fetch feedback link info',
+      details: error.message
+    });
+  }
+});
+
+// POST /api/feedback/link/:token/submit - Submit feedback via link (Public)
+router.post('/link/:token/submit', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const {
+      playerName,
+      batting,
+      bowling,
+      fielding,
+      teamSpirit,
+      feedbackText,
+      issues,
+      additionalComments
+    } = req.body;
+
+    // Validate required fields
+    if (!playerName || !feedbackText) {
+      return res.status(400).json({
+        error: 'Missing required fields: playerName, feedbackText'
+      });
+    }
+
+    // Validate ratings
+    const ratings = { batting, bowling, fielding, teamSpirit };
+    for (const [key, value] of Object.entries(ratings)) {
+      if (!value || value < 1 || value > 5) {
+        return res.status(400).json({
+          error: `${key} rating must be between 1 and 5`
+        });
+      }
+    }
+
+    // Find and validate feedback link
+    const feedbackLink = await FeedbackLink.findOne({ token }).populate('matchId');
+
+    if (!feedbackLink) {
+      return res.status(404).json({ error: 'Feedback link not found' });
+    }
+
+    if (!feedbackLink.isValid()) {
+      return res.status(410).json({
+        error: 'Feedback link has expired or been deactivated'
+      });
+    }
+
+    // Check if player already submitted
+    if (!feedbackLink.canPlayerSubmit(playerName)) {
+      return res.status(409).json({
+        error: 'You have already submitted feedback for this match'
+      });
+    }
+
+    const match = feedbackLink.matchId;
+
+    // Try to link playerName to Player model (case-insensitive search)
+    let playerId = null;
+    const player = await Player.findOne({
+      name: { $regex: new RegExp(`^${playerName.trim()}$`, 'i') }
+    });
+    if (player) {
+      playerId = player._id;
+    }
+
+    // Create feedback with match binding
+    const feedback = new Feedback({
+      playerName: playerName.trim(),
+      matchDate: match.date,
+      batting,
+      bowling,
+      fielding,
+      teamSpirit,
+      feedbackText,
+      issues: issues || {
+        venue: false,
+        equipment: false,
+        timing: false,
+        umpiring: false,
+        other: false,
+      },
+      additionalComments: additionalComments || '',
+      // Match-specific fields
+      feedbackType: 'match',
+      matchId: match._id,
+      feedbackLinkId: feedbackLink._id,
+      playerId
+    });
+
+    await feedback.save();
+
+    // Record submission on link
+    feedbackLink.recordSubmission(playerName);
+    await feedbackLink.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Feedback submitted successfully',
+      feedbackId: feedback._id
+    });
+  } catch (error) {
+    console.error('Error submitting feedback via link:', error);
+    res.status(500).json({
+      error: 'Failed to submit feedback',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/feedback/link/:matchId/links - Get all feedback links for a match (Admin only)
+router.get('/link/:matchId/links', auth, requireAdmin, async (req, res) => {
+  try {
+    const { matchId } = req.params;
+
+    const links = await FeedbackLink.find({ matchId })
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      links
+    });
+  } catch (error) {
+    console.error('Error fetching feedback links:', error);
+    res.status(500).json({
+      error: 'Failed to fetch feedback links',
+      details: error.message
+    });
+  }
+});
+
+// DELETE /api/feedback/link/:token - Deactivate a feedback link (Admin only)
+router.delete('/link/:token', auth, requireAdmin, async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const feedbackLink = await FeedbackLink.findOne({ token });
+
+    if (!feedbackLink) {
+      return res.status(404).json({ error: 'Feedback link not found' });
+    }
+
+    feedbackLink.isActive = false;
+    await feedbackLink.save();
+
+    res.json({
+      success: true,
+      message: 'Feedback link deactivated successfully'
+    });
+  } catch (error) {
+    console.error('Error deactivating feedback link:', error);
+    res.status(500).json({
+      error: 'Failed to deactivate feedback link',
+      details: error.message
+    });
   }
 });
 

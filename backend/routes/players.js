@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player.js');
+const Feedback = require('../models/Feedback.js');
 const { auth, requireAdmin } = require('../middleware/auth.js');
 const { getOrCreatePlayer, formatPhoneNumber, updatePlayer: updatePlayerService } = require('../services/playerService');
 
@@ -231,6 +232,97 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete player'
+    });
+  }
+});
+
+// GET /api/players/:id/feedback - Get player's feedback history
+router.get('/:id/feedback', auth, async (req, res) => {
+  console.log(`GET /api/players/${req.params.id}/feedback - Fetching player feedback history`);
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const playerId = req.params.id;
+
+    // Find player
+    const player = await Player.findById(playerId);
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        error: 'Player not found'
+      });
+    }
+
+    // Find feedback by playerId OR by playerName (case-insensitive)
+    const query = {
+      isDeleted: false,
+      $or: [
+        { playerId: player._id },
+        { playerName: { $regex: new RegExp(`^${player.name}$`, 'i') } }
+      ]
+    };
+
+    // Aggregate stats
+    const statsAggregation = await Feedback.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalFeedback: { $sum: 1 },
+          avgBatting: { $avg: '$batting' },
+          avgBowling: { $avg: '$bowling' },
+          avgFielding: { $avg: '$fielding' },
+          avgTeamSpirit: { $avg: '$teamSpirit' }
+        }
+      }
+    ]);
+
+    const stats = statsAggregation[0] || {
+      totalFeedback: 0,
+      avgBatting: 0,
+      avgBowling: 0,
+      avgFielding: 0,
+      avgTeamSpirit: 0
+    };
+
+    // Get paginated feedback with match info
+    const feedback = await Feedback.find(query)
+      .populate('matchId', 'opponent date time ground slot')
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
+      .lean();
+
+    const total = await Feedback.countDocuments(query);
+    const hasMore = (pageNum * limitNum) < total;
+
+    res.json({
+      success: true,
+      player: {
+        _id: player._id,
+        name: player.name
+      },
+      stats: {
+        totalFeedback: stats.totalFeedback,
+        avgBatting: Math.round(stats.avgBatting * 10) / 10 || 0,
+        avgBowling: Math.round(stats.avgBowling * 10) / 10 || 0,
+        avgFielding: Math.round(stats.avgFielding * 10) / 10 || 0,
+        avgTeamSpirit: Math.round(stats.avgTeamSpirit * 10) / 10 || 0
+      },
+      feedback,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching player feedback:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch player feedback'
     });
   }
 });
