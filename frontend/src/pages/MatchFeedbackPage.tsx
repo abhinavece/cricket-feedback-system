@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, XCircle, CheckCircle, AlertTriangle, User, Shield, LogIn, ChevronRight, Star, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import RatingStars from '../components/RatingStars';
+import CountdownTimer from '../components/CountdownTimer';
 import { useAuth } from '../contexts/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -309,13 +310,45 @@ const MatchFeedbackPage: React.FC = () => {
               <p className="text-white font-semibold">vs {linkInfo?.match.opponent || 'Unknown'}</p>
               <p className="text-slate-400 text-sm">{linkInfo?.match.ground} - {formatShortDate(linkInfo?.match.date || '')}</p>
             </div>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/25"
-            >
-              <MessageSquare className="w-5 h-5" />
-              View All Feedback
-            </Link>
+            
+            {/* Conditional content based on authentication */}
+            {isAuthenticated ? (
+              /* Logged-in user: Show countdown timer */
+              <CountdownTimer
+                seconds={5}
+                onComplete={() => {
+                  // Navigate to feedback listing (home page)
+                  navigate('/');
+                }}
+                message="Let's check out other feedback from the team!"
+              />
+            ) : (
+              /* Non-logged-in user: Show login prompt */
+              <div className="space-y-4">
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
+                  <p className="text-slate-300 mb-2">Want to see feedback from other players?</p>
+                  <p className="text-slate-500 text-sm">Login to view all feedback and team insights</p>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    // Reload page to trigger login flow
+                    window.location.reload();
+                  }}
+                  className="w-full py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                >
+                  <LogIn className="w-5 h-5" />
+                  Login to View Feedback
+                </button>
+                
+                <Link
+                  to="/"
+                  className="block w-full py-3 px-6 rounded-xl font-medium text-slate-400 bg-slate-800/50 hover:bg-slate-700/50 transition-all border border-white/10 text-center"
+                >
+                  Submit Another Feedback
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
