@@ -1,0 +1,97 @@
+# Example Terraform Variables
+# Cricket Feedback System - OCI Infrastructure
+#
+# Copy this file to terraform.tfvars and fill in your values
+# NEVER commit terraform.tfvars to version control!
+
+# ============================================================================
+# OCI Provider Configuration (REQUIRED)
+# ============================================================================
+
+# Get these from OCI Console -> User Settings -> API Keys
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..aaaaaaaaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+
+# OCI Region (see: https://docs.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm)
+region = "us-phoenix-1"
+
+# Compartment where resources will be created
+compartment_ocid = "ocid1.compartment.oc1..aaaaaaaaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+
+environment  = "dev"
+project_name = "cricket-feedback"
+
+# ============================================================================
+# Network Configuration (Optional - defaults provided)
+# ============================================================================
+
+# vcn_cidr               = "10.0.0.0/16"
+# public_subnet_cidr     = "10.0.1.0/24"
+# private_subnet_cidr    = "10.0.2.0/24"
+# service_lb_subnet_cidr = "10.0.3.0/24"
+
+# ============================================================================
+# OKE Cluster Configuration
+# ============================================================================
+
+kubernetes_version = "v1.28.2"
+cluster_name       = "cricket-feedback-cluster"
+node_pool_name     = "cricket-feedback-pool"
+node_pool_size     = 2
+
+# Node shape (ARM-based Ampere A1 is cost-effective)
+node_shape    = "VM.Standard.A1.Flex"
+node_ocpus    = 1
+node_memory_gb = 6
+
+# ============================================================================
+# Container Registry Configuration
+# ============================================================================
+
+create_container_registry = true
+registry_is_public        = false
+
+# ============================================================================
+# Application Deployment Configuration
+# ============================================================================
+
+deploy_application = true
+backend_image_tag  = "v15"
+frontend_image_tag = "v10"
+
+# Ingress host (use sslip.io for development or your domain for production)
+ingress_host = "129.153.86.8.sslip.io"
+enable_tls   = false
+
+# ============================================================================
+# Application Secrets (SENSITIVE - use environment variables or vault)
+# ============================================================================
+# 
+# Option 1: Set directly here (NOT RECOMMENDED for production)
+# Option 2: Use environment variables: TF_VAR_mongodb_password, etc.
+# Option 3: Use HashiCorp Vault or OCI Vault
+#
+# Uncomment and fill in for Option 1:
+
+# mongodb_password         = "your-secure-mongodb-password"
+# jwt_secret               = "your-jwt-signing-secret"
+# google_client_id         = "your-google-oauth-client-id"
+# google_client_secret     = "your-google-oauth-client-secret"
+# whatsapp_access_token    = "your-whatsapp-api-token"
+# whatsapp_phone_number_id = "your-whatsapp-phone-number-id"
+# admin_password           = "your-admin-dashboard-password"
+
+# ============================================================================
+# Tags (Optional)
+# ============================================================================
+
+freeform_tags = {
+  "Team"        = "Mavericks XI"
+  "Application" = "Cricket Feedback"
+}
