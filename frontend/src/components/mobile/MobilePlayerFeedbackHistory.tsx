@@ -1,5 +1,5 @@
 import React from 'react';
-import PlayerFeedbackHistory from '../PlayerFeedbackHistory';
+import PlayerFeedbackHistory from '../../components/PlayerFeedbackHistory';
 
 interface MobilePlayerFeedbackHistoryProps {
   playerId: string;

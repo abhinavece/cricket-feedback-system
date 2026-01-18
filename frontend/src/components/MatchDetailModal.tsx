@@ -71,6 +71,7 @@ interface MatchDetailModalProps {
   onEdit?: (match: Match) => void;
   onDelete?: (matchId: string) => void;
   onSendAvailability?: (match: Match) => void;
+  initialTab?: 'overview' | 'responses' | 'squad' | 'feedback';
 }
 
 const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
@@ -78,14 +79,15 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onClose,
   onEdit,
   onDelete,
-  onSendAvailability
+  onSendAvailability,
+  initialTab = 'overview'
 }) => {
   const [match, setMatch] = useState<Match>(initialMatch);
   const [availabilities, setAvailabilities] = useState<AvailabilityRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'responded' | 'pending' | 'yes' | 'no' | 'tentative'>('all');
-  const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad' | 'feedback'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad' | 'feedback'>(initialTab);
   const [sendingReminder, setSendingReminder] = useState(false);
   
   // Availability management state
@@ -534,6 +536,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
           <div className="flex gap-1 md:gap-2 mt-2 md:mt-4 border-b border-white/10">
             <button
               onClick={() => setActiveTab('overview')}
+              data-tab="overview"
               className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all ${
                 activeTab === 'overview'
                   ? 'text-emerald-400 border-b-2 border-emerald-400'
@@ -544,6 +547,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
             </button>
             <button
               onClick={() => setActiveTab('responses')}
+              data-tab="responses"
               className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all ${
                 activeTab === 'responses'
                   ? 'text-emerald-400 border-b-2 border-emerald-400'
@@ -555,6 +559,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
             </button>
             <button
               onClick={() => setActiveTab('squad')}
+              data-tab="squad"
               className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all ${
                 activeTab === 'squad'
                   ? 'text-emerald-400 border-b-2 border-emerald-400'
@@ -566,6 +571,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
             </button>
             <button
               onClick={() => setActiveTab('feedback')}
+              data-tab="feedback"
               className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all flex items-center gap-1 ${
                 activeTab === 'feedback'
                   ? 'text-emerald-400 border-b-2 border-emerald-400'

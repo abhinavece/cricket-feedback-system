@@ -5,6 +5,7 @@ const Player = require('../models/Player');
 const Feedback = require('../models/Feedback');
 const FeedbackLink = require('../models/FeedbackLink');
 const { auth, requireAdmin } = require('../middleware/auth');
+const feedbackService = require('../services/feedbackService');
 
 // Get matches summary (lightweight, for listing view)
 router.get('/summary', auth, async (req, res) => {
@@ -378,12 +379,12 @@ router.get('/:id/stats', auth, async (req, res) => {
 });
 
 // GET /api/matches/:id/feedback - Get match feedback dashboard with stats
+// Uses unified feedbackService for role-based redaction
 router.get('/:id/feedback', auth, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
     const matchId = req.params.id;
+    const userRole = req.user.role;
 
     // Validate match exists
     const match = await Match.findById(matchId).lean();
@@ -397,56 +398,13 @@ router.get('/:id/feedback', auth, async (req, res) => {
       isActive: true
     }).lean();
 
-    // Aggregate feedback stats for this match
-    const statsAggregation = await Feedback.aggregate([
-      { $match: { matchId: match._id, isDeleted: false } },
-      {
-        $group: {
-          _id: null,
-          totalSubmissions: { $sum: 1 },
-          avgBatting: { $avg: '$batting' },
-          avgBowling: { $avg: '$bowling' },
-          avgFielding: { $avg: '$fielding' },
-          avgTeamSpirit: { $avg: '$teamSpirit' },
-          venueIssues: { $sum: { $cond: ['$issues.venue', 1, 0] } },
-          equipmentIssues: { $sum: { $cond: ['$issues.equipment', 1, 0] } },
-          timingIssues: { $sum: { $cond: ['$issues.timing', 1, 0] } },
-          umpiringIssues: { $sum: { $cond: ['$issues.umpiring', 1, 0] } },
-          otherIssues: { $sum: { $cond: ['$issues.other', 1, 0] } }
-        }
-      }
-    ]);
-
-    const stats = statsAggregation[0] || {
-      totalSubmissions: 0,
-      avgBatting: 0,
-      avgBowling: 0,
-      avgFielding: 0,
-      avgTeamSpirit: 0,
-      venueIssues: 0,
-      equipmentIssues: 0,
-      timingIssues: 0,
-      umpiringIssues: 0,
-      otherIssues: 0
-    };
-
-    // Get paginated feedback submissions
-    const feedback = await Feedback.find({
-      matchId: matchId,
-      isDeleted: false
-    })
-      .populate('playerId', 'name phone')
-      .sort({ createdAt: -1 })
-      .limit(limitNum)
-      .skip((pageNum - 1) * limitNum)
-      .lean();
-
-    const total = await Feedback.countDocuments({
-      matchId: matchId,
-      isDeleted: false
-    });
-
-    const hasMore = (pageNum * limitNum) < total;
+    // Use unified service for stats and feedback with role-based redaction
+    const stats = await feedbackService.getMatchFeedbackStats(matchId);
+    const { feedback, pagination } = await feedbackService.getMatchFeedback(
+      matchId,
+      { page, limit },
+      userRole
+    );
 
     res.json({
       success: true,
@@ -458,20 +416,7 @@ router.get('/:id/feedback', auth, async (req, res) => {
         ground: match.ground,
         slot: match.slot
       },
-      stats: {
-        totalSubmissions: stats.totalSubmissions,
-        avgBatting: Math.round(stats.avgBatting * 10) / 10 || 0,
-        avgBowling: Math.round(stats.avgBowling * 10) / 10 || 0,
-        avgFielding: Math.round(stats.avgFielding * 10) / 10 || 0,
-        avgTeamSpirit: Math.round(stats.avgTeamSpirit * 10) / 10 || 0,
-        issues: {
-          venue: stats.venueIssues,
-          equipment: stats.equipmentIssues,
-          timing: stats.timingIssues,
-          umpiring: stats.umpiringIssues,
-          other: stats.otherIssues
-        }
-      },
+      stats,
       feedback,
       feedbackLink: feedbackLink ? {
         token: feedbackLink.token,
@@ -481,12 +426,7 @@ router.get('/:id/feedback', auth, async (req, res) => {
         submissionCount: feedbackLink.submissionCount,
         isActive: feedbackLink.isActive
       } : null,
-      pagination: {
-        current: pageNum,
-        pages: Math.ceil(total / limitNum),
-        total,
-        hasMore
-      }
+      pagination
     });
   } catch (error) {
     console.error('Error fetching match feedback:', error);

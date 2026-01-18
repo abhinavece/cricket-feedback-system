@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getMatches, getMatch, createMatch, updateMatch, deleteMatch, getMatchAvailability, updateAvailability, deleteAvailability, createAvailability, getPlayers } from '../../services/api';
 import { Calendar, Clock, ChevronRight, X, RefreshCw, CheckCircle, XCircle, HelpCircle, Clock as ClockIcon, Plus, Edit2, Trash2, MapPin, Trophy, UserPlus, Users, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { matchEvents } from '../../utils/matchEvents';
-import MatchFeedbackDashboard from '../MatchFeedbackDashboard';
+import MatchFeedbackDashboard from '../../components/MatchFeedbackDashboard';
 
 interface Match {
   _id: string;
@@ -370,7 +370,27 @@ const MobileMatchesTab: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-600" />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetail(match);
+                      // Open feedback section after a short delay to ensure modal is open
+                      setTimeout(() => {
+                        // Find the feedback tab and click it
+                        const feedbackTab = document.querySelector('[data-tab="feedback"]') as HTMLElement;
+                        if (feedbackTab) {
+                          feedbackTab.click();
+                        }
+                      }, 100);
+                    }}
+                    className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 transition-colors"
+                    title="View Feedback"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                  </button>
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </div>
               </div>
             </div>
           ))

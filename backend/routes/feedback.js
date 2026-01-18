@@ -5,35 +5,10 @@ const FeedbackLink = require('../models/FeedbackLink');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
 const { auth, requireEditor, requireAdmin } = require('../middleware/auth');
+const feedbackService = require('../services/feedbackService');
 
-/**
- * Helper: Redact playerName for viewer role users
- * Returns "Anonymous" for viewers to prevent name exposure
- */
-const redactForViewer = (feedback, userRole) => {
-  if (userRole === 'viewer') {
-    return {
-      ...feedback,
-      playerName: 'Anonymous',
-      isRedacted: true
-    };
-  }
-  return feedback;
-};
-
-/**
- * Helper: Redact playerName for an array of feedback items
- */
-const redactFeedbackList = (feedbackList, userRole) => {
-  if (userRole === 'viewer') {
-    return feedbackList.map(item => ({
-      ...item,
-      playerName: 'Anonymous',
-      isRedacted: true
-    }));
-  }
-  return feedbackList;
-};
+// Use unified feedback service for redaction
+const { redactFeedbackItem, redactFeedbackList } = feedbackService;
 
 // POST /api/feedback - Submit new general feedback (NOT match-specific)
 router.post('/', async (req, res) => {
@@ -239,7 +214,7 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     // Redact playerName for viewer role
-    const redactedFeedback = redactForViewer(feedback, req.user.role);
+    const redactedFeedback = redactFeedbackItem(feedback, req.user.role);
 
     res.json(redactedFeedback);
   } catch (error) {

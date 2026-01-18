@@ -1,5 +1,5 @@
 import React from 'react';
-import MatchFeedbackDashboard from '../MatchFeedbackDashboard';
+import MatchFeedbackDashboard from '../../components/MatchFeedbackDashboard';
 
 interface MobileMatchFeedbackDashboardProps {
   matchId: string;
