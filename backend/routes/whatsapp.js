@@ -772,8 +772,8 @@ async function saveImageMessage(from, imageId, messageId, caption) {
   }
 }
 
-// Import OCR and distribution services
-const { extractAmountFromScreenshot } = require('../services/ocrService');
+// Import AI Service and distribution services
+const { parsePaymentScreenshot: parseWithAI, requiresReview, getReviewReason } = require('../services/aiService');
 const { getPendingPaymentsForPlayer, distributePaymentFIFO, buildDistributionConfirmation } = require('../services/paymentDistributionService');
 
 // Process payment screenshot uploads with OCR and multi-match distribution
@@ -849,13 +849,16 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     const imageBuffer = Buffer.from(imageResponse.data);
     console.log(`Image downloaded, size: ${imageBuffer.length} bytes`);
 
-    // Step 3: Extract amount using OCR
-    console.log('\n🔍 Running OCR to extract payment amount...');
-    const ocrResult = await extractAmountFromScreenshot(imageBuffer);
+    // Step 3: Parse payment using AI Service
+    // Get match date from oldest pending payment for date validation
+    const matchDate = pendingPayments[0].matchInfo?.date || null;
+    console.log('\n🤖 Calling AI Service to parse payment screenshot...');
+    const aiResult = await parseWithAI(imageBuffer, matchDate);
 
-    // If OCR fails to extract amount, flag for admin review (don't assume full payment)
-    if (!ocrResult.success || !ocrResult.amount || ocrResult.amount <= 0) {
-      console.log('⚠️ OCR failed - flagging for admin review');
+    // If AI fails or requires review, flag for admin (fallback to manual entry)
+    if (requiresReview(aiResult)) {
+      const reviewReason = getReviewReason(aiResult);
+      console.log(`⚠️ AI parsing requires review: ${reviewReason}`);
 
       // Store screenshot in oldest pending match and flag for review
       const primaryPayment = await MatchPayment.findById(pendingPayments[0].paymentId);
@@ -867,7 +870,12 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
         primaryMember.screenshotMediaId = imageId;
         primaryMember.screenshotReceivedAt = new Date();
         primaryMember.requiresReview = true;
-        primaryMember.reviewReason = 'ocr_failed';
+        primaryMember.reviewReason = reviewReason;
+        // Store AI result metadata if available
+        if (aiResult.metadata) {
+          primaryMember.ocrConfidence = aiResult.metadata.confidence || 0;
+          primaryMember.ocrExtractedAmount = aiResult.data?.amount || 0;
+        }
         await primaryPayment.save();
         console.log('📸 Screenshot stored and flagged for admin review');
       }
@@ -876,7 +884,7 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       await Message.create({
         from: formattedPhone,
         to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: caption || '[Payment screenshot - pending admin review]',
+        text: caption || `[Payment screenshot - pending admin review: ${reviewReason}]`,
         direction: 'incoming',
         messageId: messageId,
         timestamp: new Date(),
@@ -888,12 +896,20 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       // Calculate total outstanding for acknowledgment message
       const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
 
-      // Send acknowledgment (NOT confirmation of payment)
-      const ackMessage = `📸 *Screenshot Received*\n\n` +
+      // Build acknowledgment message based on review reason
+      let ackMessage = `📸 *Screenshot Received*\n\n` +
         `Hi ${pendingPayments[0].playerName},\n\n` +
-        `We've received your payment screenshot.\n\n` +
-        `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
-        `_Admin will verify the amount and update your balance._`;
+        `We've received your payment screenshot.\n\n`;
+      
+      // Add context based on review reason
+      if (reviewReason === 'not_payment_screenshot') {
+        ackMessage += `⚠️ This doesn't appear to be a payment screenshot.\n\n`;
+      } else if (reviewReason === 'date_mismatch') {
+        ackMessage += `⚠️ The payment date seems older than expected.\n\n`;
+      }
+      
+      ackMessage += `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
+        `_Admin will verify and update your balance._`;
 
       try {
         await sendAndLogMessage(formattedPhone, ackMessage, {
@@ -912,16 +928,16 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
         paymentId: primaryPayment?._id?.toString(),
         matchId: pendingPayments[0].matchId?.toString(),
         playerName: pendingPayments[0].playerName,
-        reason: 'ocr_failed'
+        reason: reviewReason
       });
 
-      console.log('=== END PAYMENT SCREENSHOT PROCESSING (OCR FAILED) ===\n');
+      console.log('=== END PAYMENT SCREENSHOT PROCESSING (REQUIRES REVIEW) ===\n');
       return; // Don't proceed with auto-distribution
     }
 
-    // OCR succeeded - continue with distribution
-    const extractedAmount = ocrResult.amount;
-    console.log(`💰 OCR extracted amount: ₹${extractedAmount}`);
+    // AI parsing succeeded - continue with distribution
+    const extractedAmount = aiResult.data.amount;
+    console.log(`💰 AI extracted amount: ₹${extractedAmount}`);
 
     // Step 4: Distribute payment across matches (FIFO)
     const screenshotData = {
@@ -930,16 +946,20 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       mediaId: imageId
     };
 
-    const ocrData = {
-      confidence: ocrResult.confidence,
-      rawText: ocrResult.rawText
+    const aiData = {
+      confidence: aiResult.metadata?.confidence || 0,
+      provider: aiResult.metadata?.provider || '',
+      model: aiResult.metadata?.model || '',
+      payerName: aiResult.data?.payer_name || '',
+      transactionId: aiResult.data?.transaction_id || '',
+      paymentDate: aiResult.data?.date || ''
     };
 
     const distributionResult = await distributePaymentFIFO(
       formattedPhone,
       extractedAmount,
       screenshotData,
-      ocrData
+      aiData
     );
 
     if (!distributionResult.success) {

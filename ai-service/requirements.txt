@@ -1,0 +1,26 @@
+# AI Service Dependencies
+# Python 3.11+
+
+# Web Framework
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+
+# Google AI
+google-generativeai==0.4.0
+
+# HTTP Client
+httpx==0.26.0
+aiohttp==3.9.3
+
+# Data Validation
+pydantic==2.6.1
+
+# Image Processing
+Pillow==10.2.0
+
+# Utilities
+python-dateutil==2.8.2
+
+# Logging
+structlog==24.1.0

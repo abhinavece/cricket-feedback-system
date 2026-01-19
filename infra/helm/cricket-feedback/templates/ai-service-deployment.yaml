@@ -1,0 +1,56 @@
+{{- if .Values.aiService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cricket-feedback.fullname" . }}-ai-service
+  namespace: {{ .Values.namespace.name | default "default" }}
+  labels:
+    app: {{ include "cricket-feedback.name" . }}-ai-service
+    chart: {{ include "cricket-feedback.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.aiService.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "cricket-feedback.name" . }}-ai-service
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "cricket-feedback.name" . }}-ai-service
+        release: {{ .Release.Name }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ai-service
+          image: "{{ .Values.aiService.image.registry }}/{{ .Values.aiService.image.repository }}:{{ .Values.aiService.image.tag }}"
+          imagePullPolicy: {{ .Values.aiService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.aiService.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- toYaml .Values.aiService.env | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.aiService.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.aiService.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.aiService.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.aiService.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.aiService.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.aiService.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.aiService.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.aiService.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.aiService.resources | nindent 12 }}
+{{- end }}

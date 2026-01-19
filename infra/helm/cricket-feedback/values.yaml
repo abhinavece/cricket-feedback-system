@@ -95,6 +95,66 @@ backend:
     timeoutSeconds: 3
     failureThreshold: 3
 
+# AI Service configuration
+aiService:
+  enabled: true
+  image:
+    registry: phx.ocir.io
+    repository: axkw6whnjncs/cricket-feedback-ai-service
+    tag: "v1"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  env:
+    - name: AI_SERVICE_ENABLED
+      value: "true"
+    - name: AI_PROVIDER
+      value: "google_ai_studio"
+    - name: GOOGLE_AI_STUDIO_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: ai-service-secrets
+          key: google-ai-studio-api-key
+    - name: DAILY_REQUEST_LIMIT
+      value: "500"
+    - name: MIN_CONFIDENCE_THRESHOLD
+      value: "0.7"
+    - name: LOG_LEVEL
+      value: "INFO"
+    - name: BACKEND_CALLBACK_URL
+      value: "http://cricket-feedback-backend-service:5001"
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
 # Frontend configuration
 frontend:
   enabled: true
@@ -183,6 +243,7 @@ secrets:
   googleClientSecret: "CHANGE_ME_GOOGLE_CLIENT_SECRET"
   superAdminKey: "CHANGE_ME_SUPER_ADMIN_KEY"
   whatsappAccessToken: "CHANGE_ME_WHATSAPP_TOKEN"
+  googleAIStudioAPIKey: "CHANGE_ME_GOOGLE_AI_STUDIO_API_KEY"
 
 # Namespace configuration
 namespace:

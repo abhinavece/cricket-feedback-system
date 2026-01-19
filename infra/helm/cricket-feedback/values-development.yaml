@@ -55,3 +55,20 @@ ingress:
 # Development autoscaling disabled
 autoscaling:
   enabled: false
+
+# AI Service development configuration
+aiService:
+  enabled: true
+  image:
+    tag: "v1"
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  env:
+    - name: DAILY_REQUEST_LIMIT
+      value: "200"
