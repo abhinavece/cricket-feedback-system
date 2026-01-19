@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: cricket-feedback
+  labels:
+    app: ai-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+    spec:
+      imagePullSecrets:
+        - name: ocir-creds
+      containers:
+      - name: ai-service
+        image: phx.ocir.io/axkw6whnjncs/cricket-feedback-ai-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        # Master kill switch - set to "false" to disable
+        - name: AI_SERVICE_ENABLED
+          value: "true"
+        # AI Provider
+        - name: AI_PROVIDER
+          value: "google_ai_studio"
+        # Google AI Studio API Key
+        - name: GOOGLE_AI_STUDIO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-service-secrets
+              key: google-ai-studio-api-key
+        # Daily request limit
+        - name: DAILY_REQUEST_LIMIT
+          value: "500"
+        # Minimum confidence threshold
+        - name: MIN_CONFIDENCE_THRESHOLD
+          value: "0.7"
+        # Logging
+        - name: LOG_LEVEL
+          value: "INFO"
+        # Backend URL
+        - name: BACKEND_CALLBACK_URL
+          value: "http://backend-service:5001"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: cricket-feedback
+  labels:
+    app: ai-service
+spec:
+  selector:
+    app: ai-service
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP

@@ -117,17 +117,21 @@ const getTotalOutstandingForPlayer = async (playerPhone) => {
 /**
  * Distribute payment amount across matches using FIFO (oldest first)
  * @param {string} playerPhone - Player's phone number
- * @param {number} totalAmount - Total payment amount (from OCR or manual)
+ * @param {number} totalAmount - Total payment amount (from AI or manual)
  * @param {Object} screenshotData - Screenshot data
  * @param {Buffer} screenshotData.buffer - Image buffer
  * @param {string} screenshotData.contentType - MIME type
  * @param {string} screenshotData.mediaId - WhatsApp media ID
- * @param {Object} ocrData - OCR extraction data
- * @param {number} ocrData.confidence - OCR confidence score
- * @param {string} ocrData.rawText - Raw OCR text
+ * @param {Object} aiData - AI extraction data
+ * @param {number} aiData.confidence - AI confidence score
+ * @param {string} aiData.provider - AI provider used
+ * @param {string} aiData.model - AI model used
+ * @param {string} aiData.payerName - Extracted payer name
+ * @param {string} aiData.transactionId - Extracted transaction ID
+ * @param {string} aiData.paymentDate - Extracted payment date
  * @returns {Promise<Object>} - Distribution result
  */
-const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, ocrData = {}) => {
+const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, aiData = {}) => {
   console.log(`\n📊 Starting FIFO payment distribution`);
   console.log(`   Player: ${playerPhone}`);
   console.log(`   Amount: ₹${totalAmount}`);
@@ -195,9 +199,9 @@ const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, o
         } : null
       });
 
-      // Update OCR tracking on member
+      // Update AI tracking on member
       member.ocrExtractedAmount = totalAmount;
-      member.ocrConfidence = ocrData.confidence || null;
+      member.ocrConfidence = aiData.confidence || null;
       member.paidAt = new Date();
 
       // Set screenshot reference for non-primary matches

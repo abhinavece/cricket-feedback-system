@@ -101,11 +101,19 @@ cd backend
 docker build -t cricket-feedback-backend:latest .
 cd ..
 
+# Build AI service Docker image
+echo ""
+echo "🏗️  Building AI service Docker image..."
+cd ai-service
+docker build -t cricket-feedback-ai-service:latest .
+cd ..
+
 # Load images into Docker Desktop (if needed)
 echo ""
 echo "📥 Loading images into Docker Desktop..."
 docker tag cricket-feedback-frontend:latest localhost:5000/cricket-feedback-frontend:latest
 docker tag cricket-feedback-backend:latest localhost:5000/cricket-feedback-backend:latest
+docker tag cricket-feedback-ai-service:latest localhost:5000/cricket-feedback-ai-service:latest
 
 # Deploy Kubernetes resources
 echo ""
@@ -128,6 +136,14 @@ kubectl apply -f backend-deployment.yaml -n cricket-feedback
 # Wait for backend to be ready
 echo "⏳ Waiting for backend to be ready..."
 kubectl wait --for=condition=ready pod -l app=backend -n cricket-feedback --timeout=300s
+
+# Deploy AI service
+echo "📄 Deploying AI service..."
+kubectl apply -f ai-service-deployment.yaml -n cricket-feedback
+
+# Wait for AI service to be ready (optional - may not be critical path)
+echo "⏳ Waiting for AI service to be ready..."
+kubectl wait --for=condition=ready pod -l app=ai-service -n cricket-feedback --timeout=120s || echo "⚠️ AI service not ready yet (will start in background)"
 
 # Deploy frontend
 echo "📄 Deploying frontend..."
@@ -192,6 +208,7 @@ echo ""
 echo "🔍 To view logs:"
 echo "   kubectl logs -f deployment/backend -n cricket-feedback"
 echo "   kubectl logs -f deployment/frontend -n cricket-feedback"
+echo "   kubectl logs -f deployment/ai-service -n cricket-feedback"
 echo ""
 echo "🎨 Enhanced UI Features:"
 echo "   ✅ Modern cricket-themed design"
@@ -201,10 +218,19 @@ echo "   ✅ Enhanced feedback details modal"
 echo "   ✅ Responsive design"
 echo "   ✅ Professional admin interface"
 echo ""
+echo "🤖 AI Service Features:"
+echo "   ✅ Payment screenshot parsing with Google AI Studio"
+echo "   ✅ Automatic amount extraction from UPI screenshots"
+echo "   ✅ Date validation against match dates"
+echo "   ✅ Non-payment screenshot detection"
+echo "   ✅ Free tier only (no billing)"
+echo ""
 echo "⚠️  Important Notes:"
 echo "   • Make sure Google OAuth is configured in Google Cloud Console"
 echo "   • Update secrets if needed: kubectl edit secret cricket-secrets -n cricket-feedback"
 echo "   • Frontend may take a minute to fully load"
+echo "   • To enable AI payment parsing, set Google AI Studio API key:"
+echo "     kubectl create secret generic ai-service-secrets --from-literal=google-ai-studio-api-key=YOUR_KEY -n cricket-feedback"
 
 # Save PIDs to file for easy cleanup
 echo "$BACKEND_PID" > .backend_pid

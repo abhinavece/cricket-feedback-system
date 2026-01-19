@@ -48,6 +48,9 @@ spec:
             secretKeyRef:
               name: cricket-secrets
               key: admin-password
+        # AI Service URL for payment screenshot parsing
+        - name: AI_SERVICE_URL
+          value: "http://ai-service:8000"
         resources:
           requests:
             memory: "256Mi"

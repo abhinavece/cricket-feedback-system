@@ -57,6 +57,10 @@ spec:
               protocol: TCP
           env:
             {{- toYaml .Values.backend.env | nindent 12 }}
+            {{- if .Values.aiService.enabled }}
+            - name: AI_SERVICE_URL
+              value: "http://{{ include "cricket-feedback.fullname" . }}-ai-service:{{ .Values.aiService.service.port }}"
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /api/health
