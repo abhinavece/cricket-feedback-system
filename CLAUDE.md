@@ -289,6 +289,222 @@ const redactedFeedback = feedbackService.redactFeedbackList(feedback, userRole);
 const redactFeedback = (list, role) => { ... }; // Don't do this!
 ```
 
+### Common Code Patterns
+
+#### Backend: Service Layer Pattern
+```javascript
+// 1. Create service in backend/services/[domain]Service.js
+// 2. Export reusable functions
+// 3. Import in routes - NEVER duplicate logic
+
+// Service file (backend/services/feedbackService.js)
+const redactFeedbackList = (feedbackList, userRole) => { ... };
+const getMatchFeedback = async (matchId, options, userRole) => { ... };
+module.exports = { redactFeedbackList, getMatchFeedback };
+
+// Route file - import and use
+const feedbackService = require('../services/feedbackService');
+router.get('/:id/feedback', auth, async (req, res) => {
+  const { feedback } = await feedbackService.getMatchFeedback(matchId, options, req.user.role);
+});
+```
+
+#### Backend: Protected Routes
+```javascript
+// Viewer+ access (anyone authenticated)
+router.get('/data', auth, async (req, res) => { ... });
+
+// Editor+ access (can modify data)
+router.post('/data', auth, requireEditor, async (req, res) => { ... });
+
+// Admin only (user management, deletions)
+router.delete('/data', auth, requireAdmin, async (req, res) => { ... });
+```
+
+#### Frontend: Role-Based Rendering
+```typescript
+import { useAuth } from '../contexts/AuthContext';
+
+const Component = () => {
+  const { user } = useAuth();
+
+  return (
+    <>
+      {/* Everyone sees this */}
+      <PublicContent />
+
+      {/* Editor+ only */}
+      {['editor', 'admin'].includes(user?.role) && <EditorContent />}
+
+      {/* Admin only */}
+      {user?.role === 'admin' && <AdminActions />}
+    </>
+  );
+};
+```
+
+### Performance Guidelines
+
+#### CRITICAL: All APIs Must Support Pagination
+```javascript
+// Backend: Standard pagination pattern
+router.get('/items', auth, async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const pageNum = parseInt(page);
+  const limitNum = Math.min(parseInt(limit), 100); // Max 100 items
+
+  const items = await Model.find(query)
+    .sort({ createdAt: -1 })
+    .limit(limitNum)
+    .skip((pageNum - 1) * limitNum)
+    .lean();  // Use .lean() for read-only queries (50% faster)
+
+  const total = await Model.countDocuments(query);
+  const hasMore = (pageNum * limitNum) < total;
+
+  res.json({
+    success: true,
+    data: items,
+    pagination: { current: pageNum, pages: Math.ceil(total / limitNum), total, hasMore }
+  });
+});
+
+// Frontend: Infinite scroll / load more
+const [page, setPage] = useState(1);
+const loadMore = () => hasMore && setPage(p => p + 1);
+```
+
+#### Database Query Optimization
+```javascript
+// Use .select() to limit fields (reduces payload)
+await Model.find(query).select('name email role -_id');
+
+// Use .lean() for read-only queries (returns plain JS objects)
+await Model.find(query).lean();
+
+// Use compound indexes for frequent queries
+feedbackSchema.index({ matchId: 1, isDeleted: 1 });
+
+// Use aggregation for stats (runs on DB server)
+await Feedback.aggregate([
+  { $match: { matchId, isDeleted: false } },
+  { $group: { _id: null, avgRating: { $avg: '$rating' } } }
+]);
+```
+
+### Security Checklist
+
+#### Before Creating ANY API Endpoint
+- [ ] **Authentication**: Does this need `auth` middleware?
+- [ ] **Authorization**: Does this need `requireEditor` or `requireAdmin`?
+- [ ] **Input Validation**: Never trust client data - validate all inputs
+- [ ] **Data Redaction**: What should viewers NOT see? (use feedbackService.redactFeedbackList)
+- [ ] **Pagination**: Is response limited to prevent memory issues?
+
+#### Sensitive Data - NEVER Expose
+| Data Type | Viewer | Editor | Admin |
+|-----------|--------|--------|-------|
+| Player names in feedback | Anonymous | Visible | Visible |
+| Player phone numbers | Hidden | Hidden | Visible |
+| User passwords | Never | Never | Never |
+| JWT secrets/API keys | Never | Never | Never |
+
+#### Input Sanitization
+```javascript
+// Always validate ObjectId before MongoDB queries
+const mongoose = require('mongoose');
+if (!mongoose.Types.ObjectId.isValid(id)) {
+  return res.status(400).json({ error: 'Invalid ID format' });
+}
+
+// Sanitize user input to prevent injection
+const sanitizedName = playerName.trim().substring(0, 100);
+```
+
+### MongoDB Schema Reference
+
+#### Data Models Overview
+| Model | Purpose | Key Relationships |
+|-------|---------|-------------------|
+| User | Authentication, roles | → Player (via playerId) |
+| Player | Cricket player profiles | → User (via userId), → Matches (via squad) |
+| Match | Match scheduling, squads | → Players (embedded squad[]), → MatchPayment |
+| Feedback | Player feedback ratings | → Match (matchId), → Player (playerId) |
+| FeedbackLink | Shareable feedback URLs | → Match (matchId) |
+| Availability | Player match responses | → Match, → Player |
+| Message | WhatsApp history | → Match, → Player, → MatchPayment |
+| MatchPayment | Payment tracking | → Match (1:1), → Players (embedded) |
+| PublicLink | Shareable URLs | → Match or MatchPayment |
+
+#### Design Principles - Avoid Data Duplication
+```javascript
+// CORRECT: Reference by ObjectId, populate when needed
+{
+  matchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Match' },
+  playerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Player' }
+}
+// Query with populate
+await Feedback.find(query).populate('matchId', 'opponent date ground');
+
+// ACCEPTABLE: Denormalize for frequently-accessed fields (display-only)
+{
+  playerId: { type: ObjectId, ref: 'Player' },
+  playerName: String,  // Denormalized for quick display
+  playerPhone: String  // Denormalized for WhatsApp
+}
+
+// WRONG: Duplicating entire documents
+{
+  match: { /* entire match object copied */ }  // Don't do this!
+}
+```
+
+#### Key Indexes (Performance Critical)
+```javascript
+// Feedback: Optimized for listing and stats
+feedbackSchema.index({ isDeleted: 1, createdAt: -1 });
+feedbackSchema.index({ matchId: 1, isDeleted: 1 });
+feedbackSchema.index({ playerId: 1, isDeleted: 1 });
+
+// Match: Optimized for date-based queries
+matchSchema.index({ date: 1 });
+matchSchema.index({ status: 1 });
+
+// Message: Optimized for conversation views
+messageSchema.index({ from: 1, timestamp: -1 });
+messageSchema.index({ to: 1, timestamp: -1 });
+
+// Availability: Unique constraint
+availabilitySchema.index({ matchId: 1, playerId: 1 }, { unique: true });
+```
+
+#### Soft Delete Pattern
+```javascript
+// Schema fields
+{
+  isDeleted: { type: Boolean, default: false, index: true },
+  deletedAt: { type: Date },
+  deletedBy: { type: String }
+}
+
+// Query: Always filter out deleted
+await Model.find({ isDeleted: false, ...otherFilters });
+
+// Soft delete operation
+await Model.findByIdAndUpdate(id, {
+  isDeleted: true,
+  deletedAt: new Date(),
+  deletedBy: req.user.email
+});
+
+// Restore operation
+await Model.findByIdAndUpdate(id, {
+  isDeleted: false,
+  deletedAt: null,
+  deletedBy: null
+});
+```
+
 ## Recent Features Added
 
 ### Player Profile System
