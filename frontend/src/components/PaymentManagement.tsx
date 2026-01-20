@@ -34,7 +34,8 @@ import {
   Bot,
   Zap,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Code
 } from 'lucide-react';
 import ShareLinkModal from './ShareLinkModal';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
@@ -194,6 +195,7 @@ const PaymentManagement: React.FC = () => {
   const [memberScreenshots, setMemberScreenshots] = useState<PaymentScreenshotData[]>([]);
   const [loadingScreenshots, setLoadingScreenshots] = useState(false);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
+  const [showRawJson, setShowRawJson] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showPendingTooltip, setShowPendingTooltip] = useState(false);
   
@@ -1570,7 +1572,7 @@ const PaymentManagement: React.FC = () => {
                     </span>
                   )}
                 </h3>
-                <button onClick={() => { setShowAIResponse(null); setMemberScreenshots([]); }} className="p-1 text-slate-400 hover:text-white">
+                <button onClick={() => { setShowAIResponse(null); setMemberScreenshots([]); setShowRawJson(false); }} className="p-1 text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1796,6 +1798,23 @@ const PaymentManagement: React.FC = () => {
                             )}
                           </div>
                         )}
+
+                        {/* Raw JSON Toggle */}
+                        <div className="border-t border-white/10 pt-4">
+                          <button
+                            onClick={() => setShowRawJson(!showRawJson)}
+                            className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                          >
+                            <Code className="w-4 h-4" />
+                            {showRawJson ? 'Hide' : 'Show'} Raw AI Response
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showRawJson ? 'rotate-180' : ''}`} />
+                          </button>
+                          {showRawJson && (
+                            <pre className="mt-3 p-3 bg-slate-900 rounded-lg text-xs text-slate-300 overflow-auto max-h-64 font-mono">
+                              {JSON.stringify(currentScreenshot, null, 2)}
+                            </pre>
+                          )}
+                        </div>
                       </>
                     );
                   })()}
@@ -1900,6 +1919,23 @@ const PaymentManagement: React.FC = () => {
                           </div>
                         </div>
                       )}
+
+                      {/* Raw JSON Toggle */}
+                      <div className="border-t border-white/10 pt-4">
+                        <button
+                          onClick={() => setShowRawJson(!showRawJson)}
+                          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                        >
+                          <Code className="w-4 h-4" />
+                          {showRawJson ? 'Hide' : 'Show'} Raw AI Response
+                          <ChevronDown className={`w-4 h-4 transition-transform ${showRawJson ? 'rotate-180' : ''}`} />
+                        </button>
+                        {showRawJson && (
+                          <pre className="mt-3 p-3 bg-slate-900 rounded-lg text-xs text-slate-300 overflow-auto max-h-64 font-mono">
+                            {JSON.stringify(aiResponse, null, 2)}
+                          </pre>
+                        )}
+                      </div>
                     </div>
                   );
                 })()
