@@ -60,7 +60,7 @@ autoscaling:
 aiService:
   enabled: true
   image:
-    tag: "v1"
+    tag: "2026.01.20.1"
   replicaCount: 1
   resources:
     limits:

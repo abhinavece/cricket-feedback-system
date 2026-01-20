@@ -6,6 +6,7 @@ on:
     paths:
       - 'frontend/**'
       - 'backend/**'
+      - 'ai-service/**'
   workflow_dispatch:
     inputs:
       component:
@@ -13,10 +14,11 @@ on:
         required: true
         type: choice
         options:
-          - both
+          - all
           - frontend
           - backend
-        default: both
+          - ai-service
+        default: all
       skip_deploy:
         description: 'Skip deployment (build only)'
         required: false
@@ -27,6 +29,7 @@ env:
   REGISTRY: phx.ocir.io/axkw6whnjncs
   FRONTEND_IMAGE: cricket-feedback-frontend
   BACKEND_IMAGE: cricket-feedback-backend
+  AI_SERVICE_IMAGE: ai-service
   NAMESPACE: cricket-feedback
 
 permissions:
@@ -39,6 +42,7 @@ jobs:
     outputs:
       frontend: ${{ steps.changes.outputs.frontend }}
       backend: ${{ steps.changes.outputs.backend }}
+      ai-service: ${{ steps.changes.outputs.ai-service }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,15 +54,20 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # Manual trigger - use input
             component="${{ github.event.inputs.component }}"
-            if [[ "$component" == "both" || "$component" == "frontend" ]]; then
+            if [[ "$component" == "all" || "$component" == "frontend" ]]; then
               echo "frontend=true" >> $GITHUB_OUTPUT
             else
               echo "frontend=false" >> $GITHUB_OUTPUT
             fi
-            if [[ "$component" == "both" || "$component" == "backend" ]]; then
+            if [[ "$component" == "all" || "$component" == "backend" ]]; then
               echo "backend=true" >> $GITHUB_OUTPUT
             else
               echo "backend=false" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$component" == "all" || "$component" == "ai-service" ]]; then
+              echo "ai-service=true" >> $GITHUB_OUTPUT
+            else
+              echo "ai-service=false" >> $GITHUB_OUTPUT
             fi
           else
             # Push trigger - detect changes
@@ -72,12 +81,18 @@ jobs:
             else
               echo "backend=false" >> $GITHUB_OUTPUT
             fi
+            if git diff --name-only HEAD^ HEAD | grep -q '^ai-service/'; then
+              echo "ai-service=true" >> $GITHUB_OUTPUT
+            else
+              echo "ai-service=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Show detected changes
         run: |
           echo "Frontend changed: ${{ steps.changes.outputs.frontend }}"
           echo "Backend changed: ${{ steps.changes.outputs.backend }}"
+          echo "AI Service changed: ${{ steps.changes.outputs.ai-service }}"
 
   # Build and push frontend image
   build-frontend:
@@ -171,12 +186,57 @@ jobs:
           echo "### Backend Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "- Image: \`${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
 
+  # Build and push AI service image
+  build-ai-service:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ai-service == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        run: |
+          DATE_TAG=$(date +'%Y.%m.%d')
+          BUILD_NUM=${{ github.run_number }}
+          VERSION="${DATE_TAG}.${BUILD_NUM}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to OCI Registry
+        uses: docker/login-action@v3
+        with:
+          registry: phx.ocir.io
+          username: ${{ secrets.OCI_USERNAME }}
+          password: ${{ secrets.OCI_PASSWORD }}
+
+      - name: Build and push AI service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ai-service
+          file: ./ai-service/Dockerfile.prod
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/${{ env.AI_SERVICE_IMAGE }}:${{ steps.version.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image build summary
+        run: |
+          echo "### AI Service Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.REGISTRY }}/${{ env.AI_SERVICE_IMAGE }}:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+
   # Update values files and deploy
   update-and-deploy:
-    needs: [detect-changes, build-frontend, build-backend]
+    needs: [detect-changes, build-frontend, build-backend, build-ai-service]
     if: |
       always() &&
-      (needs.build-frontend.result == 'success' || needs.build-backend.result == 'success') &&
+      (needs.build-frontend.result == 'success' || needs.build-backend.result == 'success' || needs.build-ai-service.result == 'success') &&
       github.event.inputs.skip_deploy != 'true'
     runs-on: ubuntu-latest
     steps:
@@ -189,9 +249,11 @@ jobs:
         run: |
           FRONTEND_VERSION="${{ needs.build-frontend.outputs.version }}"
           BACKEND_VERSION="${{ needs.build-backend.outputs.version }}"
+          AI_SERVICE_VERSION="${{ needs.build-ai-service.outputs.version }}"
 
           echo "Frontend version: ${FRONTEND_VERSION:-not built}"
           echo "Backend version: ${BACKEND_VERSION:-not built}"
+          echo "AI Service version: ${AI_SERVICE_VERSION:-not built}"
 
           # Update frontend version if built
           if [ -n "$FRONTEND_VERSION" ]; then
@@ -215,9 +277,21 @@ jobs:
               infra/helm/cricket-feedback/values.yaml
           fi
 
+          # Update AI service version if built
+          if [ -n "$AI_SERVICE_VERSION" ]; then
+            echo "Updating AI service to $AI_SERVICE_VERSION"
+            # Update values-development.yaml
+            sed -i '/^aiService:/,/^[a-z]/{s/tag: "[^"]*"/tag: "'$AI_SERVICE_VERSION'"/}' \
+              infra/helm/cricket-feedback/values-development.yaml
+            # Update values.yaml
+            sed -i '/^aiService:/,/^[a-z]/{s/tag: "[^"]*"/tag: "'$AI_SERVICE_VERSION'"/}' \
+              infra/helm/cricket-feedback/values.yaml
+          fi
+
           echo "Updated values files:"
           grep -A3 "^backend:" infra/helm/cricket-feedback/values-development.yaml | head -5
           grep -A3 "^frontend:" infra/helm/cricket-feedback/values-development.yaml | head -5
+          grep -A3 "^aiService:" infra/helm/cricket-feedback/values-development.yaml | head -5
 
       - name: Commit version updates
         run: |
@@ -231,6 +305,7 @@ jobs:
 
           Frontend: ${{ needs.build-frontend.outputs.version || 'unchanged' }}
           Backend: ${{ needs.build-backend.outputs.version || 'unchanged' }}
+          AI Service: ${{ needs.build-ai-service.outputs.version || 'unchanged' }}
 
           Triggered by: ${{ github.event_name }}
           Run: ${{ github.run_number }}"
@@ -294,5 +369,6 @@ jobs:
           echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend | \`${{ needs.build-frontend.outputs.version || 'unchanged' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Backend | \`${{ needs.build-backend.outputs.version || 'unchanged' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI Service | \`${{ needs.build-ai-service.outputs.version || 'unchanged' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Namespace: \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
