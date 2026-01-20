@@ -60,7 +60,7 @@ const playerSchema = new mongoose.Schema({
   },
   dateOfBirth: {
     type: Date,
-    required: true
+    required: false
   }
 }, {
   timestamps: true
