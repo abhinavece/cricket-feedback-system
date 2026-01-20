@@ -26,6 +26,23 @@ frontend:
       cpu: 250m
       memory: 256Mi
 
+# AI Service production configuration
+aiService:
+  enabled: true
+  image:
+    tag: "v1"
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    - name: DAILY_REQUEST_LIMIT
+      value: "1000"
+
 # Production MongoDB settings
 mongodb:
   auth:

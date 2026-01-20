@@ -6,7 +6,9 @@ const Message = require('../models/Message');
 const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
+const PaymentScreenshot = require('../models/PaymentScreenshot');
 const sseManager = require('../utils/sseManager');
+const crypto = require('crypto');
 
 /**
  * Send WhatsApp message and log to database
@@ -287,28 +289,36 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
     // This ensures no messages are ever lost
     let savedMessage = null;
     try {
-      // Try to find associated player for enrichment (but don't require it)
-      const player = await Player.findOne({
-        phone: { $regex: formattedPhone.slice(-10) }
-      });
-
-      savedMessage = await Message.create({
-        from: formattedPhone,
-        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: text,
-        direction: 'incoming',
-        messageId: messageId,
-        timestamp: new Date(),
-        messageType: 'general', // Will be updated to 'availability_response' if context validates
-        playerId: player?._id || null,
-        playerName: player?.name || null
-      });
-
-      console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
-      if (player) {
-        console.log(`   Associated with player: ${player.name}`);
+      // Check if message already exists
+      const Message = require('../models/Message');
+      const existingMessage = await Message.findOne({ messageId });
+      if (existingMessage) {
+        console.log(`⚠️ Message ${messageId} already exists, skipping save`);
+        savedMessage = existingMessage;
       } else {
-        console.log(`   No player association (unknown sender)`);
+        // Try to find associated player for enrichment (but don't require it)
+        const player = await Player.findOne({
+          phone: { $regex: formattedPhone.slice(-10) }
+        });
+
+        savedMessage = await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: text,
+          direction: 'incoming',
+          messageId: messageId,
+          timestamp: new Date(),
+          messageType: 'general', // Will be updated to 'availability_response' if context validates
+          playerId: player?._id || null,
+          playerName: player?.name || null
+        });
+
+        console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
+        if (player) {
+          console.log(`   Associated with player: ${player.name}`);
+        } else {
+          console.log(`   No player association (unknown sender)`);
+        }
       }
 
       // Broadcast SSE event for new message
@@ -682,7 +692,6 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
   }
 }
 
-// Save image message to history for display in chat
 async function saveImageMessage(from, imageId, messageId, caption) {
   try {
     console.log('\n=== SAVING IMAGE MESSAGE TO HISTORY ===');
@@ -731,6 +740,44 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       console.error('Failed to get/cache image:', err.message);
     }
     
+    // Check if message already exists with the same image ID
+    const Message = require('../models/Message');
+    const existingMessage = await Message.findOne({ messageId });
+    
+    if (existingMessage) {
+      if (existingMessage.imageId === imageId) {
+        console.log(`⚠️ Message ${messageId} with same imageId ${imageId} already exists, skipping save`);
+        return existingMessage;
+      } else {
+        console.log(`🔄 Message ${messageId} exists but has different imageId (${existingMessage.imageId} -> ${imageId}), creating new record`);
+        // WhatsApp sometimes reuses message IDs for different images
+        // We'll create a new message record with a unique ID
+        const newMessageId = messageId + '_' + Date.now();
+        
+        // Save new message record with unique ID
+        const savedMessage = await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: caption || '[Image]',
+          direction: 'incoming',
+          messageId: newMessageId, // Use unique ID
+          originalMessageId: messageId, // Store original WhatsApp ID
+          timestamp: new Date(),
+          messageType: 'payment_screenshot',
+          playerId: player?._id || null,
+          playerName: player?.name || null,
+          imageId: imageId,
+          imageUrl: imageUrl,
+          imageMimeType: mimeType,
+          imageData: imageData,
+          caption: caption || null
+        });
+        
+        console.log(`✅ New image message saved to history (ID: ${savedMessage._id}) with unique ID: ${newMessageId}`);
+        return savedMessage;
+      }
+    }
+    
     // Save image message to database (with cached image data)
     const savedMessage = await Message.create({
       from: formattedPhone,
@@ -762,7 +809,9 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       direction: 'incoming',
       timestamp: savedMessage.timestamp,
       imageId: imageId,
-      messageType: 'image'
+      messageType: 'image',
+      imageMimeType: mimeType,
+      caption: caption || null
     });
     
     return savedMessage;
@@ -772,11 +821,17 @@ async function saveImageMessage(from, imageId, messageId, caption) {
   }
 }
 
-// Import OCR and distribution services
-const { extractAmountFromScreenshot } = require('../services/ocrService');
+// Import AI Service and distribution services
+const { parsePaymentScreenshot: parseWithAI, requiresReview, getReviewReason } = require('../services/aiService');
 const { getPendingPaymentsForPlayer, distributePaymentFIFO, buildDistributionConfirmation } = require('../services/paymentDistributionService');
 
+// Environment flag to bypass admin review for testing
+const BYPASS_PAYMENT_REVIEW = process.env.BYPASS_PAYMENT_REVIEW === 'true';
+// Environment flag to bypass duplicate check (LOCAL TESTING ONLY - NEVER enable in production!)
+const BYPASS_DUPLICATE_CHECK = process.env.BYPASS_DUPLICATE_CHECK === 'true' && process.env.NODE_ENV !== 'production';
+
 // Process payment screenshot uploads with OCR and multi-match distribution
+// Uses async AI processing to avoid webhook timeouts
 async function processPaymentScreenshot(from, imageId, messageId, contextId, caption) {
   try {
     console.log('\n=== PROCESSING PAYMENT SCREENSHOT ===');
@@ -785,19 +840,14 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     console.log(`Message ID: ${messageId}`);
     console.log(`Context ID: ${contextId || 'Not provided'}`);
     console.log(`Caption: ${caption || 'None'}`);
+    console.log(`BYPASS_PAYMENT_REVIEW: ${BYPASS_PAYMENT_REVIEW}`);
+    console.log(`BYPASS_DUPLICATE_CHECK: ${BYPASS_DUPLICATE_CHECK}`);
 
     // Format phone number
     let formattedPhone = from.replace(/\D/g, '');
     if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
       formattedPhone = '91' + formattedPhone;
     }
-
-    const phoneVariants = [
-      formattedPhone,
-      formattedPhone.slice(-10),
-      '91' + formattedPhone.slice(-10),
-      from
-    ];
 
     // Check if player has any pending payments
     const pendingPayments = await getPendingPaymentsForPlayer(formattedPhone);
@@ -806,15 +856,18 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       console.log('❌ No pending payments found for this player');
 
       // Save as general incoming message
-      await Message.create({
-        from: formattedPhone,
-        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: caption || '[Image received - no pending payments]',
-        direction: 'incoming',
-        messageId: messageId,
-        timestamp: new Date(),
-        messageType: 'general'
-      });
+      const existingMessage = await Message.findOne({ messageId });
+      if (!existingMessage) {
+        await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: caption || '[Image received - no pending payments]',
+          direction: 'incoming',
+          messageId: messageId,
+          timestamp: new Date(),
+          messageType: 'general'
+        });
+      }
       return;
     }
 
@@ -824,122 +877,364 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
     const apiVersion = 'v19.0';
 
-    // Step 1: Get image URL
     const mediaUrl = `https://graph.facebook.com/${apiVersion}/${imageId}`;
     console.log(`Fetching media info from: ${mediaUrl}`);
 
     const mediaResponse = await axios.get(mediaUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
+      headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 
     const imageDownloadUrl = mediaResponse.data.url;
     const mimeType = mediaResponse.data.mime_type || 'image/jpeg';
     console.log(`Image URL obtained, MIME type: ${mimeType}`);
 
-    // Step 2: Download the actual image
     const imageResponse = await axios.get(imageDownloadUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      },
+      headers: { 'Authorization': `Bearer ${accessToken}` },
       responseType: 'arraybuffer'
     });
 
     const imageBuffer = Buffer.from(imageResponse.data);
     console.log(`Image downloaded, size: ${imageBuffer.length} bytes`);
 
-    // Step 3: Extract amount using OCR
-    console.log('\n🔍 Running OCR to extract payment amount...');
-    const ocrResult = await extractAmountFromScreenshot(imageBuffer);
+    // Step 1: Compute image hash for duplicate detection
+    const imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
+    console.log(`🔐 Image hash: ${imageHash.substring(0, 16)}...`);
 
-    // If OCR fails to extract amount, flag for admin review (don't assume full payment)
-    if (!ocrResult.success || !ocrResult.amount || ocrResult.amount <= 0) {
-      console.log('⚠️ OCR failed - flagging for admin review');
-
-      // Store screenshot in oldest pending match and flag for review
-      const primaryPayment = await MatchPayment.findById(pendingPayments[0].paymentId);
-      const primaryMember = primaryPayment?.squadMembers.id(pendingPayments[0].memberId);
-
-      if (primaryMember) {
-        primaryMember.screenshotImage = imageBuffer;
-        primaryMember.screenshotContentType = mimeType || 'image/jpeg';
-        primaryMember.screenshotMediaId = imageId;
-        primaryMember.screenshotReceivedAt = new Date();
-        primaryMember.requiresReview = true;
-        primaryMember.reviewReason = 'ocr_failed';
-        await primaryPayment.save();
-        console.log('📸 Screenshot stored and flagged for admin review');
-      }
-
-      // Save incoming message record
-      await Message.create({
-        from: formattedPhone,
-        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: caption || '[Payment screenshot - pending admin review]',
-        direction: 'incoming',
+    // Step 2: Check for duplicate image (skip if bypass flag enabled)
+    let existingScreenshot = null;
+    if (!BYPASS_DUPLICATE_CHECK) {
+      existingScreenshot = await PaymentScreenshot.findDuplicate(formattedPhone, imageHash);
+    } else {
+      console.log('🔓 BYPASS_DUPLICATE_CHECK enabled - skipping duplicate detection');
+    }
+    
+    if (existingScreenshot) {
+      console.log(`⚠️ DUPLICATE IMAGE DETECTED - Original screenshot ID: ${existingScreenshot._id}`);
+      
+      // Create a duplicate record for audit trail
+      const duplicateScreenshot = new PaymentScreenshot({
+        playerId: pendingPayments[0].playerId,
+        playerPhone: formattedPhone,
+        playerName: pendingPayments[0].playerName,
+        screenshotImage: imageBuffer,
+        screenshotContentType: mimeType,
+        screenshotMediaId: imageId,
         messageId: messageId,
-        timestamp: new Date(),
-        messageType: 'payment_screenshot',
-        matchId: pendingPayments[0].matchId,
-        paymentId: primaryPayment?._id
+        imageHash: imageHash,
+        receivedAt: new Date(),
+        extractedAmount: existingScreenshot.extractedAmount,
+        status: 'duplicate',
+        duplicateOf: existingScreenshot._id,
+        aiAnalysis: {
+          requiresReview: true,
+          reviewReason: 'duplicate_image'
+        }
       });
+      await duplicateScreenshot.save();
+      console.log(`📋 Duplicate screenshot recorded: ${duplicateScreenshot._id}`);
 
-      // Calculate total outstanding for acknowledgment message
+      // Send duplicate notification to user
       const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
-
-      // Send acknowledgment (NOT confirmation of payment)
-      const ackMessage = `📸 *Screenshot Received*\n\n` +
+      const duplicateMessage = `⚠️ *Duplicate Screenshot Detected*\n\n` +
         `Hi ${pendingPayments[0].playerName},\n\n` +
-        `We've received your payment screenshot.\n\n` +
+        `This screenshot was already submitted on ${existingScreenshot.receivedAt.toLocaleDateString('en-IN')}.\n\n` +
         `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
-        `_Admin will verify the amount and update your balance._`;
+        `_Please submit a new payment screenshot if you made another payment._`;
 
       try {
-        await sendAndLogMessage(formattedPhone, ackMessage, {
-          messageType: 'payment_acknowledgment',
-          matchId: pendingPayments[0].matchId,
-          paymentId: primaryPayment?._id,
+        await sendAndLogMessage(formattedPhone, duplicateMessage, {
+          messageType: 'duplicate_screenshot',
           playerName: pendingPayments[0].playerName
         });
       } catch (ackErr) {
-        console.error('⚠️ Failed to send acknowledgment:', ackErr.message);
+        console.error('⚠️ Failed to send duplicate notification:', ackErr.message);
       }
 
-      // Broadcast SSE event for payment requiring review
+      // Broadcast SSE event for duplicate detection
+      sseManager.broadcast('payments', {
+        type: 'payment:duplicate_screenshot',
+        playerName: pendingPayments[0].playerName,
+        originalScreenshotId: existingScreenshot._id.toString(),
+        duplicateScreenshotId: duplicateScreenshot._id.toString()
+      });
+
+      console.log('=== END PAYMENT SCREENSHOT PROCESSING (DUPLICATE) ===\n');
+      return;
+    }
+
+    // Step 3: Save screenshot immediately with pending_ai status (NON-BLOCKING)
+    const screenshot = new PaymentScreenshot({
+      playerId: pendingPayments[0].playerId,
+      playerPhone: formattedPhone,
+      playerName: pendingPayments[0].playerName,
+      screenshotImage: imageBuffer,
+      screenshotContentType: mimeType,
+      screenshotMediaId: imageId,
+      messageId: messageId,
+      imageHash: imageHash,
+      receivedAt: new Date(),
+      extractedAmount: null, // Will be filled by AI
+      status: 'pending_ai', // New status for async processing
+      remainingAmount: null
+    });
+
+    await screenshot.save();
+    console.log(`📸 Screenshot saved with pending_ai status: ${screenshot._id}`);
+
+    // Link screenshot to oldest pending match payment immediately
+    const primaryPayment = await MatchPayment.findById(pendingPayments[0].paymentId);
+    const primaryMember = primaryPayment?.squadMembers.id(pendingPayments[0].memberId);
+
+    if (primaryMember) {
+      primaryMember.screenshots.push({
+        screenshotId: screenshot._id,
+        amountApplied: 0,
+        appliedAt: new Date()
+      });
+      primaryMember.hasScreenshots = true;
+      primaryMember.screenshotCount = primaryMember.screenshots.length;
+      primaryMember.latestScreenshotAt = new Date();
+      
+      // Legacy fields for backward compatibility
+      primaryMember.screenshotImage = imageBuffer;
+      primaryMember.screenshotContentType = mimeType;
+      primaryMember.screenshotMediaId = imageId;
+      primaryMember.screenshotReceivedAt = new Date();
+      
+      screenshot.distributions.push({
+        matchId: pendingPayments[0].matchId,
+        paymentId: primaryPayment._id,
+        memberId: primaryMember._id,
+        amountApplied: 0,
+        appliedAt: new Date()
+      });
+      await screenshot.save();
+      await primaryPayment.save();
+      console.log('✅ Screenshot linked to MatchPayment member');
+    }
+
+    // Send immediate acknowledgment to user
+    const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
+    const ackMessage = `📸 *Screenshot Received*\n\n` +
+      `Hi ${pendingPayments[0].playerName},\n\n` +
+      `We've received your payment screenshot and are processing it.\n\n` +
+      `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
+      `_You'll receive a confirmation shortly._`;
+
+    try {
+      await sendAndLogMessage(formattedPhone, ackMessage, {
+        messageType: 'payment_acknowledgment',
+        matchId: pendingPayments[0].matchId,
+        paymentId: primaryPayment?._id,
+        playerName: pendingPayments[0].playerName
+      });
+    } catch (ackErr) {
+      console.error('⚠️ Failed to send acknowledgment:', ackErr.message);
+    }
+
+    // Broadcast SSE event for screenshot received
+    sseManager.broadcast('payments', {
+      type: 'payment:screenshot_received',
+      paymentId: primaryPayment?._id?.toString(),
+      matchId: pendingPayments[0].matchId?.toString(),
+      playerName: pendingPayments[0].playerName,
+      screenshotId: screenshot._id.toString(),
+      status: 'pending_ai'
+    });
+
+    // Step 4: Process AI in background (NON-BLOCKING)
+    setImmediate(async () => {
+      await processScreenshotWithAI(
+        screenshot._id,
+        imageBuffer,
+        formattedPhone,
+        pendingPayments,
+        primaryPayment,
+        primaryMember
+      );
+    });
+
+    console.log('=== SCREENSHOT QUEUED FOR AI PROCESSING ===\n');
+
+  } catch (error) {
+    console.error('❌ Error processing payment screenshot:', error);
+    console.error('Stack trace:', error.stack);
+  }
+}
+
+// Async AI processing function (runs in background)
+async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone, pendingPayments, primaryPayment, primaryMember) {
+  try {
+    console.log(`\n🤖 [ASYNC] Processing AI for screenshot: ${screenshotId}`);
+    
+    const screenshot = await PaymentScreenshot.findById(screenshotId);
+    if (!screenshot) {
+      console.error('❌ Screenshot not found for AI processing');
+      return;
+    }
+
+    // Call AI Service
+    const matchDate = pendingPayments[0].matchInfo?.date || null;
+    console.log('🤖 Calling AI Service to parse payment screenshot...');
+    
+    let aiResult;
+    try {
+      aiResult = await parseWithAI(imageBuffer, matchDate);
+    } catch (aiError) {
+      console.error('❌ AI Service call failed:', aiError.message);
+      
+      // Update screenshot with AI failure status
+      screenshot.status = 'ai_failed';
+      screenshot.aiAnalysis = {
+        requiresReview: true,
+        reviewReason: 'ai_service_error',
+        rawResponse: { error: aiError.message }
+      };
+      await screenshot.save();
+      
+      // Notify via SSE
+      sseManager.broadcast('payments', {
+        type: 'payment:ai_failed',
+        screenshotId: screenshot._id.toString(),
+        playerName: pendingPayments[0].playerName,
+        error: aiError.message
+      });
+      return;
+    }
+
+    console.log('🔍 AI Result received:');
+    console.log('  aiResult.success:', aiResult.success);
+    console.log('  aiResult.data:', aiResult.data ? 'present' : 'missing');
+
+    // Determine review status
+    let reviewRequired = requiresReview(aiResult);
+    let reviewReason = reviewRequired ? getReviewReason(aiResult) : null;
+
+    // BYPASS_PAYMENT_REVIEW flag - skip review if enabled and AI succeeded
+    if (BYPASS_PAYMENT_REVIEW && aiResult.success && aiResult.data?.amount) {
+      console.log('⚡ BYPASS_PAYMENT_REVIEW enabled - skipping admin review');
+      reviewRequired = false;
+      reviewReason = null;
+    }
+
+    // Update screenshot with AI results
+    screenshot.extractedAmount = aiResult.data?.amount || null;
+    screenshot.aiAnalysis = {
+      confidence: aiResult.metadata?.confidence || null,
+      provider: aiResult.metadata?.provider || null,
+      model: aiResult.metadata?.model || null,
+      model_cost_tier: aiResult.metadata?.model_cost_tier || null,
+      processing_time_ms: aiResult.metadata?.processing_time_ms || null,
+      payerName: aiResult.data?.payer_name || null,
+      payeeName: aiResult.data?.payee_name || null,
+      transactionId: aiResult.data?.transaction_id || null,
+      paymentDate: aiResult.data?.date ? new Date(aiResult.data.date) : null,
+      paymentTime: aiResult.data?.time || null,
+      paymentMethod: aiResult.data?.payment_method || null,
+      upiId: aiResult.data?.upi_id || null,
+      currency: aiResult.data?.currency || 'INR',
+      transactionStatus: aiResult.data?.transaction_status || null,
+      isPaymentScreenshot: aiResult.metadata?.is_payment_screenshot ?? null,
+      requiresReview: reviewRequired,
+      reviewReason: reviewReason,
+      rawResponse: aiResult
+    };
+    screenshot.status = reviewRequired ? 'pending_review' : 'ai_complete';
+    screenshot.remainingAmount = aiResult.data?.amount || null;
+    await screenshot.save();
+    console.log(`📸 Screenshot updated with AI results: ${screenshot._id}`);
+
+    // Update legacy fields on MatchPayment member
+    if (primaryMember && primaryPayment) {
+      const freshPayment = await MatchPayment.findById(primaryPayment._id);
+      const freshMember = freshPayment?.squadMembers.id(primaryMember._id);
+      
+      if (freshMember) {
+        freshMember.requiresReview = reviewRequired;
+        freshMember.reviewReason = reviewReason;
+        
+        if (aiResult.metadata) {
+          freshMember.confidence = aiResult.metadata.confidence || null;
+          freshMember.provider = aiResult.metadata.provider || null;
+          freshMember.model = aiResult.metadata.model || null;
+          freshMember.model_cost_tier = aiResult.metadata.model_cost_tier || null;
+          freshMember.image_hash = screenshot.imageHash;
+          freshMember.processing_time_ms = aiResult.metadata.processing_time_ms || null;
+          freshMember.ai_service_response = aiResult;
+        }
+        await freshPayment.save();
+      }
+    }
+
+    const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
+
+    // Handle based on review status
+    if (reviewRequired) {
+      console.log(`⚠️ AI parsing requires review: ${reviewReason}`);
+
+      let reviewMessage = `📸 *Screenshot Processed*\n\n` +
+        `Hi ${pendingPayments[0].playerName},\n\n`;
+      
+      if (reviewReason === 'not_payment_screenshot') {
+        reviewMessage += `⚠️ This doesn't appear to be a payment screenshot.\n\n`;
+      } else if (reviewReason === 'date_mismatch') {
+        reviewMessage += `⚠️ The payment date seems older than expected.\n\n`;
+      } else if (reviewReason === 'confidence_low') {
+        reviewMessage += `⚠️ We couldn't read the payment amount clearly.\n\n`;
+      }
+      
+      reviewMessage += `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
+        `_Admin will verify and update your balance._`;
+
+      try {
+        await sendAndLogMessage(formattedPhone, reviewMessage, {
+          messageType: 'payment_review_required',
+          screenshotId: screenshot._id,
+          playerName: pendingPayments[0].playerName
+        });
+      } catch (msgErr) {
+        console.error('⚠️ Failed to send review message:', msgErr.message);
+      }
+
       sseManager.broadcast('payments', {
         type: 'payment:review_required',
         paymentId: primaryPayment?._id?.toString(),
         matchId: pendingPayments[0].matchId?.toString(),
         playerName: pendingPayments[0].playerName,
-        reason: 'ocr_failed'
+        screenshotId: screenshot._id.toString(),
+        reason: reviewReason,
+        extractedAmount: aiResult.data?.amount || null
       });
 
-      console.log('=== END PAYMENT SCREENSHOT PROCESSING (OCR FAILED) ===\n');
-      return; // Don't proceed with auto-distribution
+      console.log('=== AI PROCESSING COMPLETE (REQUIRES REVIEW) ===\n');
+      return;
     }
 
-    // OCR succeeded - continue with distribution
-    const extractedAmount = ocrResult.amount;
-    console.log(`💰 OCR extracted amount: ₹${extractedAmount}`);
+    // AI parsing succeeded - proceed with FIFO distribution
+    const extractedAmount = aiResult.data.amount;
+    console.log(`💰 AI extracted amount: ₹${extractedAmount}`);
 
-    // Step 4: Distribute payment across matches (FIFO)
     const screenshotData = {
+      screenshotId: screenshot._id,
       buffer: imageBuffer,
-      contentType: mimeType,
-      mediaId: imageId
+      contentType: screenshot.screenshotContentType,
+      mediaId: screenshot.screenshotMediaId
     };
 
-    const ocrData = {
-      confidence: ocrResult.confidence,
-      rawText: ocrResult.rawText
+    const aiData = {
+      confidence: aiResult.metadata?.confidence || 0,
+      provider: aiResult.metadata?.provider || '',
+      model: aiResult.metadata?.model || '',
+      payerName: aiResult.data?.payer_name || '',
+      transactionId: aiResult.data?.transaction_id || '',
+      paymentDate: aiResult.data?.date || ''
     };
 
     const distributionResult = await distributePaymentFIFO(
       formattedPhone,
       extractedAmount,
       screenshotData,
-      ocrData
+      aiData
     );
 
     if (!distributionResult.success) {
@@ -947,24 +1242,51 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       return;
     }
 
-    // Save incoming message record
-    const primaryDistribution = distributionResult.distributions[0];
-    await Message.create({
-      from: formattedPhone,
-      to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-      text: caption || `[Payment screenshot - ₹${extractedAmount} distributed to ${distributionResult.matchesAffected} match(es)]`,
-      direction: 'incoming',
-      messageId: messageId,
-      timestamp: new Date(),
-      messageType: 'payment_screenshot',
-      matchId: primaryDistribution?.matchId,
-      paymentId: primaryDistribution?.paymentId,
-      paymentMemberId: primaryDistribution?.memberId
-    });
+    // Update screenshot with distribution results
+    screenshot.status = 'auto_applied';
+    screenshot.distributions = distributionResult.distributions.map(d => ({
+      matchId: d.matchId,
+      paymentId: d.paymentId,
+      memberId: d.memberId,
+      amountApplied: d.allocatedAmount,
+      appliedAt: new Date()
+    }));
+    screenshot.totalDistributed = distributionResult.distributions.reduce((sum, d) => sum + d.allocatedAmount, 0);
+    screenshot.remainingAmount = Math.max(0, extractedAmount - screenshot.totalDistributed);
+    await screenshot.save();
+    console.log(`✅ Screenshot distribution recorded: ${screenshot.totalDistributed} distributed`);
 
-    // Build and send confirmation message
-    // Pass pendingPayments to show ALL matches, not just ones that received payment
-    const confirmMessage = buildDistributionConfirmation(distributionResult, pendingPayments);
+    // Link screenshot to ALL matches that received a distribution (not just primary)
+    for (let i = 1; i < distributionResult.distributions.length; i++) {
+      const dist = distributionResult.distributions[i];
+      try {
+        const secondaryPayment = await MatchPayment.findById(dist.paymentId);
+        const secondaryMember = secondaryPayment?.squadMembers.id(dist.memberId);
+        
+        if (secondaryMember) {
+          // Add screenshot reference to secondary match member
+          if (!secondaryMember.screenshots) {
+            secondaryMember.screenshots = [];
+          }
+          secondaryMember.screenshots.push({
+            screenshotId: screenshot._id,
+            amountApplied: dist.allocatedAmount,
+            appliedAt: new Date()
+          });
+          secondaryMember.hasScreenshots = true;
+          secondaryMember.screenshotCount = secondaryMember.screenshots.length;
+          secondaryMember.latestScreenshotAt = new Date();
+          
+          await secondaryPayment.save();
+          console.log(`✅ Screenshot linked to secondary match: ${dist.opponent}`);
+        }
+      } catch (linkErr) {
+        console.error(`⚠️ Failed to link screenshot to ${dist.opponent}:`, linkErr.message);
+      }
+    }
+
+    const primaryDistribution = distributionResult.distributions[0];
+    const confirmMessage = buildDistributionConfirmation(distributionResult, await getPendingPaymentsForPlayer(formattedPhone));
 
     try {
       await sendAndLogMessage(formattedPhone, confirmMessage, {
@@ -977,24 +1299,24 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       console.error('⚠️ Failed to send confirmation:', confirmErr.message);
     }
 
-    // Broadcast SSE event for payment updates
     sseManager.broadcast('payments', {
       type: 'payment:screenshot',
       paymentId: primaryDistribution?.paymentId?.toString(),
       matchId: primaryDistribution?.matchId?.toString(),
       playerName: distributionResult.playerName,
       amount: extractedAmount,
+      screenshotId: screenshot._id.toString(),
       matchesAffected: distributionResult.matchesAffected,
       distributions: distributionResult.distributions.map(d => ({
         matchId: d.matchId?.toString(),
-        amount: d.amount
+        amount: d.allocatedAmount
       }))
     });
 
-    console.log('=== END PAYMENT SCREENSHOT PROCESSING ===\n');
+    console.log('=== AI PROCESSING COMPLETE (AUTO APPLIED) ===\n');
 
   } catch (error) {
-    console.error('❌ Error processing payment screenshot:', error);
+    console.error('❌ Error in async AI processing:', error);
     console.error('Stack trace:', error.stack);
   }
 }

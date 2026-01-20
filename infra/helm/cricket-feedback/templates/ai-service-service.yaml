@@ -1,0 +1,22 @@
+{{- if .Values.aiService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cricket-feedback.fullname" . }}-ai-service
+  namespace: {{ .Values.namespace.name | default "default" }}
+  labels:
+    app: {{ include "cricket-feedback.name" . }}-ai-service
+    chart: {{ include "cricket-feedback.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.aiService.service.type }}
+  ports:
+    - port: {{ .Values.aiService.service.port }}
+      targetPort: {{ .Values.aiService.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "cricket-feedback.name" . }}-ai-service
+    release: {{ .Release.Name }}
+{{- end }}

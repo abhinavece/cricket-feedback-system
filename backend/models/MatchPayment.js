@@ -167,13 +167,74 @@ const paymentMemberSchema = new mongoose.Schema({
   },
   reviewReason: {
     type: String,
-    enum: ['ocr_mismatch', 'partial_payment', 'overpayment', 'ocr_failed', null],
+    enum: ['ocr_mismatch', 'partial_payment', 'overpayment', 'ocr_failed', 'date_mismatch', 'amount_mismatch', 'confidence_low', 'ai_uncertain', 'validation_failed', 'service_error', null],
     default: null
   },
   // Track if payment was auto-distributed from another match payment
   distributedFromPaymentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'MatchPayment',
+    default: null
+  },
+  // NEW: References to PaymentScreenshot documents (supports multiple screenshots)
+  screenshots: [{
+    screenshotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PaymentScreenshot'
+    },
+    amountApplied: {
+      type: Number,
+      default: 0
+    },
+    appliedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  // Summary fields for quick queries (updated when screenshots added)
+  hasScreenshots: {
+    type: Boolean,
+    default: false
+  },
+  screenshotCount: {
+    type: Number,
+    default: 0
+  },
+  latestScreenshotAt: {
+    type: Date,
+    default: null
+  },
+  // DEPRECATED: Legacy AI fields (kept for backward compatibility)
+  // New screenshots store AI data in PaymentScreenshot collection
+  confidence: {
+    type: Number,
+    default: null,
+    min: 0,
+    max: 1
+  },
+  provider: {
+    type: String,
+    default: null
+  },
+  model: {
+    type: String,
+    default: null
+  },
+  model_cost_tier: {
+    type: String,
+    enum: ['free', 'paid', null],
+    default: null
+  },
+  image_hash: {
+    type: String,
+    default: null
+  },
+  processing_time_ms: {
+    type: Number,
+    default: null
+  },
+  ai_service_response: {
+    type: mongoose.Schema.Types.Mixed,
     default: null
   }
 }, { _id: true });
@@ -234,6 +295,46 @@ const matchPaymentSchema = new mongoose.Schema({
   paidCount: {
     type: Number,
     default: 0 // Members who have paid fully or overpaid
+  },
+  // AI Service Integration Fields
+  screenshotImage: {
+    type: Buffer,
+    default: null
+  },
+  screenshotContentType: {
+    type: String,
+    default: null
+  },
+  confidence: {
+    type: Number,
+    default: null, // 0-1 confidence score from AI service
+    min: 0,
+    max: 1
+  },
+  provider: {
+    type: String,
+    default: null // AI provider (e.g., 'google_ai_studio')
+  },
+  model: {
+    type: String,
+    default: null // AI model used (e.g., 'gemma-3-27b-it')
+  },
+  model_cost_tier: {
+    type: String,
+    enum: ['free', 'paid'],
+    default: null
+  },
+  image_hash: {
+    type: String,
+    default: null // SHA-256 hash for deduplication
+  },
+  processing_time_ms: {
+    type: Number,
+    default: null // Processing time in milliseconds
+  },
+  ai_service_response: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null // Full AI service response
   }
 }, {
   timestamps: true

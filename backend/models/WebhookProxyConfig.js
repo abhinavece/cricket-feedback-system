@@ -93,7 +93,4 @@ webhookProxyConfigSchema.methods.shouldRouteToLocal = function(phone) {
   });
 };
 
-// Add indexes
-webhookProxyConfigSchema.index({ configId: 1 }, { unique: true });
-
 module.exports = mongoose.model('WebhookProxyConfig', webhookProxyConfigSchema);

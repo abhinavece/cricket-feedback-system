@@ -64,6 +64,7 @@ const getPendingPaymentsForPlayer = async (playerPhone) => {
         pendingPayments.push({
           paymentId: payment._id,
           memberId: member._id,
+          playerId: member.playerId, // Include playerId for PaymentScreenshot
           matchId: payment.matchId?._id,
           matchDate: payment.matchId?.date,
           matchInfo: {
@@ -117,17 +118,21 @@ const getTotalOutstandingForPlayer = async (playerPhone) => {
 /**
  * Distribute payment amount across matches using FIFO (oldest first)
  * @param {string} playerPhone - Player's phone number
- * @param {number} totalAmount - Total payment amount (from OCR or manual)
+ * @param {number} totalAmount - Total payment amount (from AI or manual)
  * @param {Object} screenshotData - Screenshot data
  * @param {Buffer} screenshotData.buffer - Image buffer
  * @param {string} screenshotData.contentType - MIME type
  * @param {string} screenshotData.mediaId - WhatsApp media ID
- * @param {Object} ocrData - OCR extraction data
- * @param {number} ocrData.confidence - OCR confidence score
- * @param {string} ocrData.rawText - Raw OCR text
+ * @param {Object} aiData - AI extraction data
+ * @param {number} aiData.confidence - AI confidence score
+ * @param {string} aiData.provider - AI provider used
+ * @param {string} aiData.model - AI model used
+ * @param {string} aiData.payerName - Extracted payer name
+ * @param {string} aiData.transactionId - Extracted transaction ID
+ * @param {string} aiData.paymentDate - Extracted payment date
  * @returns {Promise<Object>} - Distribution result
  */
-const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, ocrData = {}) => {
+const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, aiData = {}) => {
   console.log(`\n📊 Starting FIFO payment distribution`);
   console.log(`   Player: ${playerPhone}`);
   console.log(`   Amount: ₹${totalAmount}`);
@@ -164,6 +169,15 @@ const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, o
     console.log(`   📸 Screenshot stored in oldest match: ${pendingPayments[0].matchInfo.opponent}`);
   }
 
+  // Calculate total due across all pending payments
+  const totalDueAcrossMatches = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
+  const isOverpayment = totalAmount > totalDueAcrossMatches;
+  const overpaymentAmount = isOverpayment ? totalAmount - totalDueAcrossMatches : 0;
+
+  if (isOverpayment) {
+    console.log(`   ⚠️ Overpayment detected: ₹${totalAmount} paid for ₹${totalDueAcrossMatches} due (₹${overpaymentAmount} excess)`);
+  }
+
   // Distribute amount across matches (FIFO)
   for (let i = 0; i < pendingPayments.length; i++) {
     if (remainingAmount <= 0) break;
@@ -179,15 +193,22 @@ const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, o
     const member = payment?.squadMembers.id(pending.memberId);
 
     if (member) {
+      // For primary match with overpayment: record FULL payment amount so owedAmount calculates correctly
+      // For other matches: record only the allocated amount
+      const recordedAmount = (i === 0 && isOverpayment) ? (allocate + overpaymentAmount) : allocate;
+      
       // Add payment history entry
       member.paymentHistory.push({
-        amount: allocate,
+        amount: recordedAmount,
         paidAt: new Date(),
         paymentMethod: 'upi',
-        notes: `Auto-distributed from ₹${totalAmount} payment`,
+        notes: isOverpayment && i === 0 
+          ? `Auto-distributed from ₹${totalAmount} payment (₹${overpaymentAmount} overpayment)`
+          : `Auto-distributed from ₹${totalAmount} payment`,
         isValidPayment: true,
         ocrExtractedAmount: totalAmount,
         distributedAmount: allocate,
+        overpaymentAmount: i === 0 ? overpaymentAmount : 0,
         sourcePaymentInfo: i > 0 ? {
           paymentId: primaryPaymentId,
           memberId: primaryMemberId,
@@ -195,9 +216,9 @@ const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, o
         } : null
       });
 
-      // Update OCR tracking on member
+      // Update AI tracking on member
       member.ocrExtractedAmount = totalAmount;
-      member.ocrConfidence = ocrData.confidence || null;
+      member.ocrConfidence = aiData.confidence || null;
       member.paidAt = new Date();
 
       // Set screenshot reference for non-primary matches
