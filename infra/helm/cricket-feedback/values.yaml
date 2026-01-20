@@ -76,8 +76,6 @@ backend:
         secretKeyRef:
           name: cricket-secrets
           key: whatsapp-verify-token
-    - name: AI_SERVICE_URL
-      value: "http://ai-service:8010"
     - name: AI_SERVICE_ENABLED
       value: "true"
   
@@ -104,7 +102,7 @@ aiService:
   enabled: true
   image:
     registry: phx.ocir.io
-    repository: axkw6whnjncs/cricket-feedback-ai-service
+    repository: axkw6whnjncs/ai-service
     tag: "2026.01.20.1"
     pullPolicy: IfNotPresent
   replicaCount: 1
