@@ -1256,6 +1256,35 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
     await screenshot.save();
     console.log(`✅ Screenshot distribution recorded: ${screenshot.totalDistributed} distributed`);
 
+    // Link screenshot to ALL matches that received a distribution (not just primary)
+    for (let i = 1; i < distributionResult.distributions.length; i++) {
+      const dist = distributionResult.distributions[i];
+      try {
+        const secondaryPayment = await MatchPayment.findById(dist.paymentId);
+        const secondaryMember = secondaryPayment?.squadMembers.id(dist.memberId);
+        
+        if (secondaryMember) {
+          // Add screenshot reference to secondary match member
+          if (!secondaryMember.screenshots) {
+            secondaryMember.screenshots = [];
+          }
+          secondaryMember.screenshots.push({
+            screenshotId: screenshot._id,
+            amountApplied: dist.allocatedAmount,
+            appliedAt: new Date()
+          });
+          secondaryMember.hasScreenshots = true;
+          secondaryMember.screenshotCount = secondaryMember.screenshots.length;
+          secondaryMember.latestScreenshotAt = new Date();
+          
+          await secondaryPayment.save();
+          console.log(`✅ Screenshot linked to secondary match: ${dist.opponent}`);
+        }
+      } catch (linkErr) {
+        console.error(`⚠️ Failed to link screenshot to ${dist.opponent}:`, linkErr.message);
+      }
+    }
+
     const primaryDistribution = distributionResult.distributions[0];
     const confirmMessage = buildDistributionConfirmation(distributionResult, await getPendingPaymentsForPlayer(formattedPhone));
 
