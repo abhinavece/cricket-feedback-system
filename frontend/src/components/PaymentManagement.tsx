@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSSE } from '../hooks/useSSE';
 import {
   Wallet,
   Users,
@@ -275,6 +276,38 @@ const PaymentManagement: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  // SSE subscription for real-time payment updates
+  const handleSSEEvent = useCallback((event: any) => {
+    // console.log('📡 Payment SSE Event received:', event.type, event);
+
+    switch (event.type) {
+      case 'payment:screenshot_received':
+      case 'payment:ai_failed':
+      case 'payment:review_required':
+      case 'payment:screenshot':
+      case 'payment:duplicate_screenshot':
+        // Refresh payment data when screenshots are processed
+        if (selectedMatchId && event.matchId === selectedMatchId) {
+          fetchPayment(selectedMatchId);
+        }
+        // Also refresh dashboard data to update payment lists
+        fetchDashboardData();
+        break;
+      
+      default:
+        console.log('📡 Unhandled payment SSE event type:', event.type);
+    }
+  }, [selectedMatchId, fetchPayment, fetchDashboardData]);
+
+  // SSE connection for real-time updates
+  const { isConnected: sseConnected, status: sseStatus } = useSSE({
+    subscriptions: ['payments'],
+    onEvent: handleSSEEvent,
+    onConnect: () => {/* console.log('📡 SSE connected for payments') */},
+    onError: (error) => {/* console.error('📡 SSE error:', error) */},
+    enabled: true
+  });
 
   useEffect(() => {
     if (selectedMatchId) {

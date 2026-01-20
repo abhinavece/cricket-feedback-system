@@ -115,12 +115,12 @@ export function useSSE({
     url.searchParams.set('token', token);
 
     setStatus('connecting');
-    console.log(`📡 SSE: Connecting to ${url.pathname}...`);
+    // console.log(`📡 SSE: Connecting to ${url.pathname}...`);
 
     const eventSource = new EventSource(url.toString());
 
     eventSource.onopen = () => {
-      console.log('📡 SSE: Connected');
+      // console.log('📡 SSE: Connected');
       setStatus('connected');
       onConnectRef.current?.();
     };
@@ -136,7 +136,7 @@ export function useSSE({
 
         // Ignore connection confirmation (unless you want to handle it)
         if (data.type === 'connected') {
-          console.log(`📡 SSE: Client ID: ${data.clientId}`);
+          // console.log(`📡 SSE: Client ID: ${data.clientId}`);
           return;
         }
 
@@ -157,14 +157,14 @@ export function useSSE({
       eventSourceRef.current = null;
 
       // Attempt to reconnect after delay
-      console.log(`📡 SSE: Reconnecting in ${reconnectDelay / 1000}s...`);
+      // console.log(`📡 SSE: Reconnecting in ${reconnectDelay / 1000}s...`);
       reconnectTimeoutRef.current = setTimeout(() => {
         connect();
       }, reconnectDelay);
     };
 
     eventSourceRef.current = eventSource;
-  }, [enabled, subscriptions, reconnectDelay]);
+  }, [enabled, subscriptions.join(','), reconnectDelay]);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
@@ -176,15 +176,6 @@ export function useSSE({
       close();
     };
   }, [enabled, connect, close]);
-
-  // Reconnect when subscriptions change
-  useEffect(() => {
-    if (enabled && eventSourceRef.current) {
-      // Close existing connection and reconnect with new subscriptions
-      close();
-      connect();
-    }
-  }, [subscriptions.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reconnect = useCallback(() => {
     close();

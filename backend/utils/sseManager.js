@@ -62,8 +62,8 @@ class SSEManager {
       this.removeClient(clientId);
     });
 
-    console.log(`📡 SSE client connected: ${clientId.substring(0, 8)}... (${subscriptions.join(', ')})`);
-    console.log(`📡 Total SSE clients: ${this.clients.size}`);
+    // console.log(`📡 SSE client connected: ${clientId.substring(0, 8)}... (${subscriptions.join(', ')})`);
+    // console.log(`📡 Total SSE clients: ${this.clients.size}`);
 
     return clientId;
   }
@@ -79,8 +79,8 @@ class SSEManager {
         clearInterval(client.heartbeat);
       }
       this.clients.delete(clientId);
-      console.log(`📡 SSE client disconnected: ${clientId.substring(0, 8)}...`);
-      console.log(`📡 Total SSE clients: ${this.clients.size}`);
+      // console.log(`📡 SSE client disconnected: ${clientId.substring(0, 8)}...`);
+      // console.log(`📡 Total SSE clients: ${this.clients.size}`);
     }
   }
 
