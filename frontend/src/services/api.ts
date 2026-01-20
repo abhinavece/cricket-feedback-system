@@ -321,6 +321,72 @@ export const getPaymentScreenshot = (paymentId: string, memberId: string) => {
   return `${API_BASE_URL}/payments/${paymentId}/screenshot/${memberId}`;
 };
 
+// New Screenshot Collection APIs
+export interface ScreenshotAIAnalysis {
+  confidence: number | null;
+  provider: string | null;
+  model: string | null;
+  transactionId: string | null;
+  paymentDate: string | null;
+  payerName: string | null;
+  payeeName: string | null;
+  paymentMethod: string | null;
+  requiresReview: boolean;
+  reviewReason: string | null;
+}
+
+export interface ScreenshotDistribution {
+  matchId: string;
+  paymentId: string;
+  memberId: string;
+  amountApplied: number;
+  appliedAt: string;
+}
+
+export interface PaymentScreenshotData {
+  _id: string;
+  receivedAt: string;
+  extractedAmount: number | null;
+  status: 'pending_ai' | 'ai_complete' | 'ai_failed' | 'pending_review' | 'approved' | 'rejected' | 'auto_applied' | 'duplicate';
+  isDuplicate: boolean;
+  duplicateOf: string | null;
+  aiAnalysis: ScreenshotAIAnalysis;
+  distributions: ScreenshotDistribution[];
+  totalDistributed: number;
+  remainingAmount: number | null;
+}
+
+export const getMemberScreenshots = async (paymentId: string, memberId: string): Promise<{
+  success: boolean;
+  data: { screenshots: PaymentScreenshotData[]; totalCount: number };
+}> => {
+  const response = await api.get(`/payments/${paymentId}/member/${memberId}/screenshots`);
+  return response.data;
+};
+
+export const getScreenshotImage = (screenshotId: string) => {
+  return `${API_BASE_URL}/payments/screenshots/${screenshotId}/image`;
+};
+
+export const getScreenshotDetails = async (screenshotId: string) => {
+  const response = await api.get(`/payments/screenshots/${screenshotId}`);
+  return response.data;
+};
+
+export const reviewScreenshot = async (screenshotId: string, data: {
+  action: 'approve' | 'reject' | 'override';
+  notes?: string;
+  overrideAmount?: number;
+}) => {
+  const response = await api.post(`/payments/screenshots/${screenshotId}/review`, data);
+  return response.data;
+};
+
+export const getPendingReviewScreenshots = async (limit = 50) => {
+  const response = await api.get(`/payments/screenshots/pending-review?limit=${limit}`);
+  return response.data;
+};
+
 // Player Payment History APIs
 export interface PlayerPaymentSummary {
   playerId: string;

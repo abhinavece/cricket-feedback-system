@@ -64,6 +64,7 @@ const getPendingPaymentsForPlayer = async (playerPhone) => {
         pendingPayments.push({
           paymentId: payment._id,
           memberId: member._id,
+          playerId: member.playerId, // Include playerId for PaymentScreenshot
           matchId: payment.matchId?._id,
           matchDate: payment.matchId?.date,
           matchInfo: {

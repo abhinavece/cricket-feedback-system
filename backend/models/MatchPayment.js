@@ -175,6 +175,67 @@ const paymentMemberSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'MatchPayment',
     default: null
+  },
+  // NEW: References to PaymentScreenshot documents (supports multiple screenshots)
+  screenshots: [{
+    screenshotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PaymentScreenshot'
+    },
+    amountApplied: {
+      type: Number,
+      default: 0
+    },
+    appliedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  // Summary fields for quick queries (updated when screenshots added)
+  hasScreenshots: {
+    type: Boolean,
+    default: false
+  },
+  screenshotCount: {
+    type: Number,
+    default: 0
+  },
+  latestScreenshotAt: {
+    type: Date,
+    default: null
+  },
+  // DEPRECATED: Legacy AI fields (kept for backward compatibility)
+  // New screenshots store AI data in PaymentScreenshot collection
+  confidence: {
+    type: Number,
+    default: null,
+    min: 0,
+    max: 1
+  },
+  provider: {
+    type: String,
+    default: null
+  },
+  model: {
+    type: String,
+    default: null
+  },
+  model_cost_tier: {
+    type: String,
+    enum: ['free', 'paid', null],
+    default: null
+  },
+  image_hash: {
+    type: String,
+    default: null
+  },
+  processing_time_ms: {
+    type: Number,
+    default: null
+  },
+  ai_service_response: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   }
 }, { _id: true });
 

@@ -6,6 +6,7 @@ const Match = require('../models/Match');
 const Player = require('../models/Player');
 const Availability = require('../models/Availability');
 const Message = require('../models/Message');
+const PaymentScreenshot = require('../models/PaymentScreenshot');
 const axios = require('axios');
 const { getOrCreatePlayer, formatPhoneNumber } = require('../services/playerService');
 const { getTotalOutstandingForPlayer } = require('../services/paymentDistributionService');
@@ -36,13 +37,14 @@ router.get('/', auth, async (req, res) => {
     const optimizedPayments = payments.map(payment => {
       const paymentObj = payment.toJSON();
       
-      // Remove payment history and binary data from squad members
+      // Remove payment history, binary data, and bulky AI response from squad members
       if (paymentObj.squadMembers) {
         paymentObj.squadMembers = paymentObj.squadMembers.map(member => {
           const { 
             paymentHistory, 
             screenshotImage, 
-            screenshotContentType, 
+            screenshotContentType,
+            ai_service_response, // Exclude bulky AI response
             ...memberOptimized 
           } = member;
           return memberOptimized;
@@ -1755,6 +1757,291 @@ router.get('/player/:phone/outstanding', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch outstanding amount'
+    });
+  }
+});
+
+// ============================================
+// SCREENSHOT APIs (New PaymentScreenshot Collection)
+// ============================================
+
+// GET /api/payments/:id/member/:memberId/screenshots - Get all screenshots for a member
+router.get('/:id/member/:memberId/screenshots', auth, async (req, res) => {
+  try {
+    const { id: paymentId, memberId } = req.params;
+    
+    // Get screenshots linked to this payment/member
+    const screenshots = await PaymentScreenshot.find({
+      'distributions.paymentId': paymentId,
+      'distributions.memberId': memberId
+    })
+    .select('-screenshotImage') // Exclude binary data
+    .sort({ receivedAt: -1 });
+
+    // Also get any screenshots directly linked via member's screenshots array
+    const payment = await MatchPayment.findById(paymentId);
+    const member = payment?.squadMembers.id(memberId);
+    
+    let allScreenshotIds = screenshots.map(s => s._id.toString());
+    
+    if (member?.screenshots?.length > 0) {
+      const linkedIds = member.screenshots.map(s => s.screenshotId.toString());
+      const additionalIds = linkedIds.filter(id => !allScreenshotIds.includes(id));
+      
+      if (additionalIds.length > 0) {
+        const additionalScreenshots = await PaymentScreenshot.find({
+          _id: { $in: additionalIds }
+        }).select('-screenshotImage').sort({ receivedAt: -1 });
+        
+        screenshots.push(...additionalScreenshots);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        screenshots: screenshots.map(s => ({
+          _id: s._id,
+          receivedAt: s.receivedAt,
+          extractedAmount: s.extractedAmount,
+          status: s.status,
+          isDuplicate: s.status === 'duplicate',
+          duplicateOf: s.duplicateOf,
+          aiAnalysis: {
+            confidence: s.aiAnalysis?.confidence,
+            provider: s.aiAnalysis?.provider,
+            model: s.aiAnalysis?.model,
+            transactionId: s.aiAnalysis?.transactionId,
+            paymentDate: s.aiAnalysis?.paymentDate,
+            payerName: s.aiAnalysis?.payerName,
+            requiresReview: s.aiAnalysis?.requiresReview,
+            reviewReason: s.aiAnalysis?.reviewReason
+          },
+          distributions: s.distributions,
+          totalDistributed: s.totalDistributed,
+          remainingAmount: s.remainingAmount
+        })),
+        totalCount: screenshots.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching screenshots:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch screenshots'
+    });
+  }
+});
+
+// GET /api/payments/screenshots/:screenshotId - Get single screenshot details (without image)
+router.get('/screenshots/:screenshotId', auth, async (req, res) => {
+  try {
+    const screenshot = await PaymentScreenshot.findById(req.params.screenshotId)
+      .select('-screenshotImage')
+      .populate('duplicateOf', 'receivedAt extractedAmount status');
+
+    if (!screenshot) {
+      return res.status(404).json({
+        success: false,
+        error: 'Screenshot not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: screenshot
+    });
+  } catch (error) {
+    console.error('Error fetching screenshot:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch screenshot'
+    });
+  }
+});
+
+// GET /api/payments/screenshots/:screenshotId/image - Get screenshot image binary
+router.get('/screenshots/:screenshotId/image', async (req, res) => {
+  try {
+    const screenshot = await PaymentScreenshot.findById(req.params.screenshotId)
+      .select('screenshotImage screenshotContentType');
+
+    if (!screenshot || !screenshot.screenshotImage) {
+      return res.status(404).json({
+        success: false,
+        error: 'Screenshot image not found'
+      });
+    }
+
+    res.set('Content-Type', screenshot.screenshotContentType || 'image/jpeg');
+    res.send(screenshot.screenshotImage);
+  } catch (error) {
+    console.error('Error fetching screenshot image:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch screenshot image'
+    });
+  }
+});
+
+// GET /api/payments/player/:phone/screenshots - Get all screenshots for a player
+router.get('/player/:phone/screenshots', auth, async (req, res) => {
+  try {
+    let phone = req.params.phone.replace(/\D/g, '');
+    if (!phone.startsWith('91') && phone.length === 10) {
+      phone = '91' + phone;
+    }
+
+    const { excludeDuplicates = 'false', limit = 50 } = req.query;
+
+    const screenshots = await PaymentScreenshot.getPlayerScreenshots(phone, {
+      excludeDuplicates: excludeDuplicates === 'true',
+      limit: parseInt(limit),
+      includeImage: false
+    });
+
+    res.json({
+      success: true,
+      data: {
+        screenshots: screenshots.map(s => ({
+          _id: s._id,
+          receivedAt: s.receivedAt,
+          extractedAmount: s.extractedAmount,
+          status: s.status,
+          isDuplicate: s.status === 'duplicate',
+          duplicateOf: s.duplicateOf,
+          aiAnalysis: {
+            confidence: s.aiAnalysis?.confidence,
+            transactionId: s.aiAnalysis?.transactionId,
+            paymentDate: s.aiAnalysis?.paymentDate,
+            requiresReview: s.aiAnalysis?.requiresReview,
+            reviewReason: s.aiAnalysis?.reviewReason
+          },
+          distributions: s.distributions,
+          totalDistributed: s.totalDistributed
+        })),
+        totalCount: screenshots.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching player screenshots:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch player screenshots'
+    });
+  }
+});
+
+// POST /api/payments/screenshots/:screenshotId/review - Admin review a screenshot
+router.post('/screenshots/:screenshotId/review', auth, async (req, res) => {
+  try {
+    const { action, notes, overrideAmount } = req.body;
+    const screenshot = await PaymentScreenshot.findById(req.params.screenshotId);
+
+    if (!screenshot) {
+      return res.status(404).json({
+        success: false,
+        error: 'Screenshot not found'
+      });
+    }
+
+    switch (action) {
+      case 'approve':
+        screenshot.status = 'approved';
+        screenshot.reviewedBy = req.user._id;
+        screenshot.reviewedAt = new Date();
+        screenshot.reviewNotes = notes || null;
+        break;
+
+      case 'reject':
+        screenshot.status = 'rejected';
+        screenshot.reviewedBy = req.user._id;
+        screenshot.reviewedAt = new Date();
+        screenshot.reviewNotes = notes || null;
+        break;
+
+      case 'override':
+        if (overrideAmount === undefined) {
+          return res.status(400).json({
+            success: false,
+            error: 'overrideAmount is required for override action'
+          });
+        }
+        screenshot.extractedAmount = overrideAmount;
+        screenshot.status = 'approved';
+        screenshot.reviewedBy = req.user._id;
+        screenshot.reviewedAt = new Date();
+        screenshot.reviewNotes = notes || `Amount overridden to ₹${overrideAmount}`;
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid action. Use: approve, reject, or override'
+        });
+    }
+
+    await screenshot.save();
+
+    res.json({
+      success: true,
+      message: `Screenshot ${action}d successfully`,
+      data: {
+        _id: screenshot._id,
+        status: screenshot.status,
+        extractedAmount: screenshot.extractedAmount,
+        reviewedAt: screenshot.reviewedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error reviewing screenshot:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to review screenshot'
+    });
+  }
+});
+
+// GET /api/payments/screenshots/pending-review - Get all screenshots pending review
+router.get('/screenshots/pending-review', auth, async (req, res) => {
+  try {
+    const { limit = 50 } = req.query;
+
+    const screenshots = await PaymentScreenshot.find({
+      status: 'pending_review'
+    })
+    .select('-screenshotImage')
+    .sort({ receivedAt: -1 })
+    .limit(parseInt(limit))
+    .populate('playerId', 'name phone');
+
+    res.json({
+      success: true,
+      data: {
+        screenshots: screenshots.map(s => ({
+          _id: s._id,
+          playerName: s.playerName,
+          playerPhone: s.playerPhone,
+          receivedAt: s.receivedAt,
+          extractedAmount: s.extractedAmount,
+          status: s.status,
+          aiAnalysis: {
+            confidence: s.aiAnalysis?.confidence,
+            requiresReview: s.aiAnalysis?.requiresReview,
+            reviewReason: s.aiAnalysis?.reviewReason,
+            transactionId: s.aiAnalysis?.transactionId,
+            paymentDate: s.aiAnalysis?.paymentDate
+          },
+          distributions: s.distributions
+        })),
+        totalCount: screenshots.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching pending screenshots:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch pending screenshots'
     });
   }
 });
