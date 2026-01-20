@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  ai-payment-parser:
+    build: .
+    container_name: ai-payment-parser
+    ports:
+      - "8010:8010"
+    environment:
+      - AI_SERVICE_ENABLED=true
+      - AI_PROVIDER=google_ai_studio
+      - GOOGLE_AI_STUDIO_API_KEY=${GOOGLE_AI_STUDIO_API_KEY:-your-api-key-here}
+      - DAILY_REQUEST_LIMIT=500
+      - LOG_LEVEL=INFO
+      - MIN_CONFIDENCE_THRESHOLD=0.7
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      # Mount local images for testing (optional)
+      - ./test-images:/app/test-images:ro
+    networks:
+      - ai-network
+
+networks:
+  ai-network:
+    driver: bridge
