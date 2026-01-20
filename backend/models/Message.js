@@ -25,6 +25,10 @@ const messageSchema = new mongoose.Schema({
     unique: true,
     sparse: true
   },
+  originalMessageId: {
+    type: String,
+    default: null
+  },
   status: {
     type: String,
     default: 'delivered'
