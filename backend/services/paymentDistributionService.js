@@ -169,6 +169,15 @@ const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, a
     console.log(`   📸 Screenshot stored in oldest match: ${pendingPayments[0].matchInfo.opponent}`);
   }
 
+  // Calculate total due across all pending payments
+  const totalDueAcrossMatches = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
+  const isOverpayment = totalAmount > totalDueAcrossMatches;
+  const overpaymentAmount = isOverpayment ? totalAmount - totalDueAcrossMatches : 0;
+
+  if (isOverpayment) {
+    console.log(`   ⚠️ Overpayment detected: ₹${totalAmount} paid for ₹${totalDueAcrossMatches} due (₹${overpaymentAmount} excess)`);
+  }
+
   // Distribute amount across matches (FIFO)
   for (let i = 0; i < pendingPayments.length; i++) {
     if (remainingAmount <= 0) break;
@@ -184,15 +193,22 @@ const distributePaymentFIFO = async (playerPhone, totalAmount, screenshotData, a
     const member = payment?.squadMembers.id(pending.memberId);
 
     if (member) {
+      // For primary match with overpayment: record FULL payment amount so owedAmount calculates correctly
+      // For other matches: record only the allocated amount
+      const recordedAmount = (i === 0 && isOverpayment) ? (allocate + overpaymentAmount) : allocate;
+      
       // Add payment history entry
       member.paymentHistory.push({
-        amount: allocate,
+        amount: recordedAmount,
         paidAt: new Date(),
         paymentMethod: 'upi',
-        notes: `Auto-distributed from ₹${totalAmount} payment`,
+        notes: isOverpayment && i === 0 
+          ? `Auto-distributed from ₹${totalAmount} payment (₹${overpaymentAmount} overpayment)`
+          : `Auto-distributed from ₹${totalAmount} payment`,
         isValidPayment: true,
         ocrExtractedAmount: totalAmount,
         distributedAmount: allocate,
+        overpaymentAmount: i === 0 ? overpaymentAmount : 0,
         sourcePaymentInfo: i > 0 ? {
           paymentId: primaryPaymentId,
           memberId: primaryMemberId,
