@@ -10,7 +10,7 @@
 const axios = require('axios');
 
 // AI Service URL - in k8s this resolves to the ai-service pod
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8010';
 
 // Timeout for AI requests (30 seconds)
 const AI_REQUEST_TIMEOUT = parseInt(process.env.AI_REQUEST_TIMEOUT || '30000');
