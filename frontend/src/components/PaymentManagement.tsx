@@ -55,7 +55,10 @@ import {
   deletePayment,
   getPlayers,
   createPlayer,
-  settleOverpayment
+  settleOverpayment,
+  getMemberScreenshots,
+  getScreenshotImage,
+  PaymentScreenshotData
 } from '../services/api';
 
 interface PaymentHistoryEntry {
@@ -97,6 +100,15 @@ interface SquadMember {
   requiresReview?: boolean;
   reviewReason?: string;
   ai_service_response?: any;
+  // New multi-screenshot fields
+  screenshots?: Array<{
+    screenshotId: string;
+    amountApplied: number;
+    appliedAt: string;
+  }>;
+  hasScreenshots?: boolean;
+  screenshotCount?: number;
+  latestScreenshotAt?: string;
 }
 
 interface Payment {
@@ -179,6 +191,9 @@ const PaymentManagement: React.FC = () => {
   const [viewingScreenshot, setViewingScreenshot] = useState<{memberId: string; playerName: string} | null>(null);
   const [screenshotError, setScreenshotError] = useState(false);
   const [showAIResponse, setShowAIResponse] = useState<{memberId: string; playerName: string} | null>(null);
+  const [memberScreenshots, setMemberScreenshots] = useState<PaymentScreenshotData[]>([]);
+  const [loadingScreenshots, setLoadingScreenshots] = useState(false);
+  const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showPendingTooltip, setShowPendingTooltip] = useState(false);
   
@@ -1146,18 +1161,60 @@ const PaymentManagement: React.FC = () => {
                           {getStatusIcon(member.paymentStatus)}
                           <span className="hidden sm:inline capitalize">{member.paymentStatus}</span>
                         </div>
-                        {member.screenshotReceivedAt && (
+                        {(member.screenshotReceivedAt || member.hasScreenshots) && (
                           <>
                             <button
-                              onClick={(e) => { e.stopPropagation(); setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); setScreenshotError(false); }}
-                              className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"
-                              title="View Screenshot"
+                              onClick={async (e) => { 
+                                e.stopPropagation(); 
+                                setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); 
+                                setScreenshotError(false);
+                                setSelectedScreenshotIndex(0);
+                                // Load screenshots from new collection
+                                if (payment) {
+                                  setLoadingScreenshots(true);
+                                  try {
+                                    const result = await getMemberScreenshots(payment._id, member._id);
+                                    if (result.success) {
+                                      setMemberScreenshots(result.data.screenshots);
+                                    }
+                                  } catch (err) {
+                                    console.error('Failed to load screenshots:', err);
+                                  } finally {
+                                    setLoadingScreenshots(false);
+                                  }
+                                }
+                              }}
+                              className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 relative"
+                              title="View Screenshots"
                             >
                               <Image className="w-4 h-4" />
+                              {(member.screenshotCount || 0) > 1 && (
+                                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                                  {member.screenshotCount}
+                                </span>
+                              )}
                             </button>
-                            {member.ai_service_response && (
+                            {(member.ai_service_response || member.hasScreenshots) && (
                               <button
-                                onClick={(e) => { e.stopPropagation(); setShowAIResponse({ memberId: member._id, playerName: member.playerName }); }}
+                                onClick={async (e) => { 
+                                  e.stopPropagation(); 
+                                  setShowAIResponse({ memberId: member._id, playerName: member.playerName });
+                                  setSelectedScreenshotIndex(0);
+                                  // Load screenshots for AI modal
+                                  if (payment) {
+                                    setLoadingScreenshots(true);
+                                    try {
+                                      const result = await getMemberScreenshots(payment._id, member._id);
+                                      if (result.success) {
+                                        setMemberScreenshots(result.data.screenshots);
+                                      }
+                                    } catch (err) {
+                                      console.error('Failed to load screenshots:', err);
+                                    } finally {
+                                      setLoadingScreenshots(false);
+                                    }
+                                  }
+                                }}
                                 className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30"
                                 title="View AI Analysis"
                               >
@@ -1296,31 +1353,172 @@ const PaymentManagement: React.FC = () => {
           </div>
         )}
 
-        {/* Screenshot Viewer */}
+        {/* Screenshot Viewer - Multi-Screenshot Support */}
         {viewingScreenshot && payment && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 border border-white/10 rounded-2xl p-4 w-full max-w-4xl max-h-[90vh] overflow-auto">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">Payment Screenshot - {viewingScreenshot.playerName}</h3>
-                <button onClick={() => setViewingScreenshot(null)} className="p-1 text-slate-400 hover:text-white">
+                <h3 className="text-lg font-semibold text-white">
+                  Payment Screenshots - {viewingScreenshot.playerName}
+                  {memberScreenshots.length > 0 && (
+                    <span className="text-sm text-slate-400 ml-2">
+                      ({selectedScreenshotIndex + 1} of {memberScreenshots.length})
+                    </span>
+                  )}
+                </h3>
+                <button onClick={() => { setViewingScreenshot(null); setMemberScreenshots([]); }} className="p-1 text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              {screenshotError ? (
-                <div className="text-center py-12 text-slate-400">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Failed to load screenshot</p>
-                  <p className="text-sm mt-2">The screenshot might not be available or the format is not supported.</p>
+
+              {loadingScreenshots ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-emerald-400" />
+                  <p className="text-slate-400">Loading screenshots...</p>
+                </div>
+              ) : memberScreenshots.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Screenshot Navigation */}
+                  {memberScreenshots.length > 1 && (
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      {memberScreenshots.map((s, idx) => (
+                        <button
+                          key={s._id}
+                          onClick={() => { setSelectedScreenshotIndex(idx); setScreenshotError(false); }}
+                          className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-medium transition-all ${
+                            idx === selectedScreenshotIndex
+                              ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                              : s.isDuplicate
+                              ? 'border-amber-500/50 bg-amber-500/10 text-amber-400'
+                              : 'border-white/20 bg-slate-700/50 text-slate-400 hover:border-white/40'
+                          }`}
+                          title={s.isDuplicate ? 'Duplicate Screenshot' : `Screenshot ${idx + 1}`}
+                        >
+                          {s.isDuplicate ? '⚠️' : idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Current Screenshot */}
+                  {(() => {
+                    const currentScreenshot = memberScreenshots[selectedScreenshotIndex];
+                    if (!currentScreenshot) return null;
+
+                    return (
+                      <>
+                        {/* Duplicate Warning */}
+                        {currentScreenshot.isDuplicate && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-amber-400 font-medium">Duplicate Screenshot</p>
+                              <p className="text-sm text-slate-400">
+                                This screenshot was already submitted previously. The original submission will be used for payment processing.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {screenshotError ? (
+                          <div className="text-center py-12 text-slate-400">
+                            <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <p>Failed to load screenshot</p>
+                            <p className="text-sm mt-2">The screenshot might not be available or the format is not supported.</p>
+                          </div>
+                        ) : (
+                          <img
+                            src={getScreenshotImage(currentScreenshot._id)}
+                            alt="Payment Screenshot"
+                            className="w-full rounded-xl max-h-[50vh] object-contain bg-slate-900/50"
+                            onError={() => setScreenshotError(true)}
+                            onLoad={() => setScreenshotError(false)}
+                          />
+                        )}
+
+                        {/* Screenshot Info */}
+                        <div className="bg-slate-700/30 rounded-xl p-4">
+                          <h4 className="text-white font-semibold mb-3">Screenshot Details</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <p className="text-slate-400">Received</p>
+                              <p className="text-white font-medium">
+                                {new Date(currentScreenshot.receivedAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">AI Detected Amount</p>
+                              <p className="text-emerald-400 font-medium">
+                                {currentScreenshot.extractedAmount !== null ? `₹${currentScreenshot.extractedAmount}` : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Status</p>
+                              <p className={`font-medium ${
+                                currentScreenshot.status === 'approved' || currentScreenshot.status === 'auto_applied' ? 'text-emerald-400' :
+                                currentScreenshot.status === 'rejected' ? 'text-red-400' :
+                                currentScreenshot.status === 'duplicate' ? 'text-amber-400' :
+                                'text-slate-300'
+                              }`}>
+                                {currentScreenshot.status.replace('_', ' ').toUpperCase()}
+                              </p>
+                            </div>
+                            {currentScreenshot.aiAnalysis?.confidence !== null && (
+                              <div>
+                                <p className="text-slate-400">AI Confidence</p>
+                                <p className="text-white font-medium">
+                                  {Math.round((currentScreenshot.aiAnalysis.confidence || 0) * 100)}%
+                                </p>
+                              </div>
+                            )}
+                            {currentScreenshot.aiAnalysis?.transactionId && (
+                              <div>
+                                <p className="text-slate-400">Transaction ID</p>
+                                <p className="text-white font-medium text-xs">
+                                  {currentScreenshot.aiAnalysis.transactionId}
+                                </p>
+                              </div>
+                            )}
+                            {currentScreenshot.aiAnalysis?.requiresReview && (
+                              <div>
+                                <p className="text-slate-400">Review Reason</p>
+                                <p className="text-amber-400 font-medium">
+                                  {currentScreenshot.aiAnalysis.reviewReason?.replace('_', ' ')}
+                                </p>
+                              </div>
+                            )}
+                            {currentScreenshot.totalDistributed > 0 && (
+                              <div>
+                                <p className="text-slate-400">Amount Applied</p>
+                                <p className="text-emerald-400 font-medium">
+                                  ₹{currentScreenshot.totalDistributed}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
+                // Fallback to legacy screenshot display
                 <div className="space-y-4">
-                  <img
-                    src={getPaymentScreenshot(payment._id, viewingScreenshot.memberId)}
-                    alt="Payment Screenshot"
-                    className="w-full rounded-xl max-h-[60vh] object-contain bg-slate-900/50"
-                    onError={() => setScreenshotError(true)}
-                    onLoad={() => setScreenshotError(false)}
-                  />
+                  {screenshotError ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Failed to load screenshot</p>
+                      <p className="text-sm mt-2">The screenshot might not be available or the format is not supported.</p>
+                    </div>
+                  ) : (
+                    <img
+                      src={getPaymentScreenshot(payment._id, viewingScreenshot.memberId)}
+                      alt="Payment Screenshot"
+                      className="w-full rounded-xl max-h-[60vh] object-contain bg-slate-900/50"
+                      onError={() => setScreenshotError(true)}
+                      onLoad={() => setScreenshotError(false)}
+                    />
+                  )}
                   {(() => {
                     const member = payment.squadMembers.find(m => m._id === viewingScreenshot.memberId);
                     return (
@@ -1340,12 +1538,6 @@ const PaymentManagement: React.FC = () => {
                               }
                             </p>
                           </div>
-                          {member?.screenshotContentType && (
-                            <div>
-                              <p className="text-slate-400">Format</p>
-                              <p className="text-white font-medium">{member.screenshotContentType}</p>
-                            </div>
-                          )}
                           {member?.requiresReview && (
                             <div>
                               <p className="text-slate-400">Review Status</p>
@@ -1364,7 +1556,7 @@ const PaymentManagement: React.FC = () => {
           </div>
         )}
 
-        {/* AI Service Response Modal */}
+        {/* AI Service Response Modal - Multi-Screenshot Support */}
         {showAIResponse && payment && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 border border-white/10 rounded-2xl p-4 w-full max-w-3xl max-h-[90vh] overflow-auto">
@@ -1372,215 +1564,346 @@ const PaymentManagement: React.FC = () => {
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Bot className="w-5 h-5 text-emerald-400" />
                   AI Payment Analysis - {showAIResponse.playerName}
+                  {memberScreenshots.length > 0 && (
+                    <span className="text-sm text-slate-400 ml-2">
+                      ({selectedScreenshotIndex + 1} of {memberScreenshots.length})
+                    </span>
+                  )}
                 </h3>
-                <button onClick={() => setShowAIResponse(null)} className="p-1 text-slate-400 hover:text-white">
+                <button onClick={() => { setShowAIResponse(null); setMemberScreenshots([]); }} className="p-1 text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
-              {(() => {
-                const member = payment.squadMembers.find(m => m._id === showAIResponse.memberId);
-                const aiResponse = member?.ai_service_response;
-                
-                if (!aiResponse) {
-                  return (
-                    <div className="text-center py-12 text-slate-400">
-                      <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No AI analysis available</p>
-                    </div>
-                  );
-                }
 
-                return (
-                  <div className="space-y-4">
-                    {/* Success Status */}
-                    <div className={`p-4 rounded-xl border ${
-                      aiResponse.success 
-                        ? 'bg-emerald-500/10 border-emerald-500/30' 
-                        : 'bg-red-500/10 border-red-500/30'
-                    }`}>
-                      <div className="flex items-center gap-3">
-                        {aiResponse.success ? (
-                          <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-                        ) : (
-                          <XCircle className="w-6 h-6 text-red-400" />
-                        )}
-                        <div>
-                          <p className={`font-semibold ${
-                            aiResponse.success ? 'text-emerald-400' : 'text-red-400'
+              {loadingScreenshots ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-emerald-400" />
+                  <p className="text-slate-400">Loading AI analyses...</p>
+                </div>
+              ) : memberScreenshots.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Screenshot Navigation */}
+                  {memberScreenshots.length > 1 && (
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      {memberScreenshots.map((s, idx) => (
+                        <button
+                          key={s._id}
+                          onClick={() => setSelectedScreenshotIndex(idx)}
+                          className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-medium transition-all ${
+                            idx === selectedScreenshotIndex
+                              ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                              : s.isDuplicate
+                              ? 'border-amber-500/50 bg-amber-500/10 text-amber-400'
+                              : s.status === 'pending_ai'
+                              ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
+                              : s.status === 'ai_failed'
+                              ? 'border-red-500/50 bg-red-500/10 text-red-400'
+                              : 'border-white/20 bg-slate-700/50 text-slate-400 hover:border-white/40'
+                          }`}
+                          title={s.isDuplicate ? 'Duplicate' : s.status === 'pending_ai' ? 'Processing...' : `Screenshot ${idx + 1}`}
+                        >
+                          {s.isDuplicate ? '⚠️' : s.status === 'pending_ai' ? '⏳' : s.status === 'ai_failed' ? '❌' : idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Current Screenshot AI Analysis */}
+                  {(() => {
+                    const currentScreenshot = memberScreenshots[selectedScreenshotIndex];
+                    if (!currentScreenshot) return null;
+                    
+                    const aiAnalysis = currentScreenshot.aiAnalysis;
+                    const isSuccess = currentScreenshot.extractedAmount !== null && !currentScreenshot.isDuplicate && currentScreenshot.status !== 'ai_failed';
+
+                    return (
+                      <>
+                        {/* Status Badges */}
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            currentScreenshot.status === 'auto_applied' ? 'bg-emerald-500/20 text-emerald-400' :
+                            currentScreenshot.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
+                            currentScreenshot.status === 'pending_ai' ? 'bg-blue-500/20 text-blue-400' :
+                            currentScreenshot.status === 'ai_complete' ? 'bg-cyan-500/20 text-cyan-400' :
+                            currentScreenshot.status === 'pending_review' ? 'bg-amber-500/20 text-amber-400' :
+                            currentScreenshot.status === 'ai_failed' ? 'bg-red-500/20 text-red-400' :
+                            currentScreenshot.status === 'duplicate' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-slate-500/20 text-slate-400'
                           }`}>
-                            {aiResponse.success ? 'Payment Detected Successfully' : 'Payment Analysis Failed'}
-                          </p>
-                          {!aiResponse.success && aiResponse.error_message && (
-                            <p className="text-sm text-slate-400 mt-1">{aiResponse.error_message}</p>
+                            {currentScreenshot.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                          {currentScreenshot.extractedAmount !== null && (
+                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
+                              ₹{currentScreenshot.extractedAmount}
+                            </span>
                           )}
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Parsed Payment Data */}
-                    {aiResponse.success && aiResponse.data && (
-                      <div className="bg-slate-700/30 rounded-xl p-4">
-                        <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                          <IndianRupee className="w-4 h-4 text-emerald-400" />
-                          Payment Details
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-sm text-slate-400">Amount</p>
-                            <p className="text-white font-semibold">
-                              ₹{aiResponse.data.amount} {aiResponse.data.currency}
-                            </p>
+                        {/* Duplicate Warning */}
+                        {currentScreenshot.isDuplicate && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-amber-400 font-medium">Duplicate Screenshot</p>
+                              <p className="text-sm text-slate-400">
+                                This screenshot was already submitted. AI analysis was skipped.
+                              </p>
+                            </div>
                           </div>
-                          {aiResponse.data.payee_name && (
-                            <div>
-                              <p className="text-sm text-slate-400">Payee</p>
-                              <p className="text-white font-semibold">{aiResponse.data.payee_name}</p>
-                            </div>
-                          )}
-                          {aiResponse.data.date && (
-                            <div>
-                              <p className="text-sm text-slate-400">Date</p>
-                              <p className="text-white font-semibold">{aiResponse.data.date}</p>
-                            </div>
-                          )}
-                          {aiResponse.data.time && (
-                            <div>
-                              <p className="text-sm text-slate-400">Time</p>
-                              <p className="text-white font-semibold">{aiResponse.data.time}</p>
-                            </div>
-                          )}
-                          {aiResponse.data.transaction_id && (
-                            <div>
-                              <p className="text-sm text-slate-400">Transaction ID</p>
-                              <p className="text-white font-semibold text-sm">{aiResponse.data.transaction_id}</p>
-                            </div>
-                          )}
-                          {aiResponse.data.payment_method && (
-                            <div>
-                              <p className="text-sm text-slate-400">Payment Method</p>
-                              <p className="text-white font-semibold capitalize">{aiResponse.data.payment_method}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                        )}
 
-                    {/* AI Analysis Metadata */}
-                    {aiResponse.metadata && (
-                      <div className="bg-slate-700/30 rounded-xl p-4">
-                        <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-blue-400" />
-                          AI Analysis Details
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {aiResponse.metadata.confidence && (
+                        {/* Pending AI Processing */}
+                        {currentScreenshot.status === 'pending_ai' && (
+                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-center gap-3">
+                            <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
                             <div>
-                              <p className="text-sm text-slate-400">Confidence</p>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-600 rounded-full h-2">
-                                  <div 
-                                    className="bg-emerald-400 h-2 rounded-full" 
-                                    style={{ width: `${aiResponse.metadata.confidence * 100}%` }}
-                                  />
+                              <p className="text-blue-400 font-medium">AI Processing in Progress</p>
+                              <p className="text-sm text-slate-400">The screenshot is being analyzed. Please wait...</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Failed */}
+                        {currentScreenshot.status === 'ai_failed' && (
+                          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
+                            <XCircle className="w-6 h-6 text-red-400" />
+                            <div>
+                              <p className="text-red-400 font-medium">AI Analysis Failed</p>
+                              <p className="text-sm text-slate-400">
+                                {aiAnalysis?.reviewReason || 'The AI service could not process this screenshot.'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Payment Details */}
+                        {isSuccess && (
+                          <div className="bg-slate-700/30 rounded-xl p-4">
+                            <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                              <IndianRupee className="w-4 h-4 text-emerald-400" />
+                              Payment Details
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                              <div>
+                                <p className="text-slate-400">Amount</p>
+                                <p className="text-white font-semibold">₹{currentScreenshot.extractedAmount}</p>
+                              </div>
+                              {aiAnalysis?.payerName && (
+                                <div>
+                                  <p className="text-slate-400">Payer</p>
+                                  <p className="text-white font-semibold">{aiAnalysis.payerName}</p>
                                 </div>
-                                <span className="text-white font-semibold text-sm">
-                                  {Math.round(aiResponse.metadata.confidence * 100)}%
-                                </span>
+                              )}
+                              {aiAnalysis?.payeeName && (
+                                <div>
+                                  <p className="text-slate-400">Payee</p>
+                                  <p className="text-white font-semibold">{aiAnalysis.payeeName}</p>
+                                </div>
+                              )}
+                              {aiAnalysis?.paymentDate && (
+                                <div>
+                                  <p className="text-slate-400">Date</p>
+                                  <p className="text-white font-semibold">
+                                    {new Date(aiAnalysis.paymentDate).toLocaleDateString('en-IN')}
+                                  </p>
+                                </div>
+                              )}
+                              {aiAnalysis?.transactionId && (
+                                <div className="col-span-2">
+                                  <p className="text-slate-400">Transaction ID</p>
+                                  <p className="text-white font-mono text-xs">{aiAnalysis.transactionId}</p>
+                                </div>
+                              )}
+                              {aiAnalysis?.paymentMethod && (
+                                <div>
+                                  <p className="text-slate-400">Method</p>
+                                  <p className="text-white font-semibold capitalize">{aiAnalysis.paymentMethod}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Analysis Metadata */}
+                        {aiAnalysis && (aiAnalysis.confidence || aiAnalysis.provider) && (
+                          <div className="bg-slate-700/30 rounded-xl p-4">
+                            <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                              <Zap className="w-4 h-4 text-blue-400" />
+                              AI Analysis Details
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                              {aiAnalysis.confidence !== null && (
+                                <div>
+                                  <p className="text-slate-400">Confidence</p>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-slate-600 rounded-full h-2 max-w-20">
+                                      <div 
+                                        className="bg-emerald-400 h-2 rounded-full" 
+                                        style={{ width: `${(aiAnalysis.confidence || 0) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-white font-semibold">
+                                      {Math.round((aiAnalysis.confidence || 0) * 100)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {aiAnalysis.provider && (
+                                <div>
+                                  <p className="text-slate-400">Provider</p>
+                                  <p className="text-white font-semibold text-xs">{aiAnalysis.provider}</p>
+                                </div>
+                              )}
+                              {aiAnalysis.model && (
+                                <div>
+                                  <p className="text-slate-400">Model</p>
+                                  <p className="text-white font-semibold text-xs">{aiAnalysis.model}</p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-slate-400">Received</p>
+                                <p className="text-white font-semibold">
+                                  {new Date(currentScreenshot.receivedAt).toLocaleString('en-IN')}
+                                </p>
                               </div>
                             </div>
-                          )}
-                          {aiResponse.metadata.provider && (
-                            <div>
-                              <p className="text-sm text-slate-400">AI Provider</p>
-                              <p className="text-white font-semibold">{aiResponse.metadata.provider}</p>
-                            </div>
-                          )}
-                          {aiResponse.metadata.model && (
-                            <div>
-                              <p className="text-sm text-slate-400">Model</p>
-                              <p className="text-white font-semibold">{aiResponse.metadata.model}</p>
-                            </div>
-                          )}
-                          {aiResponse.metadata.model_cost_tier && (
-                            <div>
-                              <p className="text-sm text-slate-400">Cost Tier</p>
-                              <p className="text-white font-semibold capitalize">
-                                {aiResponse.metadata.model_cost_tier === 'free' ? (
-                                  <span className="text-emerald-400">Free</span>
-                                ) : (
-                                  <span className="text-amber-400">Paid</span>
-                                )}
-                              </p>
-                            </div>
-                          )}
-                          {aiResponse.metadata.processing_time_ms && (
-                            <div>
-                              <p className="text-sm text-slate-400">Processing Time</p>
-                              <p className="text-white font-semibold">
-                                {(aiResponse.metadata.processing_time_ms / 1000).toFixed(1)}s
-                              </p>
-                            </div>
-                          )}
-                          {aiResponse.metadata.image_hash && (
-                            <div className="sm:col-span-2">
-                              <p className="text-sm text-slate-400">Image Hash (Deduplication)</p>
-                              <p className="text-white font-mono text-xs break-all">
-                                {aiResponse.metadata.image_hash}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                          </div>
+                        )}
 
-                    {/* Review Status */}
-                    {aiResponse.metadata && (aiResponse.metadata.requires_review || member?.requiresReview) && (
+                        {/* Review Required */}
+                        {aiAnalysis?.requiresReview && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-amber-400 font-medium">Requires Admin Review</p>
+                              <p className="text-sm text-slate-400">
+                                Reason: {aiAnalysis.reviewReason?.replace('_', ' ') || 'Unknown'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Distribution Info */}
+                        {currentScreenshot.totalDistributed > 0 && (
+                          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3">
+                            <p className="text-emerald-400 font-medium">
+                              ₹{currentScreenshot.totalDistributed} applied to payments
+                            </p>
+                            {currentScreenshot.distributions?.length > 0 && (
+                              <p className="text-sm text-slate-400 mt-1">
+                                Distributed across {currentScreenshot.distributions.length} match(es)
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                // Fallback to legacy single AI response
+                (() => {
+                  const member = payment.squadMembers.find(m => m._id === showAIResponse.memberId);
+                  const aiResponse = member?.ai_service_response;
+                  
+                  if (!aiResponse) {
+                    return (
+                      <div className="text-center py-12 text-slate-400">
+                        <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No AI analysis available</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Success Status */}
                       <div className={`p-4 rounded-xl border ${
-                        member?.requiresReview 
-                          ? 'bg-amber-500/10 border-amber-500/30' 
-                          : 'bg-blue-500/10 border-blue-500/30'
+                        aiResponse.success 
+                          ? 'bg-emerald-500/10 border-emerald-500/30' 
+                          : 'bg-red-500/10 border-red-500/30'
                       }`}>
                         <div className="flex items-center gap-3">
-                          <AlertTriangle className="w-6 h-6 text-amber-400" />
+                          {aiResponse.success ? (
+                            <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                          ) : (
+                            <XCircle className="w-6 h-6 text-red-400" />
+                          )}
                           <div>
-                            <p className="font-semibold text-amber-400">Requires Admin Review</p>
-                            <p className="text-sm text-slate-400">
-                              Reason: {member?.reviewReason || aiResponse.metadata.reviewReason || 'Unknown'}
+                            <p className={`font-semibold ${
+                              aiResponse.success ? 'text-emerald-400' : 'text-red-400'
+                            }`}>
+                              {aiResponse.success ? 'Payment Detected Successfully' : 'Payment Analysis Failed'}
                             </p>
+                            {!aiResponse.success && aiResponse.error_message && (
+                              <p className="text-sm text-slate-400 mt-1">{aiResponse.error_message}</p>
+                            )}
                           </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* Full Response Toggle */}
-                    <div className="border-t border-white/10 pt-4">
-                      <button
-                        onClick={() => {
-                          // Toggle full response visibility
-                          const element = document.getElementById('full-ai-response');
-                          if (element) {
-                            element.classList.toggle('hidden');
-                          }
-                        }}
-                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                        <span className="text-sm">View Full AI Response</span>
-                      </button>
-                      
-                      <div id="full-ai-response" className="hidden mt-4">
-                        <div className="bg-slate-900/50 rounded-xl p-4">
-                          <h5 className="text-white font-semibold mb-2 text-sm">Complete Response Data</h5>
-                          <pre className="text-xs text-slate-400 overflow-x-auto whitespace-pre-wrap">
-                            {JSON.stringify(aiResponse, null, 2)}
-                          </pre>
+                      {/* Parsed Payment Data */}
+                      {aiResponse.success && aiResponse.data && (
+                        <div className="bg-slate-700/30 rounded-xl p-4">
+                          <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                            <IndianRupee className="w-4 h-4 text-emerald-400" />
+                            Payment Details
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-sm text-slate-400">Amount</p>
+                              <p className="text-white font-semibold">
+                                ₹{aiResponse.data.amount} {aiResponse.data.currency}
+                              </p>
+                            </div>
+                            {aiResponse.data.transaction_id && (
+                              <div>
+                                <p className="text-sm text-slate-400">Transaction ID</p>
+                                <p className="text-white font-semibold text-sm">{aiResponse.data.transaction_id}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* AI Metadata */}
+                      {aiResponse.metadata && (
+                        <div className="bg-slate-700/30 rounded-xl p-4">
+                          <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-blue-400" />
+                            AI Analysis
+                          </h4>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            {aiResponse.metadata.confidence && (
+                              <div>
+                                <p className="text-slate-400">Confidence</p>
+                                <p className="text-white font-semibold">{Math.round(aiResponse.metadata.confidence * 100)}%</p>
+                              </div>
+                            )}
+                            {aiResponse.metadata.provider && (
+                              <div>
+                                <p className="text-slate-400">Provider</p>
+                                <p className="text-white font-semibold">{aiResponse.metadata.provider}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Review Status */}
+                      {member?.requiresReview && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-amber-400" />
+                          <div>
+                            <p className="text-amber-400 font-medium">Requires Admin Review</p>
+                            <p className="text-sm text-slate-400">Reason: {member.reviewReason}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()
+              )}
             </div>
           </div>
         )}
