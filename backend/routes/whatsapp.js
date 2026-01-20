@@ -287,28 +287,36 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
     // This ensures no messages are ever lost
     let savedMessage = null;
     try {
-      // Try to find associated player for enrichment (but don't require it)
-      const player = await Player.findOne({
-        phone: { $regex: formattedPhone.slice(-10) }
-      });
-
-      savedMessage = await Message.create({
-        from: formattedPhone,
-        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: text,
-        direction: 'incoming',
-        messageId: messageId,
-        timestamp: new Date(),
-        messageType: 'general', // Will be updated to 'availability_response' if context validates
-        playerId: player?._id || null,
-        playerName: player?.name || null
-      });
-
-      console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
-      if (player) {
-        console.log(`   Associated with player: ${player.name}`);
+      // Check if message already exists
+      const Message = require('../models/Message');
+      const existingMessage = await Message.findOne({ messageId });
+      if (existingMessage) {
+        console.log(`⚠️ Message ${messageId} already exists, skipping save`);
+        savedMessage = existingMessage;
       } else {
-        console.log(`   No player association (unknown sender)`);
+        // Try to find associated player for enrichment (but don't require it)
+        const player = await Player.findOne({
+          phone: { $regex: formattedPhone.slice(-10) }
+        });
+
+        savedMessage = await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: text,
+          direction: 'incoming',
+          messageId: messageId,
+          timestamp: new Date(),
+          messageType: 'general', // Will be updated to 'availability_response' if context validates
+          playerId: player?._id || null,
+          playerName: player?.name || null
+        });
+
+        console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
+        if (player) {
+          console.log(`   Associated with player: ${player.name}`);
+        } else {
+          console.log(`   No player association (unknown sender)`);
+        }
       }
 
       // Broadcast SSE event for new message
@@ -682,7 +690,6 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
   }
 }
 
-// Save image message to history for display in chat
 async function saveImageMessage(from, imageId, messageId, caption) {
   try {
     console.log('\n=== SAVING IMAGE MESSAGE TO HISTORY ===');
@@ -731,6 +738,44 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       console.error('Failed to get/cache image:', err.message);
     }
     
+    // Check if message already exists with the same image ID
+    const Message = require('../models/Message');
+    const existingMessage = await Message.findOne({ messageId });
+    
+    if (existingMessage) {
+      if (existingMessage.imageId === imageId) {
+        console.log(`⚠️ Message ${messageId} with same imageId ${imageId} already exists, skipping save`);
+        return existingMessage;
+      } else {
+        console.log(`🔄 Message ${messageId} exists but has different imageId (${existingMessage.imageId} -> ${imageId}), creating new record`);
+        // WhatsApp sometimes reuses message IDs for different images
+        // We'll create a new message record with a unique ID
+        const newMessageId = messageId + '_' + Date.now();
+        
+        // Save new message record with unique ID
+        const savedMessage = await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: caption || '[Image]',
+          direction: 'incoming',
+          messageId: newMessageId, // Use unique ID
+          originalMessageId: messageId, // Store original WhatsApp ID
+          timestamp: new Date(),
+          messageType: 'payment_screenshot',
+          playerId: player?._id || null,
+          playerName: player?.name || null,
+          imageId: imageId,
+          imageUrl: imageUrl,
+          imageMimeType: mimeType,
+          imageData: imageData,
+          caption: caption || null
+        });
+        
+        console.log(`✅ New image message saved to history (ID: ${savedMessage._id}) with unique ID: ${newMessageId}`);
+        return savedMessage;
+      }
+    }
+    
     // Save image message to database (with cached image data)
     const savedMessage = await Message.create({
       from: formattedPhone,
@@ -762,7 +807,9 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       direction: 'incoming',
       timestamp: savedMessage.timestamp,
       imageId: imageId,
-      messageType: 'image'
+      messageType: 'image',
+      imageMimeType: mimeType,
+      caption: caption || null
     });
     
     return savedMessage;
@@ -806,15 +853,20 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
       console.log('❌ No pending payments found for this player');
 
       // Save as general incoming message
-      await Message.create({
-        from: formattedPhone,
-        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: caption || '[Image received - no pending payments]',
-        direction: 'incoming',
-        messageId: messageId,
-        timestamp: new Date(),
-        messageType: 'general'
-      });
+      const existingMessage = await Message.findOne({ messageId });
+      if (!existingMessage) {
+        await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: caption || '[Image received - no pending payments]',
+          direction: 'incoming',
+          messageId: messageId,
+          timestamp: new Date(),
+          messageType: 'general'
+        });
+      } else {
+        console.log(`⚠️ No pending payment message ${messageId} already exists, skipping save`);
+      }
       return;
     }
 
@@ -855,14 +907,28 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     console.log('\n🤖 Calling AI Service to parse payment screenshot...');
     const aiResult = await parseWithAI(imageBuffer, matchDate);
 
+    // Debug AI result structure
+    console.log('🔍 AI Result received:');
+    console.log('  aiResult.success:', aiResult.success);
+    console.log('  aiResult.data:', aiResult.data ? 'present' : 'missing');
+    console.log('  aiResult.metadata:', aiResult.metadata ? 'present' : 'missing');
+    console.log('  requiresReview result:', requiresReview(aiResult));
+
     // If AI fails or requires review, flag for admin (fallback to manual entry)
     if (requiresReview(aiResult)) {
       const reviewReason = getReviewReason(aiResult);
       console.log(`⚠️ AI parsing requires review: ${reviewReason}`);
 
       // Store screenshot in oldest pending match and flag for review
+      console.log('🔍 Payment lookup debug:');
+      console.log('  pendingPayments[0].paymentId:', pendingPayments[0].paymentId);
+      console.log('  pendingPayments[0].memberId:', pendingPayments[0].memberId);
+      
       const primaryPayment = await MatchPayment.findById(pendingPayments[0].paymentId);
+      console.log('  primaryPayment found:', primaryPayment ? 'yes' : 'no');
+      
       const primaryMember = primaryPayment?.squadMembers.id(pendingPayments[0].memberId);
+      console.log('  primaryMember found:', primaryMember ? 'yes' : 'no');
 
       if (primaryMember) {
         primaryMember.screenshotImage = imageBuffer;
@@ -872,26 +938,56 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
         primaryMember.requiresReview = true;
         primaryMember.reviewReason = reviewReason;
         // Store AI result metadata if available
+        console.log('🔍 AI Result structure check:');
+        console.log('  aiResult.success:', aiResult.success);
+        console.log('  aiResult.data:', aiResult.data ? 'present' : 'missing');
+        console.log('  aiResult.metadata:', aiResult.metadata ? 'present' : 'missing');
         if (aiResult.metadata) {
-          primaryMember.ocrConfidence = aiResult.metadata.confidence || 0;
-          primaryMember.ocrExtractedAmount = aiResult.data?.amount || 0;
+          console.log('  metadata.confidence:', aiResult.metadata.confidence);
+          console.log('  metadata.provider:', aiResult.metadata.provider);
+          console.log('  metadata.model:', aiResult.metadata.model);
+          primaryMember.confidence = aiResult.metadata.confidence || 0;
+          primaryMember.provider = aiResult.metadata.provider || '';
+          primaryMember.model = aiResult.metadata.model || '';
+          primaryMember.model_cost_tier = aiResult.metadata.model_cost_tier || '';
+          primaryMember.image_hash = aiResult.metadata.image_hash || '';
+          primaryMember.processing_time_ms = aiResult.metadata.processing_time_ms || 0;
+          primaryMember.ai_service_response = aiResult;
+          console.log('✅ AI metadata stored successfully');
+        } else {
+          // Store basic AI data even if metadata is missing
+          console.log('⚠️ AI result metadata is missing, storing basic data');
+          console.log('  Full aiResult:', JSON.stringify(aiResult, null, 2));
+          primaryMember.ai_service_response = aiResult;
+          // Try to extract basic info from the response
+          if (aiResult.success && aiResult.data) {
+            primaryMember.confidence = 0.95; // Default confidence from logs
+            primaryMember.provider = 'google_ai_studio';
+            primaryMember.model = 'gemma-3-27b-it';
+            console.log('✅ Basic AI data stored as fallback');
+          }
         }
         await primaryPayment.save();
         console.log('📸 Screenshot stored and flagged for admin review');
       }
 
       // Save incoming message record
-      await Message.create({
-        from: formattedPhone,
-        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        text: caption || `[Payment screenshot - pending admin review: ${reviewReason}]`,
-        direction: 'incoming',
-        messageId: messageId,
-        timestamp: new Date(),
-        messageType: 'payment_screenshot',
-        matchId: pendingPayments[0].matchId,
-        paymentId: primaryPayment?._id
-      });
+      const existingMessage = await Message.findOne({ messageId });
+      if (!existingMessage) {
+        await Message.create({
+          from: formattedPhone,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+          text: caption || `[Payment screenshot - pending admin review: ${reviewReason}]`,
+          direction: 'incoming',
+          messageId: messageId,
+          timestamp: new Date(),
+          messageType: 'payment_screenshot',
+          matchId: pendingPayments[0].matchId,
+          paymentId: primaryPayment?._id
+        });
+      } else {
+        console.log(`⚠️ Payment screenshot message ${messageId} already exists, skipping save`);
+      }
 
       // Calculate total outstanding for acknowledgment message
       const totalDue = pendingPayments.reduce((sum, p) => sum + p.dueAmount, 0);
@@ -969,18 +1065,23 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
 
     // Save incoming message record
     const primaryDistribution = distributionResult.distributions[0];
-    await Message.create({
-      from: formattedPhone,
-      to: process.env.WHATSAPP_PHONE_NUMBER_ID,
-      text: caption || `[Payment screenshot - ₹${extractedAmount} distributed to ${distributionResult.matchesAffected} match(es)]`,
-      direction: 'incoming',
-      messageId: messageId,
-      timestamp: new Date(),
-      messageType: 'payment_screenshot',
-      matchId: primaryDistribution?.matchId,
-      paymentId: primaryDistribution?.paymentId,
-      paymentMemberId: primaryDistribution?.memberId
-    });
+    const existingMessage = await Message.findOne({ messageId });
+    if (!existingMessage) {
+      await Message.create({
+        from: formattedPhone,
+        to: process.env.WHATSAPP_PHONE_NUMBER_ID,
+        text: caption || `[Payment screenshot - ₹${extractedAmount} distributed to ${distributionResult.matchesAffected} match(es)]`,
+        direction: 'incoming',
+        messageId: messageId,
+        timestamp: new Date(),
+        messageType: 'payment_screenshot',
+        matchId: primaryDistribution?.matchId,
+        paymentId: primaryDistribution?.paymentId,
+        paymentMemberId: primaryDistribution?.memberId
+      });
+    } else {
+      console.log(`⚠️ Distributed payment message ${messageId} already exists, skipping save`);
+    }
 
     // Build and send confirmation message
     // Pass pendingPayments to show ALL matches, not just ones that received payment

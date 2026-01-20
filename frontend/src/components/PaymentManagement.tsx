@@ -28,7 +28,13 @@ import {
   Search,
   Eye,
   Filter,
-  Share2
+  Share2,
+  ChevronDown,
+  ChevronUp,
+  Bot,
+  Zap,
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 import ShareLinkModal from './ShareLinkModal';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
@@ -81,6 +87,16 @@ interface SquadMember {
   screenshotContentType?: string;
   paidAt: string | null;
   notes: string;
+  // AI Service Integration Fields
+  confidence?: number;
+  provider?: string;
+  model?: string;
+  model_cost_tier?: string;
+  image_hash?: string;
+  processing_time_ms?: number;
+  requiresReview?: boolean;
+  reviewReason?: string;
+  ai_service_response?: any;
 }
 
 interface Payment {
@@ -162,6 +178,7 @@ const PaymentManagement: React.FC = () => {
   const [editAmount, setEditAmount] = useState<number>(0);
   const [viewingScreenshot, setViewingScreenshot] = useState<{memberId: string; playerName: string} | null>(null);
   const [screenshotError, setScreenshotError] = useState(false);
+  const [showAIResponse, setShowAIResponse] = useState<{memberId: string; playerName: string} | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showPendingTooltip, setShowPendingTooltip] = useState(false);
   
@@ -1130,12 +1147,24 @@ const PaymentManagement: React.FC = () => {
                           <span className="hidden sm:inline capitalize">{member.paymentStatus}</span>
                         </div>
                         {member.screenshotReceivedAt && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); setScreenshotError(false); }}
-                            className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"
-                          >
-                            <Image className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); setScreenshotError(false); }}
+                              className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30"
+                              title="View Screenshot"
+                            >
+                              <Image className="w-4 h-4" />
+                            </button>
+                            {member.ai_service_response && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setShowAIResponse({ memberId: member._id, playerName: member.playerName }); }}
+                                className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30"
+                                title="View AI Analysis"
+                              >
+                                <Bot className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
                         )}
                         {!isViewer() && (
                           <button onClick={(e) => { e.stopPropagation(); handleRemovePlayer(member._id); }} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg">
@@ -1270,7 +1299,7 @@ const PaymentManagement: React.FC = () => {
         {/* Screenshot Viewer */}
         {viewingScreenshot && payment && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-white/10 rounded-2xl p-4 w-full max-w-2xl max-h-[90vh] overflow-auto">
+            <div className="bg-slate-800 border border-white/10 rounded-2xl p-4 w-full max-w-4xl max-h-[90vh] overflow-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white">Payment Screenshot - {viewingScreenshot.playerName}</h3>
                 <button onClick={() => setViewingScreenshot(null)} className="p-1 text-slate-400 hover:text-white">
@@ -1281,15 +1310,277 @@ const PaymentManagement: React.FC = () => {
                 <div className="text-center py-12 text-slate-400">
                   <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>Failed to load screenshot</p>
+                  <p className="text-sm mt-2">The screenshot might not be available or the format is not supported.</p>
                 </div>
               ) : (
-                <img
-                  src={getPaymentScreenshot(payment._id, viewingScreenshot.memberId)}
-                  alt="Payment Screenshot"
-                  className="w-full rounded-xl"
-                  onError={() => setScreenshotError(true)}
-                />
+                <div className="space-y-4">
+                  <img
+                    src={getPaymentScreenshot(payment._id, viewingScreenshot.memberId)}
+                    alt="Payment Screenshot"
+                    className="w-full rounded-xl max-h-[60vh] object-contain bg-slate-900/50"
+                    onError={() => setScreenshotError(true)}
+                    onLoad={() => setScreenshotError(false)}
+                  />
+                  {(() => {
+                    const member = payment.squadMembers.find(m => m._id === viewingScreenshot.memberId);
+                    return (
+                      <div className="bg-slate-700/30 rounded-xl p-4">
+                        <h4 className="text-white font-semibold mb-2">Screenshot Information</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-slate-400">Player</p>
+                            <p className="text-white font-medium">{member?.playerName}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">Received At</p>
+                            <p className="text-white font-medium">
+                              {member?.screenshotReceivedAt ? 
+                                new Date(member.screenshotReceivedAt).toLocaleString() : 
+                                'Unknown'
+                              }
+                            </p>
+                          </div>
+                          {member?.screenshotContentType && (
+                            <div>
+                              <p className="text-slate-400">Format</p>
+                              <p className="text-white font-medium">{member.screenshotContentType}</p>
+                            </div>
+                          )}
+                          {member?.requiresReview && (
+                            <div>
+                              <p className="text-slate-400">Review Status</p>
+                              <p className="text-amber-400 font-medium">
+                                Requires Review ({member.reviewReason})
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* AI Service Response Modal */}
+        {showAIResponse && payment && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-white/10 rounded-2xl p-4 w-full max-w-3xl max-h-[90vh] overflow-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-emerald-400" />
+                  AI Payment Analysis - {showAIResponse.playerName}
+                </h3>
+                <button onClick={() => setShowAIResponse(null)} className="p-1 text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {(() => {
+                const member = payment.squadMembers.find(m => m._id === showAIResponse.memberId);
+                const aiResponse = member?.ai_service_response;
+                
+                if (!aiResponse) {
+                  return (
+                    <div className="text-center py-12 text-slate-400">
+                      <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No AI analysis available</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {/* Success Status */}
+                    <div className={`p-4 rounded-xl border ${
+                      aiResponse.success 
+                        ? 'bg-emerald-500/10 border-emerald-500/30' 
+                        : 'bg-red-500/10 border-red-500/30'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        {aiResponse.success ? (
+                          <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                        ) : (
+                          <XCircle className="w-6 h-6 text-red-400" />
+                        )}
+                        <div>
+                          <p className={`font-semibold ${
+                            aiResponse.success ? 'text-emerald-400' : 'text-red-400'
+                          }`}>
+                            {aiResponse.success ? 'Payment Detected Successfully' : 'Payment Analysis Failed'}
+                          </p>
+                          {!aiResponse.success && aiResponse.error_message && (
+                            <p className="text-sm text-slate-400 mt-1">{aiResponse.error_message}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Parsed Payment Data */}
+                    {aiResponse.success && aiResponse.data && (
+                      <div className="bg-slate-700/30 rounded-xl p-4">
+                        <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                          <IndianRupee className="w-4 h-4 text-emerald-400" />
+                          Payment Details
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-sm text-slate-400">Amount</p>
+                            <p className="text-white font-semibold">
+                              ₹{aiResponse.data.amount} {aiResponse.data.currency}
+                            </p>
+                          </div>
+                          {aiResponse.data.payee_name && (
+                            <div>
+                              <p className="text-sm text-slate-400">Payee</p>
+                              <p className="text-white font-semibold">{aiResponse.data.payee_name}</p>
+                            </div>
+                          )}
+                          {aiResponse.data.date && (
+                            <div>
+                              <p className="text-sm text-slate-400">Date</p>
+                              <p className="text-white font-semibold">{aiResponse.data.date}</p>
+                            </div>
+                          )}
+                          {aiResponse.data.time && (
+                            <div>
+                              <p className="text-sm text-slate-400">Time</p>
+                              <p className="text-white font-semibold">{aiResponse.data.time}</p>
+                            </div>
+                          )}
+                          {aiResponse.data.transaction_id && (
+                            <div>
+                              <p className="text-sm text-slate-400">Transaction ID</p>
+                              <p className="text-white font-semibold text-sm">{aiResponse.data.transaction_id}</p>
+                            </div>
+                          )}
+                          {aiResponse.data.payment_method && (
+                            <div>
+                              <p className="text-sm text-slate-400">Payment Method</p>
+                              <p className="text-white font-semibold capitalize">{aiResponse.data.payment_method}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Analysis Metadata */}
+                    {aiResponse.metadata && (
+                      <div className="bg-slate-700/30 rounded-xl p-4">
+                        <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-blue-400" />
+                          AI Analysis Details
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {aiResponse.metadata.confidence && (
+                            <div>
+                              <p className="text-sm text-slate-400">Confidence</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-slate-600 rounded-full h-2">
+                                  <div 
+                                    className="bg-emerald-400 h-2 rounded-full" 
+                                    style={{ width: `${aiResponse.metadata.confidence * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-white font-semibold text-sm">
+                                  {Math.round(aiResponse.metadata.confidence * 100)}%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          {aiResponse.metadata.provider && (
+                            <div>
+                              <p className="text-sm text-slate-400">AI Provider</p>
+                              <p className="text-white font-semibold">{aiResponse.metadata.provider}</p>
+                            </div>
+                          )}
+                          {aiResponse.metadata.model && (
+                            <div>
+                              <p className="text-sm text-slate-400">Model</p>
+                              <p className="text-white font-semibold">{aiResponse.metadata.model}</p>
+                            </div>
+                          )}
+                          {aiResponse.metadata.model_cost_tier && (
+                            <div>
+                              <p className="text-sm text-slate-400">Cost Tier</p>
+                              <p className="text-white font-semibold capitalize">
+                                {aiResponse.metadata.model_cost_tier === 'free' ? (
+                                  <span className="text-emerald-400">Free</span>
+                                ) : (
+                                  <span className="text-amber-400">Paid</span>
+                                )}
+                              </p>
+                            </div>
+                          )}
+                          {aiResponse.metadata.processing_time_ms && (
+                            <div>
+                              <p className="text-sm text-slate-400">Processing Time</p>
+                              <p className="text-white font-semibold">
+                                {(aiResponse.metadata.processing_time_ms / 1000).toFixed(1)}s
+                              </p>
+                            </div>
+                          )}
+                          {aiResponse.metadata.image_hash && (
+                            <div className="sm:col-span-2">
+                              <p className="text-sm text-slate-400">Image Hash (Deduplication)</p>
+                              <p className="text-white font-mono text-xs break-all">
+                                {aiResponse.metadata.image_hash}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Review Status */}
+                    {aiResponse.metadata && (aiResponse.metadata.requires_review || member?.requiresReview) && (
+                      <div className={`p-4 rounded-xl border ${
+                        member?.requiresReview 
+                          ? 'bg-amber-500/10 border-amber-500/30' 
+                          : 'bg-blue-500/10 border-blue-500/30'
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          <AlertTriangle className="w-6 h-6 text-amber-400" />
+                          <div>
+                            <p className="font-semibold text-amber-400">Requires Admin Review</p>
+                            <p className="text-sm text-slate-400">
+                              Reason: {member?.reviewReason || aiResponse.metadata.reviewReason || 'Unknown'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Full Response Toggle */}
+                    <div className="border-t border-white/10 pt-4">
+                      <button
+                        onClick={() => {
+                          // Toggle full response visibility
+                          const element = document.getElementById('full-ai-response');
+                          if (element) {
+                            element.classList.toggle('hidden');
+                          }
+                        }}
+                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        <span className="text-sm">View Full AI Response</span>
+                      </button>
+                      
+                      <div id="full-ai-response" className="hidden mt-4">
+                        <div className="bg-slate-900/50 rounded-xl p-4">
+                          <h5 className="text-white font-semibold mb-2 text-sm">Complete Response Data</h5>
+                          <pre className="text-xs text-slate-400 overflow-x-auto whitespace-pre-wrap">
+                            {JSON.stringify(aiResponse, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
