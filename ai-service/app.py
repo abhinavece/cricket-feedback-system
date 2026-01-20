@@ -6,11 +6,22 @@ Provides REST API endpoints for parsing payment screenshots.
 """
 
 import logging
+import os
 from datetime import datetime
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    logging.info("Loaded environment variables from .env file")
+except ImportError:
+    logging.warning("python-dotenv not installed, environment variables not loaded from .env")
+except Exception as e:
+    logging.warning(f"Failed to load .env file: {e}")
 
 from models.schemas import (
     ParsePaymentRequest,
@@ -93,6 +104,55 @@ async def service_status():
     """
     status = get_service_status()
     return StatusResponse(**status)
+
+
+@app.get("/models")
+async def list_available_models():
+    """
+    List available models from the AI provider.
+    Useful for debugging model availability.
+    """
+    try:
+        from providers import get_provider
+        provider = get_provider()
+        
+        if provider.get_provider_name() == "google_ai_studio":
+            import google.generativeai as genai
+            models = []
+            try:
+                for model in genai.list_models():
+                    if 'generateContent' in model.supported_generation_methods:
+                        models.append({
+                            "name": model.name,
+                            "display_name": model.display_name,
+                            "description": model.description,
+                        })
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "provider": provider.get_provider_name(),
+                    "current_model": provider.get_model_id(),
+                }
+            
+            return {
+                "success": True,
+                "provider": provider.get_provider_name(),
+                "current_model": provider.get_model_id(),
+                "available_models": models,
+            }
+        else:
+            return {
+                "success": True,
+                "provider": provider.get_provider_name(),
+                "current_model": provider.get_model_id(),
+                "message": "Model listing not available for this provider"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 @app.post("/parse-payment", response_model=ParsePaymentResponse)

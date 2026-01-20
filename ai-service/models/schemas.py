@@ -64,6 +64,14 @@ class ResponseMetadata(BaseModel):
         default="",
         description="Model used for parsing"
     )
+    model_cost_tier: Literal["free", "paid", "unknown"] = Field(
+        default="unknown",
+        description="Whether the model call was free or paid"
+    )
+    image_hash: str = Field(
+        default="",
+        description="SHA-256 hash of the image for deduplication"
+    )
     requires_review: bool = Field(
         default=False,
         description="Whether admin review is required"
@@ -130,6 +138,8 @@ class ParsePaymentResponse(BaseModel):
         review_reason: str = None,
         provider: str = "",
         model: str = "",
+        model_cost_tier: str = "unknown",
+        image_hash: str = "",
         processing_time_ms: int = 0,
         is_payment_screenshot: bool = False
     ) -> "ParsePaymentResponse":
@@ -145,6 +155,8 @@ class ParsePaymentResponse(BaseModel):
                 processing_time_ms=processing_time_ms,
                 provider=provider,
                 model=model,
+                model_cost_tier=model_cost_tier,
+                image_hash=image_hash,
                 requires_review=True,
                 review_reason=review_reason or error_code
             )
@@ -157,6 +169,8 @@ class ParsePaymentResponse(BaseModel):
         confidence: float,
         provider: str,
         model: str,
+        model_cost_tier: str,
+        image_hash: str,
         processing_time_ms: int,
         requires_review: bool = False,
         review_reason: str = None
@@ -173,6 +187,8 @@ class ParsePaymentResponse(BaseModel):
                 processing_time_ms=processing_time_ms,
                 provider=provider,
                 model=model,
+                model_cost_tier=model_cost_tier,
+                image_hash=image_hash,
                 requires_review=requires_review,
                 review_reason=review_reason
             )

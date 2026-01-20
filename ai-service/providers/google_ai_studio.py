@@ -10,7 +10,8 @@ import base64
 import logging
 from typing import Optional
 
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types
 
 from .base import AIProviderBase
 from config import (
@@ -30,7 +31,8 @@ class GoogleAIStudioProvider(AIProviderBase):
     """
     
     # Default model - must be in ALLOWED_FREE_MODELS
-    DEFAULT_MODEL = "gemini-1.5-flash"
+    # Using Gemma-3-27B-IT for better reasoning and multilingual support
+    DEFAULT_MODEL = "gemma-3-27b-it"
     
     def __init__(self, model_id: str = None):
         """
@@ -51,11 +53,10 @@ class GoogleAIStudioProvider(AIProviderBase):
         
         # Configure the API
         if GOOGLE_AI_STUDIO_API_KEY:
-            genai.configure(api_key=GOOGLE_AI_STUDIO_API_KEY)
-            self._model = genai.GenerativeModel(self._model_id)
+            self._client = genai.Client(api_key=GOOGLE_AI_STUDIO_API_KEY)
         else:
             logger.warning("GOOGLE_AI_STUDIO_API_KEY not set")
-            self._model = None
+            self._client = None
     
     def get_model_id(self) -> str:
         return self._model_id
@@ -65,6 +66,14 @@ class GoogleAIStudioProvider(AIProviderBase):
     
     def is_free_tier(self) -> bool:
         return is_model_allowed(self._model_id)
+    
+    def _get_working_model(self, model_id: str):
+        """Get a specific model instance."""
+        try:
+            return genai.GenerativeModel(model_id)
+        except Exception as e:
+            logger.warning(f"Model {model_id} instantiation failed: {e}")
+            return None
     
     async def parse_payment_image(
         self,
@@ -81,71 +90,123 @@ class GoogleAIStudioProvider(AIProviderBase):
         Returns:
             dict: Parsed payment data
         """
-        if not self._model:
-            return {
-                "error": "API not configured",
-                "is_payment_screenshot": False,
-                "confidence": 0.0,
-            }
-        
+        # Prepare image data once
         try:
             # Decode base64 to get image bytes
-            # Handle data URL format if present
             if "," in image_base64:
                 image_base64 = image_base64.split(",")[1]
-            
             image_bytes = base64.b64decode(image_base64)
             
-            # Create image part for Gemini
+            # Detect image type from magic bytes
+            mime_type = "image/jpeg"  # default
+            if image_bytes.startswith(b'\x89PNG'):
+                mime_type = "image/png"
+            elif image_bytes.startswith(b'\xFF\xD8\xFF'):
+                mime_type = "image/jpeg"
+            elif image_bytes.startswith(b'GIF'):
+                mime_type = "image/gif"
+            elif image_bytes.startswith(b'WEBP', 8):
+                mime_type = "image/webp"
+            
             image_part = {
-                "mime_type": "image/jpeg",  # Gemini handles most formats
+                "mime_type": mime_type,
                 "data": image_bytes
             }
-            
-            # Get prompt
-            prompt = self.get_payment_extraction_prompt()
-            
-            # Generate content
-            response = await self._generate_content_async(prompt, image_part)
-            
-            # Parse the response
-            return self._parse_ai_response(response)
-            
         except Exception as e:
-            logger.error(f"Error parsing payment image: {e}")
+            logger.error(f"Error preparing image data: {e}")
             return {
-                "error": str(e),
+                "error": f"Image preparation failed: {str(e)}",
                 "is_payment_screenshot": False,
                 "confidence": 0.0,
             }
+
+        # List of models to try in order
+        models_to_try = [self._model_id]
+        
+        # Add fallbacks
+        fallbacks = [
+            "gemma-3-27b-it", # Try Gemma first
+            "gemini-2.0-flash-exp",
+            "gemini-flash-latest",
+            "gemini-2.0-flash-lite-preview-02-05",
+            "gemini-2.0-flash", # Retry if it was default
+            "gemini-1.5-flash", # Fallback to older
+            "gemini-1.5-pro",
+        ]
+        
+        # Dedup preserving order
+        for fb in fallbacks:
+            if fb not in models_to_try:
+                models_to_try.append(fb)
+        
+        last_error = None
+        
+        for model_id in models_to_try:
+            # Check if allowed (skip if not free and we only want free)
+            if not is_model_allowed(model_id):
+                continue
+                
+            logger.info(f"Attempting to use model: {model_id}")
+            
+            try:
+                # Update current model ID for status checks
+                self._model_id = model_id
+                
+                # Get prompt
+                prompt = self.get_payment_extraction_prompt()
+                
+                # Generate content
+                response = await self._generate_content_with_model(model_id, prompt, image_part)
+                
+                # If we got here, it worked!
+                logger.info(f"✅ Success with model: {model_id}")
+                return self._parse_ai_response(response)
+                
+            except Exception as e:
+                logger.warning(f"❌ Model {model_id} failed: {e}")
+                last_error = e
+                # Continue to next model
+        
+        # If all failed
+        return {
+            "error": f"All models failed. Last error: {str(last_error)}",
+            "is_payment_screenshot": False,
+            "confidence": 0.0,
+        }
     
-    async def _generate_content_async(self, prompt: str, image_part: dict) -> str:
+    async def _generate_content_with_model(self, model_id: str, prompt: str, image_part: dict) -> str:
         """
-        Generate content using Gemini model.
-        
-        Uses sync method wrapped since google-generativeai doesn't have native async.
+        Generate content using a specific Gemini model with new API.
         """
-        import asyncio
-        
-        def sync_generate():
-            response = self._model.generate_content(
-                [prompt, image_part],
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.1,  # Low temperature for consistent output
+        try:
+            # Prepare content parts for new API
+            contents = [
+                types.Content(
+                    parts=[
+                        types.Part.from_text(text=prompt),
+                        types.Part.from_bytes(
+                            data=image_part["data"],
+                            mime_type=image_part["mime_type"]
+                        )
+                    ]
+                )
+            ]
+            
+            # Generate content using new API
+            response = self._client.models.generate_content(
+                model=model_id,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
                     max_output_tokens=1024,
-                ),
-                safety_settings={
-                    "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
-                    "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
-                    "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
-                    "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
-                }
+                )
             )
+            
             return response.text
-        
-        # Run in thread pool to not block
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, sync_generate)
+            
+        except Exception as e:
+            logger.error(f"Error generating content with {model_id}: {e}")
+            raise
     
     def _parse_ai_response(self, response_text: str) -> dict:
         """

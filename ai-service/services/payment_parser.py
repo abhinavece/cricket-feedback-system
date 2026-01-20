@@ -17,6 +17,7 @@ from models.schemas import (
 from providers import get_provider, AIProviderBase
 from services.image_validator import ImageValidator
 from services.date_validator import DateValidator
+from utils.image_utils import generate_image_hash
 from config import (
     AI_SERVICE_ENABLED,
     should_block_request,
@@ -81,6 +82,12 @@ class PaymentParserService:
             provider_name = self.provider.get_provider_name()
             model_id = self.provider.get_model_id()
             
+            # Generate image hash for deduplication
+            image_hash, _ = generate_image_hash(image_base64)
+            
+            # Determine model cost tier
+            model_cost_tier = "free" if self.provider.is_free_tier() else "paid"
+            
             # 1. Check master kill switch
             if not AI_SERVICE_ENABLED:
                 return self._error_response(
@@ -88,6 +95,8 @@ class PaymentParserService:
                     "AI service is disabled",
                     provider_name,
                     model_id,
+                    model_cost_tier,
+                    image_hash,
                     start_time
                 )
             
@@ -99,6 +108,8 @@ class PaymentParserService:
                     f"Request blocked: {block_reason}",
                     provider_name,
                     model_id,
+                    model_cost_tier,
+                    image_hash,
                     start_time
                 )
             
@@ -110,6 +121,8 @@ class PaymentParserService:
                     validation_error,
                     provider_name,
                     model_id,
+                    model_cost_tier,
+                    image_hash,
                     start_time
                 )
             
@@ -127,6 +140,8 @@ class PaymentParserService:
                     f"AI processing failed: {ai_result['error']}",
                     provider_name,
                     model_id,
+                    model_cost_tier,
+                    image_hash,
                     start_time
                 )
             
@@ -144,6 +159,8 @@ class PaymentParserService:
                         processing_time_ms=self._get_elapsed_ms(start_time),
                         provider=provider_name,
                         model=model_id,
+                        model_cost_tier=model_cost_tier,
+                        image_hash=image_hash,
                         requires_review=True,
                         review_reason="not_payment_screenshot"
                     )
@@ -205,6 +222,8 @@ class PaymentParserService:
                     processing_time_ms=processing_time_ms,
                     provider=provider_name,
                     model=model_id,
+                    model_cost_tier=model_cost_tier,
+                    image_hash=image_hash,
                     requires_review=requires_review,
                     review_reason=review_reason
                 )
@@ -217,6 +236,8 @@ class PaymentParserService:
                 f"Unexpected error: {str(e)}",
                 provider_name,
                 model_id,
+                model_cost_tier,
+                image_hash,
                 start_time
             )
     
@@ -226,9 +247,26 @@ class PaymentParserService:
         error_message: str,
         provider: str,
         model: str,
+        model_cost_tier: str,
+        image_hash: str,
         start_time: float
     ) -> ParsePaymentResponse:
         """Create an error response."""
+        # Map error codes to valid review_reason values
+        error_to_review_reason = {
+            "ai_failed": "ai_uncertain",
+            "invalid_image": "validation_failed",
+            "payment_date_invalid": "date_mismatch",
+            "not_payment_screenshot": "not_payment_screenshot",
+            "validation_failed": "validation_failed",
+            "service_error": "service_error",
+            "service_disabled": "service_disabled",
+            "daily_limit_exceeded": "service_disabled",
+            "model_not_free": "service_disabled",
+        }
+        
+        review_reason = error_to_review_reason.get(error_code, "service_error")
+        
         return ParsePaymentResponse(
             success=False,
             error_code=error_code,
@@ -240,8 +278,10 @@ class PaymentParserService:
                 processing_time_ms=self._get_elapsed_ms(start_time),
                 provider=provider,
                 model=model,
+                model_cost_tier=model_cost_tier,
+                image_hash=image_hash,
                 requires_review=True,
-                review_reason=error_code
+                review_reason=review_reason
             )
         )
     
