@@ -76,6 +76,10 @@ backend:
         secretKeyRef:
           name: cricket-secrets
           key: whatsapp-verify-token
+    - name: AI_SERVICE_URL
+      value: "http://ai-service:8010"
+    - name: AI_SERVICE_ENABLED
+      value: "true"
   
   livenessProbe:
     httpGet:
@@ -101,14 +105,14 @@ aiService:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-ai-service
-    tag: "v1"
+    tag: "2026.01.20.1"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
   service:
     type: ClusterIP
-    port: 8000
-    targetPort: 8000
+    port: 8010
+    targetPort: 8010
   
   resources:
     limits:
