@@ -9,7 +9,8 @@ const Message = require('../models/Message');
 const PaymentScreenshot = require('../models/PaymentScreenshot');
 const axios = require('axios');
 const { getOrCreatePlayer, formatPhoneNumber } = require('../services/playerService');
-const { getTotalOutstandingForPlayer } = require('../services/paymentDistributionService');
+const { getTotalOutstandingForPlayer, distributePaymentFIFO } = require('../services/paymentDistributionService');
+const sseManager = require('../utils/sseManager');
 const {
   calculatePlayerSummary,
   calculatePlayerMatchHistory,
@@ -116,6 +117,82 @@ router.get('/match/:matchId', auth, async (req, res) => {
         }
         
         return memberWithoutImage;
+      });
+    }
+
+    // Attach latest screenshot review status per member (for list display)
+    const screenshotIds = (paymentObj.squadMembers || [])
+      .flatMap(m => (m.screenshots || []).map(s => s.screenshotId))
+      .filter(Boolean);
+
+    if (screenshotIds.length > 0) {
+      const screenshots = await PaymentScreenshot.find({ _id: { $in: screenshotIds } })
+        .select('receivedAt status reviewedBy reviewedAt reviewNotes');
+
+      // Manually populate reviewedBy with fallback
+      const User = require('../models/User');
+      const reviewerIds = screenshots
+        .map(s => s.reviewedBy)
+        .filter(id => id && id.toString());
+      
+      let reviewerMap = new Map();
+      if (reviewerIds.length > 0) {
+        const reviewers = await User.find({ _id: { $in: reviewerIds } })
+          .select('name email');
+        reviewers.forEach(u => {
+          reviewerMap.set(u._id.toString(), {
+            _id: u._id.toString(),
+            name: u.name || 'Unknown',
+            email: u.email || ''
+          });
+        });
+      }
+
+      const screenshotMap = new Map(
+        screenshots.map(s => {
+          let reviewedByData = null;
+          if (s.reviewedBy) {
+            const reviewerId = s.reviewedBy.toString();
+            reviewedByData = reviewerMap.get(reviewerId) || {
+              _id: reviewerId,
+              name: 'Unknown',
+              email: ''
+            };
+          }
+          
+          return [
+            s._id.toString(),
+            {
+              _id: s._id.toString(),
+              receivedAt: s.receivedAt,
+              status: s.status,
+              reviewedAt: s.reviewedAt,
+              reviewNotes: s.reviewNotes,
+              reviewedBy: reviewedByData
+            }
+          ];
+        })
+      );
+
+      paymentObj.squadMembers = paymentObj.squadMembers.map(member => {
+        const memberScreenshotIds = (member.screenshots || [])
+          .map(s => s.screenshotId)
+          .filter(Boolean)
+          .map(id => id.toString());
+
+        const enriched = memberScreenshotIds
+          .map(id => screenshotMap.get(id))
+          .filter(Boolean)
+          .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime());
+
+        const latest = enriched[0] || null;
+        return {
+          ...member,
+          latestScreenshotStatus: latest?.status || null,
+          latestScreenshotReviewedAt: latest?.reviewedAt || null,
+          latestScreenshotReviewedBy: latest?.reviewedBy || null,
+          latestScreenshotReviewNotes: latest?.reviewNotes || null
+        };
       });
     }
 
@@ -1797,30 +1874,62 @@ router.get('/:id/member/:memberId/screenshots', auth, async (req, res) => {
       }
     }
 
+    // Manually populate reviewedBy
+    const User = require('../models/User');
+    const reviewerIds = screenshots
+      .map(s => s.reviewedBy)
+      .filter(id => id && id.toString());
+    
+    let reviewerMap = new Map();
+    if (reviewerIds.length > 0) {
+      const reviewers = await User.find({ _id: { $in: reviewerIds } })
+        .select('name email');
+      reviewers.forEach(u => {
+        reviewerMap.set(u._id.toString(), {
+          _id: u._id.toString(),
+          name: u.name || 'Unknown',
+          email: u.email || ''
+        });
+      });
+    }
+
     res.json({
       success: true,
       data: {
-        screenshots: screenshots.map(s => ({
-          _id: s._id,
-          receivedAt: s.receivedAt,
-          extractedAmount: s.extractedAmount,
-          status: s.status,
-          isDuplicate: s.status === 'duplicate',
-          duplicateOf: s.duplicateOf,
-          aiAnalysis: {
-            confidence: s.aiAnalysis?.confidence,
-            provider: s.aiAnalysis?.provider,
-            model: s.aiAnalysis?.model,
-            transactionId: s.aiAnalysis?.transactionId,
-            paymentDate: s.aiAnalysis?.paymentDate,
-            payerName: s.aiAnalysis?.payerName,
-            requiresReview: s.aiAnalysis?.requiresReview,
-            reviewReason: s.aiAnalysis?.reviewReason
-          },
-          distributions: s.distributions,
-          totalDistributed: s.totalDistributed,
-          remainingAmount: s.remainingAmount
-        })),
+        screenshots: screenshots.map(s => {
+          const reviewedByData = s.reviewedBy 
+            ? reviewerMap.get(s.reviewedBy.toString()) || {
+                _id: s.reviewedBy.toString(),
+                name: 'Unknown',
+                email: ''
+              }
+            : null;
+          
+          return {
+            _id: s._id,
+            receivedAt: s.receivedAt,
+            extractedAmount: s.extractedAmount,
+            status: s.status,
+            isDuplicate: s.status === 'duplicate',
+            duplicateOf: s.duplicateOf,
+            reviewedBy: reviewedByData,
+            reviewedAt: s.reviewedAt,
+            reviewNotes: s.reviewNotes,
+            aiAnalysis: {
+              confidence: s.aiAnalysis?.confidence,
+              provider: s.aiAnalysis?.provider,
+              model: s.aiAnalysis?.model,
+              transactionId: s.aiAnalysis?.transactionId,
+              paymentDate: s.aiAnalysis?.paymentDate,
+              payerName: s.aiAnalysis?.payerName,
+              requiresReview: s.aiAnalysis?.requiresReview,
+              reviewReason: s.aiAnalysis?.reviewReason
+            },
+            distributions: s.distributions,
+            totalDistributed: s.totalDistributed,
+            remainingAmount: s.remainingAmount
+          };
+        }),
         totalCount: screenshots.length
       }
     });
@@ -1839,6 +1948,26 @@ router.get('/screenshots/:screenshotId', auth, async (req, res) => {
     const screenshot = await PaymentScreenshot.findById(req.params.screenshotId)
       .select('-screenshotImage')
       .populate('duplicateOf', 'receivedAt extractedAmount status');
+
+    // Manually populate reviewedBy
+    let reviewedByData = null;
+    if (screenshot && screenshot.reviewedBy) {
+      const User = require('../models/User');
+      const reviewer = await User.findById(screenshot.reviewedBy).select('name email');
+      if (reviewer) {
+        reviewedByData = {
+          _id: reviewer._id.toString(),
+          name: reviewer.name || 'Unknown',
+          email: reviewer.email || ''
+        };
+      } else {
+        reviewedByData = {
+          _id: screenshot.reviewedBy.toString(),
+          name: 'Unknown',
+          email: ''
+        };
+      }
+    }
 
     if (!screenshot) {
       return res.status(404).json({
@@ -1900,26 +2029,58 @@ router.get('/player/:phone/screenshots', auth, async (req, res) => {
       includeImage: false
     });
 
+    // Manually populate reviewedBy
+    const User = require('../models/User');
+    const reviewerIds = screenshots
+      .map(s => s.reviewedBy)
+      .filter(id => id && id.toString());
+    
+    let reviewerMap = new Map();
+    if (reviewerIds.length > 0) {
+      const reviewers = await User.find({ _id: { $in: reviewerIds } })
+        .select('name email');
+      reviewers.forEach(u => {
+        reviewerMap.set(u._id.toString(), {
+          _id: u._id.toString(),
+          name: u.name || 'Unknown',
+          email: u.email || ''
+        });
+      });
+    }
+
     res.json({
       success: true,
       data: {
-        screenshots: screenshots.map(s => ({
-          _id: s._id,
-          receivedAt: s.receivedAt,
-          extractedAmount: s.extractedAmount,
-          status: s.status,
-          isDuplicate: s.status === 'duplicate',
-          duplicateOf: s.duplicateOf,
-          aiAnalysis: {
-            confidence: s.aiAnalysis?.confidence,
-            transactionId: s.aiAnalysis?.transactionId,
-            paymentDate: s.aiAnalysis?.paymentDate,
-            requiresReview: s.aiAnalysis?.requiresReview,
-            reviewReason: s.aiAnalysis?.reviewReason
-          },
-          distributions: s.distributions,
-          totalDistributed: s.totalDistributed
-        })),
+        screenshots: screenshots.map(s => {
+          const reviewedByData = s.reviewedBy 
+            ? reviewerMap.get(s.reviewedBy.toString()) || {
+                _id: s.reviewedBy.toString(),
+                name: 'Unknown',
+                email: ''
+              }
+            : null;
+          
+          return {
+            _id: s._id,
+            receivedAt: s.receivedAt,
+            extractedAmount: s.extractedAmount,
+            status: s.status,
+            isDuplicate: s.status === 'duplicate',
+            duplicateOf: s.duplicateOf,
+            reviewedBy: reviewedByData,
+            reviewedAt: s.reviewedAt,
+            reviewNotes: s.reviewNotes,
+            aiAnalysis: {
+              confidence: s.aiAnalysis?.confidence,
+              transactionId: s.aiAnalysis?.transactionId,
+              paymentDate: s.aiAnalysis?.paymentDate,
+              requiresReview: s.aiAnalysis?.requiresReview,
+              reviewReason: s.aiAnalysis?.reviewReason
+            },
+            distributions: s.distributions,
+            totalDistributed: s.totalDistributed
+          };
+        }),
         totalCount: screenshots.length
       }
     });
@@ -1945,52 +2106,139 @@ router.post('/screenshots/:screenshotId/review', auth, async (req, res) => {
       });
     }
 
-    switch (action) {
-      case 'approve':
-        screenshot.status = 'approved';
-        screenshot.reviewedBy = req.user._id;
-        screenshot.reviewedAt = new Date();
-        screenshot.reviewNotes = notes || null;
-        break;
+    if (!['approve', 'reject', 'override'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid action. Use: approve, reject, or override'
+      });
+    }
 
-      case 'reject':
-        screenshot.status = 'rejected';
-        screenshot.reviewedBy = req.user._id;
-        screenshot.reviewedAt = new Date();
-        screenshot.reviewNotes = notes || null;
-        break;
+    if (['auto_applied', 'approved'].includes(screenshot.status) && action !== 'reject') {
+      return res.status(400).json({
+        success: false,
+        error: `Screenshot already ${screenshot.status}.`
+      });
+    }
 
-      case 'override':
-        if (overrideAmount === undefined) {
-          return res.status(400).json({
-            success: false,
-            error: 'overrideAmount is required for override action'
-          });
+    if (action === 'reject') {
+      screenshot.status = 'rejected';
+      screenshot.reviewedBy = req.user._id;
+      screenshot.reviewedAt = new Date();
+      screenshot.reviewNotes = notes || null;
+      screenshot.distributions = [];
+      screenshot.totalDistributed = 0;
+      screenshot.remainingAmount = screenshot.extractedAmount ?? null;
+
+      await screenshot.save();
+
+      sseManager.broadcast('payments', {
+        type: 'payment:screenshot',
+        screenshotId: screenshot._id.toString(),
+        status: screenshot.status
+      });
+
+      return res.json({
+        success: true,
+        message: 'Screenshot rejected successfully',
+        data: {
+          _id: screenshot._id,
+          status: screenshot.status,
+          extractedAmount: screenshot.extractedAmount,
+          reviewedAt: screenshot.reviewedAt
         }
-        screenshot.extractedAmount = overrideAmount;
-        screenshot.status = 'approved';
-        screenshot.reviewedBy = req.user._id;
-        screenshot.reviewedAt = new Date();
-        screenshot.reviewNotes = notes || `Amount overridden to ₹${overrideAmount}`;
-        break;
+      });
+    }
 
-      default:
+    if (action === 'override') {
+      if (overrideAmount === undefined || overrideAmount === null) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid action. Use: approve, reject, or override'
+          error: 'overrideAmount is required for override action'
         });
+      }
+      screenshot.extractedAmount = overrideAmount;
     }
+
+    const amountToApply = screenshot.extractedAmount;
+    if (!amountToApply || amountToApply <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid amount available to apply. Use overrideAmount to set the amount.'
+      });
+    }
+
+    const distributionResult = await distributePaymentFIFO(
+      screenshot.playerPhone,
+      amountToApply,
+      {
+        buffer: screenshot.screenshotImage,
+        contentType: screenshot.screenshotContentType,
+        mediaId: screenshot.screenshotMediaId
+      },
+      {
+        confidence: screenshot.aiAnalysis?.confidence || 0,
+        provider: screenshot.aiAnalysis?.provider || '',
+        model: screenshot.aiAnalysis?.model || '',
+        payerName: screenshot.aiAnalysis?.payerName || '',
+        transactionId: screenshot.aiAnalysis?.transactionId || '',
+        paymentDate: screenshot.aiAnalysis?.paymentDate ? screenshot.aiAnalysis.paymentDate.toISOString() : ''
+      }
+    );
+
+    if (!distributionResult?.success) {
+      return res.status(400).json({
+        success: false,
+        error: distributionResult?.message || 'Failed to apply payment'
+      });
+    }
+
+    screenshot.status = 'auto_applied';
+    screenshot.reviewedBy = req.user._id;
+    screenshot.reviewedAt = new Date();
+    screenshot.reviewNotes = notes || (action === 'override' ? `Amount overridden to ₹${amountToApply}` : null);
+    screenshot.distributions = distributionResult.distributions.map(d => ({
+      matchId: d.matchId,
+      paymentId: d.paymentId,
+      memberId: d.memberId,
+      amountApplied: d.allocatedAmount,
+      appliedAt: new Date()
+    }));
+    screenshot.totalDistributed = distributionResult.distributions.reduce((sum, d) => sum + d.allocatedAmount, 0);
+    screenshot.remainingAmount = Math.max(0, amountToApply - screenshot.totalDistributed);
 
     await screenshot.save();
 
-    res.json({
+    for (const dist of (distributionResult.distributions || [])) {
+      if (!dist?.paymentId || !dist?.memberId) continue;
+      const payment = await MatchPayment.findById(dist.paymentId);
+      const member = payment?.squadMembers.id(dist.memberId);
+      if (member) {
+        member.requiresReview = false;
+        member.reviewReason = null;
+        await payment.save();
+      }
+    }
+
+    const primaryDistribution = distributionResult.distributions?.[0];
+    sseManager.broadcast('payments', {
+      type: 'payment:screenshot',
+      paymentId: primaryDistribution?.paymentId?.toString(),
+      matchId: primaryDistribution?.matchId?.toString(),
+      screenshotId: screenshot._id.toString(),
+      status: screenshot.status
+    });
+
+    return res.json({
       success: true,
-      message: `Screenshot ${action}d successfully`,
+      message: 'Screenshot approved and payment applied successfully',
       data: {
         _id: screenshot._id,
         status: screenshot.status,
         extractedAmount: screenshot.extractedAmount,
-        reviewedAt: screenshot.reviewedAt
+        reviewedAt: screenshot.reviewedAt,
+        totalDistributed: screenshot.totalDistributed,
+        remainingAmount: screenshot.remainingAmount,
+        distributions: screenshot.distributions
       }
     });
   } catch (error) {
@@ -2015,25 +2263,57 @@ router.get('/screenshots/pending-review', auth, async (req, res) => {
     .limit(parseInt(limit))
     .populate('playerId', 'name phone');
 
+    // Manually populate reviewedBy
+    const User = require('../models/User');
+    const reviewerIds = screenshots
+      .map(s => s.reviewedBy)
+      .filter(id => id && id.toString());
+    
+    let reviewerMap = new Map();
+    if (reviewerIds.length > 0) {
+      const reviewers = await User.find({ _id: { $in: reviewerIds } })
+        .select('name email');
+      reviewers.forEach(u => {
+        reviewerMap.set(u._id.toString(), {
+          _id: u._id.toString(),
+          name: u.name || 'Unknown',
+          email: u.email || ''
+        });
+      });
+    }
+
     res.json({
       success: true,
       data: {
-        screenshots: screenshots.map(s => ({
-          _id: s._id,
-          playerName: s.playerName,
-          playerPhone: s.playerPhone,
-          receivedAt: s.receivedAt,
-          extractedAmount: s.extractedAmount,
-          status: s.status,
-          aiAnalysis: {
-            confidence: s.aiAnalysis?.confidence,
-            requiresReview: s.aiAnalysis?.requiresReview,
-            reviewReason: s.aiAnalysis?.reviewReason,
-            transactionId: s.aiAnalysis?.transactionId,
-            paymentDate: s.aiAnalysis?.paymentDate
-          },
-          distributions: s.distributions
-        })),
+        screenshots: screenshots.map(s => {
+          const reviewedByData = s.reviewedBy 
+            ? reviewerMap.get(s.reviewedBy.toString()) || {
+                _id: s.reviewedBy.toString(),
+                name: 'Unknown',
+                email: ''
+              }
+            : null;
+          
+          return {
+            _id: s._id,
+            playerName: s.playerName,
+            playerPhone: s.playerPhone,
+            receivedAt: s.receivedAt,
+            extractedAmount: s.extractedAmount,
+            status: s.status,
+            reviewedBy: reviewedByData,
+            reviewedAt: s.reviewedAt,
+            reviewNotes: s.reviewNotes,
+            aiAnalysis: {
+              confidence: s.aiAnalysis?.confidence,
+              requiresReview: s.aiAnalysis?.requiresReview,
+              reviewReason: s.aiAnalysis?.reviewReason,
+              transactionId: s.aiAnalysis?.transactionId,
+              paymentDate: s.aiAnalysis?.paymentDate
+            },
+            distributions: s.distributions
+          };
+        }),
         totalCount: screenshots.length
       }
     });

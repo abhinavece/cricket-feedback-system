@@ -60,6 +60,8 @@ import {
   settleOverpayment,
   getMemberScreenshots,
   getScreenshotImage,
+  reviewScreenshot,
+  resolveMemberReview,
   PaymentScreenshotData
 } from '../services/api';
 
@@ -111,6 +113,10 @@ interface SquadMember {
   hasScreenshots?: boolean;
   screenshotCount?: number;
   latestScreenshotAt?: string;
+  latestScreenshotStatus?: string | null;
+  latestScreenshotReviewedAt?: string | null;
+  latestScreenshotReviewedBy?: { _id: string; name: string; email: string } | null;
+  latestScreenshotReviewNotes?: string | null;
 }
 
 interface Payment {
@@ -199,6 +205,12 @@ const PaymentManagement: React.FC = () => {
   const [showRawJson, setShowRawJson] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showPendingTooltip, setShowPendingTooltip] = useState(false);
+  const [screenshotReviewNotes, setScreenshotReviewNotes] = useState('');
+  const [screenshotOverrideAmount, setScreenshotOverrideAmount] = useState<string>('');
+  const [reviewingScreenshot, setReviewingScreenshot] = useState(false);
+  const [memberReviewNotes, setMemberReviewNotes] = useState('');
+  const [memberCorrectedAmount, setMemberCorrectedAmount] = useState<string>('');
+  const [resolvingMemberReview, setResolvingMemberReview] = useState(false);
   
   // Payment modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -1104,7 +1116,11 @@ const PaymentManagement: React.FC = () => {
                     <div
                       key={member._id}
                       className={`p-3 sm:p-4 rounded-xl border transition-all cursor-pointer ${
-                        isSelected ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-700/30 border-transparent hover:border-white/10 hover:bg-slate-700/50'
+                        isSelected
+                          ? 'bg-emerald-500/10 border-emerald-500/30'
+                          : member.requiresReview
+                          ? 'bg-amber-500/10 border-amber-500/30 hover:border-amber-500/40'
+                          : 'bg-slate-700/30 border-transparent hover:border-white/10 hover:bg-slate-700/50'
                       }`}
                       onClick={() => handleOpenPaymentModal(member)}
                     >
@@ -1121,6 +1137,16 @@ const PaymentManagement: React.FC = () => {
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                             <span className="font-medium text-white truncate">{member.playerName}</span>
                             <span className="text-xs text-slate-400">{member.playerPhone}</span>
+                            {member.requiresReview && (
+                              <span className="sm:ml-auto inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                Payment review pending
+                              </span>
+                            )}
+                            {!member.requiresReview && member.latestScreenshotReviewedBy && (member.latestScreenshotStatus === 'rejected' || member.latestScreenshotStatus === 'approved' || member.latestScreenshotStatus === 'auto_applied') && (
+                              <span className="sm:ml-auto inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-medium bg-slate-700/40 text-slate-200 border border-white/10">
+                                {member.latestScreenshotStatus === 'rejected' ? 'Rejected by' : 'Approved by'} {member.latestScreenshotReviewedBy.name}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
                             {(member.amountPaid || 0) > 0 && (
@@ -1204,6 +1230,8 @@ const PaymentManagement: React.FC = () => {
                                 setViewingScreenshot({ memberId: member._id, playerName: member.playerName }); 
                                 setScreenshotError(false);
                                 setSelectedScreenshotIndex(0);
+                                setScreenshotReviewNotes('');
+                                setScreenshotOverrideAmount('');
                                 // Load screenshots from new collection
                                 if (payment) {
                                   setLoadingScreenshots(true);
@@ -1401,7 +1429,7 @@ const PaymentManagement: React.FC = () => {
                     </span>
                   )}
                 </h3>
-                <button onClick={() => { setViewingScreenshot(null); setMemberScreenshots([]); }} className="p-1 text-slate-400 hover:text-white">
+                <button onClick={() => { setViewingScreenshot(null); setMemberScreenshots([]); setScreenshotReviewNotes(''); setScreenshotOverrideAmount(''); }} className="p-1 text-slate-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1419,7 +1447,7 @@ const PaymentManagement: React.FC = () => {
                       {memberScreenshots.map((s, idx) => (
                         <button
                           key={s._id}
-                          onClick={() => { setSelectedScreenshotIndex(idx); setScreenshotError(false); }}
+                          onClick={() => { setSelectedScreenshotIndex(idx); setScreenshotError(false); setScreenshotReviewNotes(''); setScreenshotOverrideAmount(''); }}
                           className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-medium transition-all ${
                             idx === selectedScreenshotIndex
                               ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
@@ -1522,6 +1550,25 @@ const PaymentManagement: React.FC = () => {
                                 </p>
                               </div>
                             )}
+                            {currentScreenshot.reviewedBy && (
+                              <div>
+                                <p className="text-slate-400">Reviewed By</p>
+                                <p className="text-white font-medium">
+                                  {currentScreenshot.status === 'rejected' ? 'Rejected by' : 'Approved by'} {currentScreenshot.reviewedBy.name}
+                                </p>
+                                {currentScreenshot.reviewedAt && (
+                                  <p className="text-xs text-slate-400">
+                                    {new Date(currentScreenshot.reviewedAt).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {currentScreenshot.reviewNotes && (
+                              <div className="col-span-2 sm:col-span-3">
+                                <p className="text-slate-400">Review Notes</p>
+                                <p className="text-white font-medium">{currentScreenshot.reviewNotes}</p>
+                              </div>
+                            )}
                             {currentScreenshot.totalDistributed > 0 && (
                               <div>
                                 <p className="text-slate-400">Amount Applied</p>
@@ -1532,6 +1579,98 @@ const PaymentManagement: React.FC = () => {
                             )}
                           </div>
                         </div>
+
+                        {!isViewer() && currentScreenshot.status === 'pending_review' && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                              <div className="flex-1">
+                                <label className="block text-xs text-slate-400 mb-1">Override Amount (optional)</label>
+                                <input
+                                  type="number"
+                                  value={screenshotOverrideAmount}
+                                  onChange={(e) => setScreenshotOverrideAmount(e.target.value)}
+                                  className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-lg text-white text-sm"
+                                  placeholder={currentScreenshot.extractedAmount !== null ? `${currentScreenshot.extractedAmount}` : 'Enter amount'}
+                                  min={0}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-xs text-slate-400 mb-1">Notes (optional)</label>
+                                <input
+                                  type="text"
+                                  value={screenshotReviewNotes}
+                                  onChange={(e) => setScreenshotReviewNotes(e.target.value)}
+                                  className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-lg text-white text-sm"
+                                  placeholder="Reason / notes"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  disabled={reviewingScreenshot}
+                                  onClick={async () => {
+                                    try {
+                                      setReviewingScreenshot(true);
+                                      const override = screenshotOverrideAmount.trim();
+                                      const payload: any = {
+                                        action: override ? 'override' : 'approve',
+                                        notes: screenshotReviewNotes || undefined
+                                      };
+                                      if (override) {
+                                        payload.overrideAmount = Number(override);
+                                      }
+
+                                      await reviewScreenshot(currentScreenshot._id, payload);
+
+                                      const refreshed = await getMemberScreenshots(payment._id, viewingScreenshot.memberId);
+                                      if (refreshed.success) {
+                                        setMemberScreenshots(refreshed.data.screenshots);
+                                      }
+                                      if (selectedMatchId) {
+                                        await fetchPayment(selectedMatchId);
+                                      }
+                                      setSuccess('Screenshot approved');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to approve screenshot');
+                                    } finally {
+                                      setReviewingScreenshot(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-50"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  disabled={reviewingScreenshot}
+                                  onClick={async () => {
+                                    try {
+                                      setReviewingScreenshot(true);
+                                      await reviewScreenshot(currentScreenshot._id, {
+                                        action: 'reject',
+                                        notes: screenshotReviewNotes || undefined
+                                      });
+
+                                      const refreshed = await getMemberScreenshots(payment._id, viewingScreenshot.memberId);
+                                      if (refreshed.success) {
+                                        setMemberScreenshots(refreshed.data.screenshots);
+                                      }
+                                      if (selectedMatchId) {
+                                        await fetchPayment(selectedMatchId);
+                                      }
+                                      setSuccess('Screenshot rejected');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to reject screenshot');
+                                    } finally {
+                                      setReviewingScreenshot(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     );
                   })()}
@@ -1650,6 +1789,7 @@ const PaymentManagement: React.FC = () => {
                     
                     const aiAnalysis = currentScreenshot.aiAnalysis;
                     const isSuccess = currentScreenshot.extractedAmount !== null && !currentScreenshot.isDuplicate && currentScreenshot.status !== 'ai_failed';
+                    const member = payment.squadMembers.find(m => m._id === showAIResponse.memberId);
 
                     return (
                       <>
@@ -1814,6 +1954,202 @@ const PaymentManagement: React.FC = () => {
                               <p className="text-sm text-slate-400">
                                 Reason: {aiAnalysis.reviewReason?.replace('_', ' ') || 'Unknown'}
                               </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Screenshot Review Status */}
+                        {currentScreenshot.reviewedBy && (
+                          <div className="bg-slate-700/30 border border-white/10 rounded-xl p-3">
+                            <p className="text-sm text-white font-medium">
+                              {currentScreenshot.status === 'rejected' ? 'Rejected by' : 'Approved by'} {currentScreenshot.reviewedBy.name}
+                            </p>
+                            {currentScreenshot.reviewedAt && (
+                              <p className="text-xs text-slate-400">{new Date(currentScreenshot.reviewedAt).toLocaleString()}</p>
+                            )}
+                            {currentScreenshot.reviewNotes && (
+                              <p className="text-sm text-slate-300 mt-1">{currentScreenshot.reviewNotes}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Review Actions for screenshot pending_review */}
+                        {!isViewer() && currentScreenshot.status === 'pending_review' && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                              <div className="flex-1">
+                                <label className="block text-xs text-slate-400 mb-1">Override Amount (optional)</label>
+                                <input
+                                  type="number"
+                                  value={screenshotOverrideAmount}
+                                  onChange={(e) => setScreenshotOverrideAmount(e.target.value)}
+                                  className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-lg text-white text-sm"
+                                  placeholder={currentScreenshot.extractedAmount !== null ? `${currentScreenshot.extractedAmount}` : 'Enter amount'}
+                                  min={0}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-xs text-slate-400 mb-1">Notes (optional)</label>
+                                <input
+                                  type="text"
+                                  value={screenshotReviewNotes}
+                                  onChange={(e) => setScreenshotReviewNotes(e.target.value)}
+                                  className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-lg text-white text-sm"
+                                  placeholder="Reason / notes"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  disabled={reviewingScreenshot}
+                                  onClick={async () => {
+                                    try {
+                                      setReviewingScreenshot(true);
+                                      const override = screenshotOverrideAmount.trim();
+                                      const payload: any = {
+                                        action: override ? 'override' : 'approve',
+                                        notes: screenshotReviewNotes || undefined
+                                      };
+                                      if (override) payload.overrideAmount = Number(override);
+                                      await reviewScreenshot(currentScreenshot._id, payload);
+                                      const refreshed = await getMemberScreenshots(payment._id, showAIResponse.memberId);
+                                      if (refreshed.success) setMemberScreenshots(refreshed.data.screenshots);
+                                      if (selectedMatchId) await fetchPayment(selectedMatchId);
+                                      setSuccess('Screenshot approved');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to approve screenshot');
+                                    } finally {
+                                      setReviewingScreenshot(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-50"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  disabled={reviewingScreenshot}
+                                  onClick={async () => {
+                                    try {
+                                      setReviewingScreenshot(true);
+                                      await reviewScreenshot(currentScreenshot._id, {
+                                        action: 'reject',
+                                        notes: screenshotReviewNotes || undefined
+                                      });
+                                      const refreshed = await getMemberScreenshots(payment._id, showAIResponse.memberId);
+                                      if (refreshed.success) setMemberScreenshots(refreshed.data.screenshots);
+                                      if (selectedMatchId) await fetchPayment(selectedMatchId);
+                                      setSuccess('Screenshot rejected');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to reject screenshot');
+                                    } finally {
+                                      setReviewingScreenshot(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Member-level review resolution (covers high amount mismatch review) */}
+                        {!isViewer() && member?.requiresReview && currentScreenshot.status !== 'pending_review' && (
+                          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <p className="text-amber-300 font-medium mb-2">Resolve Review Flag</p>
+                            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                              <div className="flex-1">
+                                <label className="block text-xs text-slate-400 mb-1">Corrected Amount (optional override)</label>
+                                <input
+                                  type="number"
+                                  value={memberCorrectedAmount}
+                                  onChange={(e) => setMemberCorrectedAmount(e.target.value)}
+                                  className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-lg text-white text-sm"
+                                  placeholder="Enter amount to override"
+                                  min={0}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-xs text-slate-400 mb-1">Notes (optional)</label>
+                                <input
+                                  type="text"
+                                  value={memberReviewNotes}
+                                  onChange={(e) => setMemberReviewNotes(e.target.value)}
+                                  className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-lg text-white text-sm"
+                                  placeholder="Reason / notes"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  disabled={resolvingMemberReview}
+                                  onClick={async () => {
+                                    try {
+                                      setResolvingMemberReview(true);
+                                      await resolveMemberReview(payment._id, showAIResponse.memberId, {
+                                        action: 'accept',
+                                        notes: memberReviewNotes || undefined
+                                      });
+                                      if (selectedMatchId) await fetchPayment(selectedMatchId);
+                                      setSuccess('Review accepted');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to resolve review');
+                                    } finally {
+                                      setResolvingMemberReview(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-50"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  disabled={resolvingMemberReview}
+                                  onClick={async () => {
+                                    try {
+                                      setResolvingMemberReview(true);
+                                      const amt = memberCorrectedAmount.trim();
+                                      if (!amt) {
+                                        setError('Enter corrected amount to override');
+                                        return;
+                                      }
+                                      await resolveMemberReview(payment._id, showAIResponse.memberId, {
+                                        action: 'override',
+                                        correctedAmount: Number(amt),
+                                        notes: memberReviewNotes || undefined
+                                      });
+                                      if (selectedMatchId) await fetchPayment(selectedMatchId);
+                                      setSuccess('Review overridden');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to override review');
+                                    } finally {
+                                      setResolvingMemberReview(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 disabled:opacity-50"
+                                >
+                                  Override
+                                </button>
+                                <button
+                                  disabled={resolvingMemberReview}
+                                  onClick={async () => {
+                                    try {
+                                      setResolvingMemberReview(true);
+                                      await resolveMemberReview(payment._id, showAIResponse.memberId, {
+                                        action: 'reject',
+                                        notes: memberReviewNotes || undefined
+                                      });
+                                      if (selectedMatchId) await fetchPayment(selectedMatchId);
+                                      setSuccess('Review rejected');
+                                    } catch (err: any) {
+                                      setError(err.response?.data?.error || 'Failed to reject review');
+                                    } finally {
+                                      setResolvingMemberReview(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -2674,6 +3010,50 @@ const PaymentManagement: React.FC = () => {
                         />
                       </div>
                     </div>
+                  )}
+
+                  {/* Reviewer Info Summary */}
+                  {payment && (
+                    (() => {
+                      const reviewedMembers = payment.squadMembers.filter(m => m.latestScreenshotReviewedBy);
+                      if (reviewedMembers.length === 0) return null;
+                      
+                      const approvedCount = reviewedMembers.filter(m => m.latestScreenshotStatus === 'approved' || m.latestScreenshotStatus === 'auto_applied').length;
+                      const rejectedCount = reviewedMembers.filter(m => m.latestScreenshotStatus === 'rejected').length;
+                      
+                      return (
+                        <div className="mt-2 pt-2 border-t border-white/10 text-xs text-slate-400 space-y-1">
+                          {approvedCount > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                              <span>
+                                {approvedCount} approved by {
+                                  Array.from(new Set(reviewedMembers
+                                    .filter(m => m.latestScreenshotStatus === 'approved' || m.latestScreenshotStatus === 'auto_applied')
+                                    .map(m => m.latestScreenshotReviewedBy?.name)
+                                    .filter(Boolean)
+                                  )).join(', ')
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {rejectedCount > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                              <span>
+                                {rejectedCount} rejected by {
+                                  Array.from(new Set(reviewedMembers
+                                    .filter(m => m.latestScreenshotStatus === 'rejected')
+                                    .map(m => m.latestScreenshotReviewedBy?.name)
+                                    .filter(Boolean)
+                                  )).join(', ')
+                                }
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
               );

@@ -350,6 +350,9 @@ export interface PaymentScreenshotData {
   status: 'pending_ai' | 'ai_complete' | 'ai_failed' | 'pending_review' | 'approved' | 'rejected' | 'auto_applied' | 'duplicate';
   isDuplicate: boolean;
   duplicateOf: string | null;
+  reviewedBy?: { _id: string; name: string; email: string } | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
   aiAnalysis: ScreenshotAIAnalysis;
   distributions: ScreenshotDistribution[];
   totalDistributed: number;
@@ -379,6 +382,15 @@ export const reviewScreenshot = async (screenshotId: string, data: {
   overrideAmount?: number;
 }) => {
   const response = await api.post(`/payments/screenshots/${screenshotId}/review`, data);
+  return response.data;
+};
+
+export const resolveMemberReview = async (paymentId: string, memberId: string, data: {
+  action: 'accept' | 'override' | 'reject';
+  correctedAmount?: number;
+  notes?: string;
+}) => {
+  const response = await api.put(`/payments/${paymentId}/member/${memberId}/resolve-review`, data);
   return response.data;
 };
 
