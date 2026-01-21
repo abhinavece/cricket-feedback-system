@@ -288,13 +288,16 @@ const WhatsAppMessagingTab: React.FC = () => {
   const sseSubscriptions = useMemo(() => {
     if (!historyPlayer) return [];
     // Subscribe to messages for this specific phone number
-    return ['messages', `phone:${historyPlayer.phone}`];
+    // Format phone number the same way backend does (remove non-digits, add 91 if needed)
+    let formattedPhone = historyPlayer.phone.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+    return ['messages', `phone:${formattedPhone}`];
   }, [historyPlayer]);
 
   // Handle SSE events for real-time chat updates
   const handleSSEEvent = useCallback((event: any) => {
-    console.log('📡 SSE Chat Event:', event.type, event);
-    
     // Handle new messages (sent or received)
     if (event.type === 'message:received' || event.type === 'message:sent') {
       const messageData = event.data || event;

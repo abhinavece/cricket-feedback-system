@@ -92,8 +92,6 @@ router.get('/', sseAuth, (req, res) => {
   const subscribeParam = req.query.subscribe || '*';
   const subscriptions = subscribeParam.split(',').map(s => s.trim()).filter(Boolean);
 
-  // console.log(`📡 SSE connection from user: ${req.user.email}`);
-
   // Add client to SSE manager
   const clientId = sseManager.addClient(res, subscriptions);
 

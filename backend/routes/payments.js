@@ -1105,6 +1105,21 @@ router.post('/:id/member/:memberId/settle-overpayment', auth, requireAdmin, asyn
         messageId = response.data?.messages?.[0]?.id;
         whatsappSent = true;
 
+        // Save message to database with SSE broadcast
+        const sseManager = require('../utils/sseManager');
+        const outgoingPaymentEvent = {
+          type: 'message:sent',
+          messageId: messageId,
+          to: formattedPhone,
+          phone: formattedPhone,
+          text: message,
+          direction: 'outgoing',
+          messageType: 'payment_request',
+          timestamp: new Date().toISOString()
+        };
+        sseManager.broadcast('messages', outgoingPaymentEvent);
+        sseManager.broadcast(`phone:${formattedPhone}`, outgoingPaymentEvent);
+
         // Save message to database
         await Message.create({
           from: phoneNumberId,
@@ -1492,7 +1507,21 @@ router.post('/:id/send-requests', auth, requireAdmin, async (req, res) => {
         member.messageSentAt = new Date();
         member.outgoingMessageId = messageId;
 
-        // Save message to database
+        // Save message to database with SSE broadcast
+        const sseManager = require('../utils/sseManager');
+        const paymentRequestEvent = {
+          type: 'message:sent',
+          messageId: messageId,
+          to: formattedPhone,
+          phone: formattedPhone,
+          text: message,
+          direction: 'outgoing',
+          messageType: 'payment_request',
+          timestamp: new Date().toISOString()
+        };
+        sseManager.broadcast('messages', paymentRequestEvent);
+        sseManager.broadcast(`phone:${formattedPhone}`, paymentRequestEvent);
+
         await Message.create({
           from: phoneNumberId,
           to: formattedPhone,

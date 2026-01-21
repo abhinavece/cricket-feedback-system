@@ -117,10 +117,6 @@ class SSEManager {
         sentCount++;
       }
     }
-
-    if (sentCount > 0) {
-      console.log(`📡 Broadcast "${data.type}" to ${sentCount} client(s) on topic "${topic}"`);
-    }
   }
 
   /**

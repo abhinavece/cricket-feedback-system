@@ -64,17 +64,20 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
       playerName: metadata.playerName || null
     });
 
-    // Broadcast SSE event for outgoing message
-    sseManager.broadcast('messages', {
+    // Broadcast SSE event for outgoing message to both general and phone-specific topics
+    const outgoingEvent = {
       type: 'message:sent',
       messageId: savedMsg._id.toString(),
       to: toPhone,
+      phone: toPhone,
       text: messageText,
       playerName: metadata.playerName || null,
       direction: 'outgoing',
       messageType: metadata.messageType || 'general',
       timestamp: savedMsg.timestamp
-    });
+    };
+    sseManager.broadcast('messages', outgoingEvent);
+    sseManager.broadcast(`phone:${toPhone}`, outgoingEvent);
   } catch (logErr) {
     console.error('⚠️ Failed to log outgoing message:', logErr.message);
   }
@@ -277,17 +280,15 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
 
     // Format phone number to match database format (needed for both methods)
     let formattedPhone = from.replace(/\D/g, '');
-    console.log(`Original phone: ${from}`);
-    console.log(`Cleaned phone: ${formattedPhone}`);
 
     if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
       formattedPhone = '91' + formattedPhone;
     }
-    console.log(`Formatted phone: ${formattedPhone}`);
 
     // CRITICAL: Save ALL incoming messages immediately, regardless of context
     // This ensures no messages are ever lost
     let savedMessage = null;
+    let playerData = null;
     try {
       // Check if message already exists
       const Message = require('../models/Message');
@@ -297,7 +298,7 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
         savedMessage = existingMessage;
       } else {
         // Try to find associated player for enrichment (but don't require it)
-        const player = await Player.findOne({
+        playerData = await Player.findOne({
           phone: { $regex: formattedPhone.slice(-10) }
         });
 
@@ -309,29 +310,35 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
           messageId: messageId,
           timestamp: new Date(),
           messageType: 'general', // Will be updated to 'availability_response' if context validates
-          playerId: player?._id || null,
-          playerName: player?.name || null
+          playerId: playerData?._id || null,
+          playerName: playerData?.name || null
         });
 
         console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
-        if (player) {
-          console.log(`   Associated with player: ${player.name}`);
+        if (playerData) {
+          console.log(`   Associated with player: ${playerData.name}`);
         } else {
           console.log(`   No player association (unknown sender)`);
         }
       }
 
-      // Broadcast SSE event for new message
-      sseManager.broadcast('messages', {
+      // Broadcast SSE event for new message (to both general and phone-specific subscribers)
+      const messageEvent = {
         type: 'message:received',
         messageId: savedMessage._id.toString(),
         from: formattedPhone,
+        phone: formattedPhone,
         text: text,
-        playerName: player?.name || null,
-        playerId: player?._id?.toString() || null,
+        playerName: playerData?.name || null,
+        playerId: playerData?._id?.toString() || null,
         direction: 'incoming',
         timestamp: savedMessage.timestamp
-      });
+      };
+      
+      // Broadcast to general messages topic and phone-specific topic for chat window subscribers
+      sseManager.broadcast('messages', messageEvent);
+      sseManager.broadcast(`phone:${formattedPhone}`, messageEvent);
+      
     } catch (saveErr) {
       // Log error but continue processing - don't fail the whole flow
       console.error(`⚠️ Failed to persist message immediately:`, saveErr.message);
@@ -799,10 +806,11 @@ async function saveImageMessage(from, imageId, messageId, caption) {
     console.log(`✅ Image message saved to history (ID: ${savedMessage._id})`);
     
     // Broadcast SSE event for incoming image message
-    sseManager.broadcast('messages', {
+    const imageMessageEvent = {
       type: 'message:received',
       messageId: savedMessage._id.toString(),
       from: formattedPhone,
+      phone: formattedPhone,
       text: caption || '[Image]',
       playerName: player?.name || null,
       playerId: player?._id?.toString() || null,
@@ -812,7 +820,10 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       messageType: 'image',
       imageMimeType: mimeType,
       caption: caption || null
-    });
+    };
+    // Broadcast to both general and phone-specific topics
+    sseManager.broadcast('messages', imageMessageEvent);
+    sseManager.broadcast(`phone:${formattedPhone}`, imageMessageEvent);
     
     return savedMessage;
   } catch (error) {
@@ -1705,19 +1716,15 @@ router.post('/send', auth, async (req, res) => {
           }
         }
         
-        // Save outgoing message to database
-        await Message.create({
-          from: phoneNumberId,
-          to: formattedPhone,
-          text: template ? `Template: ${template.name}` : message,
-          direction: 'outgoing',
-          messageId: response.data?.messages?.[0]?.id,
-          timestamp: new Date(),
+        const messageId = response.data?.messages?.[0]?.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Save outgoing message to database using sendAndLogMessage to trigger SSE broadcasts
+        await sendAndLogMessage(formattedPhone, template ? `Template: ${template.name}` : message, {
+          messageType: matchId ? 'availability_request' : 'general',
           matchId: matchId || null,
           matchTitle: matchTitle || null,
-          messageType: matchId ? 'availability_request' : 'general',
-          templateUsed: template?.name || null,
-          availabilityId: availabilityId
+          playerName: player.name,
+          playerId: player._id.toString()
         });
         
         results.push({
@@ -1725,16 +1732,12 @@ router.post('/send', auth, async (req, res) => {
           name: player.name,
           phone: player.phone,
           status: 'sent',
-          messageId: response.data?.messages?.[0]?.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          messageId: messageId,
           timestamp: new Date().toISOString(),
           apiResponse: response.data
         });
         
-        console.log(`WhatsApp message sent successfully to ${player.name}:`, response.data);
-        
       } catch (error) {
-        console.error(`Failed to send WhatsApp message to ${player.name}:`, error.response?.data || error.message);
-        
         results.push({
           playerId: player._id,
           name: player.name,
@@ -1758,9 +1761,7 @@ router.post('/send', auth, async (req, res) => {
           totalPlayersRequested: sentCount,
           noResponsePlayers: sentCount
         });
-        console.log(`Updated match ${matchId} with availability statistics`);
       } catch (matchErr) {
-        console.error('Failed to update match statistics:', matchErr.message);
       }
     }
     
@@ -1776,7 +1777,6 @@ router.post('/send', auth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error sending WhatsApp messages:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to send messages'
@@ -1797,9 +1797,6 @@ router.post('/send-reminder', auth, async (req, res) => {
     }
     
     const { matchId } = req.body;
-    
-    console.log('\n=== SENDING REMINDER ===');
-    console.log(`Match ID: ${matchId}`);
     
     if (!matchId) {
       return res.status(400).json({
@@ -1822,8 +1819,6 @@ router.post('/send-reminder', auth, async (req, res) => {
       matchId: matchId,
       response: 'pending'
     });
-    
-    console.log(`Found ${pendingAvailabilities.length} players who haven't responded`);
     
     if (pendingAvailabilities.length === 0) {
       return res.json({
@@ -1859,8 +1854,6 @@ router.post('/send-reminder', auth, async (req, res) => {
     // Send reminder to each player
     for (const player of players) {
       try {
-        console.log(`Sending reminder to: ${player.name}`);
-        
         // Format phone number
         let formattedPhone = player.phone.replace(/\D/g, '');
         if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
@@ -1900,13 +1893,28 @@ router.post('/send-reminder', auth, async (req, res) => {
           await availability.save();
         }
         
-        // Save reminder message
+        // Save reminder message with SSE broadcast
+        const reminderMessageId = response.data?.messages?.[0]?.id;
+        const reminderEvent = {
+          type: 'message:sent',
+          messageId: reminderMessageId,
+          to: formattedPhone,
+          phone: formattedPhone,
+          text: reminderText,
+          direction: 'outgoing',
+          messageType: 'availability_reminder',
+          timestamp: new Date().toISOString()
+        };
+        // Broadcast to both general and phone-specific topics
+        sseManager.broadcast('messages', reminderEvent);
+        sseManager.broadcast(`phone:${formattedPhone}`, reminderEvent);
+        
         await Message.create({
           from: phoneNumberId,
           to: formattedPhone,
           text: reminderText,
           direction: 'outgoing',
-          messageId: response.data?.messages?.[0]?.id,
+          messageId: reminderMessageId,
           matchId: matchId,
           matchTitle: match.opponent || 'Practice Match',
           messageType: 'availability_reminder',
