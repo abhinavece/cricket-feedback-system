@@ -824,11 +824,34 @@ async function saveImageMessage(from, imageId, messageId, caption) {
 // Import AI Service and distribution services
 const { parsePaymentScreenshot: parseWithAI, requiresReview, getReviewReason } = require('../services/aiService');
 const { getPendingPaymentsForPlayer, distributePaymentFIFO, buildDistributionConfirmation } = require('../services/paymentDistributionService');
+const SystemSettings = require('../models/SystemSettings');
 
-// Environment flag to bypass admin review for testing
-const BYPASS_PAYMENT_REVIEW = process.env.BYPASS_PAYMENT_REVIEW === 'true';
-// Environment flag to bypass duplicate check (LOCAL TESTING ONLY - NEVER enable in production!)
-const BYPASS_DUPLICATE_CHECK = process.env.BYPASS_DUPLICATE_CHECK === 'true' && process.env.NODE_ENV !== 'production';
+// Helper function to get system settings (cached for performance)
+let cachedSettings = null;
+let settingsCacheTime = null;
+const SETTINGS_CACHE_TTL = 60000; // 1 minute cache
+
+async function getSystemSettingsForPayment() {
+  const now = Date.now();
+  if (cachedSettings && settingsCacheTime && (now - settingsCacheTime) < SETTINGS_CACHE_TTL) {
+    return cachedSettings;
+  }
+  try {
+    cachedSettings = await SystemSettings.getSettings();
+    settingsCacheTime = now;
+    return cachedSettings;
+  } catch (err) {
+    console.error('Failed to get system settings, using defaults:', err.message);
+    return {
+      payment: { bypassImageReview: false, bypassDuplicateCheck: false, forceAdminReviewThreshold: null },
+      whatsapp: { enabled: true }
+    };
+  }
+}
+
+// Legacy environment flags (fallback, deprecated)
+const ENV_BYPASS_PAYMENT_REVIEW = process.env.BYPASS_PAYMENT_REVIEW === 'true';
+const ENV_BYPASS_DUPLICATE_CHECK = process.env.BYPASS_DUPLICATE_CHECK === 'true' && process.env.NODE_ENV !== 'production';
 
 // Process payment screenshot uploads with OCR and multi-match distribution
 // Uses async AI processing to avoid webhook timeouts
@@ -840,8 +863,16 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     console.log(`Message ID: ${messageId}`);
     console.log(`Context ID: ${contextId || 'Not provided'}`);
     console.log(`Caption: ${caption || 'None'}`);
-    console.log(`BYPASS_PAYMENT_REVIEW: ${BYPASS_PAYMENT_REVIEW}`);
-    console.log(`BYPASS_DUPLICATE_CHECK: ${BYPASS_DUPLICATE_CHECK}`);
+    
+    // Get system settings from database
+    const systemSettings = await getSystemSettingsForPayment();
+    const BYPASS_PAYMENT_REVIEW = systemSettings.payment.bypassImageReview || ENV_BYPASS_PAYMENT_REVIEW;
+    const BYPASS_DUPLICATE_CHECK = systemSettings.payment.bypassDuplicateCheck || ENV_BYPASS_DUPLICATE_CHECK;
+    const FORCE_REVIEW_THRESHOLD = systemSettings.payment.forceAdminReviewThreshold;
+    
+    console.log(`BYPASS_PAYMENT_REVIEW: ${BYPASS_PAYMENT_REVIEW} (DB: ${systemSettings.payment.bypassImageReview})`);
+    console.log(`BYPASS_DUPLICATE_CHECK: ${BYPASS_DUPLICATE_CHECK} (DB: ${systemSettings.payment.bypassDuplicateCheck})`);
+    console.log(`FORCE_REVIEW_THRESHOLD: ${FORCE_REVIEW_THRESHOLD !== null ? '₹' + FORCE_REVIEW_THRESHOLD : 'disabled'}`);
 
     // Format phone number
     let formattedPhone = from.replace(/\D/g, '');
@@ -1067,6 +1098,11 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
   try {
     console.log(`\n🤖 [ASYNC] Processing AI for screenshot: ${screenshotId}`);
     
+    // Get system settings from database
+    const systemSettings = await getSystemSettingsForPayment();
+    const BYPASS_PAYMENT_REVIEW = systemSettings.payment.bypassImageReview || ENV_BYPASS_PAYMENT_REVIEW;
+    const FORCE_REVIEW_THRESHOLD = systemSettings.payment.forceAdminReviewThreshold;
+    
     const screenshot = await PaymentScreenshot.findById(screenshotId);
     if (!screenshot) {
       console.error('❌ Screenshot not found for AI processing');
@@ -1115,6 +1151,15 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
       console.log('⚡ BYPASS_PAYMENT_REVIEW enabled - skipping admin review');
       reviewRequired = false;
       reviewReason = null;
+    }
+    
+    // FORCE_REVIEW_THRESHOLD - force review if amount exceeds threshold
+    if (!reviewRequired && FORCE_REVIEW_THRESHOLD !== null && aiResult.data?.amount) {
+      if (aiResult.data.amount >= FORCE_REVIEW_THRESHOLD) {
+        console.log(`⚠️ Amount ₹${aiResult.data.amount} exceeds threshold ₹${FORCE_REVIEW_THRESHOLD} - forcing admin review`);
+        reviewRequired = true;
+        reviewReason = 'amount_exceeds_threshold';
+      }
     }
 
     // Update screenshot with AI results
@@ -1181,6 +1226,8 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
         reviewMessage += `⚠️ The payment date seems older than expected.\n\n`;
       } else if (reviewReason === 'confidence_low') {
         reviewMessage += `⚠️ We couldn't read the payment amount clearly.\n\n`;
+      } else if (reviewReason === 'amount_exceeds_threshold') {
+        reviewMessage += `ℹ️ This payment amount requires admin verification.\n\n`;
       }
       
       reviewMessage += `📍 *Your Total Outstanding:* ₹${totalDue}\n\n` +
@@ -1521,6 +1568,15 @@ router.post('/test', async (req, res) => {
 // POST /api/whatsapp/send - Send WhatsApp messages to players
 router.post('/send', auth, async (req, res) => {
   try {
+    // Check if WhatsApp is enabled in system settings
+    const systemSettings = await getSystemSettingsForPayment();
+    if (!systemSettings.whatsapp.enabled) {
+      return res.status(503).json({
+        success: false,
+        error: 'WhatsApp messaging is currently disabled by system administrator'
+      });
+    }
+    
     const { playerIds, message, previewUrl = false, template, matchId, matchTitle } = req.body;
     
     if (!playerIds || !Array.isArray(playerIds) || playerIds.length === 0) {
@@ -1731,6 +1787,15 @@ router.post('/send', auth, async (req, res) => {
 // POST /api/whatsapp/send-reminder - Send reminder to non-responders
 router.post('/send-reminder', auth, async (req, res) => {
   try {
+    // Check if WhatsApp is enabled in system settings
+    const systemSettings = await getSystemSettingsForPayment();
+    if (!systemSettings.whatsapp.enabled) {
+      return res.status(503).json({
+        success: false,
+        error: 'WhatsApp messaging is currently disabled by system administrator'
+      });
+    }
+    
     const { matchId } = req.body;
     
     console.log('\n=== SENDING REMINDER ===');
@@ -1893,6 +1958,15 @@ router.post('/send-reminder', auth, async (req, res) => {
 // POST /api/whatsapp/send-image - Send image to players via WhatsApp
 router.post('/send-image', auth, async (req, res) => {
   try {
+    // Check if WhatsApp is enabled in system settings
+    const systemSettings = await getSystemSettingsForPayment();
+    if (!systemSettings.whatsapp.enabled) {
+      return res.status(503).json({
+        success: false,
+        error: 'WhatsApp messaging is currently disabled by system administrator'
+      });
+    }
+    
     const { playerIds, imageBase64, caption, matchTitle } = req.body;
     
     if (!playerIds || !Array.isArray(playerIds) || playerIds.length === 0) {

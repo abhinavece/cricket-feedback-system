@@ -15,9 +15,9 @@ import {
   X,
   Calendar
 } from 'lucide-react';
-import { getProfile, updateProfile, createProfile, ProfileData, ProfileCreateData } from '../services/api';
+import { getProfile, updateProfile, createProfile, ProfileData, ProfileCreateData, checkDeveloperAccess } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import WebhookProxyManager from '../components/WebhookProxyManager';
+import DeveloperSettings from '../components/DeveloperSettings';
 import DateOfBirthPicker from '../components/DateOfBirthPicker';
 
 const BATTING_STYLES = [
@@ -54,7 +54,9 @@ const SettingsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+  const [hasDeveloperAccess, setHasDeveloperAccess] = useState(false);
+  const [isMasterDeveloper, setIsMasterDeveloper] = useState(false);
+    
   const [formData, setFormData] = useState<ProfileCreateData>({
     name: '',
     phone: '',
@@ -106,6 +108,16 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     fetchProfile();
+    // Check developer access
+    checkDeveloperAccess()
+      .then(response => {
+        setHasDeveloperAccess(response.hasDeveloperAccess);
+        setIsMasterDeveloper(response.isMasterDeveloper);
+      })
+      .catch(() => {
+        setHasDeveloperAccess(false);
+        setIsMasterDeveloper(false);
+      });
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -173,6 +185,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  
   const handleCancel = () => {
     if (profile?.player) {
       setFormData({
@@ -561,11 +574,11 @@ const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Webhook Proxy Manager - Admin Only */}
-      {user?.role === 'admin' && (
+      {/* Developer Tools - Developer Access Only */}
+      {hasDeveloperAccess && (
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Developer Tools</h2>
-          <WebhookProxyManager />
+          <DeveloperSettings isMasterDeveloper={isMasterDeveloper} />
         </div>
       )}
     </div>

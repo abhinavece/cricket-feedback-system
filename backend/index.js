@@ -18,6 +18,7 @@ const publicRoutes = require('./routes/public');
 const profileRoutes = require('./routes/profile');
 const eventsRoutes = require('./routes/events');
 const webhookProxyRoutes = require('./routes/webhookProxy');
+const developerRoutes = require('./routes/developer');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -53,6 +54,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/webhook-proxy', webhookProxyRoutes);
+app.use('/api/developer', developerRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

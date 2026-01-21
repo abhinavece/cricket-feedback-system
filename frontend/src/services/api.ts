@@ -621,6 +621,63 @@ export const testWebhookLocalConnection = async (): Promise<{ success: boolean; 
   return response.data;
 };
 
+// Developer Tools APIs
+export interface SystemSettings {
+  payment: {
+    bypassImageReview: boolean;
+    bypassDuplicateCheck: boolean;
+    forceAdminReviewThreshold: number | null;
+  };
+  whatsapp: {
+    enabled: boolean;
+  };
+  lastModifiedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  } | null;
+  lastModifiedAt?: string | null;
+}
+
+export interface DeveloperUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  hasDeveloperAccess: boolean;
+  isMasterDeveloper: boolean;
+  lastLogin: string;
+}
+
+export const checkDeveloperAccess = async (): Promise<{ success: boolean; hasDeveloperAccess: boolean; isMasterDeveloper: boolean }> => {
+  const response = await api.get('/developer/access');
+  return response.data;
+};
+
+export const getSystemSettings = async (): Promise<{ success: boolean; settings: SystemSettings }> => {
+  const response = await api.get('/developer/settings');
+  return response.data;
+};
+
+export const updateSystemSettings = async (data: {
+  payment?: Partial<SystemSettings['payment']>;
+  whatsapp?: Partial<SystemSettings['whatsapp']>;
+}): Promise<{ success: boolean; settings: SystemSettings; message: string }> => {
+  const response = await api.put('/developer/settings', data);
+  return response.data;
+};
+
+export const getDeveloperUsers = async (): Promise<{ success: boolean; users: DeveloperUser[] }> => {
+  const response = await api.get('/developer/users');
+  return response.data;
+};
+
+export const updateUserDeveloperAccess = async (userId: string, hasDeveloperAccess: boolean): Promise<{ success: boolean; user: DeveloperUser; message: string }> => {
+  const response = await api.put(`/developer/users/${userId}/access`, { hasDeveloperAccess });
+  return response.data;
+};
+
+
 // Player Public Profile API
 export interface PublicPlayerProfile {
   _id: string;

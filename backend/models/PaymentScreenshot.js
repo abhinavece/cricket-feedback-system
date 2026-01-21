@@ -104,7 +104,8 @@ const aiAnalysisSchema = new mongoose.Schema({
       'service_error',
       'parse_failed',
       'not_payment_screenshot',
-      'duplicate_image'
+      'duplicate_image',
+      'amount_exceeds_threshold'
     ],
     default: null
   },
