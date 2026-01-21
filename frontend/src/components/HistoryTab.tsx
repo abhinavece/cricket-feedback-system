@@ -149,7 +149,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
           onClick={() => setActiveView('players')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
             activeView === 'players'
-              ? 'bg-emerald-500/20 text-emerald-400'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
           }`}
         >
@@ -161,7 +161,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
           onClick={() => setActiveView('matches')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
             activeView === 'matches'
-              ? 'bg-emerald-500/20 text-emerald-400'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
           }`}
         >
@@ -214,13 +214,13 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                   return (
                     <div
                       key={match._id}
-                      className="relative bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-pink-900/40 border border-indigo-500/40 rounded-xl overflow-hidden hover:border-indigo-400 transition-all shadow-lg shadow-indigo-500/10"
+                      className="relative bg-gradient-to-r from-emerald-900/30 via-teal-900/20 to-cyan-900/30 border border-emerald-500/30 rounded-xl overflow-hidden hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/5"
                     >
-                      {/* Fancy purple gradient left border with glow and rounded edges */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-indigo-400 to-pink-400 shadow-lg shadow-purple-400/50 rounded-tl-xl rounded-bl-xl"></div>
-                      <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-indigo-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
+                      {/* Emerald gradient left border with glow and rounded edges */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/30 rounded-tl-xl rounded-bl-xl"></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/20 to-transparent rounded-tl-xl rounded-bl-xl"></div>
                       {/* Additional glow effect */}
-                      <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-purple-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/10 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
                       {/* Match Header - Clickable to expand */}
                       <div
                         onClick={() => toggleMatchExpand(match._id)}
@@ -228,7 +228,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                       >
                         <div className="flex items-center gap-3">
                           {/* Expand Icon */}
-                          <div className={`p-1.5 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-800/50 text-indigo-300'}`}>
+                          <div className={`p-1.5 rounded-lg transition-colors ${isExpanded ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-800/50 text-emerald-300'}`}>
                             {isExpanded ? (
                               <ChevronDown className="w-4 h-4" />
                             ) : (
@@ -239,7 +239,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                           {/* Match Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <Trophy className="w-4 h-4 text-purple-400" />
+                              <Trophy className="w-4 h-4 text-emerald-400" />
                               <span className="font-bold text-white truncate">
                                 {match.opponent || 'TBD'}
                               </span>
@@ -269,18 +269,18 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                             <div className="hidden sm:flex items-center gap-5 text-sm">
                               <div className="text-right">
                                 <div className="text-lg font-bold text-emerald-400">₹{payment.totalCollected}</div>
-                                <div className="text-[10px] text-indigo-300 uppercase tracking-wide">collected</div>
+                                <div className="text-[10px] text-emerald-300 uppercase tracking-wide">collected</div>
                               </div>
                               <div className="text-right">
                                 <div className={`text-lg font-bold ${payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'}`}>₹{payment.totalPending}</div>
-                                <div className="text-[10px] text-indigo-300 uppercase tracking-wide">pending</div>
+                                <div className="text-[10px] text-emerald-300 uppercase tracking-wide">pending</div>
                               </div>
                               <div className="text-right">
                                 <div className="text-lg font-bold text-white">
                                   {payment.squadMembers?.filter((m: PaymentMember) => m.paymentStatus === 'paid').length || 0}/
                                   {payment.squadMembers?.length || 0}
                                 </div>
-                                <div className="text-[10px] text-indigo-300 uppercase tracking-wide">paid</div>
+                                <div className="text-[10px] text-emerald-300 uppercase tracking-wide">paid</div>
                               </div>
                             </div>
                           )}
@@ -302,38 +302,52 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                       {/* Expanded Content - Squad Members */}
                       {isExpanded && payment && payment.squadMembers && (
                         <div className="relative border-t border-slate-700/50">
-                          {/* Fancy purple gradient left border with glow */}
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-indigo-400 to-pink-400 shadow-lg shadow-purple-400/50"></div>
-                          <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-indigo-400/30 to-transparent"></div>
+                          {/* Emerald gradient left border with glow */}
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/30"></div>
+                          <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/20 to-transparent"></div>
                           {/* Additional glow effect */}
-                          <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-purple-500/20 to-transparent blur-sm"></div>
-                          {/* Match Payment Summary - Purple/Indigo header */}
-                          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900/40 via-purple-900/30 to-pink-900/40 border-b border-indigo-500/40 p-4">
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5"></div>
-                            <div className="relative flex flex-wrap items-center gap-5 text-sm">
-                              <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-indigo-500/20 rounded-lg">
-                                  <IndianRupee className="w-4 h-4 text-indigo-400" />
+                          <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/10 to-transparent blur-sm"></div>
+                          {/* Match Payment Summary - Indigo/Blue Dashboard Style */}
+                          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900/50 via-blue-900/40 to-purple-900/50 border-b border-indigo-500/50 p-5 shadow-lg shadow-indigo-500/20">
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/8 to-blue-500/8"></div>
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                            <div className="relative">
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2.5 bg-gradient-to-br from-indigo-500/30 to-blue-500/30 rounded-xl border border-indigo-400/40 shadow-lg shadow-indigo-500/20">
+                                  <IndianRupee className="w-5 h-5 text-indigo-300" />
                                 </div>
-                                <span className="text-indigo-300 font-bold uppercase tracking-wider text-xs">Payment Summary</span>
+                                <div>
+                                  <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs block">Payment Summary</span>
+                                  <span className="text-indigo-400/70 text-[10px]">Match Financial Overview</span>
+                                </div>
                               </div>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-indigo-300 text-xs font-medium">Total:</span>
-                                <span className="font-bold text-white">₹{payment.totalAmount}</span>
-                              </div>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-indigo-300 text-xs font-medium">Collected:</span>
-                                <span className="font-bold text-emerald-400">₹{payment.totalCollected}</span>
-                              </div>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-indigo-300 text-xs font-medium">Pending:</span>
-                                <span className={`font-bold ${payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'}`}>₹{payment.totalPending}</span>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
+                                  <span className="text-indigo-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Total Amount</span>
+                                  <span className="font-bold text-white text-lg">₹{payment.totalAmount}</span>
+                                </div>
+                                <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-500/30 hover:border-emerald-400/50 transition-colors">
+                                  <span className="text-emerald-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Collected</span>
+                                  <span className="font-bold text-emerald-400 text-lg">₹{payment.totalCollected}</span>
+                                </div>
+                                <div className={`bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border transition-colors ${
+                                  payment.totalPending > 0 
+                                    ? 'border-amber-500/30 hover:border-amber-400/50' 
+                                    : 'border-slate-500/30 hover:border-slate-400/50'
+                                }`}>
+                                  <span className={`text-[10px] font-semibold uppercase tracking-wide block mb-1.5 ${
+                                    payment.totalPending > 0 ? 'text-amber-300/80' : 'text-slate-400/80'
+                                  }`}>Pending</span>
+                                  <span className={`font-bold text-lg ${
+                                    payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'
+                                  }`}>₹{payment.totalPending}</span>
+                                </div>
                               </div>
                             </div>
                           </div>
                           {/* Squad Members List */}
-                          <div className="p-4 bg-gradient-to-b from-indigo-900/20 to-purple-900/20">
-                            <h4 className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider mb-3">Squad Members ({payment.squadMembers.length})</h4>
+                          <div className="p-4 bg-gradient-to-b from-emerald-900/15 to-teal-900/15">
+                            <h4 className="text-[10px] font-semibold text-emerald-300 uppercase tracking-wider mb-3">Squad Members ({payment.squadMembers.length})</h4>
                             <div className="space-y-2">
                               {payment.squadMembers.map((member: PaymentMember) => {
                                 const effectiveAmount = member.adjustedAmount !== null 
@@ -344,20 +358,20 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                                 return (
                                   <div
                                     key={member._id}
-                                    className="relative flex items-center justify-between py-2.5 px-4 bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-pink-900/40 border border-indigo-500/40 rounded-lg overflow-hidden hover:border-indigo-400 transition-all shadow-lg shadow-indigo-500/10"
+                                    className="relative flex items-center justify-between py-2.5 px-4 bg-gradient-to-r from-emerald-900/30 via-teal-900/20 to-cyan-900/30 border border-emerald-500/30 rounded-lg overflow-hidden hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/5"
                                   >
-                                    {/* Fancy purple gradient left border with glow and rounded edges */}
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-indigo-400 to-pink-400 shadow-lg shadow-purple-400/50 rounded-tl-lg rounded-bl-lg"></div>
-                                    <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-indigo-400/30 to-transparent rounded-tl-lg rounded-bl-lg"></div>
+                                    {/* Emerald gradient left border with glow and rounded edges */}
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/30 rounded-tl-lg rounded-bl-lg"></div>
+                                    <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/20 to-transparent rounded-tl-lg rounded-bl-lg"></div>
                                     {/* Additional glow effect */}
-                                    <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-purple-500/20 to-transparent blur-sm rounded-tl-lg rounded-bl-lg"></div>
+                                    <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/10 to-transparent blur-sm rounded-tl-lg rounded-bl-lg"></div>
                                     <div className="flex items-center gap-3">
                                       {getPaymentStatusIcon(member.paymentStatus)}
                                       <div>
                                         <div className="text-sm font-semibold text-white flex items-center gap-2">
                                           {member.playerName}
                                           {isFree && (
-                                            <span className="text-[10px] bg-gradient-to-r from-purple-500/30 to-violet-500/30 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
+                                            <span className="text-[10px] bg-gradient-to-r from-emerald-500/30 to-teal-500/30 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
                                               🎁 Free
                                             </span>
                                           )}

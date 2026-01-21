@@ -182,43 +182,55 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
           </div>
         </div>
 
-        {/* Summary Cards - Vibrant gradient with glow effect */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900/40 via-teal-900/30 to-cyan-900/40 border border-emerald-400/40 rounded-xl p-4 shadow-lg shadow-emerald-500/10">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5"></div>
+        {/* Summary Cards - Dashboard Style with Indigo/Blue */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900/50 via-blue-900/40 to-purple-900/50 border border-indigo-500/50 rounded-xl p-5 shadow-lg shadow-indigo-500/20">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/8 to-blue-500/8"></div>
+          <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
           <div className="relative">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 bg-emerald-500/20 rounded-lg">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-gradient-to-br from-indigo-500/30 to-blue-500/30 rounded-xl border border-indigo-400/40 shadow-lg shadow-indigo-500/20">
+                <TrendingUp className="w-5 h-5 text-indigo-300" />
               </div>
-              <span className="text-sm font-bold text-emerald-300 uppercase tracking-wider">Payment Summary</span>
+              <div>
+                <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs block">Payment Summary</span>
+                <span className="text-indigo-400/70 text-[10px]">Player Financial Overview</span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {/* Actual Paid */}
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-slate-400">Paid:</span>
-                <span className="text-lg font-bold text-emerald-400">₹{selectedPlayer.summary.netContribution || (selectedPlayer.summary.totalPaid - (selectedPlayer.summary.totalSettled || 0))}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Paid */}
+              <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-500/30 hover:border-emerald-400/50 transition-colors">
+                <span className="text-emerald-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Paid</span>
+                <span className="font-bold text-emerald-400 text-lg">₹{selectedPlayer.summary.netContribution || (selectedPlayer.summary.totalPaid - (selectedPlayer.summary.totalSettled || 0))}</span>
                 {(selectedPlayer.summary.totalSettled || 0) > 0 && (
-                  <span className="text-[10px] text-slate-500">(₹{selectedPlayer.summary.totalPaid}-₹{selectedPlayer.summary.totalSettled})</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">(₹{selectedPlayer.summary.totalPaid}-₹{selectedPlayer.summary.totalSettled})</span>
                 )}
               </div>
               {/* Due */}
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-slate-400">Due:</span>
-                <span className={`text-lg font-bold ${selectedPlayer.summary.totalDue > 0 ? 'text-red-400' : 'text-slate-500'}`}>₹{selectedPlayer.summary.totalDue}</span>
+              <div className={`bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border transition-colors ${
+                selectedPlayer.summary.totalDue > 0 
+                  ? 'border-red-500/30 hover:border-red-400/50' 
+                  : 'border-slate-500/30 hover:border-slate-400/50'
+              }`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wide block mb-1.5 ${
+                  selectedPlayer.summary.totalDue > 0 ? 'text-red-300/80' : 'text-slate-400/80'
+                }`}>Due</span>
+                <span className={`font-bold text-lg ${
+                  selectedPlayer.summary.totalDue > 0 ? 'text-red-400' : 'text-slate-500'
+                }`}>₹{selectedPlayer.summary.totalDue}</span>
               </div>
               {/* Refunded */}
               {(selectedPlayer.summary.totalSettled || 0) > 0 && (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-slate-400">Refunded:</span>
-                  <span className="text-lg font-bold text-cyan-400">₹{selectedPlayer.summary.totalSettled}</span>
+                <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-cyan-500/30 hover:border-cyan-400/50 transition-colors">
+                  <span className="text-cyan-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Refunded</span>
+                  <span className="font-bold text-cyan-400 text-lg">₹{selectedPlayer.summary.totalSettled}</span>
                 </div>
               )}
               {/* Matches */}
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-slate-400">Matches:</span>
-                <span className="text-lg font-bold text-white">{selectedPlayer.summary.totalMatches}</span>
+              <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
+                <span className="text-indigo-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Matches</span>
+                <span className="font-bold text-white text-lg">{selectedPlayer.summary.totalMatches}</span>
                 {selectedPlayer.summary.freeMatches > 0 && (
-                  <span className="text-xs text-purple-400">({selectedPlayer.summary.freeMatches} free)</span>
+                  <span className="text-[10px] text-emerald-400 block mt-1">({selectedPlayer.summary.freeMatches} free)</span>
                 )}
               </div>
             </div>
@@ -283,19 +295,19 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
             Match History
           </h4>
           {selectedPlayer.matchHistory.map((match) => (
-            <div key={match.paymentId} className="relative bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-pink-900/40 border border-indigo-500/40 rounded-xl p-4 hover:border-indigo-400 transition-all shadow-lg shadow-indigo-500/10">
-              {/* Fancy purple gradient left border with glow and rounded edges */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-indigo-400 to-pink-400 shadow-lg shadow-purple-400/50 rounded-tl-xl rounded-bl-xl"></div>
-              <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-indigo-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
+            <div key={match.paymentId} className="relative bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-cyan-900/40 border border-emerald-500/40 rounded-xl p-4 hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/10">
+              {/* Emerald gradient left border with glow and rounded edges */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/50 rounded-tl-xl rounded-bl-xl"></div>
+              <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
               {/* Additional glow effect */}
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-purple-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
+              <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
               {/* Match Header */}
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h5 className="text-base font-semibold text-white">vs {match.opponent}</h5>
                     {match.isFreePlayer && (
-                      <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
                         🎁 FREE
                       </span>
                     )}
@@ -329,30 +341,30 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
 
               {/* Payment Summary - Colorful inline stats */}
               {!match.isFreePlayer && (
-                <div className="flex flex-wrap items-center gap-4 mb-3 py-2.5 px-4 bg-gradient-to-r from-indigo-800/50 to-purple-800/40 rounded-lg text-sm border border-indigo-600/40 shadow-inner">
+                <div className="flex flex-wrap items-center gap-4 mb-3 py-2.5 px-4 bg-gradient-to-r from-emerald-800/50 to-teal-800/40 rounded-lg text-sm border border-emerald-600/40 shadow-inner">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-indigo-300 text-xs font-medium">Expected</span>
+                    <span className="text-emerald-300 text-xs font-medium">Expected</span>
                     <span className="font-bold text-white">₹{match.effectiveAmount}</span>
                   </div>
-                  <div className="w-px h-4 bg-indigo-600/40"></div>
+                  <div className="w-px h-4 bg-emerald-600/40"></div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-indigo-300 text-xs font-medium">Paid</span>
+                    <span className="text-emerald-300 text-xs font-medium">Paid</span>
                     <span className="font-bold text-emerald-400">₹{(match.settledAmount || 0) > 0 ? match.amountPaid - (match.settledAmount || 0) : match.amountPaid}</span>
                   </div>
                   {(match.settledAmount || 0) > 0 && (
                     <>
-                      <div className="w-px h-4 bg-indigo-600/40"></div>
+                      <div className="w-px h-4 bg-emerald-600/40"></div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-indigo-300 text-xs font-medium">Refunded</span>
+                        <span className="text-emerald-300 text-xs font-medium">Refunded</span>
                         <span className="font-bold text-cyan-400">₹{match.settledAmount}</span>
                       </div>
                     </>
                   )}
                   {match.dueAmount > 0 && (
                     <>
-                      <div className="w-px h-4 bg-indigo-600/40"></div>
+                      <div className="w-px h-4 bg-emerald-600/40"></div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-indigo-300 text-xs font-medium">Due</span>
+                        <span className="text-emerald-300 text-xs font-medium">Due</span>
                         <span className="font-bold text-red-400">₹{match.dueAmount}</span>
                       </div>
                     </>
@@ -363,7 +375,7 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
               {/* Transactions - Payment Timeline with vibrant styling */}
               {match.transactions.length > 0 && (
                 <div className="space-y-1.5 mt-2">
-                  <p className="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider mb-2">Transaction History</p>
+                  <p className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wider mb-2">Transaction History</p>
                   {match.transactions.map((txn, idx) => {
                     // Determine display based on transaction type and notes
                     const isSettlement = txn.type === 'settlement' || (txn.notes && txn.notes.includes('SETTLEMENT'));
@@ -375,8 +387,8 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
                     return (
                       <div key={idx} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all ${
                         isSettlement 
-                          ? 'bg-purple-500/10 border border-purple-500/20 hover:border-purple-500/40' 
-                          : 'bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-500/40'
+                          ? 'bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-500/40' 
+                          : 'bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40'
                       }`}>
                         {/* Direction indicator - vibrant look */}
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-inner ${
@@ -410,7 +422,7 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
 
               {/* Free Player Message */}
               {match.isFreePlayer && match.transactions.length === 0 && (
-                <p className="text-xs text-purple-400 text-center py-2">
+                <p className="text-xs text-emerald-400 text-center py-2">
                   No payment required for this match
                 </p>
               )}
@@ -475,26 +487,26 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
             <div
               key={player.playerId}
               onClick={() => fetchPlayerDetail(player.playerId)}
-              className="relative bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-pink-900/40 border border-indigo-500/40 rounded-xl overflow-hidden hover:border-indigo-400 transition-all shadow-lg shadow-indigo-500/10"
+              className="relative bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-cyan-900/40 border border-emerald-500/40 rounded-xl overflow-hidden hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/10"
             >
-              {/* Fancy purple gradient left border with glow and rounded edges */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-indigo-400 to-pink-400 shadow-lg shadow-purple-400/50 rounded-tl-xl rounded-bl-xl"></div>
-              <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-indigo-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
+              {/* Emerald gradient left border with glow and rounded edges */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/50 rounded-tl-xl rounded-bl-xl"></div>
+              <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
               {/* Additional glow effect */}
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-purple-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
+              <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
               
               {/* Player Header - Clickable */}
               <div className="p-4 cursor-pointer hover:bg-slate-700/20 transition-colors">
                 <div className="flex items-center gap-3">
                   {/* Expand Icon */}
-                  <div className="p-1.5 rounded-lg bg-indigo-800/50 text-indigo-300">
+                  <div className="p-1.5 rounded-lg bg-emerald-800/50 text-emerald-300">
                     <ChevronRight className="w-4 h-4" />
                   </div>
 
                   {/* Player Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Users className="w-4 h-4 text-purple-400" />
+                      <Users className="w-4 h-4 text-emerald-400" />
                       <span className="font-bold text-white truncate">{player.playerName}</span>
                       {player.totalDue > 0 && (
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-gradient-to-r from-rose-500/30 to-red-500/30 text-rose-300 border-rose-500/30">
@@ -523,17 +535,17 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
                   <div className="hidden sm:flex items-center gap-5 text-sm">
                     <div className="text-right">
                       <div className="text-lg font-bold text-emerald-400">₹{player.totalPaid}</div>
-                      <div className="text-[10px] text-indigo-300 uppercase tracking-wide">paid</div>
+                      <div className="text-[10px] text-emerald-300 uppercase tracking-wide">paid</div>
                     </div>
                     {player.totalDue > 0 && (
                       <div className="text-right">
                         <div className="text-lg font-bold text-amber-400">₹{player.totalDue}</div>
-                        <div className="text-[10px] text-indigo-300 uppercase tracking-wide">due</div>
+                        <div className="text-[10px] text-emerald-300 uppercase tracking-wide">due</div>
                       </div>
                     )}
                     <div className="text-right">
                       <div className="text-lg font-bold text-white">{player.totalMatches}</div>
-                      <div className="text-[10px] text-indigo-300 uppercase tracking-wide">matches</div>
+                      <div className="text-[10px] text-emerald-300 uppercase tracking-wide">matches</div>
                     </div>
                   </div>
                 </div>
