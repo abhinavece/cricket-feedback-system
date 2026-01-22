@@ -630,6 +630,11 @@ export interface SystemSettings {
   };
   whatsapp: {
     enabled: boolean;
+    templateCooldownHours: number;
+    rateLimitingEnabled: boolean;
+    sessionTrackingEnabled: boolean;
+    costTrackingEnabled: boolean;
+    blockOutOfSessionMessages: boolean;
   };
   lastModifiedBy?: {
     _id: string;
@@ -880,6 +885,216 @@ export const getMatchFeedback = async (matchId: string, params?: { page?: number
 // Get player feedback history
 export const getPlayerFeedback = async (playerId: string, params?: { page?: number; limit?: number }): Promise<PlayerFeedbackHistoryResponse> => {
   const response = await api.get(`/players/${playerId}/feedback`, { params });
+  return response.data;
+};
+
+// ============================================================================
+// WHATSAPP ANALYTICS APIs
+// ============================================================================
+
+export interface WhatsAppAnalyticsDashboard {
+  messages: {
+    total: number;
+    last30Days: number;
+    last7Days: number;
+    byDirection: { incoming?: number; outgoing?: number };
+    byStatus: { [key: string]: number };
+  };
+  rates: {
+    deliveryRate: string | number;
+    readRate: string | number;
+    failureRate: string | number;
+  };
+  sessions: {
+    active: number;
+  };
+  costs: {
+    total: number;
+    currency: string;
+  };
+}
+
+export interface WhatsAppSession {
+  _id: string;
+  phone: string;
+  playerId?: { _id: string; name: string; phone: string };
+  playerName?: string;
+  lastUserMessageAt: string;
+  expiresAt: string;
+  sessionStartedAt: string;
+  userMessageCount: number;
+  businessMessageCount: number;
+  status: 'active' | 'expired';
+  remainingMinutes: number;
+}
+
+export interface WhatsAppSessionStatus {
+  isActive: boolean;
+  hasSession: boolean;
+  expiresAt: string | null;
+  remainingMinutes: number;
+  isFree: boolean;
+  sessionStartedAt?: string;
+  userMessageCount?: number;
+  businessMessageCount?: number;
+  playerId?: string;
+  playerName?: string;
+}
+
+export interface WhatsAppCooldownStatus {
+  phone: string;
+  cooldownRemainingMs: number;
+  cooldownRemainingMinutes: number;
+  cooldownRemainingHours: number;
+  canSendTemplate: boolean;
+  lastTemplateSentAt: string | null;
+  lastTemplateName?: string;
+}
+
+export interface WhatsAppCostAnalytics {
+  period: { startDate: string; endDate: string };
+  summary: {
+    totalCost: number;
+    currency: string;
+    totalMessages: number;
+  };
+  byCategory: Array<{ _id: string; count: number; totalCost: number }>;
+  byUser: Array<{ _id: string; playerName?: string; count: number; totalCost: number }>;
+  pagination: {
+    current: number;
+    pages: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+export interface WhatsAppFailedMessage {
+  _id: string;
+  to: string;
+  text: string;
+  status: string;
+  errorCode?: string;
+  errorMessage?: string;
+  errorDetails?: any;
+  createdAt: string;
+  playerId?: { _id: string; name: string; phone: string };
+  playerName?: string;
+}
+
+export interface WhatsAppPreSendCheck {
+  phone: string;
+  session: WhatsAppSessionStatus;
+  rateLimit: WhatsAppCooldownStatus | null;
+  cost: {
+    cost: number | null;
+    reason: string;
+    sessionExpiresAt?: string;
+    remainingMinutes?: number;
+    canSend: boolean;
+    blocked?: boolean;
+    category?: string;
+    currency?: string;
+  };
+  canSend: boolean;
+  blockedReason: string | null;
+}
+
+export interface WhatsAppCostConfig {
+  _id: string;
+  templateCosts: {
+    utility: number;
+    marketing: number;
+    authentication: number;
+    service: number;
+  };
+  currency: string;
+  lastModifiedBy?: string;
+  lastModifiedAt?: string;
+}
+
+// Get WhatsApp analytics dashboard overview
+export const getWhatsAppAnalyticsDashboard = async (): Promise<{ success: boolean; data: WhatsAppAnalyticsDashboard }> => {
+  const response = await api.get('/whatsapp/analytics/dashboard');
+  return response.data;
+};
+
+// Get active WhatsApp sessions
+export const getWhatsAppActiveSessions = async (params?: { page?: number; limit?: number }): Promise<{
+  success: boolean;
+  sessions: WhatsAppSession[];
+  pagination: { current: number; pages: number; total: number; hasMore: boolean };
+}> => {
+  const response = await api.get('/whatsapp/analytics/sessions', { params });
+  return response.data;
+};
+
+// Get session status for a specific phone
+export const getWhatsAppSessionStatus = async (phone: string): Promise<{
+  success: boolean;
+  data: { session: WhatsAppSessionStatus; cooldown: WhatsAppCooldownStatus };
+}> => {
+  const response = await api.get(`/whatsapp/analytics/session/${phone}`);
+  return response.data;
+};
+
+// Get cost analytics
+export const getWhatsAppCostAnalytics = async (params?: {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<{ success: boolean } & WhatsAppCostAnalytics> => {
+  const response = await api.get('/whatsapp/analytics/costs', { params });
+  return response.data;
+};
+
+// Get cost summary for a specific user
+export const getWhatsAppUserCosts = async (phone: string): Promise<{
+  success: boolean;
+  data: { phone: string; totalCost: number; totalMessages: number; currency: string; byCategory: any[] };
+}> => {
+  const response = await api.get(`/whatsapp/analytics/costs/user/${phone}`);
+  return response.data;
+};
+
+// Get failed messages
+export const getWhatsAppFailedMessages = async (params?: {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<{
+  success: boolean;
+  messages: WhatsAppFailedMessage[];
+  pagination: { current: number; pages: number; total: number; hasMore: boolean };
+}> => {
+  const response = await api.get('/whatsapp/analytics/errors', { params });
+  return response.data;
+};
+
+// Pre-flight check before sending a message
+export const checkWhatsAppSendStatus = async (data: {
+  phone: string;
+  isTemplate?: boolean;
+  templateName?: string;
+  templateCategory?: string;
+}): Promise<{ success: boolean; data: WhatsAppPreSendCheck }> => {
+  const response = await api.post('/whatsapp/analytics/check-send', data);
+  return response.data;
+};
+
+// Get WhatsApp cost configuration
+export const getWhatsAppCostConfig = async (): Promise<{ success: boolean; data: WhatsAppCostConfig }> => {
+  const response = await api.get('/whatsapp/analytics/cost-config');
+  return response.data;
+};
+
+// Update WhatsApp cost configuration
+export const updateWhatsAppCostConfig = async (data: {
+  templateCosts?: Partial<WhatsAppCostConfig['templateCosts']>;
+  currency?: string;
+}): Promise<{ success: boolean; data: WhatsAppCostConfig }> => {
+  const response = await api.put('/whatsapp/analytics/cost-config', data);
   return response.data;
 };
 

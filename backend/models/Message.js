@@ -31,7 +31,39 @@ const messageSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    default: 'delivered'
+    enum: ['pending', 'sent', 'delivered', 'read', 'failed'],
+    default: 'pending',
+    index: true
+  },
+  statusUpdatedAt: {
+    type: Date
+  },
+  // Template category for cost tracking
+  templateCategory: {
+    type: String,
+    enum: ['utility', 'marketing', 'authentication', 'service', null],
+    default: null
+  },
+  // Cost of this message in configured currency (0 if within session)
+  messageCost: {
+    type: Number,
+    default: 0
+  },
+  // Error tracking for failed messages
+  errorCode: {
+    type: String
+  },
+  errorMessage: {
+    type: String
+  },
+  errorDetails: {
+    type: mongoose.Schema.Types.Mixed
+  },
+  // WhatsApp message ID returned from API (for status tracking)
+  whatsappMessageId: {
+    type: String,
+    index: true,
+    sparse: true
   },
   timestamp: {
     type: Date,

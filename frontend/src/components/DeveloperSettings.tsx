@@ -23,7 +23,10 @@ import {
   Crown,
   UserCheck,
   UserX,
-  Info
+  Info,
+  Clock,
+  BarChart3,
+  Ban
 } from 'lucide-react';
 import WebhookProxyManager from './WebhookProxyManager';
 
@@ -40,6 +43,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [thresholdInput, setThresholdInput] = useState<string>('');
+  const [cooldownInput, setCooldownInput] = useState<string>('');
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -51,6 +55,9 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
         response.settings.payment.forceAdminReviewThreshold !== null
           ? response.settings.payment.forceAdminReviewThreshold.toString()
           : ''
+      );
+      setCooldownInput(
+        response.settings.whatsapp?.templateCooldownHours?.toString() || '12'
       );
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load settings');
@@ -130,6 +137,36 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update threshold');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCooldownUpdate = async () => {
+    if (!settings) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const cooldown = parseInt(cooldownInput);
+
+      if (isNaN(cooldown) || cooldown < 1 || cooldown > 72) {
+        setError('Template cooldown must be between 1 and 72 hours');
+        setSaving(false);
+        return;
+      }
+
+      const response = await updateSystemSettings({
+        whatsapp: { templateCooldownHours: cooldown }
+      });
+      setSettings(response.settings);
+      setSuccess(response.message);
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update cooldown');
     } finally {
       setSaving(false);
     }
@@ -332,6 +369,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             WhatsApp Settings
           </h3>
 
+          {/* WhatsApp Enabled */}
           <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -358,6 +396,175 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                   settings?.whatsapp.enabled ? 'left-7' : 'left-1'
                 }`} />
               </button>
+            </div>
+          </div>
+
+          {/* Analytics Sub-section */}
+          <div className="pl-4 border-l-2 border-emerald-500/30 space-y-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+              <BarChart3 className="w-3 h-3" />
+              Analytics & Rate Limiting
+            </h4>
+
+            {/* Rate Limiting Enabled */}
+            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings?.whatsapp.rateLimitingEnabled ? 'bg-blue-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
+                    <Clock className={`w-5 h-5 ${settings?.whatsapp.rateLimitingEnabled ? 'text-blue-400' : 'text-slate-400'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white dark:text-white text-slate-800">Template Rate Limiting</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500">
+                      Prevent template spam with cooldown periods
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggle('whatsapp', 'rateLimitingEnabled', !settings?.whatsapp.rateLimitingEnabled)}
+                  disabled={saving}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    settings?.whatsapp.rateLimitingEnabled
+                      ? 'bg-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    settings?.whatsapp.rateLimitingEnabled ? 'left-7' : 'left-1'
+                  }`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Template Cooldown Hours */}
+            {settings?.whatsapp.rateLimitingEnabled && (
+              <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/20">
+                    <Clock className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-white dark:text-white text-slate-800">Template Cooldown Period</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500 mb-3">
+                      Minimum hours between template sends to the same user (1-72)
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1 max-w-[150px]">
+                        <input
+                          type="number"
+                          value={cooldownInput}
+                          onChange={(e) => setCooldownInput(e.target.value)}
+                          placeholder="12"
+                          min="1"
+                          max="72"
+                          className="w-full px-4 py-2 rounded-lg bg-slate-700/50 dark:bg-slate-700/50 bg-white border border-white/10 dark:border-white/10 border-slate-300 text-white dark:text-white text-slate-800 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">hrs</span>
+                      </div>
+                      <button
+                        onClick={handleCooldownUpdate}
+                        disabled={saving}
+                        className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors font-medium disabled:opacity-50"
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}
+                      </button>
+                      <span className="text-sm text-blue-400">
+                        Current: {settings?.whatsapp.templateCooldownHours || 12}h
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Session Tracking */}
+            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings?.whatsapp.sessionTrackingEnabled ? 'bg-emerald-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
+                    <BarChart3 className={`w-5 h-5 ${settings?.whatsapp.sessionTrackingEnabled ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white dark:text-white text-slate-800">Session Tracking</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500">
+                      Track 24-hour messaging windows for free messaging
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggle('whatsapp', 'sessionTrackingEnabled', !settings?.whatsapp.sessionTrackingEnabled)}
+                  disabled={saving}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    settings?.whatsapp.sessionTrackingEnabled
+                      ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30'
+                      : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    settings?.whatsapp.sessionTrackingEnabled ? 'left-7' : 'left-1'
+                  }`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Cost Tracking */}
+            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings?.whatsapp.costTrackingEnabled ? 'bg-amber-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
+                    <DollarSign className={`w-5 h-5 ${settings?.whatsapp.costTrackingEnabled ? 'text-amber-400' : 'text-slate-400'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white dark:text-white text-slate-800">Cost Tracking</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500">
+                      Track costs for template messages outside session windows
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggle('whatsapp', 'costTrackingEnabled', !settings?.whatsapp.costTrackingEnabled)}
+                  disabled={saving}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    settings?.whatsapp.costTrackingEnabled
+                      ? 'bg-amber-500 shadow-lg shadow-amber-500/30'
+                      : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    settings?.whatsapp.costTrackingEnabled ? 'left-7' : 'left-1'
+                  }`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Block Out-of-Session Messages */}
+            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings?.whatsapp.blockOutOfSessionMessages ? 'bg-rose-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
+                    <Ban className={`w-5 h-5 ${settings?.whatsapp.blockOutOfSessionMessages ? 'text-rose-400' : 'text-slate-400'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white dark:text-white text-slate-800">Block Out-of-Session Messages</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500">
+                      Prevent free-text messages when no active session exists
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggle('whatsapp', 'blockOutOfSessionMessages', !settings?.whatsapp.blockOutOfSessionMessages)}
+                  disabled={saving}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    settings?.whatsapp.blockOutOfSessionMessages
+                      ? 'bg-rose-500 shadow-lg shadow-rose-500/30'
+                      : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    settings?.whatsapp.blockOutOfSessionMessages ? 'left-7' : 'left-1'
+                  }`} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

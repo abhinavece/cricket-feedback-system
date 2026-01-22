@@ -9,6 +9,7 @@ const MatchPayment = require('../models/MatchPayment');
 const PaymentScreenshot = require('../models/PaymentScreenshot');
 const sseManager = require('../utils/sseManager');
 const crypto = require('crypto');
+const whatsappAnalyticsService = require('../services/whatsappAnalyticsService');
 
 /**
  * Send WhatsApp message and log to database
@@ -55,14 +56,26 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
       text: messageText,
       direction: 'outgoing',
       messageId: messageId,
+      whatsappMessageId: messageId, // For status tracking
+      status: 'sent',
+      statusUpdatedAt: new Date(),
       timestamp: new Date(),
       messageType: metadata.messageType || 'general',
       matchId: metadata.matchId || null,
       matchTitle: metadata.matchTitle || null,
       paymentId: metadata.paymentId || null,
       playerId: metadata.playerId || null,
-      playerName: metadata.playerName || null
+      playerName: metadata.playerName || null,
+      templateCategory: metadata.templateCategory || null,
+      messageCost: metadata.messageCost || 0
     });
+
+    // Increment business message count in session
+    try {
+      await whatsappAnalyticsService.incrementBusinessMessageCount(toPhone);
+    } catch (sessionErr) {
+      // Non-critical, don't fail the message send
+    }
 
     // Broadcast SSE event for outgoing message to both general and phone-specific topics
     const outgoingEvent = {
@@ -200,6 +213,14 @@ router.post('/webhook', (req, res) => {
             const value = change.value;
             const messages = value.messages || [];
             const contacts = value.contacts || [];
+            const statuses = value.statuses || [];
+
+            // Process status updates (sent, delivered, read, failed)
+            for (const status of statuses) {
+              processStatusUpdate(status).catch(err => {
+                console.error('Error processing status update:', err);
+              });
+            }
             
             console.log(`Processing ${messages.length} messages and ${contacts.length} contacts`);
             
@@ -265,6 +286,81 @@ router.post('/webhook', (req, res) => {
   }
 });
 
+// Process status updates from WhatsApp webhook
+async function processStatusUpdate(status) {
+  try {
+    const whatsappMessageId = status.id;
+    const statusType = status.status; // 'sent', 'delivered', 'read', 'failed'
+    const timestamp = status.timestamp ? new Date(parseInt(status.timestamp) * 1000) : new Date();
+    const recipientId = status.recipient_id;
+
+    console.log(`📊 Status update: ${statusType} for message ${whatsappMessageId} to ${recipientId}`);
+
+    // Find message by whatsappMessageId or messageId
+    let message = await Message.findOne({
+      $or: [
+        { whatsappMessageId },
+        { messageId: whatsappMessageId }
+      ]
+    });
+
+    if (!message) {
+      console.log(`⚠️ Message not found for status update: ${whatsappMessageId}`);
+      return;
+    }
+
+    // Update message status
+    message.status = statusType;
+    message.statusUpdatedAt = timestamp;
+
+    // Handle failed status with error details
+    if (statusType === 'failed' && status.errors && status.errors.length > 0) {
+      const error = status.errors[0];
+      message.errorCode = error.code?.toString();
+      message.errorMessage = error.title || error.message;
+      message.errorDetails = error;
+
+      await whatsappAnalyticsService.recordMessageError(
+        message._id,
+        error.code?.toString(),
+        error.title || error.message,
+        error
+      );
+    }
+
+    await message.save();
+    console.log(`✅ Message status updated: ${statusType}`);
+
+    // Broadcast status update via SSE
+    sseManager.broadcast('messages', {
+      type: 'message:status',
+      messageId: message._id.toString(),
+      whatsappMessageId,
+      status: statusType,
+      timestamp,
+      phone: recipientId
+    });
+
+    // Also broadcast to phone-specific topic
+    if (recipientId) {
+      let formattedPhone = recipientId.replace(/\D/g, '');
+      if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+        formattedPhone = '91' + formattedPhone;
+      }
+      sseManager.broadcast(`phone:${formattedPhone}`, {
+        type: 'message:status',
+        messageId: message._id.toString(),
+        whatsappMessageId,
+        status: statusType,
+        timestamp
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error processing status update:', error);
+  }
+}
+
 // Process incoming messages
 async function processIncomingMessage(from, text, messageId, contextId = null, messageType = 'text') {
   try {
@@ -319,6 +415,19 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
           console.log(`   Associated with player: ${playerData.name}`);
         } else {
           console.log(`   No player association (unknown sender)`);
+        }
+
+        // Create/extend WhatsApp session for this user (24-hour rolling window)
+        try {
+          await whatsappAnalyticsService.extendSession(
+            formattedPhone,
+            savedMessage._id,
+            playerData?._id,
+            playerData?.name
+          );
+          console.log(`   Session extended for ${formattedPhone}`);
+        } catch (sessionErr) {
+          console.error(`   Failed to extend session: ${sessionErr.message}`);
         }
       }
 
