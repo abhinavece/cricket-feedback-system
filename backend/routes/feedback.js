@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Feedback Routes
+ * 
+ * Handles all feedback-related API endpoints including:
+ * - Submitting general feedback (non-match-specific)
+ * - Retrieving feedback with pagination and role-based redaction
+ * - Getting aggregated statistics
+ * - Soft delete and restore operations
+ * 
+ * @module routes/feedback
+ */
+
 const express = require('express');
 const router = express.Router();
 const Feedback = require('../models/Feedback');
@@ -10,7 +22,26 @@ const feedbackService = require('../services/feedbackService');
 // Use unified feedback service for redaction
 const { redactFeedbackItem, redactFeedbackList } = feedbackService;
 
-// POST /api/feedback - Submit new general feedback (NOT match-specific)
+/**
+ * POST /api/feedback
+ * Submit new general feedback (NOT match-specific)
+ * 
+ * @route POST /api/feedback
+ * @access Public (no auth required for general feedback)
+ * @param {Object} req.body - Feedback data
+ * @param {string} req.body.playerName - Player name
+ * @param {string} req.body.matchDate - Match date (ISO format)
+ * @param {number} req.body.batting - Batting rating (1-5)
+ * @param {number} req.body.bowling - Bowling rating (1-5)
+ * @param {number} req.body.fielding - Fielding rating (1-5)
+ * @param {number} req.body.teamSpirit - Team spirit rating (1-5)
+ * @param {string} req.body.feedbackText - Feedback text
+ * @param {Object} req.body.issues - Issues object
+ * @param {string} req.body.additionalComments - Additional comments
+ * @returns {Object} 201 - Created feedback object
+ * @returns {Object} 400 - Validation error
+ * @returns {Object} 500 - Server error
+ */
 router.post('/', async (req, res) => {
   try {
     const {
@@ -80,8 +111,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/feedback/stats - Get aggregated statistics (non-deleted only)
-// Must be defined BEFORE the main GET / route to avoid route matching issues
+/**
+ * GET /api/feedback/stats
+ * Get aggregated feedback statistics (non-deleted only)
+ * 
+ * @route GET /api/feedback/stats
+ * @access Public (no auth required)
+ * @returns {Object} 200 - Statistics object with averages and issue counts
+ * @returns {Object} 500 - Server error
+ * 
+ * @note Must be defined BEFORE the main GET / route to avoid route matching issues
+ */
 router.get('/stats', async (req, res) => {
   try {
     const stats = await Feedback.aggregate([
@@ -126,7 +166,19 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET /api/feedback/summary - Lightweight endpoint for list view (excludes large text fields)
+/**
+ * GET /api/feedback/summary
+ * Get lightweight feedback summary (excludes large text fields for performance)
+ * 
+ * @route GET /api/feedback/summary
+ * @access Private (requires authentication)
+ * @param {number} req.query.page - Page number (default: 1)
+ * @param {number} req.query.limit - Items per page (default: 10, max: 100)
+ * @param {Object} req.user - Authenticated user (from auth middleware)
+ * @returns {Object} 200 - Paginated feedback list with role-based redaction
+ * @returns {Object} 401 - Unauthorized
+ * @returns {Object} 500 - Server error
+ */
 router.get('/summary', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;

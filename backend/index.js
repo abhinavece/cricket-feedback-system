@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Backend Server Entry Point
+ * 
+ * Main Express application server for the Cricket Match Feedback & Team Management System.
+ * Handles routing, middleware setup, and error handling.
+ * 
+ * @module index
+ */
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -56,7 +65,14 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/webhook-proxy', webhookProxyRoutes);
 app.use('/api/developer', developerRoutes);
 
-// Health check endpoint
+/**
+ * GET /api/health
+ * Health check endpoint for monitoring and load balancers
+ * 
+ * @route GET /api/health
+ * @access Public
+ * @returns {Object} 200 - Health status with timestamp and uptime
+ */
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
