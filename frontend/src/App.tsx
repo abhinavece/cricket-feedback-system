@@ -153,7 +153,8 @@ function AppContent() {
                   <CountdownTimer
                     seconds={5}
                     onComplete={() => {
-                      // Navigate to feedback listing (home page)
+                      // Ensure we land on the feedback tab, not the last visited tab
+                      localStorage.setItem('activeTab', 'feedback');
                       navigate('/');
                       handleReset();
                     }}

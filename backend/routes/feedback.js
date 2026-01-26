@@ -54,6 +54,8 @@ router.post('/', async (req, res) => {
       feedbackText,
       issues,
       additionalComments,
+      groundRating,
+      otherIssueText,
       feedbackType,
       matchId
     } = req.body;
@@ -72,32 +74,42 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Validate ratings
+    // Validate ratings - now nullable (N/A for "didn't get a chance")
+    // Only validate if a value is provided (not null/undefined)
     const ratings = { batting, bowling, fielding, teamSpirit };
     for (const [key, value] of Object.entries(ratings)) {
-      if (!value || value < 1 || value > 5) {
+      if (value !== null && value !== undefined && (value < 1 || value > 5)) {
         return res.status(400).json({
-          error: `${key} rating must be between 1 and 5`
+          error: `${key} rating must be between 1 and 5, or null for N/A`
         });
       }
+    }
+
+    // Require at least one rating to be provided
+    const hasAtLeastOneRating = Object.values(ratings).some(v => v !== null && v !== undefined);
+    if (!hasAtLeastOneRating) {
+      return res.status(400).json({
+        error: 'At least one performance rating is required'
+      });
     }
 
     const feedback = new Feedback({
       playerName,
       matchDate: new Date(matchDate),
-      batting,
-      bowling,
-      fielding,
-      teamSpirit,
+      batting: batting ?? null,
+      bowling: bowling ?? null,
+      fielding: fielding ?? null,
+      teamSpirit: teamSpirit ?? null,
       feedbackText,
       issues: issues || {
         venue: false,
-        equipment: false,
         timing: false,
         umpiring: false,
         other: false,
       },
       additionalComments: additionalComments || '',
+      groundRating: groundRating || null,
+      otherIssueText: otherIssueText || '',
     });
 
     const savedFeedback = await feedback.save();
@@ -124,36 +136,83 @@ router.post('/', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
   try {
+    // Aggregate stats with proper handling of null ratings
+    // N/A ratings (null) are excluded from average calculations
     const stats = await Feedback.aggregate([
       { $match: { isDeleted: false } },
       {
         $group: {
           _id: null,
           totalSubmissions: { $sum: 1 },
-          avgBatting: { $avg: '$batting' },
-          avgBowling: { $avg: '$bowling' },
-          avgFielding: { $avg: '$fielding' },
-          avgTeamSpirit: { $avg: '$teamSpirit' },
+          // Sum and count only non-null ratings for accurate averages
+          battingSum: { $sum: { $cond: [{ $ne: ['$batting', null] }, '$batting', 0] } },
+          battingCount: { $sum: { $cond: [{ $ne: ['$batting', null] }, 1, 0] } },
+          bowlingSum: { $sum: { $cond: [{ $ne: ['$bowling', null] }, '$bowling', 0] } },
+          bowlingCount: { $sum: { $cond: [{ $ne: ['$bowling', null] }, 1, 0] } },
+          fieldingSum: { $sum: { $cond: [{ $ne: ['$fielding', null] }, '$fielding', 0] } },
+          fieldingCount: { $sum: { $cond: [{ $ne: ['$fielding', null] }, 1, 0] } },
+          teamSpiritSum: { $sum: { $cond: [{ $ne: ['$teamSpirit', null] }, '$teamSpirit', 0] } },
+          teamSpiritCount: { $sum: { $cond: [{ $ne: ['$teamSpirit', null] }, 1, 0] } },
           venueIssues: { $sum: { $cond: ['$issues.venue', 1, 0] } },
-          equipmentIssues: { $sum: { $cond: ['$issues.equipment', 1, 0] } },
           timingIssues: { $sum: { $cond: ['$issues.timing', 1, 0] } },
           umpiringIssues: { $sum: { $cond: ['$issues.umpiring', 1, 0] } },
           otherIssues: { $sum: { $cond: ['$issues.other', 1, 0] } },
         }
+      },
+      {
+        // Calculate averages from sum/count (avoids counting nulls)
+        $project: {
+          totalSubmissions: 1,
+          avgBatting: { $cond: [{ $gt: ['$battingCount', 0] }, { $divide: ['$battingSum', '$battingCount'] }, null] },
+          avgBowling: { $cond: [{ $gt: ['$bowlingCount', 0] }, { $divide: ['$bowlingSum', '$bowlingCount'] }, null] },
+          avgFielding: { $cond: [{ $gt: ['$fieldingCount', 0] }, { $divide: ['$fieldingSum', '$fieldingCount'] }, null] },
+          avgTeamSpirit: { $cond: [{ $gt: ['$teamSpiritCount', 0] }, { $divide: ['$teamSpiritSum', '$teamSpiritCount'] }, null] },
+          battingCount: 1,
+          bowlingCount: 1,
+          fieldingCount: 1,
+          teamSpiritCount: 1,
+          venueIssues: 1,
+          timingIssues: 1,
+          umpiringIssues: 1,
+          otherIssues: 1,
+        }
       }
     ]);
 
-    const result = stats[0] || {
+    const raw = stats[0] || {
       totalSubmissions: 0,
-      avgBatting: 0,
-      avgBowling: 0,
-      avgFielding: 0,
-      avgTeamSpirit: 0,
+      avgBatting: null,
+      avgBowling: null,
+      avgFielding: null,
+      avgTeamSpirit: null,
+      battingCount: 0,
+      bowlingCount: 0,
+      fieldingCount: 0,
+      teamSpiritCount: 0,
       venueIssues: 0,
-      equipmentIssues: 0,
       timingIssues: 0,
       umpiringIssues: 0,
       otherIssues: 0,
+    };
+
+    // Format result with rounded averages and response counts
+    const result = {
+      totalSubmissions: raw.totalSubmissions,
+      avgBatting: raw.avgBatting !== null ? Math.round(raw.avgBatting * 10) / 10 : null,
+      avgBowling: raw.avgBowling !== null ? Math.round(raw.avgBowling * 10) / 10 : null,
+      avgFielding: raw.avgFielding !== null ? Math.round(raw.avgFielding * 10) / 10 : null,
+      avgTeamSpirit: raw.avgTeamSpirit !== null ? Math.round(raw.avgTeamSpirit * 10) / 10 : null,
+      // Include counts so frontend knows how many people rated each category
+      ratingCounts: {
+        batting: raw.battingCount,
+        bowling: raw.bowlingCount,
+        fielding: raw.fieldingCount,
+        teamSpirit: raw.teamSpiritCount,
+      },
+      venueIssues: raw.venueIssues,
+      timingIssues: raw.timingIssues,
+      umpiringIssues: raw.umpiringIssues,
+      otherIssues: raw.otherIssues,
     };
 
     res.json(result);
@@ -557,7 +616,9 @@ router.post('/link/:token/submit', async (req, res) => {
       teamSpirit,
       feedbackText,
       issues,
-      additionalComments
+      additionalComments,
+      groundRating,
+      otherIssueText
     } = req.body;
 
     // Validate required fields
@@ -567,14 +628,23 @@ router.post('/link/:token/submit', async (req, res) => {
       });
     }
 
-    // Validate ratings
+    // Validate ratings - now nullable (N/A for "didn't get a chance")
+    // Only validate if a value is provided (not null/undefined)
     const ratings = { batting, bowling, fielding, teamSpirit };
     for (const [key, value] of Object.entries(ratings)) {
-      if (!value || value < 1 || value > 5) {
+      if (value !== null && value !== undefined && (value < 1 || value > 5)) {
         return res.status(400).json({
-          error: `${key} rating must be between 1 and 5`
+          error: `${key} rating must be between 1 and 5, or null for N/A`
         });
       }
+    }
+
+    // Require at least one rating to be provided
+    const hasAtLeastOneRating = Object.values(ratings).some(v => v !== null && v !== undefined);
+    if (!hasAtLeastOneRating) {
+      return res.status(400).json({
+        error: 'At least one performance rating is required'
+      });
     }
 
     // Find and validate feedback link
@@ -612,19 +682,20 @@ router.post('/link/:token/submit', async (req, res) => {
     const feedback = new Feedback({
       playerName: playerName.trim(),
       matchDate: match.date,
-      batting,
-      bowling,
-      fielding,
-      teamSpirit,
+      batting: batting ?? null,
+      bowling: bowling ?? null,
+      fielding: fielding ?? null,
+      teamSpirit: teamSpirit ?? null,
       feedbackText,
       issues: issues || {
         venue: false,
-        equipment: false,
         timing: false,
         umpiring: false,
         other: false,
       },
       additionalComments: additionalComments || '',
+      groundRating: groundRating || null,
+      otherIssueText: otherIssueText || '',
       // Match-specific fields
       feedbackType: 'match',
       matchId: match._id,

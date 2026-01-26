@@ -33,29 +33,40 @@ const feedbackSchema = new mongoose.Schema({
     ref: 'Player',
     default: null
   },
+  // Performance ratings - nullable to support "Didn't get a chance" (N/A) scenarios
+  // When null, the rating is skipped in average calculations
+  // Note: We use custom validators instead of min/max because those don't allow null
   batting: {
     type: Number,
-    required: true,
-    min: 1,
-    max: 5,
+    default: null,
+    validate: {
+      validator: function(v) { return v === null || (v >= 1 && v <= 5); },
+      message: 'Batting rating must be between 1 and 5, or null for N/A'
+    }
   },
   bowling: {
     type: Number,
-    required: true,
-    min: 1,
-    max: 5,
+    default: null,
+    validate: {
+      validator: function(v) { return v === null || (v >= 1 && v <= 5); },
+      message: 'Bowling rating must be between 1 and 5, or null for N/A'
+    }
   },
   fielding: {
     type: Number,
-    required: true,
-    min: 1,
-    max: 5,
+    default: null,
+    validate: {
+      validator: function(v) { return v === null || (v >= 1 && v <= 5); },
+      message: 'Fielding rating must be between 1 and 5, or null for N/A'
+    }
   },
   teamSpirit: {
     type: Number,
-    required: true,
-    min: 1,
-    max: 5,
+    default: null,
+    validate: {
+      validator: function(v) { return v === null || (v >= 1 && v <= 5); },
+      message: 'Team spirit rating must be between 1 and 5, or null for N/A'
+    }
   },
   feedbackText: {
     type: String,
@@ -64,14 +75,24 @@ const feedbackSchema = new mongoose.Schema({
   },
   issues: {
     venue: { type: Boolean, default: false },
-    equipment: { type: Boolean, default: false },
     timing: { type: Boolean, default: false },
     umpiring: { type: Boolean, default: false },
     other: { type: Boolean, default: false },
   },
+  // Custom text when "other" issue is selected
+  otherIssueText: {
+    type: String,
+    trim: true,
+    default: '',
+  },
   additionalComments: {
     type: String,
     trim: true,
+  },
+  groundRating: {
+    type: String,
+    enum: ['skip_it', 'decent', 'solid_pick', 'prime_ground', 'overpriced', null],
+    default: null,
   },
   isDeleted: {
     type: Boolean,

@@ -1039,7 +1039,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                   <div className="bg-gradient-to-br from-primary-green/20 to-primary-green/5 border border-primary-green/30 rounded-2xl px-8 py-6 text-center md:text-right shadow-inner">
                     <p className="text-[10px] text-secondary uppercase tracking-[0.2em] mb-1 font-bold">Overall Spirit</p>
-                    <p className="text-5xl font-black text-primary-green drop-shadow-sm">{item.teamSpirit.toFixed(1)}</p>
+                    <p className="text-5xl font-black text-primary-green drop-shadow-sm">
+                      {item.teamSpirit !== null ? item.teamSpirit.toFixed(1) : 'N/A'}
+                    </p>
                     <p className="text-[10px] text-secondary mt-1 font-medium">OUT OF 5.0</p>
                   </div>
                 </div>
@@ -1057,11 +1059,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     >
                       <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">{stat.label}</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-white">{stat.value.toFixed(1)}</span>
-                        <span className="text-xs text-secondary/50 font-medium">/ 5</span>
+                        <span className={`text-3xl font-black ${stat.value !== null ? 'text-white' : 'text-slate-500'}`}>
+                          {stat.value !== null ? stat.value.toFixed(1) : 'N/A'}
+                        </span>
+                        {stat.value !== null && <span className="text-xs text-secondary/50 font-medium">/ 5</span>}
                       </div>
                       <div className="text-sm text-yellow-500 mt-2 flex gap-0.5">
-                        {renderStars(Math.round(stat.value))}
+                        {stat.value !== null ? renderStars(Math.round(stat.value)) : <span className="text-slate-500 text-xs">Not rated</span>}
                       </div>
                     </div>
                   ))}

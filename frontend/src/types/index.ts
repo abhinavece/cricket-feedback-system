@@ -1,19 +1,26 @@
+export type GroundRatingType = 'skip_it' | 'decent' | 'solid_pick' | 'prime_ground' | 'overpriced' | null;
+
+// Performance rating can be 1-5 or null (N/A - didn't get a chance)
+export type PerformanceRating = number | null;
+
 export interface FeedbackForm {
   playerName: string;
   matchDate: Date | string;
-  batting: number;
-  bowling: number;
-  fielding: number;
-  teamSpirit: number;
+  // Nullable ratings - null means "Didn't get a chance" (N/A)
+  batting: PerformanceRating;
+  bowling: PerformanceRating;
+  fielding: PerformanceRating;
+  teamSpirit: PerformanceRating;
   feedbackText: string;
   issues: {
     venue: boolean;
-    equipment: boolean;
     timing: boolean;
     umpiring: boolean;
     other: boolean;
   };
+  otherIssueText: string;  // Custom text when "other" is selected
   additionalComments: string;
+  groundRating: GroundRatingType;
 }
 
 export interface MatchInfo {

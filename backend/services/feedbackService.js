@@ -134,6 +134,7 @@ const getPlayerFeedback = async (query, options = {}, userRole) => {
 
 /**
  * Get aggregated stats for match feedback
+ * Properly handles null ratings (N/A) by excluding them from average calculations
  * @param {string} matchId - The match ID
  * @returns {Object} - Aggregated stats
  */
@@ -144,50 +145,80 @@ const getMatchFeedbackStats = async (matchId) => {
       $group: {
         _id: null,
         totalSubmissions: { $sum: 1 },
-        avgBatting: { $avg: '$batting' },
-        avgBowling: { $avg: '$bowling' },
-        avgFielding: { $avg: '$fielding' },
-        avgTeamSpirit: { $avg: '$teamSpirit' },
+        // Sum and count only non-null ratings for accurate averages
+        battingSum: { $sum: { $cond: [{ $ne: ['$batting', null] }, '$batting', 0] } },
+        battingCount: { $sum: { $cond: [{ $ne: ['$batting', null] }, 1, 0] } },
+        bowlingSum: { $sum: { $cond: [{ $ne: ['$bowling', null] }, '$bowling', 0] } },
+        bowlingCount: { $sum: { $cond: [{ $ne: ['$bowling', null] }, 1, 0] } },
+        fieldingSum: { $sum: { $cond: [{ $ne: ['$fielding', null] }, '$fielding', 0] } },
+        fieldingCount: { $sum: { $cond: [{ $ne: ['$fielding', null] }, 1, 0] } },
+        teamSpiritSum: { $sum: { $cond: [{ $ne: ['$teamSpirit', null] }, '$teamSpirit', 0] } },
+        teamSpiritCount: { $sum: { $cond: [{ $ne: ['$teamSpirit', null] }, 1, 0] } },
         venueIssues: { $sum: { $cond: ['$issues.venue', 1, 0] } },
-        equipmentIssues: { $sum: { $cond: ['$issues.equipment', 1, 0] } },
         timingIssues: { $sum: { $cond: ['$issues.timing', 1, 0] } },
         umpiringIssues: { $sum: { $cond: ['$issues.umpiring', 1, 0] } },
         otherIssues: { $sum: { $cond: ['$issues.other', 1, 0] } }
       }
+    },
+    {
+      $project: {
+        totalSubmissions: 1,
+        avgBatting: { $cond: [{ $gt: ['$battingCount', 0] }, { $divide: ['$battingSum', '$battingCount'] }, null] },
+        avgBowling: { $cond: [{ $gt: ['$bowlingCount', 0] }, { $divide: ['$bowlingSum', '$bowlingCount'] }, null] },
+        avgFielding: { $cond: [{ $gt: ['$fieldingCount', 0] }, { $divide: ['$fieldingSum', '$fieldingCount'] }, null] },
+        avgTeamSpirit: { $cond: [{ $gt: ['$teamSpiritCount', 0] }, { $divide: ['$teamSpiritSum', '$teamSpiritCount'] }, null] },
+        battingCount: 1,
+        bowlingCount: 1,
+        fieldingCount: 1,
+        teamSpiritCount: 1,
+        venueIssues: 1,
+        timingIssues: 1,
+        umpiringIssues: 1,
+        otherIssues: 1
+      }
     }
   ]);
 
-  const stats = statsAggregation[0] || {
+  const raw = statsAggregation[0] || {
     totalSubmissions: 0,
-    avgBatting: 0,
-    avgBowling: 0,
-    avgFielding: 0,
-    avgTeamSpirit: 0,
+    avgBatting: null,
+    avgBowling: null,
+    avgFielding: null,
+    avgTeamSpirit: null,
+    battingCount: 0,
+    bowlingCount: 0,
+    fieldingCount: 0,
+    teamSpiritCount: 0,
     venueIssues: 0,
-    equipmentIssues: 0,
     timingIssues: 0,
     umpiringIssues: 0,
     otherIssues: 0
   };
 
   return {
-    totalSubmissions: stats.totalSubmissions,
-    avgBatting: Math.round(stats.avgBatting * 10) / 10 || 0,
-    avgBowling: Math.round(stats.avgBowling * 10) / 10 || 0,
-    avgFielding: Math.round(stats.avgFielding * 10) / 10 || 0,
-    avgTeamSpirit: Math.round(stats.avgTeamSpirit * 10) / 10 || 0,
+    totalSubmissions: raw.totalSubmissions,
+    avgBatting: raw.avgBatting !== null ? Math.round(raw.avgBatting * 10) / 10 : null,
+    avgBowling: raw.avgBowling !== null ? Math.round(raw.avgBowling * 10) / 10 : null,
+    avgFielding: raw.avgFielding !== null ? Math.round(raw.avgFielding * 10) / 10 : null,
+    avgTeamSpirit: raw.avgTeamSpirit !== null ? Math.round(raw.avgTeamSpirit * 10) / 10 : null,
+    ratingCounts: {
+      batting: raw.battingCount,
+      bowling: raw.bowlingCount,
+      fielding: raw.fieldingCount,
+      teamSpirit: raw.teamSpiritCount
+    },
     issues: {
-      venue: stats.venueIssues,
-      equipment: stats.equipmentIssues,
-      timing: stats.timingIssues,
-      umpiring: stats.umpiringIssues,
-      other: stats.otherIssues
+      venue: raw.venueIssues,
+      timing: raw.timingIssues,
+      umpiring: raw.umpiringIssues,
+      other: raw.otherIssues
     }
   };
 };
 
 /**
  * Get aggregated stats for player feedback
+ * Properly handles null ratings (N/A) by excluding them from average calculations
  * @param {Object} query - The query to find feedback
  * @returns {Object} - Aggregated stats
  */
@@ -198,28 +229,56 @@ const getPlayerFeedbackStats = async (query) => {
       $group: {
         _id: null,
         totalFeedback: { $sum: 1 },
-        avgBatting: { $avg: '$batting' },
-        avgBowling: { $avg: '$bowling' },
-        avgFielding: { $avg: '$fielding' },
-        avgTeamSpirit: { $avg: '$teamSpirit' }
+        // Sum and count only non-null ratings for accurate averages
+        battingSum: { $sum: { $cond: [{ $ne: ['$batting', null] }, '$batting', 0] } },
+        battingCount: { $sum: { $cond: [{ $ne: ['$batting', null] }, 1, 0] } },
+        bowlingSum: { $sum: { $cond: [{ $ne: ['$bowling', null] }, '$bowling', 0] } },
+        bowlingCount: { $sum: { $cond: [{ $ne: ['$bowling', null] }, 1, 0] } },
+        fieldingSum: { $sum: { $cond: [{ $ne: ['$fielding', null] }, '$fielding', 0] } },
+        fieldingCount: { $sum: { $cond: [{ $ne: ['$fielding', null] }, 1, 0] } },
+        teamSpiritSum: { $sum: { $cond: [{ $ne: ['$teamSpirit', null] }, '$teamSpirit', 0] } },
+        teamSpiritCount: { $sum: { $cond: [{ $ne: ['$teamSpirit', null] }, 1, 0] } }
+      }
+    },
+    {
+      $project: {
+        totalFeedback: 1,
+        avgBatting: { $cond: [{ $gt: ['$battingCount', 0] }, { $divide: ['$battingSum', '$battingCount'] }, null] },
+        avgBowling: { $cond: [{ $gt: ['$bowlingCount', 0] }, { $divide: ['$bowlingSum', '$bowlingCount'] }, null] },
+        avgFielding: { $cond: [{ $gt: ['$fieldingCount', 0] }, { $divide: ['$fieldingSum', '$fieldingCount'] }, null] },
+        avgTeamSpirit: { $cond: [{ $gt: ['$teamSpiritCount', 0] }, { $divide: ['$teamSpiritSum', '$teamSpiritCount'] }, null] },
+        battingCount: 1,
+        bowlingCount: 1,
+        fieldingCount: 1,
+        teamSpiritCount: 1
       }
     }
   ]);
 
-  const stats = statsAggregation[0] || {
+  const raw = statsAggregation[0] || {
     totalFeedback: 0,
-    avgBatting: 0,
-    avgBowling: 0,
-    avgFielding: 0,
-    avgTeamSpirit: 0
+    avgBatting: null,
+    avgBowling: null,
+    avgFielding: null,
+    avgTeamSpirit: null,
+    battingCount: 0,
+    bowlingCount: 0,
+    fieldingCount: 0,
+    teamSpiritCount: 0
   };
 
   return {
-    totalFeedback: stats.totalFeedback,
-    avgBatting: Math.round(stats.avgBatting * 10) / 10 || 0,
-    avgBowling: Math.round(stats.avgBowling * 10) / 10 || 0,
-    avgFielding: Math.round(stats.avgFielding * 10) / 10 || 0,
-    avgTeamSpirit: Math.round(stats.avgTeamSpirit * 10) / 10 || 0
+    totalFeedback: raw.totalFeedback,
+    avgBatting: raw.avgBatting !== null ? Math.round(raw.avgBatting * 10) / 10 : null,
+    avgBowling: raw.avgBowling !== null ? Math.round(raw.avgBowling * 10) / 10 : null,
+    avgFielding: raw.avgFielding !== null ? Math.round(raw.avgFielding * 10) / 10 : null,
+    avgTeamSpirit: raw.avgTeamSpirit !== null ? Math.round(raw.avgTeamSpirit * 10) / 10 : null,
+    ratingCounts: {
+      batting: raw.battingCount,
+      bowling: raw.bowlingCount,
+      fielding: raw.fieldingCount,
+      teamSpirit: raw.teamSpiritCount
+    }
   };
 };
 
