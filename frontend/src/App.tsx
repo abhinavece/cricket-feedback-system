@@ -14,6 +14,8 @@ const PublicMatchView = lazy(() => import('./pages/PublicMatchView'));
 const PublicPaymentView = lazy(() => import('./pages/PublicPaymentView'));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
 const MatchFeedbackPage = lazy(() => import('./pages/MatchFeedbackPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -32,6 +34,7 @@ const MobileNavigation = lazy(() => import('./components/mobile/MobileNavigation
 const DesktopNavigation = lazy(() => import('./components/Navigation'));
 const MobileAdminDashboard = lazy(() => import('./components/mobile/MobileAdminDashboard'));
 const DesktopAdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const Footer = lazy(() => import('./components/Footer'));
 
 // Loading spinner component for Suspense fallback
 const LoadingSpinner = () => (
@@ -192,6 +195,7 @@ function AppContent() {
           ) : (
             <div className="container fade-in">
               <FeedbackForm onSubmit={handleSubmit} loading={loading} />
+              <Footer minimal />
             </div>
           )
         ) : (
@@ -219,6 +223,10 @@ function App() {
               <Route path="/share/match/:token" element={<PublicMatchView />} />
               <Route path="/share/payment/:token" element={<PublicPaymentView />} />
               <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
+
+              {/* Static pages - no auth required */}
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
               {/* Player profile - requires auth */}
               <Route path="/player/:playerId" element={<PlayerProfilePage />} />

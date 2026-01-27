@@ -5,6 +5,7 @@ import axios from 'axios';
 import RatingStars from '../components/RatingStars';
 import GroundRatingSelector from '../components/GroundRatingSelector';
 import CountdownTimer from '../components/CountdownTimer';
+import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import type { GroundRatingType, PerformanceRating } from '../types';
@@ -737,16 +738,9 @@ const MatchFeedbackPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Footer */}
-        <div className="text-center py-6">
-          <Link
-            to="/"
-            className="text-sm text-slate-500 hover:text-emerald-400 transition-colors"
-          >
-            View all feedback &rarr;
-          </Link>
-        </div>
       </div>
+
+      <Footer minimal />
     </div>
   );
 };

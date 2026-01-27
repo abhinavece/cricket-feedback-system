@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users, CheckCircle, XCircle, AlertCircle, Circle, Navigation, ExternalLink } from 'lucide-react';
 import axios from 'axios';
+import Footer from '../components/Footer';
 
 interface AvailabilityRecord {
   _id: string;
@@ -351,13 +352,9 @@ const PublicMatchView: React.FC = () => {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="text-center py-3 sm:py-4">
-          <p className="text-[10px] sm:text-xs text-slate-500">
-            🏏 {match.teamName || 'Mavericks XI'} • Shared publicly
-          </p>
-        </div>
       </div>
+
+      <Footer minimal />
     </div>
   );
 };

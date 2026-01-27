@@ -4,6 +4,7 @@ import type { FeedbackSubmission } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackCard from './FeedbackCard';
+import Footer from './Footer';
 
 // Lazy load heavy tab components - only loaded when tab is selected
 const UserManagement = lazy(() => import('./UserManagement'));
@@ -1169,6 +1170,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
       />
+
+      {/* Footer */}
+      <Footer minimal />
     </>
   );
 };
