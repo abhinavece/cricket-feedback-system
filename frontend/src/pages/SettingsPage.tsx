@@ -574,8 +574,8 @@ const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Developer Tools - Developer Access Only */}
-      {hasDeveloperAccess && (
+      {/* Developer Tools - Visible to all admins, but only master can edit */}
+      {(user?.role === 'admin') && (
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Developer Tools</h2>
           <DeveloperSettings isMasterDeveloper={isMasterDeveloper} />

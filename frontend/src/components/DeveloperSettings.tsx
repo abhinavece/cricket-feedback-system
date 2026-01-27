@@ -67,8 +67,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
   }, []);
 
   const fetchUsers = useCallback(async () => {
-    if (!isMasterDeveloper) return;
-    
+    // Fetch users for all admins so they can see the list (but can't modify unless master)
     try {
       setLoadingUsers(true);
       const response = await getDeveloperUsers();
@@ -78,7 +77,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
     } finally {
       setLoadingUsers(false);
     }
-  }, [isMasterDeveloper]);
+  }, []);
 
   useEffect(() => {
     fetchSettings();
@@ -262,7 +261,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
           </h3>
 
           {/* Bypass Image Review */}
-          <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+          <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${settings?.payment.bypassImageReview ? 'bg-amber-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
@@ -277,12 +276,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
               </div>
               <button
                 onClick={() => handleToggle('payment', 'bypassImageReview', !settings?.payment.bypassImageReview)}
-                disabled={saving}
+                disabled={saving || !isMasterDeveloper}
+                title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                   settings?.payment.bypassImageReview
                     ? 'bg-amber-500 shadow-lg shadow-amber-500/30'
                     : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
-                }`}
+                } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                   settings?.payment.bypassImageReview ? 'left-7' : 'left-1'
@@ -292,7 +292,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
           </div>
 
           {/* Bypass Duplicate Check */}
-          <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+          <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${settings?.payment.bypassDuplicateCheck ? 'bg-amber-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
@@ -307,12 +307,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
               </div>
               <button
                 onClick={() => handleToggle('payment', 'bypassDuplicateCheck', !settings?.payment.bypassDuplicateCheck)}
-                disabled={saving}
+                disabled={saving || !isMasterDeveloper}
+                title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                   settings?.payment.bypassDuplicateCheck
                     ? 'bg-amber-500 shadow-lg shadow-amber-500/30'
                     : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
-                }`}
+                } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                   settings?.payment.bypassDuplicateCheck ? 'left-7' : 'left-1'
@@ -322,7 +323,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
           </div>
 
           {/* Force Admin Review Threshold */}
-          <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+          <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
             <div className="flex items-start gap-3">
               <div className={`p-2 rounded-lg ${settings?.payment.forceAdminReviewThreshold !== null ? 'bg-rose-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
                 <Shield className={`w-5 h-5 ${settings?.payment.forceAdminReviewThreshold !== null ? 'text-rose-400' : 'text-slate-400'}`} />
@@ -341,13 +342,15 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                       onChange={(e) => setThresholdInput(e.target.value)}
                       placeholder="e.g., 5000"
                       min="0"
-                      className="w-full pl-8 pr-4 py-2 rounded-lg bg-slate-700/50 dark:bg-slate-700/50 bg-white border border-white/10 dark:border-white/10 border-slate-300 text-white dark:text-white text-slate-800 placeholder-slate-500 focus:outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/30"
+                      disabled={!isMasterDeveloper}
+                      className={`w-full pl-8 pr-4 py-2 rounded-lg bg-slate-700/50 dark:bg-slate-700/50 bg-white border border-white/10 dark:border-white/10 border-slate-300 text-white dark:text-white text-slate-800 placeholder-slate-500 focus:outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/30 ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                     />
                   </div>
                   <button
                     onClick={handleThresholdUpdate}
-                    disabled={saving}
-                    className="px-4 py-2 rounded-lg bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors font-medium disabled:opacity-50"
+                    disabled={saving || !isMasterDeveloper}
+                    title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
+                    className={`px-4 py-2 rounded-lg bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors font-medium disabled:opacity-50 ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                   >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}
                   </button>
@@ -369,8 +372,12 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             WhatsApp Settings
           </h3>
 
+<<<<<<< Updated upstream
           {/* WhatsApp Enabled */}
           <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+=======
+          <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
+>>>>>>> Stashed changes
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${settings?.whatsapp.enabled ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
@@ -385,12 +392,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
               </div>
               <button
                 onClick={() => handleToggle('whatsapp', 'enabled', !settings?.whatsapp.enabled)}
-                disabled={saving}
+                disabled={saving || !isMasterDeveloper}
+                title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                   settings?.whatsapp.enabled
                     ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30'
                     : 'bg-rose-500 shadow-lg shadow-rose-500/30'
-                }`}
+                } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                   settings?.whatsapp.enabled ? 'left-7' : 'left-1'
@@ -581,57 +589,62 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
         )}
       </div>
 
-      {/* User Access Management - Master Developer Only */}
-      {isMasterDeveloper && (
-        <div className="bg-slate-800/50 dark:bg-slate-800/50 bg-white backdrop-blur-xl border border-white/10 dark:border-white/10 border-slate-200 rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="w-5 h-5 text-violet-400" />
-            <h3 className="text-lg font-semibold text-white dark:text-white text-slate-800">Developer Access Management</h3>
-          </div>
-          
-          <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-600 mb-4">
-            Grant or revoke developer tool access for other users. Only you can manage this.
-          </p>
+      {/* User Access Management - Visible to all admins, editable by Master only */}
+      <div className="bg-slate-800/50 dark:bg-slate-800/50 bg-white backdrop-blur-xl border border-white/10 dark:border-white/10 border-slate-200 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="w-5 h-5 text-violet-400" />
+          <h3 className="text-lg font-semibold text-white dark:text-white text-slate-800">Developer Access Management</h3>
+          {!isMasterDeveloper && (
+            <span className="ml-auto text-xs text-slate-500 bg-slate-700/50 px-2 py-1 rounded">View Only</span>
+          )}
+        </div>
+        
+        <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-600 mb-4">
+          {isMasterDeveloper 
+            ? 'Grant or revoke developer tool access for other users. Only you can manage this.'
+            : 'View developer access status for users. Only the Master Developer can modify access.'}
+        </p>
 
-          {loadingUsers ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
-              <span className="ml-2 text-slate-400">Loading users...</span>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {users.map(user => (
-                <div
-                  key={user._id}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      user.isMasterDeveloper 
-                        ? 'bg-amber-500/20' 
-                        : user.hasDeveloperAccess 
-                          ? 'bg-emerald-500/20' 
-                          : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'
-                    }`}>
-                      {user.isMasterDeveloper ? (
-                        <Crown className="w-5 h-5 text-amber-400" />
-                      ) : user.hasDeveloperAccess ? (
-                        <UserCheck className="w-5 h-5 text-emerald-400" />
-                      ) : (
-                        <UserX className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-white dark:text-white text-slate-800">
-                        {user.name}
-                        {user.isMasterDeveloper && (
-                          <span className="ml-2 text-xs text-amber-400">(Master)</span>
-                        )}
-                      </p>
-                      <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500">{user.email}</p>
-                    </div>
+        {loadingUsers ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
+            <span className="ml-2 text-slate-400">Loading users...</span>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {users.map(user => (
+              <div
+                key={user._id}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    user.isMasterDeveloper 
+                      ? 'bg-amber-500/20' 
+                      : user.hasDeveloperAccess 
+                        ? 'bg-emerald-500/20' 
+                        : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'
+                  }`}>
+                    {user.isMasterDeveloper ? (
+                      <Crown className="w-5 h-5 text-amber-400" />
+                    ) : user.hasDeveloperAccess ? (
+                      <UserCheck className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <UserX className="w-5 h-5 text-slate-400" />
+                    )}
                   </div>
-                  {!user.isMasterDeveloper && (
+                  <div>
+                    <p className="font-medium text-white dark:text-white text-slate-800">
+                      {user.name}
+                      {user.isMasterDeveloper && (
+                        <span className="ml-2 text-xs text-amber-400">(Master)</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-slate-400 dark:text-slate-400 text-slate-500">{user.email}</p>
+                  </div>
+                </div>
+                {!user.isMasterDeveloper && (
+                  isMasterDeveloper ? (
                     <button
                       onClick={() => handleUserAccessToggle(user._id, user.hasDeveloperAccess)}
                       disabled={saving}
@@ -643,13 +656,21 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                     >
                       {user.hasDeveloperAccess ? 'Revoke' : 'Grant'}
                     </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                  ) : (
+                    <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                      user.hasDeveloperAccess
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : 'bg-slate-600/20 text-slate-400'
+                    }`}>
+                      {user.hasDeveloperAccess ? 'Has Access' : 'No Access'}
+                    </span>
+                  )
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Webhook Proxy Manager */}
       <WebhookProxyManager />
