@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { getStats, getProfile } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings, MessageCircle } from 'lucide-react';
+import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings, MessageCircle, BarChart3 } from 'lucide-react';
 import Footer from '../Footer';
 
 // Lazy load tab content - only loaded when tab is selected
@@ -13,6 +13,7 @@ const MobileWhatsAppTab = lazy(() => import('./MobileWhatsAppTab'));
 const MobileChatsTab = lazy(() => import('./MobileChatsTab'));
 const MobileSettingsTab = lazy(() => import('./MobileSettingsTab'));
 const MobileProfileSetup = lazy(() => import('./MobileProfileSetup'));
+const MobileWhatsAppAnalyticsTab = lazy(() => import('./MobileWhatsAppAnalyticsTab'));
 
 // Reuse desktop components for tabs that don't have mobile versions yet
 const UserManagement = lazy(() => import('../UserManagement'));
@@ -33,8 +34,8 @@ interface FeedbackStats {
 }
 
 interface MobileAdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings') => void;
   onLogout?: () => void;
 }
 
@@ -86,13 +87,14 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     { id: 'matches', label: 'Matches', icon: Calendar },
     { id: 'payments', label: 'Payments', icon: Wallet },
     { id: 'player-history', label: 'History', icon: History },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  // Admin users see all tabs, viewers see all except whatsapp, chats, and users
+  // Admin users see all tabs, viewers see all except whatsapp, chats, analytics, and users
   const isViewer = user?.role === 'viewer';
-  const adminOnlyTabs = ['whatsapp', 'chats', 'users'];
+  const adminOnlyTabs = ['whatsapp', 'chats', 'analytics', 'users'];
   const visibleTabs = user?.role === 'admin'
     ? allTabs
     : allTabs.filter(tab => !adminOnlyTabs.includes(tab.id));
@@ -206,6 +208,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           {activeTab === 'payments' && <MobilePaymentsTab />}
           {activeTab === 'whatsapp' && <MobileWhatsAppTab />}
           {activeTab === 'player-history' && <MobileHistoryTab />}
+          {activeTab === 'analytics' && <MobileWhatsAppAnalyticsTab />}
           {activeTab === 'users' && (
             <div className="mobile-tab-wrapper">
               <UserManagement />

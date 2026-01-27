@@ -13,6 +13,7 @@ const MatchManagement = lazy(() => import('./MatchManagement'));
 const PaymentManagement = lazy(() => import('./PaymentManagement'));
 const HistoryTab = lazy(() => import('./HistoryTab'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const WhatsAppAnalyticsTab = lazy(() => import('./WhatsAppAnalyticsTab'));
 
 // Tab loading spinner
 const TabLoadingSpinner = () => (
@@ -38,8 +39,8 @@ interface FeedbackStats {
 }
 
 interface AdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings') => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -56,7 +57,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'settings'>(propActiveTab);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings'>(propActiveTab);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const hasFetchedInitial = React.useRef(false);
@@ -419,6 +420,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               History
             </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => { setActiveTab('analytics'); onTabChange?.('analytics'); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'analytics'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Analytics
+              </button>
+            )}
             {user?.role === 'admin' && (
               <button
                 onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
@@ -968,6 +981,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'player-history' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <HistoryTab />
+          </Suspense>
+        )}
+        {activeTab === 'analytics' && user?.role === 'admin' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <WhatsAppAnalyticsTab />
           </Suspense>
         )}
         {activeTab === 'users' && (

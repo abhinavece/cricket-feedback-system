@@ -28,6 +28,32 @@ const systemSettingsSchema = new mongoose.Schema({
     enabled: {
       type: Boolean,
       default: true
+    },
+    // Template rate limiting
+    templateCooldownHours: {
+      type: Number,
+      default: 12,
+      min: 1,
+      max: 72
+    },
+    rateLimitingEnabled: {
+      type: Boolean,
+      default: true
+    },
+    // Session tracking for 24-hour windows
+    sessionTrackingEnabled: {
+      type: Boolean,
+      default: true
+    },
+    // Cost tracking for messages
+    costTrackingEnabled: {
+      type: Boolean,
+      default: true
+    },
+    // Block free-text messages when no active session
+    blockOutOfSessionMessages: {
+      type: Boolean,
+      default: false
     }
   },
 
@@ -81,6 +107,21 @@ systemSettingsSchema.statics.updateSettings = async function(updates, userId) {
   if (updates.whatsapp) {
     if (typeof updates.whatsapp.enabled === 'boolean') {
       settings.whatsapp.enabled = updates.whatsapp.enabled;
+    }
+    if (typeof updates.whatsapp.templateCooldownHours === 'number') {
+      settings.whatsapp.templateCooldownHours = Math.max(1, Math.min(72, updates.whatsapp.templateCooldownHours));
+    }
+    if (typeof updates.whatsapp.rateLimitingEnabled === 'boolean') {
+      settings.whatsapp.rateLimitingEnabled = updates.whatsapp.rateLimitingEnabled;
+    }
+    if (typeof updates.whatsapp.sessionTrackingEnabled === 'boolean') {
+      settings.whatsapp.sessionTrackingEnabled = updates.whatsapp.sessionTrackingEnabled;
+    }
+    if (typeof updates.whatsapp.costTrackingEnabled === 'boolean') {
+      settings.whatsapp.costTrackingEnabled = updates.whatsapp.costTrackingEnabled;
+    }
+    if (typeof updates.whatsapp.blockOutOfSessionMessages === 'boolean') {
+      settings.whatsapp.blockOutOfSessionMessages = updates.whatsapp.blockOutOfSessionMessages;
     }
   }
 

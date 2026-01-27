@@ -4,6 +4,7 @@ import { getMessageHistory, sendWhatsAppMessage } from '../services/api';
 import { useSSE } from '../hooks/useSSE';
 import { Wifi, WifiOff, Loader2, X, RefreshCw, ExternalLink, ArrowLeft } from 'lucide-react';
 import type { Player } from '../types';
+import MessageStatusIndicator from './MessageStatusIndicator';
 
 interface ConversationPanelProps {
   player: Player | null;
@@ -133,7 +134,7 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
               text: messageData.text || messageData.message,
               timestamp: messageData.timestamp || new Date().toISOString(),
               imageId: messageData.imageId,
-              status: messageData.status
+              status: messageData.status || 'sent'
             };
 
             return [...prev, newMsg];
@@ -145,6 +146,21 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
           }, 100);
         }
       }
+    }
+
+    // Handle message status updates (sent, delivered, read, failed)
+    if (event.type === 'message:status') {
+      const statusData = event.data || event;
+      const { messageId, whatsappMessageId, status } = statusData;
+
+      setMessages(prev => prev.map(msg => {
+        if (msg._id === messageId || msg.messageId === messageId ||
+            msg._id === whatsappMessageId || msg.messageId === whatsappMessageId ||
+            msg.whatsappMessageId === whatsappMessageId) {
+          return { ...msg, status };
+        }
+        return msg;
+      }));
     }
   }, [player]);
 
@@ -375,19 +391,16 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       {!isIncoming && (
-                        <span className={`${msg.status === 'failed' ? 'text-red-500' : 'text-sky-500'}`}>
-                          {msg.status === 'sending' ? (
-                            <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
-                          ) : msg.status === 'failed' ? (
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                            </svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                            </svg>
-                          )}
-                        </span>
+                        msg.status === 'sending' ? (
+                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <MessageStatusIndicator
+                            status={msg.status || 'sent'}
+                            size="sm"
+                            showTooltip={true}
+                            errorMessage={msg.errorMessage}
+                          />
+                        )
                       )}
                     </div>
                   </div>
