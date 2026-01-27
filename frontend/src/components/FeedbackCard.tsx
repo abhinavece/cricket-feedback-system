@@ -12,14 +12,15 @@ interface FeedbackCardProps {
 }
 
 const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTrash, onRestore, onDelete }) => {
-  // Calculate average rating
-  const calculateAverage = (feedback: FeedbackSubmission): number => {
+  // Calculate average rating (excluding null/N/A ratings)
+  const calculateAverage = (feedback: FeedbackSubmission): number | null => {
     const { batting, bowling, fielding, teamSpirit } = feedback;
-    const sum = batting + bowling + fielding + teamSpirit;
-    return sum / 4;
+    const ratings = [batting, bowling, fielding, teamSpirit].filter((r): r is number => r !== null && r !== undefined);
+    if (ratings.length === 0) return null;
+    return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
   };
 
-  const avgRating = calculateAverage(item);
+  const avgRating = calculateAverage(item) ?? 0;
 
   // Helper to check if matchId is a populated object with match info
   const getMatchInfo = (): MatchInfo | null => {
@@ -146,6 +147,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
                   ].map((metric) => (
                     <div key={metric.label} className="flex items-center gap-2">
                       <span className={`text-[9px] font-bold min-w-[60px] ${
+                        metric.value === null ? 'text-slate-500' :
                         metric.color === 'emerald' ? 'text-emerald-400' :
                         metric.color === 'sky' ? 'text-sky-400' :
                         metric.color === 'amber' ? 'text-amber-400' :
@@ -154,23 +156,30 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
                         {metric.label}
                       </span>
                       <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                            metric.color === 'emerald' ? 'bg-emerald-400' :
-                            metric.color === 'sky' ? 'bg-sky-400' :
-                            metric.color === 'amber' ? 'bg-amber-400' :
-                            'bg-purple-400'
-                          }`}
-                          style={{ width: `${(metric.value / 5) * 100}%` }}
-                        ></div>
+                        {metric.value !== null ? (
+                          <div 
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                              metric.color === 'emerald' ? 'bg-emerald-400' :
+                              metric.color === 'sky' ? 'bg-sky-400' :
+                              metric.color === 'amber' ? 'bg-amber-400' :
+                              'bg-purple-400'
+                            }`}
+                            style={{ width: `${(metric.value / 5) * 100}%` }}
+                          ></div>
+                        ) : (
+                          <div className="h-full w-full bg-slate-600/50 flex items-center justify-center">
+                            <span className="text-[6px] text-slate-500">N/A</span>
+                          </div>
+                        )}
                       </div>
                       <span className={`text-[10px] font-black min-w-[20px] text-right ${
+                        metric.value === null ? 'text-slate-500' :
                         metric.color === 'emerald' ? 'text-emerald-400' :
                         metric.color === 'sky' ? 'text-sky-400' :
                         metric.color === 'amber' ? 'text-amber-400' :
                         'text-purple-400'
                       }`}>
-                        {metric.value.toFixed(1)}
+                        {metric.value !== null ? metric.value.toFixed(1) : 'N/A'}
                       </span>
                     </div>
                   ))}
@@ -327,14 +336,14 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ item, index, onClick, onTra
   );
 };
 
-const MetricCard = ({ label, value, icon, color, compact = false }: { label: string; value: number; icon: React.ReactNode; color: string; compact?: boolean }) => {
+const MetricCard = ({ label, value, icon, color, compact = false }: { label: string; value: number | null; icon: React.ReactNode; color: string; compact?: boolean }) => {
   const colorMap: Record<string, string> = {
     emerald: 'text-emerald-400 bg-emerald-400/10',
     sky: 'text-sky-400 bg-sky-400/10',
     amber: 'text-amber-400 bg-amber-400/10',
     purple: 'text-purple-400 bg-purple-400/10'
   };
-  const style = colorMap[color];
+  const style = value !== null ? colorMap[color] : 'text-slate-500 bg-slate-500/10';
 
   if (compact) {
     return (
@@ -342,7 +351,9 @@ const MetricCard = ({ label, value, icon, color, compact = false }: { label: str
         <div className="p-0.5 rounded ${style}" style={{ fontSize: '8px' }}>
           {icon}
         </div>
-        <span className="font-black text-white text-[9px] leading-none">{value.toFixed(1)}</span>
+        <span className={`font-black text-[9px] leading-none ${value !== null ? 'text-white' : 'text-slate-500'}`}>
+          {value !== null ? value.toFixed(1) : 'N/A'}
+        </span>
         <span className="font-bold uppercase text-slate-500 text-[6px] leading-none">{label}</span>
       </div>
     );
@@ -353,7 +364,9 @@ const MetricCard = ({ label, value, icon, color, compact = false }: { label: str
       <div className="p-1.5 rounded-lg ${style}">
         {icon}
       </div>
-      <span className="font-black text-white text-xs leading-none">{value.toFixed(1)}</span>
+      <span className={`font-black text-xs leading-none ${value !== null ? 'text-white' : 'text-slate-500'}`}>
+        {value !== null ? value.toFixed(1) : 'N/A'}
+      </span>
       <span className="font-bold uppercase text-slate-500 text-[8px] leading-none">{label}</span>
     </div>
   );

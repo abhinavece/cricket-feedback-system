@@ -1,6 +1,30 @@
+/**
+ * @fileoverview Authentication Middleware
+ * 
+ * Handles JWT token verification and user authentication.
+ * Supports development mode bypass for local testing.
+ * 
+ * @module middleware/auth
+ */
+
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.js');
 
+/**
+ * Authentication middleware - verifies JWT token and attaches user to request
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ * @returns {void}
+ * 
+ * @description
+ * - Checks for JWT token in Authorization header (Bearer token)
+ * - Verifies token signature and expiration
+ * - Fetches user from database
+ * - Attaches user object to req.user
+ * - Supports DISABLE_AUTH=true for local development
+ */
 const auth = async (req, res, next) => {
   try {
     // Bypass auth for local development if DISABLE_AUTH is set

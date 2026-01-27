@@ -1,6 +1,14 @@
-# Cricket Match Feedback Form
+# Cricket Match Feedback & Team Management System
 
-A web application for collecting and managing cricket match feedback with React frontend and Node.js backend.
+A comprehensive full-stack web application for managing cricket teams, collecting match feedback, tracking player availability, processing payments, and communicating via WhatsApp. Built with React, Node.js, MongoDB, and Python AI services.
+
+## 📚 Documentation
+
+For comprehensive documentation, see:
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture and design patterns
+- **[docs/API_REFERENCE.md](./docs/API_REFERENCE.md)** - Complete API documentation
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Development and contribution guidelines
+- **[CLAUDE.md](./CLAUDE.md)** - Development guide for AI agents and developers
 
 ## 🚀 Quick Start
 
@@ -75,10 +83,31 @@ npm start
 
 ## Tech Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Axios
-- **Backend**: Node.js, Express, MongoDB, Mongoose
-- **Deployment**: Vercel (ready)
-- **Development**: Concurrently, Nodemon
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Context API
+- **Routing**: React Router v7
+- **HTTP Client**: Axios
+- **Authentication**: Google OAuth 2.0
+
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express 5
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: JWT (JSON Web Tokens)
+- **Validation**: Express middleware
+
+### AI Service
+- **Framework**: FastAPI (Python)
+- **AI Provider**: Google AI Studio (Gemini)
+- **Purpose**: Payment screenshot parsing
+
+### Infrastructure
+- **Containerization**: Docker
+- **Orchestration**: Kubernetes
+- **Package Management**: Helm
+- **Cloud**: OCI (Oracle Cloud Infrastructure)
 
 ## Getting Started
 
@@ -186,33 +215,68 @@ The application is configured with `vercel.json` for automatic deployment.
 
 ```
 survey-project/
-├── frontend/                 # React frontend
+├── frontend/                    # React frontend application
 │   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── services/        # API services
-│   │   ├── types/          # TypeScript types
-│   │   └── App.tsx         # Main app component
-│   ├── public/
+│   │   ├── components/         # React components (53 files)
+│   │   │   ├── mobile/         # Mobile-specific components
+│   │   │   └── ...
+│   │   ├── pages/              # Route-level page components
+│   │   ├── contexts/           # React Context providers
+│   │   ├── services/           # API service layer
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── types/              # TypeScript type definitions
+│   │   └── utils/              # Utility functions
 │   └── package.json
-├── backend/                  # Node.js backend
-│   ├── config/
-│   │   └── database.js     # Database connection
-│   ├── models/
-│   │   └── Feedback.js     # Mongoose model
-│   ├── routes/
-│   │   └── feedback.js     # API routes
-│   └── index.js            # Server entry point
-├── vercel.json             # Vercel configuration
-└── README.md
+│
+├── backend/                     # Node.js backend API
+│   ├── config/                 # Configuration files
+│   ├── models/                 # Mongoose schemas (12 models)
+│   ├── routes/                 # Express route handlers (13 files)
+│   ├── services/               # Business logic layer
+│   ├── middleware/             # Express middleware
+│   ├── tests/                  # Test suite (11 test files)
+│   └── index.js                # Application entry point
+│
+├── ai-service/                  # Python AI service
+│   ├── app.py                  # FastAPI application
+│   ├── models/                 # Pydantic schemas
+│   ├── providers/              # AI provider abstractions
+│   ├── services/               # Business logic
+│   └── utils/                  # Utility functions
+│
+├── k8s/                        # Kubernetes manifests
+├── infra/                      # Infrastructure as Code (Helm)
+├── docs/                       # Documentation
+│   ├── API_REFERENCE.md        # Complete API documentation
+│   └── ...
+├── ARCHITECTURE.md             # System architecture
+├── CONTRIBUTING.md             # Contribution guidelines
+└── README.md                   # This file
 ```
+
+For detailed architecture information, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
+### Quick Start for Contributors
+
+1. Read [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup
+2. Check [ARCHITECTURE.md](./ARCHITECTURE.md) to understand the system
+3. Review [docs/API_REFERENCE.md](./docs/API_REFERENCE.md) for API details
+4. Follow the code style guidelines
+5. Write tests for new features
+6. Submit a pull request
+
+### For AI Agents
+
+If you're an AI agent working on this codebase:
+1. Read [CLAUDE.md](./CLAUDE.md) for development guidelines
+2. Check [ARCHITECTURE.md](./ARCHITECTURE.md) for system design
+3. Always ask about role-based access control before implementing features
+4. Use existing services - never duplicate logic
+5. Test on both mobile and desktop for UI changes
 
 ## License
 

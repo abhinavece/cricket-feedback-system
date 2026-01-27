@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, AlertCircle, Users, Navigation, ExternalLink } from 'lucide-react';
 import axios from 'axios';
+import Footer from '../components/Footer';
 
 interface SquadMember {
   playerId: string;
@@ -321,12 +322,9 @@ const PublicPaymentView: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="text-center py-4">
-          <p className="text-xs text-slate-500">
-            💰 Payment details shared publicly
-          </p>
-        </div>
       </div>
+
+      <Footer minimal />
     </div>
   );
 };

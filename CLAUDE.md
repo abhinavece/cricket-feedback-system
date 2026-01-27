@@ -2,6 +2,61 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Response Protocol
+
+**IMPORTANT**: At the start of EVERY response involving code changes, announce the active configuration:
+
+```
+📋 Active Configuration:
+- Agent: [agent name or "general"]
+- Skills: [comma-separated list]
+- Rules: [comma-separated list]
+```
+
+### Configuration Selection Guide
+
+**Determine Agent based on task:**
+| Task Type | Agent | File |
+|-----------|-------|------|
+| React/UI work | Frontend Developer | `.claude/agents/frontend-dev.md` |
+| API/backend work | Backend Developer | `.claude/agents/backend-dev.md` |
+| Deployment | DevOps Engineer | `.claude/agents/devops.md` |
+| Code review | Code Reviewer | `.claude/agents/code-reviewer.md` |
+| Documentation | Docs Writer | `.claude/agents/docs-writer.md` |
+
+**Determine Skills based on files being edited:**
+| File Pattern | Skill | File |
+|--------------|-------|------|
+| `frontend/**/*.tsx` | Frontend | `.claude/skills/frontend.md` |
+| `backend/**/*.js` | Backend | `.claude/skills/backend.md` |
+| `ai-service/**/*.py` | AI Service | `.claude/skills/ai-service.md` |
+| `k8s/**`, `infra/**` | DevOps | `.claude/skills/devops.md` |
+| `backend/models/**` | Database | `.claude/skills/database.md` |
+
+**Rules always applied:**
+- Global (`.claude/rules/global.md`) - ALWAYS
+- Security (`.claude/rules/security.md`) - For API/auth work
+- Code Style (`.claude/rules/code-style.md`) - For code changes
+- Git (`.claude/rules/git.md`) - For commits/PRs
+
+### Example Announcements
+
+```
+📋 Active Configuration:
+- Agent: Frontend Developer
+- Skills: frontend, database
+- Rules: global, code-style, security
+```
+
+```
+📋 Active Configuration:
+- Agent: DevOps Engineer
+- Skills: devops
+- Rules: global, git
+```
+
+---
+
 ## Project Overview
 
 Cricket Match Feedback & Team Management System - a MERN stack application with WhatsApp Cloud API integration for managing cricket team matches, collecting player feedback, tracking availability, and providing admin dashboards.

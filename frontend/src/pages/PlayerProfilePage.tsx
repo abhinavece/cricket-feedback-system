@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Target, MessageCircle, ExternalLink, Loader2, Mail, M
 import { getPlayerProfile, type PublicPlayerProfile } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PlayerFeedbackHistory from '../components/PlayerFeedbackHistory';
+import Footer from '../components/Footer';
 
 const PlayerProfilePage: React.FC = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -249,6 +250,8 @@ const PlayerProfilePage: React.FC = () => {
           </button>
         )}
       </div>
+
+      <Footer minimal />
     </div>
   );
 };

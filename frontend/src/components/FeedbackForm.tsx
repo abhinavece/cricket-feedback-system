@@ -3,18 +3,27 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './DatePickerCustom.css';
 import RatingStars from './RatingStars';
-import type { FeedbackForm } from '../types';
+import GroundRatingSelector from './GroundRatingSelector';
+import type { FeedbackForm, GroundRatingType, PerformanceRating } from '../types';
 
 interface FeedbackFormProps {
   onSubmit: (data: FeedbackForm) => void;
   loading?: boolean;
 }
 
-const REQUIRED_RATING_FIELDS = ['batting', 'bowling', 'fielding', 'teamSpirit'] as const;
-type RatingField = typeof REQUIRED_RATING_FIELDS[number];
+const RATING_FIELDS = ['batting', 'bowling', 'fielding', 'teamSpirit'] as const;
+type RatingField = typeof RATING_FIELDS[number];
 
 const isRatingField = (field: keyof FeedbackForm): field is RatingField =>
-  (REQUIRED_RATING_FIELDS as readonly string[]).includes(field as string);
+  (RATING_FIELDS as readonly string[]).includes(field as string);
+
+// N/A labels for each rating category
+const NA_LABELS: Record<RatingField, string> = {
+  batting: "Didn't bat",
+  bowling: "Didn't bowl",
+  fielding: "Didn't field",
+  teamSpirit: "Skip this"
+};
 
 const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading = false }) => {
   // Helper function to auto-capitalize text like WhatsApp
@@ -29,22 +38,24 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
     
     return result;
   };
+  
   const [formData, setFormData] = useState<FeedbackForm>({
     playerName: '',
     matchDate: new Date(),
-    batting: 0,
+    batting: 0,  // 0 = not yet rated, null = N/A, 1-5 = rated
     bowling: 0,
     fielding: 0,
     teamSpirit: 0,
     feedbackText: '',
     issues: {
       venue: false,
-      equipment: false,
       timing: false,
       umpiring: false,
       other: false,
     },
+    otherIssueText: '',
     additionalComments: '',
+    groundRating: null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,12 +75,13 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
       newErrors.feedbackText = 'Experience feedback is required';
     }
 
-    REQUIRED_RATING_FIELDS.forEach((field) => {
-      const value = formData[field] as number;
-      if (!value || value < 1) {
-        newErrors.ratings = 'Rate batting, bowling, fielding, and team spirit to continue.';
-      }
-    });
+    // Check that at least one rating is provided (not 0 and not all N/A)
+    const ratings = RATING_FIELDS.map(field => formData[field]);
+    const hasAtLeastOneRating = ratings.some(r => r !== null && r !== 0 && r >= 1);
+    
+    if (!hasAtLeastOneRating) {
+      newErrors.ratings = 'Please rate at least one category. Use "Didn\'t bat/bowl" if you didn\'t participate.';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -78,18 +90,23 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      // Convert Date to string for API submission
-      const submissionData = {
+      // Convert Date to string and normalize ratings for API submission
+      // Convert 0 (not rated) to null for backend
+      const submissionData: FeedbackForm = {
         ...formData,
         matchDate: typeof formData.matchDate === 'string' 
           ? formData.matchDate 
-          : formData.matchDate.toISOString().split('T')[0]
+          : formData.matchDate.toISOString().split('T')[0],
+        batting: formData.batting === 0 ? null : formData.batting,
+        bowling: formData.bowling === 0 ? null : formData.bowling,
+        fielding: formData.fielding === 0 ? null : formData.fielding,
+        teamSpirit: formData.teamSpirit === 0 ? null : formData.teamSpirit,
       };
       onSubmit(submissionData);
     }
   };
 
-  const handleInputChange = (field: keyof FeedbackForm, value: string | number | Date) => {
+  const handleInputChange = (field: keyof FeedbackForm, value: string | number | Date | GroundRatingType | PerformanceRating) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -100,9 +117,12 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
   };
 
   const handleIssueChange = (issue: keyof typeof formData.issues) => {
+    const newValue = !formData.issues[issue];
     setFormData(prev => ({
       ...prev,
-      issues: { ...prev.issues, [issue]: !prev.issues[issue] }
+      issues: { ...prev.issues, [issue]: newValue },
+      // Clear otherIssueText when "other" is unchecked
+      otherIssueText: issue === 'other' && !newValue ? '' : prev.otherIssueText
     }));
   };
 
@@ -179,8 +199,12 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-300">⭐ Your Performance Ratings</h3>
-              <span className="text-xs px-2 py-1 bg-gray-600 text-gray-200 rounded-full font-bold">Required</span>
+              <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded-full">At least 1 required</span>
             </div>
+            
+            <p className="text-xs text-slate-400 -mt-4">
+              Didn't get a chance to bat or bowl? No problem - just mark it as N/A!
+            </p>
             
             {errors.ratings && (
               <div className="rounded-xl p-3 bg-red-500/20 border-2 border-red-500 flex items-center gap-2">
@@ -194,21 +218,26 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
             )}
             
             <div className="space-y-4">
-              {[
-                { key: 'batting' as keyof FeedbackForm, label: 'Batting', emoji: '🏏' },
-                { key: 'bowling' as keyof FeedbackForm, label: 'Bowling', emoji: '⚡' },
-                { key: 'fielding' as keyof FeedbackForm, label: 'Fielding', emoji: '🎯' },
-                { key: 'teamSpirit' as keyof FeedbackForm, label: 'Team Spirit', emoji: '💪' },
-              ].map(({ key, label, emoji }) => (
+              {([
+                { key: 'batting' as RatingField, label: 'Batting', emoji: '🏏' },
+                { key: 'bowling' as RatingField, label: 'Bowling', emoji: '⚡' },
+                { key: 'fielding' as RatingField, label: 'Fielding', emoji: '🎯' },
+                { key: 'teamSpirit' as RatingField, label: 'Team Spirit', emoji: '💪' },
+              ]).map(({ key, label, emoji }) => (
                 <div key={key} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{emoji}</span>
                     <span className="font-medium text-gray-200 text-base">{label}</span>
+                    {formData[key] === null && (
+                      <span className="text-xs px-2 py-0.5 bg-slate-600 text-slate-300 rounded-full">N/A</span>
+                    )}
                   </div>
                   <RatingStars
-                    rating={formData[key] as number}
+                    rating={formData[key]}
                     onChange={(value) => handleInputChange(key, value)}
                     size="lg"
+                    allowNA={true}
+                    naLabel={NA_LABELS[key]}
                   />
                 </div>
               ))}
@@ -238,30 +267,58 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
             
             <div className="space-y-3">
               {Object.entries(formData.issues).map(([key, value]) => {
+                const issueLabels: Record<string, string> = {
+                  venue: 'Venue',
+                  timing: 'Timing',
+                  umpiring: 'Umpiring',
+                  other: 'Other'
+                };
+                
                 return (
-                  <div 
-                    key={key} 
-                    className={`form-check flex items-center p-4 rounded-xl cursor-pointer transition-all ${value ? 'bg-gradient-to-r from-gray-600 to-gray-700 shadow-lg shadow-gray-600/30 scale-105' : 'bg-slate-800 hover:bg-slate-700'}`}
-                    onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
-                  >
-                    <div className="mr-4">
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${value ? 'bg-white' : 'border-2 border-slate-500'}`}>
-                        {value && (
-                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
+                  <div key={key}>
+                    <div 
+                      className={`form-check flex items-center p-4 rounded-xl cursor-pointer transition-all ${value ? 'bg-gradient-to-r from-gray-600 to-gray-700 shadow-lg shadow-gray-600/30 scale-[1.02]' : 'bg-slate-800 hover:bg-slate-700'}`}
+                      onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
+                    >
+                      <div className="mr-4">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${value ? 'bg-white' : 'border-2 border-slate-500'}`}>
+                          {value && (
+                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
                       </div>
+                      
+                      <span className={`text-base font-medium ${value ? 'text-white' : 'text-slate-400'}`}>
+                        {issueLabels[key] || key.charAt(0).toUpperCase() + key.slice(1)}
+                      </span>
                     </div>
                     
-                    <span className={`text-base font-medium ${value ? 'text-white' : 'text-slate-400'}`}>
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </span>
+                    {/* Show text input when "Other" is selected */}
+                    {key === 'other' && value && (
+                      <div className="mt-2 ml-10">
+                        <input
+                          type="text"
+                          value={formData.otherIssueText}
+                          onChange={(e) => handleInputChange('otherIssueText', autoCapitalize(e.target.value))}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="Please describe the issue..."
+                          className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
+
+          {/* Ground Rating */}
+          <GroundRatingSelector
+            value={formData.groundRating}
+            onChange={(value: GroundRatingType) => handleInputChange('groundRating', value)}
+          />
 
           {/* Additional Comments */}
           <div className="form-floating">

@@ -186,7 +186,9 @@ const MobileFeedbackTab: React.FC = () => {
   };
 
   const getAverageRating = (item: FeedbackSubmission) => {
-    return ((item.batting + item.bowling + item.fielding + item.teamSpirit) / 4).toFixed(1);
+    const ratings = [item.batting, item.bowling, item.fielding, item.teamSpirit].filter((r): r is number => r !== null && r !== undefined);
+    if (ratings.length === 0) return 'N/A';
+    return (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1);
   };
 
   if (loading && feedback.length === 0) {

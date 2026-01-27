@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "2026.01.21.29"
+    tag: "2026.01.26.32"
   replicaCount: 1
   resources:
     limits:
@@ -18,7 +18,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "2026.01.21.29"
+    tag: "2026.01.27.33"
   replicaCount: 1
   resources:
     limits:
@@ -60,7 +60,7 @@ autoscaling:
 aiService:
   enabled: true
   image:
-    tag: "2026.01.20.26"
+    tag: "2026.01.26.31"
   replicaCount: 1
   resources:
     limits:

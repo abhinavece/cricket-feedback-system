@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { getStats, getProfile } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings, MessageCircle, BarChart3 } from 'lucide-react';
+import Footer from '../Footer';
 
 // Lazy load tab content - only loaded when tab is selected
 const MobileFeedbackTab = lazy(() => import('./MobileFeedbackTab'));
@@ -235,6 +236,9 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           scrollbar-width: none;
         }
       `}</style>
+
+      {/* Footer */}
+      <Footer minimal />
     </div>
   );
 };

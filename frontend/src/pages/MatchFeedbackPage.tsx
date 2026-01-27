@@ -3,9 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, XCircle, CheckCircle, AlertTriangle, User, Shield, LogIn, ChevronRight, Star, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import RatingStars from '../components/RatingStars';
+import GroundRatingSelector from '../components/GroundRatingSelector';
 import CountdownTimer from '../components/CountdownTimer';
+import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
+import type { GroundRatingType, PerformanceRating } from '../types';
 
 interface MatchInfo {
   opponent: string;
@@ -23,21 +26,32 @@ interface FeedbackLinkInfo {
   expiresAt: string | null;
 }
 
+type RatingField = 'batting' | 'bowling' | 'fielding' | 'teamSpirit';
+
+// N/A labels for each rating category
+const NA_LABELS: Record<RatingField, string> = {
+  batting: "Didn't bat",
+  bowling: "Didn't bowl",
+  fielding: "Didn't field",
+  teamSpirit: "Skip this"
+};
+
 interface FormData {
   playerName: string;
-  batting: number;
-  bowling: number;
-  fielding: number;
-  teamSpirit: number;
+  batting: PerformanceRating;
+  bowling: PerformanceRating;
+  fielding: PerformanceRating;
+  teamSpirit: PerformanceRating;
   feedbackText: string;
   issues: {
     venue: boolean;
-    equipment: boolean;
     timing: boolean;
     umpiring: boolean;
     other: boolean;
   };
+  otherIssueText: string;
   additionalComments: string;
+  groundRating: GroundRatingType;
 }
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
@@ -56,19 +70,20 @@ const MatchFeedbackPage: React.FC = () => {
 
   const [formData, setFormData] = useState<FormData>({
     playerName: '',
-    batting: 0,
+    batting: 0,  // 0 = not yet rated, null = N/A, 1-5 = rated
     bowling: 0,
     fielding: 0,
     teamSpirit: 0,
     feedbackText: '',
     issues: {
       venue: false,
-      equipment: false,
       timing: false,
       umpiring: false,
       other: false,
     },
+    otherIssueText: '',
     additionalComments: '',
+    groundRating: null,
   });
 
   // Set player name from authenticated user
@@ -126,12 +141,13 @@ const MatchFeedbackPage: React.FC = () => {
       newErrors.feedbackText = 'Match experience feedback is required';
     }
 
-    const ratingFields = ['batting', 'bowling', 'fielding', 'teamSpirit'] as const;
-    for (const field of ratingFields) {
-      if (!formData[field] || formData[field] < 1) {
-        newErrors.ratings = 'Please rate all categories (batting, bowling, fielding, team spirit)';
-        break;
-      }
+    // Check that at least one rating is provided (not 0 and not all N/A)
+    const ratingFields: RatingField[] = ['batting', 'bowling', 'fielding', 'teamSpirit'];
+    const ratings = ratingFields.map(field => formData[field]);
+    const hasAtLeastOneRating = ratings.some(r => r !== null && r !== 0 && r >= 1);
+    
+    if (!hasAtLeastOneRating) {
+      newErrors.ratings = 'Please rate at least one category. Use "Didn\'t bat/bowl" if you didn\'t participate.';
     }
 
     setErrors(newErrors);
@@ -146,12 +162,20 @@ const MatchFeedbackPage: React.FC = () => {
     try {
       setSubmitting(true);
       const authToken = localStorage.getItem('token');
+      
+      // Normalize ratings for API submission (convert 0 to null)
+      const submissionData = {
+        ...formData,
+        batting: formData.batting === 0 ? null : formData.batting,
+        bowling: formData.bowling === 0 ? null : formData.bowling,
+        fielding: formData.fielding === 0 ? null : formData.fielding,
+        teamSpirit: formData.teamSpirit === 0 ? null : formData.teamSpirit,
+        userId: user?.id
+      };
+      
       await axios.post(
         `${API_BASE_URL}/feedback/link/${token}/submit`,
-        {
-          ...formData,
-          userId: user?.id
-        },
+        submissionData,
         {
           headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
         }
@@ -170,7 +194,7 @@ const MatchFeedbackPage: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof FormData, value: string | number) => {
+  const handleInputChange = (field: keyof FormData, value: string | number | GroundRatingType | PerformanceRating) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => {
@@ -189,9 +213,12 @@ const MatchFeedbackPage: React.FC = () => {
   };
 
   const handleIssueChange = (issue: keyof typeof formData.issues) => {
+    const newValue = !formData.issues[issue];
     setFormData(prev => ({
       ...prev,
-      issues: { ...prev.issues, [issue]: !prev.issues[issue] }
+      issues: { ...prev.issues, [issue]: newValue },
+      // Clear otherIssueText when "other" is unchecked
+      otherIssueText: issue === 'other' && !newValue ? '' : prev.otherIssueText
     }));
   };
 
@@ -317,7 +344,8 @@ const MatchFeedbackPage: React.FC = () => {
               <CountdownTimer
                 seconds={5}
                 onComplete={() => {
-                  // Navigate to feedback listing (home page)
+                  // Ensure we land on the feedback tab, not the last visited tab
+                  localStorage.setItem('activeTab', 'feedback');
                   navigate('/');
                 }}
                 message="Let's check out other feedback from the team!"
@@ -559,10 +587,14 @@ const MatchFeedbackPage: React.FC = () => {
 
           {/* Ratings */}
           <div className="bg-slate-900/80 backdrop-blur-xl rounded-xl p-4 border border-white/10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-slate-300">Performance Ratings</h3>
-              <span className="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">Required</span>
+              <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded-full">At least 1</span>
             </div>
+            
+            <p className="text-xs text-slate-400 mb-4">
+              Didn't get a chance to bat or bowl? No problem - just mark it as N/A!
+            </p>
 
             {errors.ratings && (
               <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center gap-2">
@@ -572,21 +604,26 @@ const MatchFeedbackPage: React.FC = () => {
             )}
 
             <div className="space-y-4">
-              {[
-                { key: 'batting' as keyof FormData, label: 'Batting', emoji: '🏏', color: 'emerald' },
-                { key: 'bowling' as keyof FormData, label: 'Bowling', emoji: '⚡', color: 'sky' },
-                { key: 'fielding' as keyof FormData, label: 'Fielding', emoji: '🎯', color: 'amber' },
-                { key: 'teamSpirit' as keyof FormData, label: 'Team Spirit', emoji: '💪', color: 'purple' },
-              ].map(({ key, label, emoji, color }) => (
-                <div key={key} className="flex items-center justify-between bg-slate-800/30 rounded-lg p-3">
-                  <div className="flex items-center gap-3">
+              {([
+                { key: 'batting' as RatingField, label: 'Batting', emoji: '🏏' },
+                { key: 'bowling' as RatingField, label: 'Bowling', emoji: '⚡' },
+                { key: 'fielding' as RatingField, label: 'Fielding', emoji: '🎯' },
+                { key: 'teamSpirit' as RatingField, label: 'Team Spirit', emoji: '💪' },
+              ]).map(({ key, label, emoji }) => (
+                <div key={key} className="bg-slate-800/30 rounded-lg p-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <span className="text-xl">{emoji}</span>
                     <span className="text-sm font-medium text-slate-300">{label}</span>
+                    {formData[key] === null && (
+                      <span className="text-xs px-2 py-0.5 bg-slate-600 text-slate-300 rounded-full">N/A</span>
+                    )}
                   </div>
                   <RatingStars
-                    rating={formData[key] as number}
+                    rating={formData[key]}
                     onChange={(value) => handleInputChange(key, value)}
                     size="md"
+                    allowNA={true}
+                    naLabel={NA_LABELS[key]}
                   />
                 </div>
               ))}
@@ -620,21 +657,50 @@ const MatchFeedbackPage: React.FC = () => {
               <span className="text-xs px-2 py-1 bg-slate-700 text-slate-400 rounded-full">Optional</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {Object.entries(formData.issues).map(([key, value]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
-                  className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    value
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-lg shadow-amber-500/10'
-                      : 'bg-slate-800/50 text-slate-400 border border-slate-600 hover:border-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </button>
-              ))}
+              {Object.entries(formData.issues).map(([key, value]) => {
+                const issueLabels: Record<string, string> = {
+                  venue: 'Venue',
+                  timing: 'Timing',
+                  umpiring: 'Umpiring',
+                  other: 'Other'
+                };
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
+                    className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      value
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-lg shadow-amber-500/10'
+                        : 'bg-slate-800/50 text-slate-400 border border-slate-600 hover:border-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {issueLabels[key] || key.charAt(0).toUpperCase() + key.slice(1)}
+                  </button>
+                );
+              })}
             </div>
+            
+            {/* Show text input when "Other" is selected */}
+            {formData.issues.other && (
+              <div className="mt-3">
+                <input
+                  type="text"
+                  value={formData.otherIssueText}
+                  onChange={(e) => handleInputChange('otherIssueText', autoCapitalize(e.target.value))}
+                  placeholder="Please describe the issue..."
+                  className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Ground Rating */}
+          <div className="bg-slate-900/80 backdrop-blur-xl rounded-xl p-4 border border-white/10">
+            <GroundRatingSelector
+              value={formData.groundRating}
+              onChange={(value) => handleInputChange('groundRating', value)}
+            />
           </div>
 
           {/* Additional Comments */}
@@ -672,16 +738,9 @@ const MatchFeedbackPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Footer */}
-        <div className="text-center py-6">
-          <Link
-            to="/"
-            className="text-sm text-slate-500 hover:text-emerald-400 transition-colors"
-          >
-            View all feedback &rarr;
-          </Link>
-        </div>
       </div>
+
+      <Footer minimal />
     </div>
   );
 };

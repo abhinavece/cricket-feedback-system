@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleAuth from '../GoogleAuth';
-import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User } from 'lucide-react';
+import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User, Info } from 'lucide-react';
 
 interface MobileNavigationProps {
   currentView: 'form' | 'admin';
@@ -28,6 +29,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
   onTabChange,
   onToggleDevice,
 }) => {
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -149,6 +151,14 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
                   Switch to Desktop
                 </button>
               )}
+
+              <button
+                onClick={() => { navigate('/about'); setIsMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all"
+              >
+                <Info className="w-4 h-4" />
+                About Us
+              </button>
 
               {user ? (
                 <>

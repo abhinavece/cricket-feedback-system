@@ -26,12 +26,19 @@ frontend/.env.test.local
 frontend/.env.production.local
 
 # Python
-backend/__pycache__/
-backend*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 backend/venv/
 backend/env/
 backend/.env
 backend/.venv
+ai-service/venv/
+ai-service/env/
+ai-service/.env
+ai-service/.venv
 
 # Logs
 logs
