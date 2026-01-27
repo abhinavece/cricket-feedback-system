@@ -372,12 +372,8 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             WhatsApp Settings
           </h3>
 
-<<<<<<< Updated upstream
           {/* WhatsApp Enabled */}
-          <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
-=======
           <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
->>>>>>> Stashed changes
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${settings?.whatsapp.enabled ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
@@ -415,7 +411,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             </h4>
 
             {/* Rate Limiting Enabled */}
-            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+            <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${settings?.whatsapp.rateLimitingEnabled ? 'bg-blue-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
@@ -430,12 +426,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                 </div>
                 <button
                   onClick={() => handleToggle('whatsapp', 'rateLimitingEnabled', !settings?.whatsapp.rateLimitingEnabled)}
-                  disabled={saving}
+                  disabled={saving || !isMasterDeveloper}
+                  title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                   className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                     settings?.whatsapp.rateLimitingEnabled
                       ? 'bg-blue-500 shadow-lg shadow-blue-500/30'
                       : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
-                  }`}
+                  } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                 >
                   <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                     settings?.whatsapp.rateLimitingEnabled ? 'left-7' : 'left-1'
@@ -446,7 +443,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
 
             {/* Template Cooldown Hours */}
             {settings?.whatsapp.rateLimitingEnabled && (
-              <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+              <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-blue-500/20">
                     <Clock className="w-5 h-5 text-blue-400" />
@@ -465,14 +462,16 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                           placeholder="12"
                           min="1"
                           max="72"
-                          className="w-full px-4 py-2 rounded-lg bg-slate-700/50 dark:bg-slate-700/50 bg-white border border-white/10 dark:border-white/10 border-slate-300 text-white dark:text-white text-slate-800 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+                          disabled={!isMasterDeveloper}
+                          className={`w-full px-4 py-2 rounded-lg bg-slate-700/50 dark:bg-slate-700/50 bg-white border border-white/10 dark:border-white/10 border-slate-300 text-white dark:text-white text-slate-800 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">hrs</span>
                       </div>
                       <button
                         onClick={handleCooldownUpdate}
-                        disabled={saving}
-                        className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors font-medium disabled:opacity-50"
+                        disabled={saving || !isMasterDeveloper}
+                        title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
+                        className={`px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors font-medium disabled:opacity-50 ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                       >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}
                       </button>
@@ -486,7 +485,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             )}
 
             {/* Session Tracking */}
-            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+            <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${settings?.whatsapp.sessionTrackingEnabled ? 'bg-emerald-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
@@ -501,12 +500,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                 </div>
                 <button
                   onClick={() => handleToggle('whatsapp', 'sessionTrackingEnabled', !settings?.whatsapp.sessionTrackingEnabled)}
-                  disabled={saving}
+                  disabled={saving || !isMasterDeveloper}
+                  title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                   className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                     settings?.whatsapp.sessionTrackingEnabled
                       ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30'
                       : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
-                  }`}
+                  } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                 >
                   <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                     settings?.whatsapp.sessionTrackingEnabled ? 'left-7' : 'left-1'
@@ -516,7 +516,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             </div>
 
             {/* Cost Tracking */}
-            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+            <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${settings?.whatsapp.costTrackingEnabled ? 'bg-amber-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
@@ -531,12 +531,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                 </div>
                 <button
                   onClick={() => handleToggle('whatsapp', 'costTrackingEnabled', !settings?.whatsapp.costTrackingEnabled)}
-                  disabled={saving}
+                  disabled={saving || !isMasterDeveloper}
+                  title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                   className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                     settings?.whatsapp.costTrackingEnabled
                       ? 'bg-amber-500 shadow-lg shadow-amber-500/30'
                       : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
-                  }`}
+                  } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                 >
                   <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                     settings?.whatsapp.costTrackingEnabled ? 'left-7' : 'left-1'
@@ -546,7 +547,7 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
             </div>
 
             {/* Block Out-of-Session Messages */}
-            <div className="p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200">
+            <div className={`p-4 rounded-xl bg-slate-700/30 dark:bg-slate-700/30 bg-slate-50 border border-white/5 dark:border-white/5 border-slate-200 ${!isMasterDeveloper ? 'opacity-75' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${settings?.whatsapp.blockOutOfSessionMessages ? 'bg-rose-500/20' : 'bg-slate-600/30 dark:bg-slate-600/30 bg-slate-200'}`}>
@@ -561,12 +562,13 @@ const DeveloperSettings: React.FC<DeveloperSettingsProps> = ({ isMasterDeveloper
                 </div>
                 <button
                   onClick={() => handleToggle('whatsapp', 'blockOutOfSessionMessages', !settings?.whatsapp.blockOutOfSessionMessages)}
-                  disabled={saving}
+                  disabled={saving || !isMasterDeveloper}
+                  title={!isMasterDeveloper ? 'Only Master Developer can change this setting' : ''}
                   className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                     settings?.whatsapp.blockOutOfSessionMessages
                       ? 'bg-rose-500 shadow-lg shadow-rose-500/30'
                       : 'bg-slate-600 dark:bg-slate-600 bg-slate-300'
-                  }`}
+                  } ${!isMasterDeveloper ? 'cursor-not-allowed' : ''}`}
                 >
                   <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                     settings?.whatsapp.blockOutOfSessionMessages ? 'left-7' : 'left-1'
