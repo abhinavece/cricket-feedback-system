@@ -481,23 +481,21 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
                       <span className="flex items-center gap-1">
                         <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {player.totalMatches} matches
                       </span>
+                      <span className="flex items-center gap-1">
+                        <Gift className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {(player.freeMatches ?? 0)} free
+                      </span>
                       {player.pendingMatches > 0 && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {player.pendingMatches} pending
                         </span>
                       )}
-                      {player.freeMatches > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Gift className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {player.freeMatches} free
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
-                {/* Summary row: paid + due grouped; matches on the right */}
+                {/* Summary row: net paid (netContribution) + due grouped; matches (free count) on the right */}
                 <div className="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-white/5 text-[10px] sm:text-xs">
                   <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                    <span className="text-emerald-400 font-medium tabular-nums">₹{player.totalPaid} paid</span>
+                    <span className="text-emerald-400 font-medium tabular-nums">₹{player.netContribution ?? (player.totalPaid - (player.totalSettled ?? 0))} paid</span>
                     <span className="text-slate-500/80" aria-hidden>·</span>
                     {player.totalDue > 0 ? (
                       <span className="text-amber-400 font-medium tabular-nums">₹{player.totalDue} due</span>
@@ -506,7 +504,7 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
                     )}
                   </div>
                   <span className="text-slate-400 flex-shrink-0 tabular-nums">
-                    {player.totalMatches} matches
+                    {player.totalMatches} matches ({(player.freeMatches ?? 0)} free)
                   </span>
                 </div>
               </div>

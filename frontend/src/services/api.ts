@@ -406,9 +406,12 @@ export interface PlayerPaymentSummary {
   playerPhone: string;
   totalMatches: number;
   totalPaid: number;
+  totalSettled?: number;
   totalDue: number;
   freeMatches: number;
   pendingMatches: number;
+  /** Net paid after refunds/settlements (totalPaid - totalSettled). Prefer over totalPaid for display. */
+  netContribution?: number;
 }
 
 export interface PaymentTransaction {

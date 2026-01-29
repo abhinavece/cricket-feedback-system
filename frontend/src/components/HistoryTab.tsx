@@ -128,10 +128,10 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-gradient-to-r from-emerald-500/30 to-green-500/30 text-emerald-300 border-emerald-400/40';
-      case 'partial': return 'bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border-amber-400/40';
-      case 'pending': return 'bg-gradient-to-r from-red-500/30 to-rose-500/30 text-red-300 border-red-400/40';
-      default: return 'bg-slate-700/50 text-slate-400 border-slate-600/50';
+      case 'completed': return 'bg-emerald-500/20 text-emerald-400';
+      case 'partial': return 'bg-amber-500/20 text-amber-400';
+      case 'pending': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-slate-500/20 text-slate-400';
     }
   };
 
@@ -249,7 +249,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
 
           {/* Match List */}
           {!loading && (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {filteredMatches.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -263,63 +263,55 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                   return (
                     <div
                       key={match._id}
-                      className="relative bg-gradient-to-r from-emerald-900/30 via-teal-900/20 to-cyan-900/30 border border-emerald-500/30 rounded-xl overflow-hidden hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/5 sm:bg-slate-800/50 sm:border-white/10 sm:hover:border-emerald-500/40 sm:hover:shadow-[0_0_0_1px_rgba(16,185,129,0.15)] sm:transition-all sm:duration-200 sm:shadow-none"
+                      className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden transition-all duration-200 hover:border-emerald-500/40 hover:shadow-[0_0_0_1px_rgba(16,185,129,0.15)] hover:bg-slate-800/70"
                     >
-                      {/* Emerald gradient left border - mobile only */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/30 rounded-tl-xl rounded-bl-xl sm:hidden"></div>
-                      <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/20 to-transparent rounded-tl-xl rounded-bl-xl sm:hidden"></div>
-                      <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/10 to-transparent blur-sm rounded-tl-xl rounded-bl-xl sm:hidden"></div>
-                      {/* Match Header - Clickable to expand */}
+                      {/* Match Header - same structure as Player list; click to expand */}
                       <div
                         onClick={() => toggleMatchExpand(match._id)}
-                        className="p-4 cursor-pointer hover:bg-slate-700/20 sm:hover:bg-slate-800/70 transition-colors"
+                        className="p-3 sm:p-4 cursor-pointer active:bg-slate-700/30"
                       >
-                        <div className="flex items-center gap-3">
-                          {/* Expand Icon */}
-                          <div className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${isExpanded ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-800/50 text-emerald-300'} sm:bg-transparent sm:p-0 sm:text-slate-400`}>
+                        <div className="flex items-center gap-2">
+                          <div className="text-slate-400 flex-shrink-0">
                             {isExpanded ? (
-                              <ChevronDown className="w-4 h-4" />
+                              <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />
                             ) : (
-                              <ChevronRight className="w-4 h-4" />
+                              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                             )}
                           </div>
-
-                          {/* Match Info */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Trophy className="w-4 h-4 text-emerald-400 sm:text-amber-400" />
-                              <span className="font-bold text-white truncate">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 flex-shrink-0" />
+                              <span className="font-medium text-white text-sm sm:text-base truncate">
                                 {match.opponent || 'TBD'}
                               </span>
                               {payment && (
-                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(payment.status)} sm:px-1.5 sm:py-0.5 sm:rounded sm:text-[10px]`}>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-medium ${getStatusColor(payment.status)}`}>
                                   {payment.status}
                                 </span>
                               )}
                               {!payment && (
-                                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-slate-400 border border-slate-600/50 sm:px-1.5 sm:py-0.5 sm:rounded sm:text-[10px]">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-medium bg-slate-500/20 text-slate-400">
                                   No Payment
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                            <div className="flex items-center gap-2 text-[10px] sm:text-xs text-slate-400">
                               <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> {formatDate(match.date)}
+                                <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {formatDate(match.date)}
                               </span>
                               <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" /> {match.ground}
+                                <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {match.ground}
                               </span>
                             </div>
                           </div>
                         </div>
-
-                        {/* Summary row - same design as Player list: collected · pending | X/Y paid (both mobile and desktop) */}
+                        {/* Summary row - same as Player list: left group with · ; right count */}
                         {payment && (
-                          <div className="flex items-center justify-between gap-4 mt-2 sm:mt-2 pt-2 sm:pt-2 border-t border-slate-700/50 sm:border-white/5 text-xs">
+                          <div className="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-white/5 text-[10px] sm:text-xs">
                             <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                              <span className="font-semibold text-emerald-400 tabular-nums">{formatCurrency(getActualCollected(payment))} collected</span>
-                              <span className="text-slate-500/80 hidden sm:inline" aria-hidden>·</span>
-                              <span className={`font-semibold tabular-nums ${payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{formatCurrency(payment.totalPending)} pending</span>
+                              <span className="text-emerald-400 font-medium tabular-nums">{formatCurrency(getActualCollected(payment))} collected</span>
+                              <span className="text-slate-500/80" aria-hidden>·</span>
+                              <span className={`font-medium tabular-nums ${payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{formatCurrency(payment.totalPending)} pending</span>
                             </div>
                             <span className="text-slate-400 flex-shrink-0 tabular-nums">
                               {payment.squadMembers?.filter((m: PaymentMember) => m.paymentStatus === 'paid').length || 0}/
