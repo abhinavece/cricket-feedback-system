@@ -96,6 +96,7 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [showPlayerModal, setShowPlayerModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sendingHistoryMessageRef = useRef(false);
 
   // Helper function to auto-capitalize text like WhatsApp
   const autoCapitalize = (text: string): string => {
@@ -178,7 +179,6 @@ const WhatsAppMessagingTab: React.FC = () => {
 
   const handleUpdatePlayer = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log('handleUpdatePlayer called', { editingPlayer });
     if (!editingPlayer) return;
     if (!editingPlayer.name.trim() || !editingPlayer.phone.trim()) {
       setError('Name and WhatsApp number are required.');
@@ -197,13 +197,11 @@ const WhatsAppMessagingTab: React.FC = () => {
       setIsUpdating(true);
       setError(null);
       setSuccess(null);
-      console.log('Sending update request for player:', editingPlayer._id);
       await updatePlayer(editingPlayer._id, {
         name: editingPlayer.name.trim(),
         phone: sanitizedPhone,
         notes: editingPlayer.notes?.trim() || undefined,
       });
-      console.log('Update successful');
       setEditingPlayer(null);
       setShowPlayerModal(false);
       await fetchPlayers();
@@ -216,14 +214,11 @@ const WhatsAppMessagingTab: React.FC = () => {
   };
 
   const handleDeletePlayer = async () => {
-    console.log('handleDeletePlayer called', { playerToDelete });
     if (!playerToDelete) return;
     try {
       setError(null);
       setSuccess(null);
-      console.log('Sending delete request for player:', playerToDelete._id);
       await deletePlayer(playerToDelete._id);
-      console.log('Delete successful');
       setPlayerToDelete(null);
       // Remove from selection if it was selected
       setSelectedPlayers(prev => prev.filter(id => id !== playerToDelete._id));
@@ -313,13 +308,26 @@ const WhatsAppMessagingTab: React.FC = () => {
         if (playerLast10 === eventLast10) {
           setHistoryMessages(prev => {
             // Check if message already exists (avoid duplicates)
-            const exists = prev.some(m => 
-              m._id === messageData.messageId || 
+            const existsById = prev.some(m =>
+              m._id === messageData.messageId ||
               m.messageId === messageData.messageId ||
               m._id === messageData._id
             );
-            if (exists) return prev;
-            
+            if (existsById) return prev;
+
+            // For outgoing: avoid duplicate from SSE when we already have optimistic message (same text, recent)
+            if (event.type === 'message:sent') {
+              const eventTime = messageData.timestamp ? new Date(messageData.timestamp).getTime() : 0;
+              const sameRecentOutgoing = prev.some(m => {
+                if (m.direction !== 'outgoing') return false;
+                const sameText = (m.text || '').trim() === (messageData.text || messageData.message || '').trim();
+                const mTime = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+                const withinSeconds = Math.abs(mTime - eventTime) < 15000; // 15s
+                return sameText && withinSeconds;
+              });
+              if (sameRecentOutgoing) return prev;
+            }
+
             // Add new message to the end
             const newMessage = {
               _id: messageData.messageId || messageData._id,
@@ -330,7 +338,7 @@ const WhatsAppMessagingTab: React.FC = () => {
               imageId: messageData.imageId,
               status: messageData.status
             };
-            
+
             return [...prev, newMessage];
           });
           setLastSynced(new Date());
@@ -348,13 +356,14 @@ const WhatsAppMessagingTab: React.FC = () => {
   const { isConnected: sseConnected, status: sseStatus } = useSSE({
     subscriptions: sseSubscriptions,
     onEvent: handleSSEEvent,
-    onConnect: () => console.log('📡 SSE connected for chat:', historyPlayer?.phone),
     enabled: !!historyPlayer // Only connect when chat is open
   });
 
   const handleSendHistoryMessage = async () => {
     if (!historyNewMessage.trim() || !historyPlayer) return;
-    
+    if (sendingHistoryMessageRef.current) return;
+    sendingHistoryMessageRef.current = true;
+
     const messageText = historyNewMessage.trim();
     const tempId = `temp-${Date.now()}`;
     
@@ -399,6 +408,7 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError(err?.response?.data?.error || 'Failed to send message');
     } finally {
       setSendingHistoryMessage(false);
+      sendingHistoryMessageRef.current = false;
     }
   };
 
@@ -412,7 +422,6 @@ const WhatsAppMessagingTab: React.FC = () => {
   // Listen for match changes from other components (unified CRUD sync)
   useEffect(() => {
     const unsubscribe = matchEvents.subscribe(() => {
-      console.log('[WhatsAppMessagingTab] Match event received, refreshing matches');
       fetchMatches();
     });
     return unsubscribe;
@@ -1770,6 +1779,7 @@ const WhatsAppMessagingTab: React.FC = () => {
 
               {/* Send Button */}
               <button
+                type="button"
                 onClick={handleSendHistoryMessage}
                 disabled={!historyNewMessage.trim() || sendingHistoryMessage}
                 className={`w-10 h-10 rounded-full transition-all flex items-center justify-center shrink-0 ${

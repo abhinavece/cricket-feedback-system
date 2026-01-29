@@ -112,15 +112,19 @@ docker buildx build --platform linux/amd64 \
 ### Key Directories
 ```
 frontend/src/
-├── components/           # React components (25+)
+├── components/           # React components (30+)
 │   ├── mobile/           # Mobile-specific components
 │   │   ├── MobileAdminDashboard.tsx
 │   │   ├── MobileChatsTab.tsx      # Mobile conversations list
 │   │   ├── MobileNavigation.tsx
+│   │   ├── MobileGroundProfile.tsx # Mobile ground detail view with reviews
+│   │   ├── MobileGroundsTab.tsx    # Mobile ground list and search
 │   │   └── ...
 │   ├── WhatsAppMessagingTab.tsx    # Desktop WhatsApp with modal chat
 │   ├── ConversationPanel.tsx       # Reusable chat panel (fullscreen/panel modes)
 │   ├── PlayerNameLink.tsx          # Clickable player name → profile navigation
+│   ├── GroundProfileModal.tsx      # Desktop ground detail modal with reviews
+│   ├── GroundsTab.tsx              # Desktop ground list, search, and filtering
 │   └── ...
 ├── pages/                # Route-level components
 │   ├── PlayerProfilePage.tsx       # Public player profile (/player/:playerId)
@@ -133,21 +137,24 @@ frontend/src/
 └── types/                # TypeScript interfaces
 
 backend/
-├── routes/               # 7 route files
+├── routes/               # 8 route files
 │   ├── feedback.js       # Feedback CRUD, stats, soft delete/restore
 │   ├── auth.js           # Google OAuth, JWT verification, user management
 │   ├── players.js        # Player CRUD, profile endpoint
 │   ├── matches.js        # Match CRUD, squad management, stats
 │   ├── availability.js   # Availability tracking per player-match
 │   ├── whatsapp.js       # Webhook receiver, message sending, conversations
+│   ├── grounds.js        # Cricket ground CRUD, reviews, ratings
 │   └── admin.js          # Admin-only operations
-├── models/               # 6 Mongoose schemas
+├── models/               # 8 Mongoose schemas
 │   ├── Feedback.js
 │   ├── User.js
 │   ├── Player.js         # Links to User via userId field
 │   ├── Match.js
 │   ├── Availability.js
-│   └── Message.js
+│   ├── Message.js
+│   ├── Ground.js         # Cricket grounds with amenities
+│   └── GroundReview.js   # User reviews and ratings for grounds
 ├── middleware/           # JWT auth middleware
 └── config/               # Database connection
 ```
@@ -163,6 +170,7 @@ Base URL: `http://localhost:5000/api` (dev) or configured via `REACT_APP_API_URL
 | `/api/matches` | Match CRUD, squad management, stats |
 | `/api/availability` | Availability tracking per player-match |
 | `/api/whatsapp` | Webhook, message sending, `/conversations` for chat list |
+| `/api/grounds` | Ground CRUD, search, reviews, ratings, aggregation |
 
 ### Frontend Routing
 ```
@@ -198,6 +206,19 @@ Links player to match with response status, timestamps, message content, reminde
 
 ### Message
 WhatsApp message history with direction, context linking to matches/availability, message types (general, availability_request, availability_response, availability_reminder)
+
+### Ground
+- Stores cricket ground information: name, location, coordinates, amenities (floodlights, nets, parking, pavilion)
+- Contains rating summary (average scores, review count)
+- Supports bulk import and admin-only creation
+- Index: Optimized for location-based searches and name searches
+
+### GroundReview
+- Links to Ground via `groundId` and User via `userId`
+- Contains: multi-field ratings (pitch, outfield, lighting, management, access, amenities), visit date/type, comment, selected tags
+- Supports detailed quality ratings across 9 categories (pitch, outfield, lighting, management, route access, location accessibility, nets, parking, amenities)
+- Denormalized reviewer info (name, email) for quick display
+- Index: Optimized for pagination by creation date and filtering by ground
 
 ## UI/UX Guidelines
 
@@ -574,5 +595,39 @@ await Model.findByIdAndUpdate(id, {
 
 ### Admin Dashboard Tabs
 Desktop and mobile have these tabs:
-- Feedback, WhatsApp, Matches, Payments, Users, Player History, Settings (profile)
+- Feedback, WhatsApp, Matches, Payments, Users, Player History, Grounds, Analytics, Settings (profile)
 - Mobile has additional "Chats" tab for conversation list
+
+### Cricket Grounds Review System
+Full-stack feature for discovering and rating cricket grounds:
+
+**Frontend Components:**
+- **GroundsTab**: Desktop ground list with search, filters, location-based sorting, amenity tags
+- **GroundProfileModal**: Desktop modal showing ground details, reviews, ratings, and review submission form
+- **MobileGroundsTab**: Mobile ground list with compact card layout and search
+- **MobileGroundProfile**: Mobile ground detail view with swipeable tabs, review pagination, form submission
+- **ConfirmDialog**: Reusable confirmation modal for delete operations
+
+**Backend Routes & Services:**
+- **`GET /api/grounds`**: Search grounds by name/location with pagination, amenity filtering
+- **`POST /api/grounds`**: Admin-only ground creation
+- **`GET /api/grounds/:id`**: Get ground details with aggregated review stats
+- **`PUT /api/grounds/:id`**: Admin-only update ground info
+- **`DELETE /api/grounds/:id`**: Admin-only soft delete
+- **`POST /api/grounds/:id/reviews`**: Submit new ground review with multi-field ratings
+- **`GET /api/grounds/:id/reviews`**: List reviews with pagination
+- **`DELETE /api/grounds/:id/reviews/:reviewId`**: Delete own review or admin delete any
+- **`GET /api/grounds/tags/available`**: Get available review tags by category
+
+**Data Models:**
+- Ground: name, location, coordinates, amenities, rating summary
+- GroundReview: 9-category ratings, visit info, tags, comments, reviewer details
+
+**Key Features:**
+- Multi-field rating system (pitch, outfield, lighting, management, access, amenities, parking, nets, experience)
+- Tag-based classification (pitch characteristics, general feedback, issues)
+- Review pagination and sorting
+- Reviewer permissions (own review deletion, admin deletion)
+- Mobile-responsive design with swipeable tabs
+- Amenity filtering and location search
+- Admin-only ground management

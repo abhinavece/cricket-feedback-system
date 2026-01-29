@@ -99,6 +99,59 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
 }
 
 /**
+ * Log an already-sent outgoing message to DB and broadcast SSE (no API send).
+ * Use when the message was sent via a separate axios call (e.g. POST /send route).
+ * @param {string} toPhone - Recipient phone number
+ * @param {string} messageText - Message body text
+ * @param {string} messageId - WhatsApp message ID from the send response
+ * @param {Object} metadata - Optional metadata for logging
+ */
+async function logOutgoingMessage(toPhone, messageText, messageId, metadata = {}) {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  try {
+    const savedMsg = await Message.create({
+      from: phoneNumberId,
+      to: toPhone,
+      text: messageText,
+      direction: 'outgoing',
+      messageId: messageId,
+      whatsappMessageId: messageId,
+      status: 'sent',
+      statusUpdatedAt: new Date(),
+      timestamp: new Date(),
+      messageType: metadata.messageType || 'general',
+      matchId: metadata.matchId || null,
+      matchTitle: metadata.matchTitle || null,
+      paymentId: metadata.paymentId || null,
+      playerId: metadata.playerId || null,
+      playerName: metadata.playerName || null,
+      templateCategory: metadata.templateCategory || null,
+      messageCost: metadata.messageCost || 0
+    });
+    try {
+      await whatsappAnalyticsService.incrementBusinessMessageCount(toPhone);
+    } catch (sessionErr) {
+      // Non-critical
+    }
+    const outgoingEvent = {
+      type: 'message:sent',
+      messageId: savedMsg._id.toString(),
+      to: toPhone,
+      phone: toPhone,
+      text: messageText,
+      playerName: metadata.playerName || null,
+      direction: 'outgoing',
+      messageType: metadata.messageType || 'general',
+      timestamp: savedMsg.timestamp
+    };
+    sseManager.broadcast('messages', outgoingEvent);
+    sseManager.broadcast(`phone:${toPhone}`, outgoingEvent);
+  } catch (logErr) {
+    console.error('⚠️ Failed to log outgoing message:', logErr.message);
+  }
+}
+
+/**
  * Send auto-response message based on availability response
  * @param {string} toPhone - Recipient phone number
  * @param {string} response - Availability response (yes, no, tentative)
@@ -1827,8 +1880,8 @@ router.post('/send', auth, async (req, res) => {
         
         const messageId = response.data?.messages?.[0]?.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
-        // Save outgoing message to database using sendAndLogMessage to trigger SSE broadcasts
-        await sendAndLogMessage(formattedPhone, template ? `Template: ${template.name}` : message, {
+        // Log to DB and broadcast SSE only (message already sent above)
+        await logOutgoingMessage(formattedPhone, template ? `Template: ${template.name}` : message, messageId, {
           messageType: matchId ? 'availability_request' : 'general',
           matchId: matchId || null,
           matchTitle: matchTitle || null,

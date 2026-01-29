@@ -219,31 +219,37 @@ router.get('/summary', auth, async (req, res) => {
     // Run: node backend/scripts/migratePaymentCalculations.js
 
     // Return only essential fields for list view
-    const summaryPayments = payments.map(payment => ({
-      _id: payment._id,
-      matchId: payment.matchId,
-      totalAmount: payment.totalAmount,
-      status: payment.status,
-      totalCollected: payment.totalCollected,
-      totalPending: payment.totalPending,
-      totalOwed: payment.totalOwed,
-      membersCount: payment.membersCount,
-      paidCount: payment.paidCount,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
-      // Include minimal squad member info (just counts and basic status)
-      squadMembers: payment.squadMembers ? payment.squadMembers.map(member => ({
-        _id: member._id,
-        playerName: member.playerName,
-        playerPhone: member.playerPhone,
-        paymentStatus: member.paymentStatus,
-        amountPaid: member.amountPaid,
-        dueAmount: member.dueAmount,
-        owedAmount: member.owedAmount,
-        adjustedAmount: member.adjustedAmount,
-        calculatedAmount: member.calculatedAmount
-      })) : []
-    }));
+    const summaryPayments = payments.map(payment => {
+      const totalSettled = (payment.squadMembers || []).reduce((sum, m) => sum + (m.settledAmount || 0), 0);
+      const actualCollected = (payment.totalCollected || 0) - totalSettled;
+      return {
+        _id: payment._id,
+        matchId: payment.matchId,
+        totalAmount: payment.totalAmount,
+        status: payment.status,
+        totalCollected: payment.totalCollected,
+        actualCollected,
+        totalPending: payment.totalPending,
+        totalOwed: payment.totalOwed,
+        membersCount: payment.membersCount,
+        paidCount: payment.paidCount,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        // Include minimal squad member info (including settledAmount for client-side use)
+        squadMembers: payment.squadMembers ? payment.squadMembers.map(member => ({
+          _id: member._id,
+          playerName: member.playerName,
+          playerPhone: member.playerPhone,
+          paymentStatus: member.paymentStatus,
+          amountPaid: member.amountPaid,
+          dueAmount: member.dueAmount,
+          owedAmount: member.owedAmount,
+          settledAmount: member.settledAmount,
+          adjustedAmount: member.adjustedAmount,
+          calculatedAmount: member.calculatedAmount
+        })) : []
+      };
+    });
 
     res.json({
       success: true,

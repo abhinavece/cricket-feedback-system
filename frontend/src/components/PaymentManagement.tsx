@@ -133,6 +133,7 @@ interface Payment {
   squadMembers: SquadMember[];
   status: 'draft' | 'sent' | 'partial' | 'completed';
   totalCollected: number;
+  actualCollected?: number; // totalCollected - totalSettled (from API summary)
   totalPending: number;
   totalOwed?: number;
   membersCount: number;
@@ -828,11 +829,18 @@ const PaymentManagement: React.FC = () => {
     return true;
   });
 
+  // Actual collected = total paid minus settled (refunded). Prefer API actualCollected when present.
+  const getActualCollected = (p: Payment) => {
+    if (p.actualCollected !== undefined && p.actualCollected !== null) return p.actualCollected;
+    const totalSettled = (p.squadMembers || []).reduce((sum, m) => sum + (m.settledAmount || 0), 0);
+    return (p.totalCollected || 0) - totalSettled;
+  };
+
   // Dashboard stats
   const dashboardStats = {
     totalMatches: matchesWithPayments.length,
     withPayments: matchesWithPayments.filter(m => m.payment).length,
-    totalCollected: allPayments.reduce((sum, p) => sum + (p.totalCollected || 0), 0),
+    totalCollected: allPayments.reduce((sum, p) => sum + getActualCollected(p), 0),
     totalPending: allPayments.reduce((sum, p) => sum + (p.totalPending || 0), 0),
     completedPayments: allPayments.filter(p => p.status === 'completed').length
   };
@@ -2954,7 +2962,7 @@ const PaymentManagement: React.FC = () => {
                     {payment && (
                       <div className="hidden sm:flex items-center gap-4 text-sm">
                         <div className="text-right">
-                          <div className="text-emerald-400 font-semibold">₹{payment.totalCollected}</div>
+                          <div className="text-emerald-400 font-semibold">₹{getActualCollected(payment)}</div>
                           <div className="text-xs text-slate-400">collected</div>
                         </div>
                         <div className="text-right">
@@ -2996,7 +3004,7 @@ const PaymentManagement: React.FC = () => {
                   {payment && (
                     <div className="mt-3">
                       <div className="sm:hidden flex items-center justify-between text-xs text-slate-400 mb-1">
-                        <span className="text-emerald-400">₹{payment.totalCollected}</span>
+                        <span className="text-emerald-400">₹{getActualCollected(payment)}</span>
                         <span>{payment.paidCount}/{payment.membersCount} paid</span>
                         <span className="text-yellow-400">₹{payment.totalPending}</span>
                         {payment.totalOwed && payment.totalOwed > 0 && (
