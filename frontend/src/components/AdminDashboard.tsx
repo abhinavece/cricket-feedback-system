@@ -14,6 +14,7 @@ const PaymentManagement = lazy(() => import('./PaymentManagement'));
 const HistoryTab = lazy(() => import('./HistoryTab'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const WhatsAppAnalyticsTab = lazy(() => import('./WhatsAppAnalyticsTab'));
+const GroundsTab = lazy(() => import('./GroundsTab'));
 
 // Tab loading spinner
 const TabLoadingSpinner = () => (
@@ -39,8 +40,8 @@ interface FeedbackStats {
 }
 
 interface AdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds') => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -57,7 +58,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings'>(propActiveTab);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds'>(propActiveTab);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const hasFetchedInitial = React.useRef(false);
@@ -409,6 +410,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }`}
             >
               Payments
+            </button>
+            <button
+              onClick={() => { setActiveTab('grounds'); onTabChange?.('grounds'); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'grounds'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              Grounds
             </button>
             <button
               onClick={() => { setActiveTab('player-history'); onTabChange?.('player-history'); }}
@@ -976,6 +987,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'payments' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <PaymentManagement />
+          </Suspense>
+        )}
+        {activeTab === 'grounds' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <GroundsTab />
           </Suspense>
         )}
         {activeTab === 'player-history' && (

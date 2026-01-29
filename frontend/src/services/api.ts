@@ -1098,4 +1098,241 @@ export const updateWhatsAppCostConfig = async (data: {
   return response.data;
 };
 
+// ============================================================================
+// GROUND REVIEW APIs
+// ============================================================================
+
+export interface GroundLocation {
+  address: string;
+  city: string;
+  state?: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+}
+
+export interface GroundAmenities {
+  hasFloodlights: boolean;
+  hasNets: boolean;
+  hasParking: boolean;
+  hasChangingRoom: boolean;
+  hasToilets: boolean;
+  hasDrinkingWater: boolean;
+  hasScoreboard: boolean;
+  hasPavilion: boolean;
+}
+
+export interface GroundCharacteristics {
+  pitchType: 'turf' | 'matting' | 'cement' | 'astroturf' | 'mixed' | 'unknown';
+  groundSize: 'small' | 'medium' | 'large' | 'unknown';
+  boundaryType: 'rope' | 'fence' | 'natural' | 'mixed' | 'unknown';
+}
+
+export interface GroundRatingCategory {
+  avg: number;
+  count: number;
+}
+
+export interface GroundAggregatedRatings {
+  pitch: GroundRatingCategory;
+  outfield: GroundRatingCategory;
+  lighting: GroundRatingCategory;
+  routeAccess: GroundRatingCategory;
+  locationAccessibility: GroundRatingCategory;
+  nets: GroundRatingCategory;
+  parking: GroundRatingCategory;
+  amenities: GroundRatingCategory;
+  management: GroundRatingCategory;
+}
+
+export interface GroundTrends {
+  last30Days: { avg: number; count: number };
+  last90Days: { avg: number; count: number };
+  last365Days: { avg: number; count: number };
+}
+
+export interface Ground {
+  _id: string;
+  name: string;
+  location: GroundLocation;
+  formattedLocation?: string;
+  mapsUrl?: string;
+  photos: string[];
+  amenities: GroundAmenities;
+  characteristics: GroundCharacteristics;
+  aggregatedRatings: GroundAggregatedRatings;
+  overallScore: number;
+  reviewCount: number;
+  verifiedReviewCount: number;
+  trends: GroundTrends;
+  popularTags: Array<{ tag: string; count: number }>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  distanceKm?: number; // Only for nearby search
+}
+
+export interface GroundReviewRatings {
+  pitch: number;
+  outfield: number;
+  lighting?: number | null;
+  routeAccess: number;
+  locationAccessibility: number;
+  nets?: number | null;
+  parking: number;
+  amenities: number;
+  management: number;
+}
+
+export interface GroundReview {
+  _id: string;
+  groundId: string;
+  reviewerId: string;
+  reviewerName: string;
+  matchId?: string;
+  isVerified: boolean;
+  ratings: GroundReviewRatings;
+  tags: string[];
+  comment?: string;
+  photos: string[];
+  visitDate: string;
+  visitType: 'match' | 'practice' | 'casual' | 'other';
+  timeSlot: 'morning' | 'afternoon' | 'evening' | 'night';
+  helpfulCount: number;
+  createdAt: string;
+}
+
+export interface GroundCity {
+  city: string;
+  count: number;
+  avgScore: number;
+}
+
+export interface Pagination {
+  current: number;
+  pages: number;
+  total: number;
+  hasMore: boolean;
+}
+
+// Get all grounds with search and pagination
+export const getGrounds = async (params?: {
+  search?: string;
+  city?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'overallScore' | 'createdAt';
+}): Promise<{ success: boolean; data: Ground[]; pagination: Pagination }> => {
+  const response = await api.get('/grounds', { params });
+  return response.data;
+};
+
+// Get nearby grounds
+export const getNearbyGrounds = async (params: {
+  lat: number;
+  lng: number;
+  maxDistance?: number;
+  limit?: number;
+}): Promise<{ success: boolean; data: Ground[] }> => {
+  const response = await api.get('/grounds/nearby', { params });
+  return response.data;
+};
+
+// Get list of cities with ground counts
+export const getGroundCities = async (): Promise<{ success: boolean; data: GroundCity[] }> => {
+  const response = await api.get('/grounds/cities');
+  return response.data;
+};
+
+// Get predefined review tags
+export const getGroundReviewTags = async (): Promise<{ success: boolean; data: string[] }> => {
+  const response = await api.get('/grounds/tags');
+  return response.data;
+};
+
+// Get a specific ground with reviews
+export const getGroundById = async (id: string, params?: {
+  page?: number;
+  limit?: number;
+}): Promise<{
+  success: boolean;
+  data: Ground;
+  reviews: GroundReview[];
+  pagination: Pagination;
+}> => {
+  const response = await api.get(`/grounds/${id}`, { params });
+  return response.data;
+};
+
+// Create a new ground (Admin only)
+export const createGround = async (data: {
+  name: string;
+  location: GroundLocation;
+  photos?: string[];
+  amenities?: Partial<GroundAmenities>;
+  characteristics?: Partial<GroundCharacteristics>;
+}): Promise<{ success: boolean; data: Ground; message: string }> => {
+  const response = await api.post('/grounds', data);
+  return response.data;
+};
+
+// Update a ground (Admin only)
+export const updateGround = async (id: string, data: {
+  name?: string;
+  location?: GroundLocation;
+  photos?: string[];
+  amenities?: Partial<GroundAmenities>;
+  characteristics?: Partial<GroundCharacteristics>;
+  isActive?: boolean;
+}): Promise<{ success: boolean; data: Ground; message: string }> => {
+  const response = await api.put(`/grounds/${id}`, data);
+  return response.data;
+};
+
+// Delete a ground (Admin only, soft delete)
+export const deleteGround = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const response = await api.delete(`/grounds/${id}`);
+  return response.data;
+};
+
+// Submit a review for a ground
+export const submitGroundReview = async (groundId: string, data: {
+  ratings: GroundReviewRatings;
+  tags?: string[];
+  comment?: string;
+  visitDate?: string;
+  visitType?: 'match' | 'practice' | 'casual' | 'other';
+  timeSlot?: 'morning' | 'afternoon' | 'evening' | 'night';
+  matchId?: string;
+}): Promise<{ success: boolean; data: GroundReview; message: string }> => {
+  const response = await api.post(`/grounds/${groundId}/reviews`, data);
+  return response.data;
+};
+
+// Get reviews for a ground
+export const getGroundReviews = async (groundId: string, params?: {
+  page?: number;
+  limit?: number;
+  verified?: boolean;
+}): Promise<{ success: boolean; data: GroundReview[]; pagination: Pagination }> => {
+  const response = await api.get(`/grounds/${groundId}/reviews`, { params });
+  return response.data;
+};
+
+// Delete a review (Owner or Admin)
+export const deleteGroundReview = async (groundId: string, reviewId: string): Promise<{ success: boolean; message: string }> => {
+  const response = await api.delete(`/grounds/${groundId}/reviews/${reviewId}`);
+  return response.data;
+};
+
+// Get current user's reviews
+export const getMyGroundReviews = async (params?: {
+  page?: number;
+  limit?: number;
+}): Promise<{ success: boolean; data: GroundReview[]; pagination: Pagination }> => {
+  const response = await api.get('/grounds/user/reviews', { params });
+  return response.data;
+};
+
 export default api;

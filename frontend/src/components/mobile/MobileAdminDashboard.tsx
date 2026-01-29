@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { getStats, getProfile } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings, MessageCircle, BarChart3 } from 'lucide-react';
+import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings, MessageCircle, BarChart3, MapPin } from 'lucide-react';
 import Footer from '../Footer';
 
 // Lazy load tab content - only loaded when tab is selected
@@ -14,6 +14,7 @@ const MobileChatsTab = lazy(() => import('./MobileChatsTab'));
 const MobileSettingsTab = lazy(() => import('./MobileSettingsTab'));
 const MobileProfileSetup = lazy(() => import('./MobileProfileSetup'));
 const MobileWhatsAppAnalyticsTab = lazy(() => import('./MobileWhatsAppAnalyticsTab'));
+const MobileGroundsTab = lazy(() => import('./MobileGroundsTab'));
 
 // Reuse desktop components for tabs that don't have mobile versions yet
 const UserManagement = lazy(() => import('../UserManagement'));
@@ -34,8 +35,8 @@ interface FeedbackStats {
 }
 
 interface MobileAdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds') => void;
   onLogout?: () => void;
 }
 
@@ -86,6 +87,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     { id: 'whatsapp', label: 'WhatsApp', icon: Send },
     { id: 'matches', label: 'Matches', icon: Calendar },
     { id: 'payments', label: 'Payments', icon: Wallet },
+    { id: 'grounds', label: 'Grounds', icon: MapPin },
     { id: 'player-history', label: 'History', icon: History },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'users', label: 'Users', icon: Users },
@@ -206,6 +208,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           {activeTab === 'chats' && <MobileChatsTab />}
           {activeTab === 'matches' && <MobileMatchesTab />}
           {activeTab === 'payments' && <MobilePaymentsTab />}
+          {activeTab === 'grounds' && <MobileGroundsTab />}
           {activeTab === 'whatsapp' && <MobileWhatsAppTab />}
           {activeTab === 'player-history' && <MobileHistoryTab />}
           {activeTab === 'analytics' && <MobileWhatsAppAnalyticsTab />}
