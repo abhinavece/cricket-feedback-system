@@ -23,6 +23,8 @@ interface PaymentMember {
   playerPhone: string;
   amountPaid: number;
   dueAmount: number;
+  owedAmount?: number;
+  settledAmount?: number;
   paymentStatus: 'pending' | 'paid' | 'partial' | 'due' | 'overpaid';
   adjustedAmount: number | null;
   calculatedAmount: number;
@@ -33,7 +35,9 @@ interface Payment {
   matchId: string;
   totalAmount: number;
   totalCollected: number;
+  actualCollected?: number;
   totalPending: number;
+  totalOwed?: number;
   status: 'pending' | 'partial' | 'completed';
   squadMembers: PaymentMember[];
 }
@@ -114,6 +118,12 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  const getActualCollected = (p: Payment) => {
+    if (p.actualCollected !== undefined && p.actualCollected !== null) return p.actualCollected;
+    const totalSettled = (p.squadMembers || []).reduce((sum, m) => sum + (m.settledAmount || 0), 0);
+    return (p.totalCollected || 0) - totalSettled;
   };
 
   const getStatusColor = (status: string) => {
@@ -268,7 +278,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                           {payment && (
                             <div className="hidden sm:flex items-center gap-5 text-sm">
                               <div className="text-right">
-                                <div className="text-lg font-bold text-emerald-400">₹{payment.totalCollected}</div>
+                                <div className="text-lg font-bold text-emerald-400">₹{getActualCollected(payment)}</div>
                                 <div className="text-[10px] text-emerald-300 uppercase tracking-wide">collected</div>
                               </div>
                               <div className="text-right">
@@ -289,7 +299,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                         {/* Mobile Payment Summary */}
                         {payment && (
                           <div className="sm:hidden flex items-center justify-between mt-3 pt-3 border-t border-slate-700/50 text-xs">
-                            <span className="font-semibold text-emerald-400">₹{payment.totalCollected} collected</span>
+                            <span className="font-semibold text-emerald-400">₹{getActualCollected(payment)} collected</span>
                             <span className={`font-semibold ${payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'}`}>₹{payment.totalPending} pending</span>
                             <span className="text-slate-400">
                               {payment.squadMembers?.filter((m: PaymentMember) => m.paymentStatus === 'paid').length || 0}/
@@ -321,28 +331,44 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                                   <span className="text-indigo-400/70 text-[10px]">Match Financial Overview</span>
                                 </div>
                               </div>
-                              <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
-                                  <span className="text-indigo-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Total Amount</span>
-                                  <span className="font-bold text-white text-lg">₹{payment.totalAmount}</span>
-                                </div>
-                                <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-500/30 hover:border-emerald-400/50 transition-colors">
-                                  <span className="text-emerald-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Collected</span>
-                                  <span className="font-bold text-emerald-400 text-lg">₹{payment.totalCollected}</span>
-                                </div>
-                                <div className={`bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border transition-colors ${
-                                  payment.totalPending > 0 
-                                    ? 'border-amber-500/30 hover:border-amber-400/50' 
-                                    : 'border-slate-500/30 hover:border-slate-400/50'
-                                }`}>
-                                  <span className={`text-[10px] font-semibold uppercase tracking-wide block mb-1.5 ${
-                                    payment.totalPending > 0 ? 'text-amber-300/80' : 'text-slate-400/80'
-                                  }`}>Pending</span>
-                                  <span className={`font-bold text-lg ${
-                                    payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'
-                                  }`}>₹{payment.totalPending}</span>
-                                </div>
-                              </div>
+                              {(() => {
+                                const actualCollected = getActualCollected(payment);
+                                const totalSettled = (payment.squadMembers || []).reduce((s, m) => s + (m.settledAmount || 0), 0);
+                                return (
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
+                                      <span className="text-indigo-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Total Amount</span>
+                                      <span className="font-bold text-white text-lg">₹{payment.totalAmount}</span>
+                                    </div>
+                                    <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-500/30 hover:border-emerald-400/50 transition-colors">
+                                      <span className="text-emerald-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Collected</span>
+                                      <span className="font-bold text-emerald-400 text-lg">₹{actualCollected}</span>
+                                    </div>
+                                    <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-blue-500/30 hover:border-blue-400/50 transition-colors">
+                                      <span className="text-blue-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Total Settled</span>
+                                      <span className="font-bold text-blue-400 text-lg">₹{totalSettled}</span>
+                                    </div>
+                                    <div className={`bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border transition-colors ${
+                                      payment.totalPending > 0
+                                        ? 'border-amber-500/30 hover:border-amber-400/50'
+                                        : 'border-slate-500/30 hover:border-slate-400/50'
+                                    }`}>
+                                      <span className={`text-[10px] font-semibold uppercase tracking-wide block mb-1.5 ${
+                                        payment.totalPending > 0 ? 'text-amber-300/80' : 'text-slate-400/80'
+                                      }`}>Pending</span>
+                                      <span className={`font-bold text-lg ${
+                                        payment.totalPending > 0 ? 'text-amber-400' : 'text-slate-500'
+                                      }`}>₹{payment.totalPending}</span>
+                                    </div>
+                                    {(payment.totalOwed || 0) > 0 && (
+                                      <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-red-500/30 hover:border-red-400/50 transition-colors sm:col-span-2">
+                                        <span className="text-red-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Refunds Due</span>
+                                        <span className="font-bold text-red-400 text-lg">₹{payment.totalOwed}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                           {/* Squad Members List */}
@@ -380,14 +406,25 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onNavigateToMatch }) => {
                                       </div>
                                     </div>
                                     <div className="text-right">
-                                      <div className="flex items-center gap-1.5 text-sm">
-                                        <span className="font-bold text-emerald-400">₹{member.amountPaid}</span>
-                                        <span className="text-slate-600">/</span>
-                                        <span className="text-slate-400">₹{effectiveAmount}</span>
+                                      <div className="flex flex-col items-end gap-0.5 text-sm">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-bold text-emerald-400">₹{member.amountPaid}</span>
+                                          {(member.settledAmount || 0) > 0 && (
+                                            <span className="text-blue-400 text-xs">−₹{member.settledAmount} settled</span>
+                                          )}
+                                          <span className="text-slate-600">/</span>
+                                          <span className="text-slate-400">₹{effectiveAmount}</span>
+                                        </div>
+                                        {(member.settledAmount || 0) > 0 && (
+                                          <div className="text-xs text-emerald-400">Net: ₹{(member.amountPaid || 0) - (member.settledAmount || 0)}</div>
+                                        )}
+                                        {member.dueAmount > 0 && (
+                                          <div className="text-xs font-medium text-amber-400">Pending: ₹{member.dueAmount}</div>
+                                        )}
+                                        {(member.owedAmount || 0) > 0 && (
+                                          <div className="text-xs font-medium text-red-400">Overpaid / Refund due: ₹{member.owedAmount}</div>
+                                        )}
                                       </div>
-                                      {member.dueAmount > 0 && (
-                                        <div className="text-xs font-medium text-rose-400">Due: ₹{member.dueAmount}</div>
-                                      )}
                                     </div>
                                   </div>
                                 );

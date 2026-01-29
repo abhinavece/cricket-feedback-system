@@ -23,6 +23,8 @@ interface PaymentMember {
   playerPhone: string;
   amountPaid: number;
   dueAmount: number;
+  owedAmount?: number;
+  settledAmount?: number;
   paymentStatus: 'pending' | 'paid' | 'partial' | 'due' | 'overpaid';
   adjustedAmount: number | null;
   calculatedAmount: number;
@@ -33,7 +35,9 @@ interface Payment {
   matchId: string;
   totalAmount: number;
   totalCollected: number;
+  actualCollected?: number;
   totalPending: number;
+  totalOwed?: number;
   status: 'pending' | 'partial' | 'completed';
   squadMembers: PaymentMember[];
 }
@@ -65,7 +69,7 @@ const MobileHistoryTab: React.FC = () => {
         getMatches(),
         getPayments()
       ]);
-      const payments = paymentsRes || [];
+      const payments = (paymentsRes?.payments ?? paymentsRes) || [];
 
       const merged = matches.map((match: Match) => {
         const payment = payments.find((p: Payment) => 
@@ -120,7 +124,13 @@ const MobileHistoryTab: React.FC = () => {
     });
   };
 
-  const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
+  const formatCurrency = (amount: number) => `₹${(amount || 0).toLocaleString('en-IN')}`;
+
+  const getActualCollected = (p: Payment) => {
+    if (p.actualCollected !== undefined && p.actualCollected !== null) return p.actualCollected;
+    const totalSettled = (p.squadMembers || []).reduce((s, m) => s + (m.settledAmount || 0), 0);
+    return (p.totalCollected || 0) - totalSettled;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -272,7 +282,7 @@ const MobileHistoryTab: React.FC = () => {
                         {/* Payment Summary */}
                         {payment && (
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[10px]">
-                            <span className="text-emerald-400">{formatCurrency(payment.totalCollected)} collected</span>
+                            <span className="text-emerald-400">{formatCurrency(getActualCollected(payment))} collected</span>
                             <span className="text-amber-400">{formatCurrency(payment.totalPending)} pending</span>
                             <span className="text-slate-400">
                               {payment.squadMembers?.filter((m: PaymentMember) => m.paymentStatus === 'paid').length || 0}/
@@ -284,14 +294,35 @@ const MobileHistoryTab: React.FC = () => {
 
                       {/* Expanded Content */}
                       {isExpanded && payment && payment.squadMembers && (
-                        <div className="border-t border-white/10 bg-slate-900/30 p-3">
+                        <div className="border-t border-white/10 bg-slate-900/30 p-3 space-y-3">
+                          {/* Payment Summary */}
+                          {(() => {
+                            const actualCollected = getActualCollected(payment);
+                            const totalSettled = payment.squadMembers.reduce((s, m) => s + (m.settledAmount || 0), 0);
+                            return (
+                              <div className="rounded-lg border border-white/10 bg-slate-800/50 p-2">
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Summary</p>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                                  <span><span className="text-slate-400">Total</span> <span className="font-semibold text-white">{formatCurrency(payment.totalAmount)}</span></span>
+                                  <span><span className="text-emerald-400">Collected</span> <span className="font-semibold text-emerald-400">{formatCurrency(actualCollected)}</span></span>
+                                  <span><span className="text-blue-400">Settled</span> <span className="font-semibold text-blue-400">{formatCurrency(totalSettled)}</span></span>
+                                  <span><span className="text-amber-400">Pending</span> <span className="font-semibold text-amber-400">{formatCurrency(payment.totalPending)}</span></span>
+                                  {(payment.totalOwed || 0) > 0 && (
+                                    <span><span className="text-red-400">Refunds due</span> <span className="font-semibold text-red-400">{formatCurrency(payment.totalOwed ?? 0)}</span></span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <h4 className="text-xs font-medium text-slate-300 mb-2">Squad Members</h4>
                           <div className="space-y-1.5">
                             {payment.squadMembers.map((member: PaymentMember) => {
-                              const effectiveAmount = member.adjustedAmount !== null 
-                                ? member.adjustedAmount 
+                              const effectiveAmount = member.adjustedAmount !== null
+                                ? member.adjustedAmount
                                 : member.calculatedAmount;
                               const isFree = member.adjustedAmount === 0;
+                              const settled = member.settledAmount || 0;
+                              const netPaid = (member.amountPaid || 0) - settled;
 
                               return (
                                 <div
@@ -314,11 +345,18 @@ const MobileHistoryTab: React.FC = () => {
                                   <div className="text-right">
                                     <div className="text-xs font-medium text-white">
                                       {formatCurrency(member.amountPaid)} / {formatCurrency(effectiveAmount)}
+                                      {settled > 0 && (
+                                        <span className="text-blue-400 text-[10px] ml-1">−{formatCurrency(settled)} settled</span>
+                                      )}
                                     </div>
+                                    {settled > 0 && (
+                                      <div className="text-[10px] text-emerald-400">Net: {formatCurrency(netPaid)}</div>
+                                    )}
                                     {member.dueAmount > 0 && (
-                                      <div className="text-[10px] text-amber-400">
-                                        Due: {formatCurrency(member.dueAmount)}
-                                      </div>
+                                      <div className="text-[10px] text-amber-400">Pending: {formatCurrency(member.dueAmount)}</div>
+                                    )}
+                                    {(member.owedAmount || 0) > 0 && (
+                                      <div className="text-[10px] text-red-400">Refund due: {formatCurrency(member.owedAmount ?? 0)}</div>
                                     )}
                                   </div>
                                 </div>
