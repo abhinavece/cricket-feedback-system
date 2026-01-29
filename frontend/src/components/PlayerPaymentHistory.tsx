@@ -3,7 +3,6 @@ import {
   Search, 
   Calendar, 
   CreditCard, 
-  TrendingUp, 
   AlertCircle, 
   Loader2,
   ChevronRight,
@@ -16,6 +15,7 @@ import {
   MapPin,
   ExternalLink,
   Bell,
+  Trophy,
   X
 } from 'lucide-react';
 import {
@@ -126,12 +126,12 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid': return 'bg-gradient-to-r from-emerald-500/30 to-green-500/30 text-emerald-300 border-emerald-400/40';
-      case 'partial': return 'bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border-amber-400/40';
-      case 'pending': return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-      case 'due': return 'bg-rose-500/20 text-rose-400 border-rose-500/30';
-      case 'overpaid': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+      case 'paid': return 'bg-emerald-500/20 text-emerald-400';
+      case 'partial': return 'bg-amber-500/20 text-amber-400';
+      case 'pending': return 'bg-slate-500/20 text-slate-400';
+      case 'due': return 'bg-amber-500/20 text-amber-400';
+      case 'overpaid': return 'bg-blue-500/20 text-blue-400';
+      default: return 'bg-slate-500/20 text-slate-400';
     }
   };
 
@@ -165,226 +165,195 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
   // Render Player Detail View
   const renderDetailView = () => {
     if (!selectedPlayer) return null;
+    const netPaid = selectedPlayer.summary.netContribution ?? (selectedPlayer.summary.totalPaid - (selectedPlayer.summary.totalSettled || 0));
+    const hasRefunded = (selectedPlayer.summary.totalSettled || 0) > 0;
 
     return (
-      <div className="space-y-4">
-        {/* Back Button & Player Header */}
+      <div className="space-y-4 sm:space-y-6">
+        {/* Back Button & Player Header - larger on desktop */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => setSelectedPlayer(null)}
-            className="p-2 bg-slate-700/50 hover:bg-slate-700 rounded-xl text-slate-400 hover:text-white transition-colors"
+            className="p-2 sm:p-3 bg-slate-700/50 hover:bg-slate-700 rounded-xl text-slate-400 hover:text-white transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-white">{selectedPlayer.playerName}</h3>
-            <p className="text-sm text-slate-400">{selectedPlayer.playerPhone}</p>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl sm:text-2xl font-bold text-white truncate">{selectedPlayer.playerName}</h3>
+            <p className="text-sm text-slate-400 mt-0.5">{selectedPlayer.playerPhone}</p>
           </div>
         </div>
 
-        {/* Summary Cards - Dashboard Style with Indigo/Blue */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900/50 via-blue-900/40 to-purple-900/50 border border-indigo-500/50 rounded-xl p-5 shadow-lg shadow-indigo-500/20">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/8 to-blue-500/8"></div>
-          <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
-          <div className="relative">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-gradient-to-br from-indigo-500/30 to-blue-500/30 rounded-xl border border-indigo-400/40 shadow-lg shadow-indigo-500/20">
-                <TrendingUp className="w-5 h-5 text-indigo-300" />
-              </div>
-              <div>
-                <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs block">Payment Summary</span>
-                <span className="text-indigo-400/70 text-[10px]">Player Financial Overview</span>
-              </div>
+        {/* Payment Summary - mobile: compact block (Match tab style) */}
+        <div className="sm:hidden rounded-xl border border-emerald-500/25 bg-gradient-to-br from-slate-800/80 to-emerald-950/30 p-3 shadow-inner">
+          <div className="flex items-center gap-2 mb-2.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <IndianRupee className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Paid */}
-              <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-500/30 hover:border-emerald-400/50 transition-colors">
-                <span className="text-emerald-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Paid</span>
-                <span className="font-bold text-emerald-400 text-lg">₹{selectedPlayer.summary.netContribution || (selectedPlayer.summary.totalPaid - (selectedPlayer.summary.totalSettled || 0))}</span>
-                {(selectedPlayer.summary.totalSettled || 0) > 0 && (
-                  <span className="text-[10px] text-slate-400 block mt-1">(₹{selectedPlayer.summary.totalPaid}-₹{selectedPlayer.summary.totalSettled})</span>
-                )}
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-400/90">Payment Summary</p>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Paid (net)</span>
+              <span className="font-bold text-emerald-400">₹{netPaid}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-amber-400">Due</span>
+              <span className="font-bold text-amber-400">₹{selectedPlayer.summary.totalDue}</span>
+            </div>
+            {hasRefunded && (
+              <div className="flex justify-between items-center">
+                <span className="text-blue-400">Refunded</span>
+                <span className="font-bold text-blue-400">₹{selectedPlayer.summary.totalSettled}</span>
               </div>
-              {/* Due */}
-              <div className={`bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border transition-colors ${
-                selectedPlayer.summary.totalDue > 0 
-                  ? 'border-red-500/30 hover:border-red-400/50' 
-                  : 'border-slate-500/30 hover:border-slate-400/50'
-              }`}>
-                <span className={`text-[10px] font-semibold uppercase tracking-wide block mb-1.5 ${
-                  selectedPlayer.summary.totalDue > 0 ? 'text-red-300/80' : 'text-slate-400/80'
-                }`}>Due</span>
-                <span className={`font-bold text-lg ${
-                  selectedPlayer.summary.totalDue > 0 ? 'text-red-400' : 'text-slate-500'
-                }`}>₹{selectedPlayer.summary.totalDue}</span>
-              </div>
-              {/* Refunded */}
-              {(selectedPlayer.summary.totalSettled || 0) > 0 && (
-                <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-cyan-500/30 hover:border-cyan-400/50 transition-colors">
-                  <span className="text-cyan-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Refunded</span>
-                  <span className="font-bold text-cyan-400 text-lg">₹{selectedPlayer.summary.totalSettled}</span>
-                </div>
-              )}
-              {/* Matches */}
-              <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
-                <span className="text-indigo-300/80 text-[10px] font-semibold uppercase tracking-wide block mb-1.5">Matches</span>
-                <span className="font-bold text-white text-lg">{selectedPlayer.summary.totalMatches}</span>
-                {selectedPlayer.summary.freeMatches > 0 && (
-                  <span className="text-[10px] text-emerald-400 block mt-1">({selectedPlayer.summary.freeMatches} free)</span>
-                )}
-              </div>
+            )}
+            <div className="flex justify-between items-center pt-1 border-t border-white/5">
+              <span className="text-slate-400">Matches</span>
+              <span className="font-bold text-white">{selectedPlayer.summary.totalMatches}{selectedPlayer.summary.freeMatches > 0 ? ` (${selectedPlayer.summary.freeMatches} free)` : ''}</span>
             </div>
           </div>
         </div>
 
-        {/* Pending Payments Section - Vibrant warning style */}
+        {/* Payment Summary - desktop: Payment Dashboard style (4 stat cards) */}
+        <div className="hidden sm:grid grid-cols-4 gap-3">
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+              <CreditCard className="w-4 h-4" /> Paid (net)
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-emerald-400">₹{netPaid.toLocaleString('en-IN')}</div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+              <Clock className="w-4 h-4" /> Due
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-yellow-400">₹{selectedPlayer.summary.totalDue.toLocaleString('en-IN')}</div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+              <IndianRupee className="w-4 h-4" /> Refunded
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-blue-400">₹{(selectedPlayer.summary.totalSettled || 0).toLocaleString('en-IN')}</div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+              <Calendar className="w-4 h-4" /> Matches
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">{selectedPlayer.summary.totalMatches}{selectedPlayer.summary.freeMatches > 0 ? ` (${selectedPlayer.summary.freeMatches} free)` : ''}</div>
+          </div>
+        </div>
+
+        {/* Pending Payments - mobile compact; desktop larger */}
         {selectedPlayer.dueMatches.length > 0 && (
-          <div className="relative overflow-hidden bg-gradient-to-br from-rose-900/30 via-red-900/20 to-orange-900/30 border border-rose-500/40 rounded-xl p-4 shadow-lg shadow-rose-500/10">
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-orange-500/5"></div>
-            <div className="relative">
-              <h4 className="text-sm font-bold text-rose-300 mb-3 flex items-center gap-2">
-                <div className="p-1 bg-rose-500/20 rounded-lg animate-pulse">
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
-                </div>
-                Pending Payments ({selectedPlayer.dueMatches.length})
-              </h4>
-              <div className="space-y-2">
-                {selectedPlayer.dueMatches.map((due) => (
-                  <div key={due.matchId} className="flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-white/5 hover:border-rose-500/30 transition-colors">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-white">vs {due.opponent}</p>
-                    <p className="text-xs text-slate-400">{formatDate(due.matchDate)}</p>
+          <div className="rounded-xl border border-amber-500/25 bg-slate-800/50 p-3 sm:p-4 shadow-inner">
+            <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-400/90 mb-2.5 sm:mb-3 flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Pending Payments ({selectedPlayer.dueMatches.length})
+            </h4>
+            <div className="space-y-1.5 sm:space-y-2">
+              {selectedPlayer.dueMatches.map((due) => (
+                <div key={due.matchId} className="flex items-center justify-between p-2 sm:p-3 bg-slate-800/50 rounded-lg border border-white/5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-white truncate">vs {due.opponent}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-400">{formatDate(due.matchDate)}</p>
                   </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-bold text-rose-400">₹{due.dueAmount}</span>
-                      <button
-                        onClick={() => handleSendReminder(due.matchId, due.opponent, due.dueAmount)}
-                        disabled={sendingReminder === due.matchId}
-                        className="p-1.5 bg-amber-500/30 hover:bg-amber-500/40 rounded-lg text-amber-300 transition-colors"
-                        title="Send Reminder"
-                      >
-                        {sendingReminder === due.matchId ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Bell className="w-4 h-4" />
-                        )}
-                      </button>
-                      {onNavigateToMatch && (
-                        <button
-                          onClick={() => onNavigateToMatch(due.matchId)}
-                          className="p-1.5 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-300 hover:text-white transition-colors"
-                          title="View Match"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-bold text-amber-400">₹{due.dueAmount}</span>
+                    <button
+                      onClick={() => handleSendReminder(due.matchId, due.opponent, due.dueAmount)}
+                      disabled={sendingReminder === due.matchId}
+                      className="p-1.5 sm:p-2 bg-amber-500/20 rounded-lg text-amber-400 transition-colors"
+                      title="Send Reminder"
+                    >
+                      {sendingReminder === due.matchId ? (
+                        <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                      ) : (
+                        <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       )}
-                    </div>
+                    </button>
+                    {onNavigateToMatch && (
+                      <button
+                        onClick={() => onNavigateToMatch(due.matchId)}
+                        className="p-1.5 sm:p-2 bg-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        title="View Match"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Match History */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2">
-            <div className="p-1 bg-slate-700/50 rounded">
-              <Calendar className="w-4 h-4 text-slate-400" />
-            </div>
+        {/* Match History - mobile compact; desktop larger cards */}
+        <div className="space-y-3 sm:space-y-4">
+          <h4 className="text-xs sm:text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
             Match History
           </h4>
           {selectedPlayer.matchHistory.map((match) => (
-            <div key={match.paymentId} className="relative bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-cyan-900/40 border border-emerald-500/40 rounded-xl p-4 hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/10">
-              {/* Emerald gradient left border with glow and rounded edges */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/50 rounded-tl-xl rounded-bl-xl"></div>
-              <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
-              {/* Additional glow effect */}
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
-              {/* Match Header */}
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h5 className="text-base font-semibold text-white">vs {match.opponent}</h5>
-                    {match.isFreePlayer && (
-                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
-                        🎁 FREE
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(match.matchDate)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {match.ground}
-                    </span>
-                  </div>
-                </div>
+            <div key={match.paymentId} className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
+              {/* Match Header - same as Match tab; larger on desktop */}
+              <div className="p-3 sm:p-4">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(match.paymentStatus)}`}>
-                    {match.paymentStatus.charAt(0).toUpperCase() + match.paymentStatus.slice(1)}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 flex-shrink-0" />
+                      <span className="font-medium text-white text-sm sm:text-base truncate">vs {match.opponent}</span>
+                      {match.isFreePlayer && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-medium bg-emerald-500/20 text-emerald-400">free</span>
+                      )}
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-medium ${getStatusColor(match.paymentStatus)}`}>
+                        {match.paymentStatus}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] sm:text-xs text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {formatDate(match.matchDate)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {match.ground}
+                      </span>
+                    </div>
+                  </div>
                   {onNavigateToMatch && (
                     <button
                       onClick={() => onNavigateToMatch(match.matchId)}
-                      className="p-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                      className="p-1.5 sm:p-2 bg-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-colors flex-shrink-0"
                       title="View Match"
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   )}
                 </div>
-              </div>
-
-              {/* Payment Summary - Colorful inline stats */}
-              {!match.isFreePlayer && (
-                <div className="flex flex-wrap items-center gap-4 mb-3 py-2.5 px-4 bg-gradient-to-r from-emerald-800/50 to-teal-800/40 rounded-lg text-sm border border-emerald-600/40 shadow-inner">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-emerald-300 text-xs font-medium">Expected</span>
-                    <span className="font-bold text-white">₹{match.effectiveAmount}</span>
+                {/* Summary row - same colour proportion as Match tab; larger on desktop */}
+                {!match.isFreePlayer && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[10px] sm:text-xs">
+                    <span className="text-emerald-400">₹{(match.settledAmount || 0) > 0 ? match.amountPaid - (match.settledAmount || 0) : match.amountPaid} paid</span>
+                    {match.dueAmount > 0 ? (
+                      <span className="text-amber-400">₹{match.dueAmount} due</span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                    {(match.settledAmount || 0) > 0 && (
+                      <span className="text-blue-400">−₹{match.settledAmount} refunded</span>
+                    )}
+                    {match.dueAmount === 0 && (match.settledAmount || 0) === 0 && (
+                      <span className="text-slate-400">₹{match.effectiveAmount} expected</span>
+                    )}
                   </div>
-                  <div className="w-px h-4 bg-emerald-600/40"></div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-emerald-300 text-xs font-medium">Paid</span>
-                    <span className="font-bold text-emerald-400">₹{(match.settledAmount || 0) > 0 ? match.amountPaid - (match.settledAmount || 0) : match.amountPaid}</span>
-                  </div>
-                  {(match.settledAmount || 0) > 0 && (
-                    <>
-                      <div className="w-px h-4 bg-emerald-600/40"></div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-emerald-300 text-xs font-medium">Refunded</span>
-                        <span className="font-bold text-cyan-400">₹{match.settledAmount}</span>
-                      </div>
-                    </>
-                  )}
-                  {match.dueAmount > 0 && (
-                    <>
-                      <div className="w-px h-4 bg-emerald-600/40"></div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-emerald-300 text-xs font-medium">Due</span>
-                        <span className="font-bold text-red-400">₹{match.dueAmount}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+                )}
 
-              {/* Transactions - Payment Timeline with vibrant styling */}
-              {match.transactions.length > 0 && (
-                <div className="space-y-1.5 mt-2">
-                  <p className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wider mb-2">Transaction History</p>
-                  {match.transactions.map((txn, idx) => {
-                    // Determine display based on transaction type and notes
-                    const isSettlement = txn.type === 'settlement' || (txn.notes && txn.notes.includes('SETTLEMENT'));
-                    const isPayment = txn.type === 'payment' || (txn.isValid && !isSettlement);
-                    
-                    // Show all valid payments and settlements
-                    if (!isPayment && !isSettlement) return null;
-                    
-                    return (
+                {/* Transactions - same panel style as Match tab expanded */}
+                {match.transactions.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Transaction History</p>
+                    {match.transactions.map((txn, idx) => {
+                      const isSettlement = txn.type === 'settlement' || (txn.notes && txn.notes.includes('SETTLEMENT'));
+                      const isPayment = txn.type === 'payment' || (txn.isValid && !isSettlement);
+                      if (!isPayment && !isSettlement) return null;
+                      return (
                       <div key={idx} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all ${
                         isSettlement 
                           ? 'bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-500/40' 
@@ -416,16 +385,17 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
                         </span>
                       </div>
                     );
-                  })}
-                </div>
-              )}
+                    })}
+                  </div>
+                )}
 
-              {/* Free Player Message */}
-              {match.isFreePlayer && match.transactions.length === 0 && (
-                <p className="text-xs text-emerald-400 text-center py-2">
-                  No payment required for this match
-                </p>
-              )}
+                {/* Free Player Message */}
+                {match.isFreePlayer && match.transactions.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-2 mt-2">
+                    No payment required for this match
+                  </p>
+                )}
+              </div>
             </div>
           ))}
 
@@ -458,105 +428,86 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
 
   // Render Player List View
   const renderListView = () => (
-    <div className="space-y-4">
-      {/* Search */}
+    <div className="space-y-4 sm:space-y-5">
+      {/* Search - larger on desktop */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search players by name..."
-          className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-white/10 rounded-xl text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
       </div>
 
       {/* Players List */}
       {loadingList ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+        <div className="flex items-center justify-center py-12 sm:py-16">
+          <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400 animate-spin" />
         </div>
       ) : players.length === 0 ? (
-        <div className="text-center py-12">
-          <Users className="w-12 h-12 text-slate-500 mx-auto mb-3 opacity-50" />
-          <p className="text-slate-400">No players with payment history found</p>
+        <div className="text-center py-12 sm:py-16">
+          <Users className="w-12 h-12 sm:w-14 sm:h-14 text-slate-500 mx-auto mb-3 opacity-50" />
+          <p className="text-slate-400 text-sm sm:text-base">No players with payment history found</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 sm:space-y-3">
           {players.map((player) => (
             <div
               key={player.playerId}
               onClick={() => fetchPlayerDetail(player.playerId)}
-              className="relative bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-cyan-900/40 border border-emerald-500/40 rounded-xl overflow-hidden hover:border-emerald-400 transition-all shadow-lg shadow-emerald-500/10"
+              className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden cursor-pointer active:bg-slate-700/30 transition-all duration-200 hover:border-emerald-500/40 hover:shadow-[0_0_0_1px_rgba(16,185,129,0.15)] hover:bg-slate-800/70"
             >
-              {/* Emerald gradient left border with glow and rounded edges */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-teal-400 to-cyan-400 shadow-lg shadow-emerald-400/50 rounded-tl-xl rounded-bl-xl"></div>
-              <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-emerald-400/30 to-transparent rounded-tl-xl rounded-bl-xl"></div>
-              {/* Additional glow effect */}
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-emerald-500/20 to-transparent blur-sm rounded-tl-xl rounded-bl-xl"></div>
-              
-              {/* Player Header - Clickable */}
-              <div className="p-4 cursor-pointer hover:bg-slate-700/20 transition-colors">
-                <div className="flex items-center gap-3">
-                  {/* Expand Icon */}
-                  <div className="p-1.5 rounded-lg bg-emerald-800/50 text-emerald-300">
-                    <ChevronRight className="w-4 h-4" />
+              {/* Player Header - compact on mobile; larger on desktop */}
+              <div className="p-3 sm:p-4">
+                <div className="flex items-center gap-2">
+                  <div className="text-slate-400 flex-shrink-0">
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-
-                  {/* Player Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Users className="w-4 h-4 text-emerald-400" />
-                      <span className="font-bold text-white truncate">{player.playerName}</span>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 flex-shrink-0" />
+                      <span className="font-medium text-white text-sm sm:text-base truncate">
+                        {player.playerName}
+                      </span>
                       {player.totalDue > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-gradient-to-r from-rose-500/30 to-red-500/30 text-rose-300 border-rose-500/30">
-                          Due
+                        <span className="px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-medium bg-amber-500/20 text-amber-400">
+                          due
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                    <div className="flex items-center gap-2 text-[10px] sm:text-xs text-slate-400">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {player.totalMatches} matches
+                        <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {player.totalMatches} matches
                       </span>
                       {player.pendingMatches > 0 && (
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {player.pendingMatches} pending
+                          <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {player.pendingMatches} pending
                         </span>
                       )}
                       {player.freeMatches > 0 && (
                         <span className="flex items-center gap-1">
-                          <Gift className="w-3 h-3" /> {player.freeMatches} free
+                          <Gift className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {player.freeMatches} free
                         </span>
                       )}
                     </div>
                   </div>
-
-                  {/* Payment Summary - Desktop */}
-                  <div className="hidden sm:flex items-center gap-5 text-sm">
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-emerald-400">₹{player.totalPaid}</div>
-                      <div className="text-[10px] text-emerald-300 uppercase tracking-wide">paid</div>
-                    </div>
-                    {player.totalDue > 0 && (
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-amber-400">₹{player.totalDue}</div>
-                        <div className="text-[10px] text-emerald-300 uppercase tracking-wide">due</div>
-                      </div>
-                    )}
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-white">{player.totalMatches}</div>
-                      <div className="text-[10px] text-emerald-300 uppercase tracking-wide">matches</div>
-                    </div>
-                  </div>
                 </div>
-
-                {/* Mobile Payment Summary */}
-                <div className="sm:hidden flex items-center justify-between mt-3 pt-3 border-t border-slate-700/50 text-xs">
-                  <span className="font-semibold text-emerald-400">₹{player.totalPaid} paid</span>
-                  {player.totalDue > 0 && (
-                    <span className="font-semibold text-amber-400">₹{player.totalDue} due</span>
-                  )}
-                  <span className="text-slate-400">{player.totalMatches} matches</span>
+                {/* Summary row: paid + due grouped; matches on the right */}
+                <div className="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-white/5 text-[10px] sm:text-xs">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                    <span className="text-emerald-400 font-medium tabular-nums">₹{player.totalPaid} paid</span>
+                    <span className="text-slate-500/80" aria-hidden>·</span>
+                    {player.totalDue > 0 ? (
+                      <span className="text-amber-400 font-medium tabular-nums">₹{player.totalDue} due</span>
+                    ) : (
+                      <span className="text-slate-500">— due</span>
+                    )}
+                  </div>
+                  <span className="text-slate-400 flex-shrink-0 tabular-nums">
+                    {player.totalMatches} matches
+                  </span>
                 </div>
               </div>
             </div>
@@ -567,11 +518,11 @@ const PlayerPaymentHistory: React.FC<PlayerPaymentHistoryProps> = ({
   );
 
   return (
-    <div className="bg-slate-700/30 backdrop-blur-xl border border-slate-600/30 rounded-2xl p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-emerald-400" />
+    <div className="bg-slate-700/30 backdrop-blur-xl border border-slate-600/30 rounded-2xl p-4 sm:p-6 sm:min-w-0">
+      {/* Header - larger on desktop */}
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+          <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
           Player Payment History
         </h2>
         {selectedPlayer && (

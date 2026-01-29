@@ -294,27 +294,47 @@ const MobileHistoryTab: React.FC = () => {
 
                       {/* Expanded Content */}
                       {isExpanded && payment && payment.squadMembers && (
-                        <div className="border-t border-white/10 bg-slate-900/30 p-3 space-y-3">
-                          {/* Payment Summary */}
+                        <div className="border-t border-white/10 bg-slate-900/30 p-3 space-y-4">
+                          {/* Payment Summary - distinct block */}
                           {(() => {
                             const actualCollected = getActualCollected(payment);
                             const totalSettled = payment.squadMembers.reduce((s, m) => s + (m.settledAmount || 0), 0);
                             return (
-                              <div className="rounded-lg border border-white/10 bg-slate-800/50 p-2">
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Summary</p>
-                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-                                  <span><span className="text-slate-400">Total</span> <span className="font-semibold text-white">{formatCurrency(payment.totalAmount)}</span></span>
-                                  <span><span className="text-emerald-400">Collected</span> <span className="font-semibold text-emerald-400">{formatCurrency(actualCollected)}</span></span>
-                                  <span><span className="text-blue-400">Settled</span> <span className="font-semibold text-blue-400">{formatCurrency(totalSettled)}</span></span>
-                                  <span><span className="text-amber-400">Pending</span> <span className="font-semibold text-amber-400">{formatCurrency(payment.totalPending)}</span></span>
-                                  {(payment.totalOwed || 0) > 0 && (
-                                    <span><span className="text-red-400">Refunds due</span> <span className="font-semibold text-red-400">{formatCurrency(payment.totalOwed ?? 0)}</span></span>
+                              <div className="rounded-xl border border-emerald-500/25 bg-gradient-to-br from-slate-800/80 to-emerald-950/30 p-3 shadow-inner">
+                                <div className="flex items-center gap-2 mb-2.5">
+                                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                    <IndianRupee className="w-3.5 h-3.5 text-emerald-400" />
+                                  </div>
+                                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-400/90">Payment Summary</p>
+                                </div>
+                                <div className="space-y-2 text-xs">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-slate-400">Total</span>
+                                    <span className="font-bold text-white">{formatCurrency(payment.totalAmount)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-emerald-400">Collected</span>
+                                    <span className="font-bold text-emerald-400">{formatCurrency(actualCollected)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-blue-400">Settled</span>
+                                    <span className="font-bold text-blue-400">{formatCurrency(totalSettled)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-amber-400">Pending</span>
+                                    <span className="font-bold text-amber-400">{formatCurrency(payment.totalPending)}</span>
+                                  </div>
+                                  {(payment.totalOwed ?? 0) > 0 && (
+                                    <div className="flex justify-between items-center pt-1 border-t border-white/5">
+                                      <span className="text-red-400">Refunds due</span>
+                                      <span className="font-bold text-red-400">{formatCurrency(payment.totalOwed ?? 0)}</span>
+                                    </div>
                                   )}
                                 </div>
                               </div>
                             );
                           })()}
-                          <h4 className="text-xs font-medium text-slate-300 mb-2">Squad Members</h4>
+                          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Squad Members</h4>
                           <div className="space-y-1.5">
                             {payment.squadMembers.map((member: PaymentMember) => {
                               const effectiveAmount = member.adjustedAmount !== null
