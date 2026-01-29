@@ -37,14 +37,36 @@ const PORT = process.env.PORT || 5000;
 // Connect to database
 connectDB();
 
+// Redact sensitive query params (e.g. JWT) from URL for logging
+function urlForLog(url) {
+  if (!url || typeof url !== 'string') return url;
+  try {
+    const i = url.indexOf('?');
+    if (i === -1) return url;
+    const path = url.slice(0, i);
+    const search = url.slice(i + 1);
+    const params = new URLSearchParams(search);
+    const redactKeys = ['token', 'authorization', 'key', 'api_key', 'apikey'];
+    redactKeys.forEach(k => {
+      if (params.has(k)) params.set(k, '***');
+    });
+    const safe = params.toString();
+    return safe ? `${path}?${safe}` : path;
+  } catch {
+    return url.replace(/token=[^&]+/gi, 'token=***');
+  }
+}
+
+morgan.token('url', (req) => urlForLog(req.originalUrl || req.url));
+
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 
-// Request logging for debugging
+// Request logging (URL redacted: no tokens or API keys in logs)
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${urlForLog(req.originalUrl || req.url)}`);
   next();
 });
 
@@ -96,7 +118,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-  console.log(`404 Not Found: ${req.method} ${req.url}`);
+  console.log(`404 Not Found: ${req.method} ${urlForLog(req.originalUrl || req.url)}`);
   res.status(404).json({
     error: 'Route not found'
   });
