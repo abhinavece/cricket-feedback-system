@@ -54,11 +54,13 @@ interface PaymentSummary {
   _id: string;
   totalAmount: number;
   totalCollected: number;
+  actualCollected?: number; // totalCollected - totalSettled (from API)
   totalPending: number;
   totalOwed?: number;
   status: string;
   membersCount: number;
   paidCount: number;
+  squadMembers?: SquadMember[];
 }
 
 interface MatchWithPayment extends Match {
@@ -70,6 +72,7 @@ interface DetailPayment {
   matchId: string;
   totalAmount: number;
   totalCollected: number;
+  actualCollected?: number;
   totalPending: number;
   totalOwed?: number;
   status: string;
@@ -523,8 +526,16 @@ const MobilePaymentsTab: React.FC = () => {
     }
   };
 
+  // Actual collected = total paid minus settled. Prefer API actualCollected when present.
+  const getActualCollected = (p: PaymentSummary | DetailPayment | null | undefined): number => {
+    if (!p) return 0;
+    if (p.actualCollected !== undefined && p.actualCollected !== null) return p.actualCollected;
+    const totalSettled = (p.squadMembers || []).reduce((sum: number, m: SquadMember) => sum + (m.settledAmount || 0), 0);
+    return (p.totalCollected || 0) - totalSettled;
+  };
+
   // Calculate totals from matches with payments
-  const totalCollected = matches.reduce((sum: number, m: MatchWithPayment) => sum + (m.payment?.totalCollected || 0), 0);
+  const totalCollected = matches.reduce((sum: number, m: MatchWithPayment) => sum + getActualCollected(m.payment), 0);
   const totalPending = matches.reduce((sum: number, m: MatchWithPayment) => sum + (m.payment?.totalPending || 0), 0);
   const totalOwed = matches.reduce((sum: number, m: MatchWithPayment) => sum + (m.payment?.totalOwed || 0), 0);
   const matchesWithPayments = matches.filter(m => m.payment);
@@ -565,59 +576,57 @@ const MobilePaymentsTab: React.FC = () => {
         </button>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
-          <p className="text-xs text-emerald-400 mb-1">Collected</p>
-          <p className="text-xl font-bold text-emerald-400">{formatCurrency(totalCollected)}</p>
-        </div>
-        <div 
-          className="bg-amber-500/10 rounded-xl p-3 border border-amber-500/20 relative cursor-pointer"
-          onClick={() => setShowPendingTooltip(!showPendingTooltip)}
-        >
-          <p className="text-xs text-amber-400 mb-1">Pending <span className="opacity-60">(tap)</span></p>
-          <p className="text-xl font-bold text-amber-400">{formatCurrency(totalPending)}</p>
-          
-          {/* Pending Tooltip */}
-          {showPendingTooltip && totalPending > 0 && (
-            <div className="absolute top-full right-0 mt-2 z-50 bg-slate-900 border border-white/20 rounded-xl p-3 shadow-xl min-w-[200px] max-h-[250px] overflow-auto">
-              <div className="text-xs font-semibold text-white mb-2">Pending by Match</div>
-              <div className="space-y-2">
-                {matches
-                  .filter((m: MatchWithPayment) => m.payment && m.payment.totalPending > 0)
-                  .map((match: MatchWithPayment) => (
-                    <div 
-                      key={match._id} 
-                      className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedMatch(match);
-                        setShowPendingTooltip(false);
-                      }}
-                    >
-                      <div className="text-xs text-white">{match.opponent || 'TBD'}</div>
-                      <div className="text-amber-400 font-semibold text-xs">{formatCurrency(match.payment?.totalPending || 0)}</div>
-                    </div>
-                  ))}
-              </div>
+      {/* Overview Summary - one line per item, bold, distinct colours */}
+      <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-slate-800/60 to-emerald-950/20 p-2.5 mb-4 shadow-inner">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/80 mb-2">Overview</p>
+        <div className="space-y-1.5 text-sm">
+          <div className="flex justify-between items-center min-w-0 gap-2">
+            <span className="font-bold text-emerald-400 shrink-0">Collected</span>
+            <span className="font-bold text-emerald-400 truncate text-right">{formatCurrency(totalCollected)}</span>
+          </div>
+          <div
+            className="flex justify-between items-center min-w-0 gap-2 cursor-pointer active:opacity-80"
+            onClick={() => setShowPendingTooltip(!showPendingTooltip)}
+          >
+            <span className="font-bold text-amber-400 shrink-0">Pending{totalPending > 0 ? ' (tap)' : ''}</span>
+            <span className="font-bold text-amber-400 truncate text-right">{formatCurrency(totalPending)}</span>
+          </div>
+          {totalOwed > 0 && (
+            <div className="flex justify-between items-center min-w-0 gap-2">
+              <span className="font-bold text-red-400 shrink-0">Refunds due</span>
+              <span className="font-bold text-red-400 truncate text-right">{formatCurrency(totalOwed)}</span>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Overdue Payments Section */}
-      {totalOwed > 0 && (
-        <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/20 mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="w-4 h-4 text-red-400" />
-            <p className="text-xs text-red-400 font-medium">Refunds Due</p>
+          <div className="flex justify-between items-center min-w-0 gap-2">
+            <span className="font-bold text-blue-400 shrink-0">Matches with payments</span>
+            <span className="font-bold text-white truncate text-right">{matchesWithPayments.length}</span>
           </div>
-          <p className="text-lg font-bold text-red-400">{formatCurrency(totalOwed)}</p>
-          <p className="text-[10px] text-red-300 mt-1">
-            {matches.filter(m => m.payment?.totalOwed && m.payment.totalOwed > 0).length} match(es) have overpaid players
-          </p>
         </div>
-      )}
+        {/* Pending by match tooltip */}
+        {showPendingTooltip && totalPending > 0 && (
+          <div className="mt-2 pt-2 border-t border-white/5 z-10">
+            <p className="text-[10px] font-medium text-slate-400 mb-1.5">Pending by match</p>
+            <div className="space-y-1 max-h-[140px] overflow-auto">
+              {matches
+                .filter((m: MatchWithPayment) => m.payment && m.payment.totalPending > 0)
+                .map((match: MatchWithPayment) => (
+                  <div
+                    key={match._id}
+                    className="flex justify-between py-1 px-2 rounded bg-slate-800/50 text-[11px] active:bg-slate-700/50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedMatch(match);
+                      setShowPendingTooltip(false);
+                    }}
+                  >
+                    <span className="text-white truncate">{match.opponent || 'TBD'}</span>
+                    <span className="text-amber-400 font-semibold shrink-0">{formatCurrency(match.payment?.totalPending || 0)}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Matches with Payments */}
       {matchesWithPayments.length > 0 && (
@@ -649,11 +658,11 @@ const MobilePaymentsTab: React.FC = () => {
                       <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-emerald-500 rounded-full"
-                          style={{ width: `${(match.payment?.totalAmount || 0) > 0 ? ((match.payment?.totalCollected || 0) / (match.payment?.totalAmount || 1)) * 100 : 0}%` }}
+                          style={{ width: `${(match.payment?.totalAmount || 0) > 0 ? (getActualCollected(match.payment) / (match.payment?.totalAmount || 1)) * 100 : 0}%` }}
                         />
                       </div>
                       <div className="flex justify-between mt-1 text-xs">
-                        <span className="text-emerald-400">{formatCurrency(match.payment?.totalCollected)}</span>
+                        <span className="text-emerald-400">{formatCurrency(getActualCollected(match.payment))}</span>
                         <span className="text-slate-500">{formatCurrency(match.payment?.totalAmount)}</span>
                       </div>
                     </div>
@@ -749,23 +758,15 @@ const MobilePaymentsTab: React.FC = () => {
               </div>
             ) : detailPayment && (
               <div className="p-4 space-y-4">
-                {/* Payment Summary */}
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-                    <p className="text-[10px] text-slate-400">Total</p>
-                    <p className="text-sm font-bold text-white">{formatCurrency(detailPayment.totalAmount)}</p>
-                  </div>
-                  <div className="bg-emerald-500/10 rounded-lg p-2 text-center">
-                    <p className="text-[10px] text-emerald-400">Collected</p>
-                    <p className="text-sm font-bold text-emerald-400">{formatCurrency(detailPayment.totalCollected)}</p>
-                  </div>
-                  <div className="bg-amber-500/10 rounded-lg p-2 text-center">
-                    <p className="text-[10px] text-amber-400">Pending</p>
-                    <p className="text-sm font-bold text-amber-400">{formatCurrency(detailPayment.totalPending)}</p>
-                  </div>
-                  <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-                    <p className="text-[10px] text-slate-400">Paid</p>
-                    <p className="text-sm font-bold text-white">{detailPayment.paidCount}/{detailPayment.membersCount}</p>
+                {/* Payment Summary - compact block with label */}
+                <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-slate-800/60 to-emerald-950/20 p-2.5 shadow-inner">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/80 mb-2">Summary</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+                    <span><span className="text-slate-400">Total</span> <span className="font-semibold text-white">{formatCurrency(detailPayment.totalAmount)}</span></span>
+                    <span><span className="text-emerald-400">Collected</span> <span className="font-semibold text-emerald-400">{formatCurrency(getActualCollected(detailPayment))}</span></span>
+                    <span><span className="text-amber-400">Pending</span> <span className="font-semibold text-amber-400">{formatCurrency(detailPayment.totalPending)}</span></span>
+                    <span><span className={(detailPayment.totalOwed || 0) > 0 ? 'text-red-400' : 'text-slate-400'}>Refund</span> <span className={`font-semibold ${(detailPayment.totalOwed || 0) > 0 ? 'text-red-400' : 'text-slate-400'}`}>{formatCurrency(detailPayment.totalOwed || 0)}</span></span>
+                    <span><span className="text-slate-400">Paid</span> <span className="font-semibold text-white">{detailPayment.paidCount}/{detailPayment.membersCount}</span></span>
                   </div>
                 </div>
 
@@ -904,13 +905,13 @@ const MobilePaymentsTab: React.FC = () => {
                   <div className="flex justify-between text-xs mb-2">
                     <span className="text-slate-400">Collection Progress</span>
                     <span className="text-emerald-400">
-                      {detailPayment.totalAmount > 0 ? Math.round((detailPayment.totalCollected / detailPayment.totalAmount) * 100) : 0}%
+                      {detailPayment.totalAmount > 0 ? Math.round((getActualCollected(detailPayment) / detailPayment.totalAmount) * 100) : 0}%
                     </span>
                   </div>
                   <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
-                      style={{ width: `${detailPayment.totalAmount > 0 ? (detailPayment.totalCollected / detailPayment.totalAmount) * 100 : 0}%` }}
+                      style={{ width: `${detailPayment.totalAmount > 0 ? (getActualCollected(detailPayment) / detailPayment.totalAmount) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
