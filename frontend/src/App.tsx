@@ -16,6 +16,7 @@ const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
 const MatchFeedbackPage = lazy(() => import('./pages/MatchFeedbackPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -158,7 +159,7 @@ function AppContent() {
                     onComplete={() => {
                       // Ensure we land on the feedback tab, not the last visited tab
                       localStorage.setItem('activeTab', 'feedback');
-                      navigate('/');
+                      navigate('/app');
                       handleReset();
                     }}
                     message="Let's check out other feedback from the team!"
@@ -219,6 +220,9 @@ function App() {
         <AuthProvider>
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
+              {/* Homepage - public landing page */}
+              <Route path="/" element={<HomePage />} />
+
               {/* Public share routes - no auth required */}
               <Route path="/share/match/:token" element={<PublicMatchView />} />
               <Route path="/share/payment/:token" element={<PublicPaymentView />} />
@@ -231,8 +235,8 @@ function App() {
               {/* Player profile - requires auth */}
               <Route path="/player/:playerId" element={<PlayerProfilePage />} />
 
-              {/* Main app route */}
-              <Route path="/*" element={<AppContent />} />
+              {/* Main app route - authenticated area */}
+              <Route path="/app/*" element={<AppContent />} />
             </Routes>
           </Suspense>
         </AuthProvider>

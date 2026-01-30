@@ -346,7 +346,7 @@ const MatchFeedbackPage: React.FC = () => {
                 onComplete={() => {
                   // Ensure we land on the feedback tab, not the last visited tab
                   localStorage.setItem('activeTab', 'feedback');
-                  navigate('/');
+                  navigate('/app');
                 }}
                 message="Let's check out other feedback from the team!"
               />

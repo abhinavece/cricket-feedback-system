@@ -72,7 +72,7 @@ const PlayerProfilePage: React.FC = () => {
 
   const handleStartConversation = () => {
     // Navigate to WhatsApp tab with this player selected
-    navigate('/', { state: { openChatWith: playerId } });
+    navigate('/app', { state: { openChatWith: playerId } });
   };
 
   if (loading) {
