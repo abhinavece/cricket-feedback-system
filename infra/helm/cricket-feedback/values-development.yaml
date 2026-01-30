@@ -4,7 +4,7 @@
 # Development image tags
 backend:
   image:
-    tag: "2026.01.29.38"
+    tag: "2026.01.30.41"
   replicaCount: 1
   resources:
     limits:
