@@ -122,11 +122,24 @@ function DashboardLayout() {
   };
 
   const handleLogout = () => {
-    logout();
-    // Redirect to homepage on logout
     const domainType = getDomainType();
+    
+    // For app domain, clear storage and redirect to homepage immediately
+    // We do this before calling logout() to avoid React re-render race condition
     if (domainType === 'app') {
+      // Clear storage directly
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      // Full page redirect to homepage
       window.location.href = 'https://cricsmart.in';
+      return;
+    }
+    
+    // For other domains (localhost, homepage), use normal logout flow
+    logout();
+    if (domainType === 'localhost') {
+      // Redirect to homepage in localhost
+      window.location.href = window.location.origin;
     } else {
       setCurrentView('form');
       navigate('/');

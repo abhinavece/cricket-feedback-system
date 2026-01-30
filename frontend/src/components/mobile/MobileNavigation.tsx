@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleAuth from '../GoogleAuth';
-import CricSmartLogo from '../CricSmartLogo';
 import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User, Info } from 'lucide-react';
 
 interface MobileNavigationProps {
@@ -21,7 +20,7 @@ interface MobileNavigationProps {
   onToggleDevice?: () => void;
 }
 
-const MobileNavigation: React.FC<MobileNavigationProps> = ({
+function MobileNavigation({
   currentView,
   onViewChange,
   user,
@@ -29,7 +28,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
   activeTab,
   onTabChange,
   onToggleDevice,
-}) => {
+}: MobileNavigationProps) {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -58,7 +57,20 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
             onClick={() => { onViewChange('form'); setIsMenuOpen(false); }}
             className="flex items-center"
           >
-            <CricSmartLogo size="xs" showText={true} showTagline={true} showAIBadge={true} />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <span className="text-white font-black text-sm">C</span>
+                </div>
+                <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-violet-500 rounded-full flex items-center justify-center border-2 border-slate-900">
+                  <span className="text-white text-[8px]">✦</span>
+                </div>
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="font-bold text-white text-sm">CricSmart</span>
+                <span className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">AI Cricket Platform</span>
+              </div>
+            </div>
           </button>
 
           <div className="flex items-center gap-2">
@@ -239,6 +251,6 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
       `}</style>
     </>
   );
-};
+}
 
 export default MobileNavigation;

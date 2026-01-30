@@ -62,13 +62,13 @@ const LoginPage: React.FC = () => {
             <p className="text-slate-400">AI-powered cricket team management</p>
           </div>
 
-          {/* Google Auth */}
+          {/* Google Auth - Use compact mode since LoginPage has its own branding */}
           <Suspense fallback={
             <div className="flex justify-center py-4">
               <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
           }>
-            <GoogleAuth onSuccess={handleLoginSuccess} />
+            <GoogleAuth onSuccess={handleLoginSuccess} compact={true} />
           </Suspense>
 
           {/* Terms */}
