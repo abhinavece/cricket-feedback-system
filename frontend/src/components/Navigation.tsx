@@ -71,8 +71,10 @@ const Navigation: React.FC<NavigationProps> = ({
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               aria-label="Go to home page"
             >
-              <div className="cricket-ball" style={{width: '26px', height: '26px'}}></div>
-              <h1 className="logo text-sm font-bold text-white tracking-tight">Mavericks XI</h1>
+              <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-black text-sm">C</span>
+              </div>
+              <h1 className="logo text-sm font-bold text-white tracking-tight">CricSmart</h1>
             </button>
             
             <button 
@@ -173,11 +175,13 @@ const Navigation: React.FC<NavigationProps> = ({
             <div className="flex items-center">
               <button 
                 onClick={() => handleViewChange('form')}
-                className="flex items-center hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
                 aria-label="Go to home page"
               >
-                <div className="cricket-ball" style={{width: '32px', height: '32px', marginRight: '10px'}}></div>
-                <h1 className="logo text-lg md:text-2xl">Mavericks XI</h1>
+                <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <span className="text-white font-black text-lg">C</span>
+                </div>
+                <h1 className="logo text-lg md:text-xl font-bold">CricSmart</h1>
               </button>
             </div>
             
@@ -319,7 +323,7 @@ const Navigation: React.FC<NavigationProps> = ({
       {/* Permission Denied Notification */}
       {showPermissionNotification && (
         <Notification 
-          message="This area is restricted to Mavericks Team members only. Please contact the Mavericks Team if you need admin access."
+          message="This area is restricted to authorized team members only. Please contact your team admin if you need access."
           onClose={() => setShowPermissionNotification(false)}
         />
       )}

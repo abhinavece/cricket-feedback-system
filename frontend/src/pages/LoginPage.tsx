@@ -55,11 +55,11 @@ const LoginPage: React.FC = () => {
         <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
-              <span className="text-3xl">🏏</span>
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+              <span className="text-white font-black text-3xl">C</span>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome to CricSmart</h1>
-            <p className="text-slate-400">Sign in to access your dashboard</p>
+            <p className="text-slate-400">AI-powered cricket team management</p>
           </div>
 
           {/* Google Auth */}

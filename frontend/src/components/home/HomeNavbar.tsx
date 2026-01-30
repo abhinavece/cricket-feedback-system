@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, LogIn, Compass, Info, Sparkles } from 'lucide-react';
+import { Menu, X, LogIn, Compass, Info, Sparkles, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface HomeNavbarProps {
@@ -46,6 +46,7 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
 
   const navLinks = [
     { label: 'Features', action: () => scrollToSection('features'), icon: <Sparkles className="w-4 h-4" /> },
+    { label: 'How It Works', action: () => scrollToSection('how-it-works'), icon: <Brain className="w-4 h-4" /> },
     { label: 'Grounds', action: () => scrollToSection('grounds'), icon: <Compass className="w-4 h-4" /> },
     { label: 'About', href: '/about', icon: <Info className="w-4 h-4" /> },
   ];
@@ -63,23 +64,33 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <span className="text-lg sm:text-xl">🏏</span>
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <div className="relative w-9 h-9 sm:w-10 sm:h-10">
+                {/* Logo background with gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl shadow-lg shadow-emerald-500/20" />
+                {/* Logo text */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white font-black text-lg sm:text-xl">C</span>
+                </div>
               </div>
-              <span className="text-lg sm:text-xl font-bold text-white group-hover:text-emerald-400 transition-colors">
-                Mavericks XI
-              </span>
+              <div className="flex flex-col">
+                <span className="text-lg sm:text-xl font-bold text-white group-hover:text-emerald-400 transition-colors leading-tight">
+                  CricSmart
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider hidden sm:block">
+                  AI Cricket Platform
+                </span>
+              </div>
             </Link>
 
             {/* Desktop navigation */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-6">
               {navLinks.map((link) =>
                 link.href ? (
                   <Link
                     key={link.label}
                     to={link.href}
-                    className="text-slate-300 hover:text-white transition-colors font-medium"
+                    className="text-slate-300 hover:text-white transition-colors font-medium text-sm"
                   >
                     {link.label}
                   </Link>
@@ -87,7 +98,7 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
                   <button
                     key={link.label}
                     onClick={link.action}
-                    className="text-slate-300 hover:text-white transition-colors font-medium"
+                    className="text-slate-300 hover:text-white transition-colors font-medium text-sm"
                   >
                     {link.label}
                   </button>
@@ -96,7 +107,7 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
 
               <button
                 onClick={onLogin}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25"
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25"
               >
                 <LogIn className="w-4 h-4" />
                 Login
@@ -135,7 +146,12 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
         >
           {/* Drawer header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <span className="text-lg font-bold text-white">Menu</span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-black">C</span>
+              </div>
+              <span className="font-bold text-white">CricSmart</span>
+            </div>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
               className="p-2 text-slate-400 hover:text-white transition-colors"
@@ -180,7 +196,7 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
                   onLogin();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-center gap-2 w-full p-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-300"
+                className="flex items-center justify-center gap-2 w-full p-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300"
               >
                 <LogIn className="w-5 h-5" />
                 Login

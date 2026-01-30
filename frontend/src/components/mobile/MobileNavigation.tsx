@@ -57,8 +57,10 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
             onClick={() => { onViewChange('form'); setIsMenuOpen(false); }}
             className="flex items-center gap-2"
           >
-            <div className="cricket-ball" style={{ width: '24px', height: '24px' }}></div>
-            <span className="font-bold text-white text-sm">Mavericks XI</span>
+            <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-black text-sm">C</span>
+            </div>
+            <span className="font-bold text-white text-sm">CricSmart</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -204,8 +206,10 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-6">
-              <div className="cricket-ball mx-auto mb-4" style={{ width: '48px', height: '48px' }}></div>
-              <h2 className="text-xl font-bold text-white mb-2">Welcome Back!</h2>
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+                <span className="text-white font-black text-2xl">C</span>
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2">Welcome to CricSmart</h2>
               <p className="text-sm text-slate-400">Sign in to access the dashboard</p>
             </div>
             <GoogleAuth onSuccess={handleAuthSuccess} />
