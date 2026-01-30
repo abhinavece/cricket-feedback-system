@@ -131,7 +131,7 @@ jobs:
           platforms: linux/amd64
           tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.tag }}
           build-args: |
-            REACT_APP_API_URL=https://mavericks11.duckdns.org/api
+            REACT_APP_API_URL=https://cricsmart.in/api
             REACT_APP_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
