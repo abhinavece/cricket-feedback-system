@@ -78,6 +78,8 @@ backend:
           key: whatsapp-verify-token
     - name: AI_SERVICE_ENABLED
       value: "true"
+    - name: FRONTEND_URL
+      value: "https://app.cricsmart.in"
   
   livenessProbe:
     httpGet:
@@ -181,7 +183,7 @@ frontend:
   
   env:
     - name: REACT_APP_API_URL
-      value: "https://mavericks11.duckdns.org/api"
+      value: "https://app.cricsmart.in/api"
     - name: REACT_APP_GOOGLE_CLIENT_ID
       valueFrom:
         secretKeyRef:
@@ -231,8 +233,14 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   
-  host: 129.153.86.8.sslip.io
+  # Primary domain (new)
+  host: app.cricsmart.in
+  # Legacy domain (keep for backward compatibility during migration)
   secondaryHost: mavericks11.duckdns.org
+  # Additional custom domains
+  additionalHosts:
+    - cricsmart.in
+    - www.cricsmart.in
   tls:
     enabled: true
     secretName: cricket-feedback-tls

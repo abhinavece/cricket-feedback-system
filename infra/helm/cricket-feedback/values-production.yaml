@@ -61,7 +61,14 @@ mongodb:
 
 # Production ingress with TLS
 ingress:
-  host: cricket.mavericksxi.com
+  # Primary domain (new)
+  host: app.cricsmart.in
+  # Legacy domain (keep for backward compatibility during migration)
+  secondaryHost: mavericks11.duckdns.org
+  # Additional custom domains
+  additionalHosts:
+    - cricsmart.in
+    - www.cricsmart.in
   tls:
     enabled: true
     secretName: cricket-feedback-tls

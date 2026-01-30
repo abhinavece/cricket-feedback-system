@@ -200,13 +200,13 @@ router.post('/generate', auth, async (req, res) => {
     
     if (existingLink) {
       // Return existing link - use origin only, strip any path
-      let baseUrl = process.env.FRONTEND_URL || 'https://mavericks11.duckdns.org';
+      let baseUrl = process.env.FRONTEND_URL || 'https://app.cricsmart.in';
       // Strip /api or any path from the URL to get just the origin
       try {
         const urlObj = new URL(baseUrl);
         baseUrl = urlObj.origin;
       } catch (e) {
-        baseUrl = 'https://mavericks11.duckdns.org';
+        baseUrl = 'https://app.cricsmart.in';
       }
       return res.json({
         success: true,
@@ -243,12 +243,12 @@ router.post('/generate', auth, async (req, res) => {
     await publicLink.save();
     
     // Use origin only, strip any path from FRONTEND_URL
-    let baseUrl = process.env.FRONTEND_URL || 'https://mavericks11.duckdns.org';
+    let baseUrl = process.env.FRONTEND_URL || 'https://app.cricsmart.in';
     try {
       const urlObj = new URL(baseUrl);
       baseUrl = urlObj.origin;
     } catch (e) {
-      baseUrl = 'https://mavericks11.duckdns.org';
+      baseUrl = 'https://app.cricsmart.in';
     }
     
     res.status(201).json({
@@ -313,12 +313,12 @@ router.get('/list/:resourceType/:resourceId', auth, async (req, res) => {
     }).select('token viewType expiresAt accessCount createdAt lastAccessedAt');
     
     // Use origin only, strip any path from FRONTEND_URL
-    let baseUrl = process.env.FRONTEND_URL || 'https://mavericks11.duckdns.org';
+    let baseUrl = process.env.FRONTEND_URL || 'https://app.cricsmart.in';
     try {
       const urlObj = new URL(baseUrl);
       baseUrl = urlObj.origin;
     } catch (e) {
-      baseUrl = 'https://mavericks11.duckdns.org';
+      baseUrl = 'https://app.cricsmart.in';
     }
     
     res.json({

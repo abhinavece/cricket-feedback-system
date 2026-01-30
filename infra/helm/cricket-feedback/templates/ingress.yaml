@@ -18,7 +18,7 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
   rules:
-  # Primary host: 129.153.86.8.sslip.io
+  # Primary host (sslip.io for direct IP access)
   - host: {{ .Values.ingress.host }}
     http:
       paths:
@@ -37,7 +37,7 @@ spec:
             port:
               number: 80
   {{- if .Values.ingress.secondaryHost }}
-  # Secondary host: mavericks11.duckdns.org
+  # Secondary host (duckdns legacy)
   - host: {{ .Values.ingress.secondaryHost }}
     http:
       paths:
@@ -56,12 +56,37 @@ spec:
             port:
               number: 80
   {{- end }}
+  {{- if .Values.ingress.additionalHosts }}
+  # Additional hosts (custom domains)
+  {{- range .Values.ingress.additionalHosts }}
+  - host: {{ . }}
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: cricket-feedback-backend-service
+            port:
+              number: 5001
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cricket-feedback-frontend-service
+            port:
+              number: 80
+  {{- end }}
+  {{- end }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
         - {{ .Values.ingress.host }}
         {{- if .Values.ingress.secondaryHost }}
         - {{ .Values.ingress.secondaryHost }}
+        {{- end }}
+        {{- range .Values.ingress.additionalHosts }}
+        - {{ . }}
         {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}

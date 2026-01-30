@@ -9,7 +9,8 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: 129.153.86.8.sslip.io
+  # Primary domain: app.cricsmart.in
+  - host: app.cricsmart.in
     http:
       paths:
       - backend:
@@ -26,7 +27,44 @@ spec:
               number: 80
         path: /
         pathType: Prefix
+  # Legacy domain (keep for backward compatibility)
   - host: mavericks11.duckdns.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: cricket-feedback-backend-service
+            port:
+              number: 5001
+        path: /api
+        pathType: Prefix
+      - backend:
+          service:
+            name: cricket-feedback-frontend-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  # Homepage domain: cricsmart.in (apex)
+  - host: cricsmart.in
+    http:
+      paths:
+      - backend:
+          service:
+            name: cricket-feedback-backend-service
+            port:
+              number: 5001
+        path: /api
+        pathType: Prefix
+      - backend:
+          service:
+            name: cricket-feedback-frontend-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  # Homepage domain: www.cricsmart.in
+  - host: www.cricsmart.in
     http:
       paths:
       - backend:
@@ -45,6 +83,8 @@ spec:
         pathType: Prefix
   tls:
   - hosts:
-    - 129.153.86.8.sslip.io
+    - app.cricsmart.in
     - mavericks11.duckdns.org
+    - cricsmart.in
+    - www.cricsmart.in
     secretName: cricket-feedback-tls

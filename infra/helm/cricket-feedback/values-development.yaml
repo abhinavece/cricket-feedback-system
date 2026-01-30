@@ -46,8 +46,14 @@ mongodb:
 
 # Development ingress
 ingress:
-  host: 129.153.86.8.sslip.io
+  # Primary domain (new)
+  host: app.cricsmart.in
+  # Legacy domain (keep for backward compatibility during migration)
   secondaryHost: mavericks11.duckdns.org
+  # Additional custom domains
+  additionalHosts:
+    - cricsmart.in
+    - www.cricsmart.in
   tls:
     enabled: true
     secretName: cricket-feedback-tls-dev
