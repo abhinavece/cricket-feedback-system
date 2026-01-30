@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getDomainType, getAppUrl } from '../utils/domain';
@@ -12,6 +12,7 @@ import {
   ContributionSection,
   TrustSection,
   FinalCTA,
+  LoginModal,
 } from '../components/home';
 import Footer from '../components/Footer';
 
@@ -19,6 +20,7 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const domainType = getDomainType();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Redirect authenticated users to the app
   useEffect(() => {
@@ -32,8 +34,15 @@ const HomePage: React.FC = () => {
     }
   }, [user, navigate, domainType]);
 
-  const handleGetStarted = () => {
-    // Redirect to app domain
+  // Show login modal instead of redirecting
+  const handleShowLogin = () => {
+    setShowLoginModal(true);
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false);
+    // After successful login, redirect to app
     if (domainType === 'homepage') {
       window.location.href = getAppUrl();
     } else {
@@ -49,13 +58,13 @@ const HomePage: React.FC = () => {
   };
 
   const handleAddGround = () => {
-    // Navigate to app to access the grounds feature (requires login)
-    handleGetStarted();
+    // Show login modal to access the grounds feature
+    handleShowLogin();
   };
 
   const handleUpdateGround = () => {
-    // Navigate to app to access the grounds feature (requires login)
-    handleGetStarted();
+    // Show login modal to access the grounds feature
+    handleShowLogin();
   };
 
   const handleMeetTeam = () => {
@@ -64,12 +73,12 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Navigation */}
-      <HomeNavbar onLogin={handleGetStarted} />
+      {/* Navigation - Login button shows modal */}
+      <HomeNavbar onLogin={handleShowLogin} />
 
-      {/* Hero Section */}
+      {/* Hero Section - Get Started shows modal */}
       <HeroSection
-        onGetStarted={handleGetStarted}
+        onGetStarted={handleShowLogin}
         onExploreGrounds={handleExploreGrounds}
       />
 
@@ -86,7 +95,7 @@ const HomePage: React.FC = () => {
 
       {/* Grounds Discovery - with id for scroll navigation */}
       <div id="grounds">
-        <GroundsPreview onExploreGrounds={handleGetStarted} />
+        <GroundsPreview onExploreGrounds={handleShowLogin} />
       </div>
 
       {/* Community Contribution */}
@@ -98,11 +107,18 @@ const HomePage: React.FC = () => {
       {/* Trust Section */}
       <TrustSection onMeetTeam={handleMeetTeam} />
 
-      {/* Final CTA */}
-      <FinalCTA onGetStarted={handleGetStarted} />
+      {/* Final CTA - Get Started shows modal */}
+      <FinalCTA onGetStarted={handleShowLogin} />
 
       {/* Footer */}
       <Footer />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={handleLoginSuccess}
+      />
     </div>
   );
 };

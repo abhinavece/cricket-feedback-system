@@ -1,12 +1,14 @@
 import React from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
+import { Brain, Sparkles, Shield } from 'lucide-react';
 
 interface GoogleAuthProps {
   onSuccess?: () => void;
+  compact?: boolean;
 }
 
-const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess }) => {
+const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess, compact = false }) => {
   const { login } = useAuth();
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
@@ -36,14 +38,66 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess }) => {
     console.log('Google Login Failed');
   };
 
+  if (compact) {
+    return (
+      <div className="w-full flex justify-center">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          theme="filled_blue"
+          text="continue_with"
+          shape="pill"
+          width="280"
+          logo_alignment="left"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center space-y-6 md:space-y-8 w-full max-w-sm mx-auto">
-      <div className="text-center">
-        <div className="cricket-ball mx-auto mb-6" style={{width: '48px', height: '48px'}}></div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Welcome to Mavericks XI</h2>
-        <p className="text-secondary text-sm md:text-base">Sign in with your Google account to access the dashboard</p>
+    <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+      {/* Logo & Title */}
+      <div className="text-center mb-8">
+        {/* AI-themed Logo */}
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl blur-xl opacity-40 animate-pulse" />
+          {/* Logo container */}
+          <div className="relative w-full h-full bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+            <span className="text-white font-black text-4xl">C</span>
+          </div>
+          {/* AI sparkle indicator */}
+          <div className="absolute -top-1 -right-1 w-6 h-6 bg-violet-500 rounded-full flex items-center justify-center shadow-lg">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
+        </div>
+
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+          Welcome to <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">CricSmart</span>
+        </h2>
+        <p className="text-slate-400 text-sm md:text-base">
+          AI-powered cricket team management
+        </p>
+      </div>
+
+      {/* Feature pills */}
+      <div className="flex flex-wrap justify-center gap-2 mb-6">
+        {[
+          { icon: <Brain className="w-3 h-3" />, text: 'AI Payments' },
+          { icon: <Sparkles className="w-3 h-3" />, text: 'Smart Squad' },
+          { icon: <Shield className="w-3 h-3" />, text: 'Secure' },
+        ].map((item) => (
+          <div
+            key={item.text}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/50 border border-slate-700/50 rounded-full text-xs text-slate-400"
+          >
+            <span className="text-emerald-400">{item.icon}</span>
+            {item.text}
+          </div>
+        ))}
       </div>
       
+      {/* Google Login Button */}
       <div className="w-full flex justify-center py-2">
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
@@ -51,13 +105,14 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess }) => {
           theme="filled_blue"
           text="continue_with"
           shape="pill"
-          width="100%"
+          width="280"
           logo_alignment="left"
         />
       </div>
       
-      <div className="text-center text-[10px] md:text-xs text-secondary opacity-60">
-        <p>By signing in, you agree to the Mavericks Team internal access policy.</p>
+      {/* Terms */}
+      <div className="text-center text-[10px] md:text-xs text-slate-500 mt-6">
+        <p>By signing in, you agree to our <a href="/privacy" className="text-emerald-400 hover:underline">Privacy Policy</a></p>
       </div>
     </div>
   );
