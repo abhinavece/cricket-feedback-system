@@ -56,12 +56,15 @@ export const isLocalhost = (): boolean => {
 };
 
 /**
- * Get the appropriate redirect URL for login
+ * Get the appropriate redirect URL for the app
+ * On app.cricsmart.in, dashboard is at root (no /app suffix)
+ * On localhost, we still use /app for development
  */
 export const getAppUrl = (): string => {
   if (isLocalhost()) {
     return window.location.origin + '/app';
   }
+  // App domain serves dashboard at root
   return 'https://app.cricsmart.in';
 };
 

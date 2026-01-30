@@ -10,8 +10,8 @@ const LoginPage: React.FC = () => {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
 
-  // Get the intended destination from state, or default to /app
-  const from = (location.state as { from?: string })?.from || '/app';
+  // Get the intended destination from state, or default to feedback
+  const from = (location.state as { from?: string })?.from || '/feedback';
 
   // Redirect if already authenticated
   useEffect(() => {

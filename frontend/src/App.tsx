@@ -1,10 +1,11 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { submitFeedback } from './services/api';
 import { isMobileDevice } from './hooks/useDevice';
-import { getDomainType, isHomepageDomain, isAppDomain, isLocalhost, getAppUrl } from './utils/domain';
+import { getDomainType, getAppUrl } from './utils/domain';
+import { DEFAULT_ROUTE, getLegacyTabIdFromPath, getPathFromTabId, type LegacyTabId } from './config/routes';
 import type { FeedbackForm as FeedbackFormData } from './types';
 import { LogIn } from 'lucide-react';
 import CountdownTimer from './components/CountdownTimer';
@@ -32,7 +33,6 @@ const IS_MOBILE_DEFAULT = getInitialDeviceMode();
 
 // Lazy load heavy components - device-specific bundles
 const FeedbackForm = lazy(() => import('./components/FeedbackForm'));
-const GoogleAuth = lazy(() => import('./components/GoogleAuth'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
 const MobileNavigation = lazy(() => import('./components/mobile/MobileNavigation'));
 const DesktopNavigation = lazy(() => import('./components/Navigation'));
@@ -67,40 +67,20 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 /**
- * DomainRedirect - handles domain-based redirects
+ * DashboardLayout - Provides navigation and common layout for all dashboard routes
  */
-const DomainRedirect: React.FC = () => {
-  const domainType = getDomainType();
-  
-  // On homepage domain, show homepage at /
-  if (domainType === 'homepage') {
-    return <HomePage />;
-  }
-  
-  // On app domain, redirect / to /app (which will check auth)
-  if (domainType === 'app') {
-    return <Navigate to="/app" replace />;
-  }
-  
-  // On localhost, show homepage for development
-  return <HomePage />;
-};
-
-/**
- * AppContent - Main authenticated app content
- */
-function AppContent() {
+function DashboardLayout() {
   const navigate = useNavigate();
-  const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds'>(() => {
-    const savedTab = localStorage.getItem('activeTab');
-    return (savedTab as any) || 'feedback';
-  });
+  const location = useLocation();
+  const [currentView, setCurrentView] = useState<'form' | 'admin'>('admin');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(IS_MOBILE_DEFAULT);
   const { user, isAuthenticated, logout } = useAuth();
+
+  // Get active tab from current path
+  const activeTab = getLegacyTabIdFromPath(location.pathname) as LegacyTabId;
 
   const toggleDeviceMode = () => {
     const newMode = !isMobile;
@@ -108,17 +88,18 @@ function AppContent() {
     localStorage.setItem('forceDeviceMode', newMode ? 'mobile' : 'desktop');
   };
 
-  // Always land on admin page when authenticated
+  // Auto-switch to admin view when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       setCurrentView('admin');
     }
   }, [isAuthenticated]);
 
-  // Persist active tab to localStorage
-  useEffect(() => {
-    localStorage.setItem('activeTab', activeTab);
-  }, [activeTab]);
+  // Handle tab change via URL navigation
+  const handleTabChange = (tab: LegacyTabId) => {
+    const path = getPathFromTabId(tab);
+    navigate(path);
+  };
 
   const handleSubmit = async (data: FeedbackFormData) => {
     setLoading(true);
@@ -148,6 +129,14 @@ function AppContent() {
       window.location.href = 'https://cricsmart.in';
     } else {
       setCurrentView('form');
+      navigate('/');
+    }
+  };
+
+  const handleViewChange = (view: 'form' | 'admin') => {
+    setCurrentView(view);
+    if (view === 'admin') {
+      navigate(DEFAULT_ROUTE);
     }
   };
 
@@ -157,21 +146,21 @@ function AppContent() {
         {isMobile ? (
           <MobileNavigation 
             currentView={currentView} 
-            onViewChange={setCurrentView} 
+            onViewChange={handleViewChange} 
             user={user}
             onLogout={handleLogout}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
             onToggleDevice={toggleDeviceMode}
           />
         ) : (
           <DesktopNavigation 
             currentView={currentView} 
-            onViewChange={setCurrentView} 
+            onViewChange={handleViewChange} 
             user={user}
             onLogout={handleLogout}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
             onToggleDevice={toggleDeviceMode}
           />
         )}
@@ -208,9 +197,7 @@ function AppContent() {
                   <CountdownTimer
                     seconds={5}
                     onComplete={() => {
-                      // Ensure we land on the feedback tab, not the last visited tab
-                      localStorage.setItem('activeTab', 'feedback');
-                      navigate('/app');
+                      navigate('/feedback');
                       handleReset();
                     }}
                     message="Let's check out other feedback from the team!"
@@ -253,9 +240,9 @@ function AppContent() {
         ) : (
           <ProtectedRoute permission="view_dashboard">
             {isMobile ? (
-              <MobileAdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
+              <MobileAdminDashboard activeTab={activeTab} onTabChange={handleTabChange} />
             ) : (
-              <DesktopAdminDashboard activeTab={activeTab} onTabChange={setActiveTab} />
+              <DesktopAdminDashboard activeTab={activeTab} onTabChange={handleTabChange} />
             )}
           </ProtectedRoute>
         )}
@@ -291,21 +278,27 @@ const HomepageRoutes: React.FC = () => (
 
 /**
  * AppRoutes - Routes available on app domain (app.cricsmart.in)
+ * Each tab has its own URL path
  */
 const AppRoutes: React.FC = () => (
   <Routes>
-    {/* Redirect root to /app */}
-    <Route path="/" element={<Navigate to="/app" replace />} />
+    {/* Default redirect to feedback */}
+    <Route path="/" element={<Navigate to="/feedback" replace />} />
     
     {/* Login page */}
     <Route path="/login" element={<LoginPage />} />
     
-    {/* Main app - protected */}
-    <Route path="/app/*" element={
-      <RequireAuth>
-        <AppContent />
-      </RequireAuth>
-    } />
+    {/* Dashboard routes - all protected */}
+    <Route path="/feedback" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/messages" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/conversations" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/matches" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/payments" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/grounds" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/history" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/analytics" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/users" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    <Route path="/settings" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
     
     {/* Player profile - protected */}
     <Route path="/player/:playerId" element={
@@ -323,6 +316,10 @@ const AppRoutes: React.FC = () => (
     <Route path="/about" element={<AboutPage />} />
     <Route path="/privacy" element={<PrivacyPolicyPage />} />
     
+    {/* Legacy /app redirect */}
+    <Route path="/app/*" element={<Navigate to="/feedback" replace />} />
+    <Route path="/app" element={<Navigate to="/feedback" replace />} />
+    
     {/* 404 for everything else */}
     <Route path="*" element={<NotFoundPage />} />
   </Routes>
@@ -339,8 +336,18 @@ const LocalhostRoutes: React.FC = () => (
     {/* Login page */}
     <Route path="/login" element={<LoginPage />} />
     
-    {/* Main app */}
-    <Route path="/app/*" element={<AppContent />} />
+    {/* Dashboard routes at /app/* for localhost */}
+    <Route path="/app" element={<Navigate to="/app/feedback" replace />} />
+    <Route path="/app/feedback" element={<DashboardLayout />} />
+    <Route path="/app/messages" element={<DashboardLayout />} />
+    <Route path="/app/conversations" element={<DashboardLayout />} />
+    <Route path="/app/matches" element={<DashboardLayout />} />
+    <Route path="/app/payments" element={<DashboardLayout />} />
+    <Route path="/app/grounds" element={<DashboardLayout />} />
+    <Route path="/app/history" element={<DashboardLayout />} />
+    <Route path="/app/analytics" element={<DashboardLayout />} />
+    <Route path="/app/users" element={<DashboardLayout />} />
+    <Route path="/app/settings" element={<DashboardLayout />} />
     
     {/* Player profile */}
     <Route path="/player/:playerId" element={<PlayerProfilePage />} />
