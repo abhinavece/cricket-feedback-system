@@ -1,11 +1,12 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { submitFeedback } from './services/api';
 import { isMobileDevice } from './hooks/useDevice';
+import { getDomainType, isHomepageDomain, isAppDomain, isLocalhost, getAppUrl } from './utils/domain';
 import type { FeedbackForm as FeedbackFormData } from './types';
-import { Smartphone, Monitor, LogIn } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import CountdownTimer from './components/CountdownTimer';
 import './theme.css';
 
@@ -17,6 +18,8 @@ const MatchFeedbackPage = lazy(() => import('./pages/MatchFeedbackPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -44,6 +47,48 @@ const LoadingSpinner = () => (
   </div>
 );
 
+/**
+ * RequireAuth component - redirects to login if not authenticated
+ */
+const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    // Redirect to login page, saving the attempted location
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+/**
+ * DomainRedirect - handles domain-based redirects
+ */
+const DomainRedirect: React.FC = () => {
+  const domainType = getDomainType();
+  
+  // On homepage domain, show homepage at /
+  if (domainType === 'homepage') {
+    return <HomePage />;
+  }
+  
+  // On app domain, redirect / to /app (which will check auth)
+  if (domainType === 'app') {
+    return <Navigate to="/app" replace />;
+  }
+  
+  // On localhost, show homepage for development
+  return <HomePage />;
+};
+
+/**
+ * AppContent - Main authenticated app content
+ */
 function AppContent() {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'form' | 'admin'>('form');
@@ -97,7 +142,13 @@ function AppContent() {
 
   const handleLogout = () => {
     logout();
-    setCurrentView('form');
+    // Redirect to homepage on logout
+    const domainType = getDomainType();
+    if (domainType === 'app') {
+      window.location.href = 'https://cricsmart.in';
+    } else {
+      setCurrentView('form');
+    }
   };
 
   return (
@@ -213,31 +264,137 @@ function AppContent() {
   );
 }
 
+/**
+ * HomepageRoutes - Routes available on homepage domain (cricsmart.in / www.cricsmart.in)
+ */
+const HomepageRoutes: React.FC = () => (
+  <Routes>
+    {/* Homepage */}
+    <Route path="/" element={<HomePage />} />
+    
+    {/* Static pages */}
+    <Route path="/about" element={<AboutPage />} />
+    <Route path="/privacy" element={<PrivacyPolicyPage />} />
+    
+    {/* Public share routes */}
+    <Route path="/share/match/:token" element={<PublicMatchView />} />
+    <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
+    
+    {/* Redirect /app to app domain */}
+    <Route path="/app/*" element={<RedirectToAppDomain />} />
+    
+    {/* 404 for everything else */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
+
+/**
+ * AppRoutes - Routes available on app domain (app.cricsmart.in)
+ */
+const AppRoutes: React.FC = () => (
+  <Routes>
+    {/* Redirect root to /app */}
+    <Route path="/" element={<Navigate to="/app" replace />} />
+    
+    {/* Login page */}
+    <Route path="/login" element={<LoginPage />} />
+    
+    {/* Main app - protected */}
+    <Route path="/app/*" element={
+      <RequireAuth>
+        <AppContent />
+      </RequireAuth>
+    } />
+    
+    {/* Player profile - protected */}
+    <Route path="/player/:playerId" element={
+      <RequireAuth>
+        <PlayerProfilePage />
+      </RequireAuth>
+    } />
+    
+    {/* Public share routes (accessible without login) */}
+    <Route path="/share/match/:token" element={<PublicMatchView />} />
+    <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
+    
+    {/* Static pages */}
+    <Route path="/about" element={<AboutPage />} />
+    <Route path="/privacy" element={<PrivacyPolicyPage />} />
+    
+    {/* 404 for everything else */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
+
+/**
+ * LocalhostRoutes - All routes available for local development
+ */
+const LocalhostRoutes: React.FC = () => (
+  <Routes>
+    {/* Homepage */}
+    <Route path="/" element={<HomePage />} />
+    
+    {/* Login page */}
+    <Route path="/login" element={<LoginPage />} />
+    
+    {/* Main app */}
+    <Route path="/app/*" element={<AppContent />} />
+    
+    {/* Player profile */}
+    <Route path="/player/:playerId" element={<PlayerProfilePage />} />
+    
+    {/* Public share routes */}
+    <Route path="/share/match/:token" element={<PublicMatchView />} />
+    <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
+    
+    {/* Static pages */}
+    <Route path="/about" element={<AboutPage />} />
+    <Route path="/privacy" element={<PrivacyPolicyPage />} />
+    
+    {/* 404 for everything else */}
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
+
+/**
+ * RedirectToAppDomain - Redirects to app.cricsmart.in
+ */
+const RedirectToAppDomain: React.FC = () => {
+  useEffect(() => {
+    window.location.href = getAppUrl();
+  }, []);
+  
+  return <LoadingSpinner />;
+};
+
+/**
+ * DomainRouter - Selects routes based on current domain
+ */
+const DomainRouter: React.FC = () => {
+  const domainType = getDomainType();
+  
+  if (domainType === 'homepage') {
+    return <HomepageRoutes />;
+  }
+  
+  if (domainType === 'app') {
+    return <AppRoutes />;
+  }
+  
+  // Localhost - show all routes for development
+  return <LocalhostRoutes />;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || 'your-google-client-id'}>
         <AuthProvider>
           <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              {/* Homepage - public landing page */}
-              <Route path="/" element={<HomePage />} />
-
-              {/* Public share routes - no auth required */}
-              <Route path="/share/match/:token" element={<PublicMatchView />} />
-              <Route path="/share/payment/:token" element={<PublicPaymentView />} />
-              <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
-
-              {/* Static pages - no auth required */}
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
-
-              {/* Player profile - requires auth */}
-              <Route path="/player/:playerId" element={<PlayerProfilePage />} />
-
-              {/* Main app route - authenticated area */}
-              <Route path="/app/*" element={<AppContent />} />
-            </Routes>
+            <DomainRouter />
           </Suspense>
         </AuthProvider>
       </GoogleOAuthProvider>

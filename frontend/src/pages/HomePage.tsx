@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getDomainType, getAppUrl } from '../utils/domain';
 import {
   HomeNavbar,
   HeroSection,
@@ -17,17 +18,27 @@ import Footer from '../components/Footer';
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const domainType = getDomainType();
 
   // Redirect authenticated users to the app
   useEffect(() => {
     if (user) {
-      navigate('/app');
+      // If on homepage domain, redirect to app domain
+      if (domainType === 'homepage') {
+        window.location.href = getAppUrl();
+      } else {
+        navigate('/app');
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, domainType]);
 
   const handleGetStarted = () => {
-    // Navigate to app - will show login if not authenticated
-    navigate('/app');
+    // Redirect to app domain
+    if (domainType === 'homepage') {
+      window.location.href = getAppUrl();
+    } else {
+      navigate('/app');
+    }
   };
 
   const handleExploreGrounds = () => {
@@ -39,12 +50,12 @@ const HomePage: React.FC = () => {
 
   const handleAddGround = () => {
     // Navigate to app to access the grounds feature (requires login)
-    navigate('/app');
+    handleGetStarted();
   };
 
   const handleUpdateGround = () => {
     // Navigate to app to access the grounds feature (requires login)
-    navigate('/app');
+    handleGetStarted();
   };
 
   const handleMeetTeam = () => {
