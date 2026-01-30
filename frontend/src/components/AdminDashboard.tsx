@@ -987,6 +987,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
+                {/* Ground Rating Section */}
+                {item.groundRating && (
+                  <div className="mb-10">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-secondary font-bold mb-4">Ground Rating</p>
+                    <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/10 bg-white/5">
+                      {(() => {
+                        const groundRatingConfig: Record<string, { emoji: string; label: string; tagline: string; color: string }> = {
+                          skip_it: { emoji: '🚫', label: 'Skip This One', tagline: 'Only if desperate', color: 'text-red-400' },
+                          decent: { emoji: '😐', label: 'Gets the Job Done', tagline: 'No major complaints', color: 'text-amber-400' },
+                          solid_pick: { emoji: '👍', label: 'Solid Pick', tagline: 'Would book again!', color: 'text-emerald-400' },
+                          prime_ground: { emoji: '🏆', label: 'Prime Time Ground', tagline: 'Worth every penny', color: 'text-violet-400' },
+                          overpriced: { emoji: '💸', label: 'Overpriced', tagline: "Doesn't justify the cost", color: 'text-orange-400' },
+                        };
+                        const config = groundRatingConfig[item.groundRating] || { emoji: '❓', label: item.groundRating, tagline: '', color: 'text-slate-400' };
+                        return (
+                          <>
+                            <span className="text-2xl">{config.emoji}</span>
+                            <div>
+                              <p className={`font-bold ${config.color}`}>{config.label}</p>
+                              <p className="text-xs text-secondary">{config.tagline}</p>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                   <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8">
                     <div className="flex items-center gap-2 mb-4">

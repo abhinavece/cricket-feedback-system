@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import GoogleAuth from './GoogleAuth';
 import UserProfile from './UserProfile';
 import Notification from './Notification';
+import CricSmartLogo from './CricSmartLogo';
 import { Menu, X, Home, Settings, MessageSquare, Calendar, Wallet, Users, Smartphone } from 'lucide-react';
 
 interface NavigationProps {
@@ -68,13 +69,10 @@ const Navigation: React.FC<NavigationProps> = ({
           <div className="md:hidden flex items-center justify-between w-full px-4 py-3.5">
             <button 
               onClick={() => handleViewChange('form')}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="flex items-center hover:opacity-80 transition-opacity"
               aria-label="Go to home page"
             >
-              <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-black text-sm">C</span>
-              </div>
-              <h1 className="logo text-sm font-bold text-white tracking-tight">CricSmart</h1>
+              <CricSmartLogo size="xs" showText={true} showTagline={true} showAIBadge={true} />
             </button>
             
             <button 
@@ -175,13 +173,10 @@ const Navigation: React.FC<NavigationProps> = ({
             <div className="flex items-center">
               <button 
                 onClick={() => handleViewChange('form')}
-                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+                className="flex items-center hover:opacity-80 transition-opacity"
                 aria-label="Go to home page"
               >
-                <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <span className="text-white font-black text-lg">C</span>
-                </div>
-                <h1 className="logo text-lg md:text-xl font-bold">CricSmart</h1>
+                <CricSmartLogo size="sm" showText={true} showTagline={true} showAIBadge={true} />
               </button>
             </div>
             

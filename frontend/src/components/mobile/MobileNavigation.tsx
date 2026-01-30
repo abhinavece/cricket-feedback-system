@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleAuth from '../GoogleAuth';
+import CricSmartLogo from '../CricSmartLogo';
 import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User, Info } from 'lucide-react';
 
 interface MobileNavigationProps {
@@ -55,12 +56,9 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => { onViewChange('form'); setIsMenuOpen(false); }}
-            className="flex items-center gap-2"
+            className="flex items-center"
           >
-            <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-black text-sm">C</span>
-            </div>
-            <span className="font-bold text-white text-sm">CricSmart</span>
+            <CricSmartLogo size="xs" showText={true} showTagline={true} showAIBadge={true} />
           </button>
 
           <div className="flex items-center gap-2">

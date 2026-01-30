@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './DatePickerCustom.css';
 import RatingStars from './RatingStars';
 import GroundRatingSelector from './GroundRatingSelector';
 import type { FeedbackForm, GroundRatingType, PerformanceRating } from '../types';
+import { Sparkles, Brain, Send, Calendar, User, MessageSquare, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface FeedbackFormProps {
   onSubmit: (data: FeedbackForm) => void;
@@ -26,6 +27,91 @@ const NA_LABELS: Record<RatingField, string> = {
 };
 
 const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading = false }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Animated neural network background (same as homepage)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      opacity: number;
+    }> = [];
+
+    const numParticles = 40;
+    
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.4 + 0.1,
+      });
+    }
+
+    let animationId: number;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity})`;
+        ctx.fill();
+
+        particles.slice(i + 1).forEach((p2) => {
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 80) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.1 * (1 - dist / 80)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
   // Helper function to auto-capitalize text like WhatsApp
   const autoCapitalize = (text: string): string => {
     if (!text) return text;
@@ -127,242 +213,316 @@ const FeedbackFormComponent: React.FC<FeedbackFormProps> = ({ onSubmit, loading 
   };
 
   return (
-    <div className="container py-4 md:py-8">
-      <div className="relative max-w-xl mx-auto">
-        {/* Animated background glow */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 rounded-3xl blur-2xl opacity-10"></div>
-        
-        <div className="relative card card-hover-lift animate-fade-in bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border-2 border-gray-600/20">
-          <div className="card-header text-center relative overflow-hidden">
-            {/* Animated background pattern */}
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute top-0 left-1/4 w-32 h-32 bg-gray-600 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-gray-700 rounded-full blur-3xl"></div>
+    <div className="min-h-screen relative overflow-hidden py-6 md:py-12">
+      {/* Neural Network Background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ zIndex: 0 }}
+      />
+      
+      {/* Gradient Overlays */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/90 pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      
+      <div className="container relative z-10 px-4">
+        <div className="max-w-2xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-8">
+            {/* AI Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider">AI-Powered Feedback</span>
             </div>
             
-            <div className="flex justify-center mb-3 relative">
+            {/* Logo */}
+            <div className="flex justify-center mb-4">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-green-600 rounded-full blur-xl opacity-40"></div>
-                <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-green-500 via-green-600 to-green-700 flex items-center justify-center shadow-2xl shadow-green-500/50">
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.149-.67.149-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414-.074-.123-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                  </svg>
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl blur-xl opacity-40 animate-pulse" />
+                <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+                  <span className="text-white font-black text-3xl">C</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-violet-500 rounded-full flex items-center justify-center shadow-lg border-2 border-slate-900">
+                  <Brain className="w-3 h-3 text-white" />
                 </div>
               </div>
             </div>
-            <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent mb-2">Send us your feedback</h1>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4 p-4 md:p-5">
-          {/* Player Name */}
-          <div className="form-floating">
-            <input
-              type="text"
-              id="playerName"
-              value={formData.playerName}
-              onChange={(e) => handleInputChange('playerName', autoCapitalize(e.target.value))}
-              className={`form-control ${errors.playerName ? 'is-invalid' : ''}`}
-              placeholder=""
-            />
-            <label htmlFor="playerName" className="form-label">Player Name *</label>
-            {errors.playerName && <div className="invalid-feedback">{errors.playerName}</div>}
-          </div>
-
-          {/* Match Date */}
-          <div className="form-group">
-            <label className="form-label">
-              Match Date *
-            </label>
-            <DatePicker
-              selected={typeof formData.matchDate === 'string' ? new Date(formData.matchDate) : formData.matchDate}
-              onChange={(date: Date | null) => {
-                if (date) {
-                  handleInputChange('matchDate', date);
-                }
-              }}
-              className={`form-control ${errors.matchDate ? 'is-invalid' : ''}`}
-              dateFormat="yyyy-MM-dd"
-              placeholderText="Select match date"
-              todayButton="Today"
-              showYearDropdown
-              scrollableYearDropdown
-              yearDropdownItemNumber={15}
-              maxDate={new Date()}
-              withPortal={false}
-              popperClassName="date-picker-desktop"
-              popperPlacement="bottom-start"
-            />
-            {errors.matchDate && <div className="invalid-feedback">{errors.matchDate}</div>}
-          </div>
-
-          {/* Ratings */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-300">⭐ Your Performance Ratings</h3>
-              <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded-full">At least 1 required</span>
-            </div>
             
-            <p className="text-xs text-slate-400 -mt-4">
-              Didn't get a chance to bat or bowl? No problem - just mark it as N/A!
+            <h1 className="text-2xl md:text-3xl font-black text-white mb-2">Share Your Match Feedback</h1>
+            <p className="text-sm text-slate-400 max-w-md mx-auto">
+              Help us improve the cricket experience with your valuable insights
             </p>
+          </div>
+
+          {/* Main Form Card */}
+          <div className="relative">
+            {/* Card Glow */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-violet-500/20 rounded-3xl blur-xl opacity-50" />
             
-            {errors.ratings && (
-              <div className="rounded-xl p-3 bg-red-500/20 border-2 border-red-500 flex items-center gap-2">
-                <div className="p-1.5 rounded-full bg-red-500 text-white">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <p className="font-bold text-white text-sm">{errors.ratings}</p>
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              {([
-                { key: 'batting' as RatingField, label: 'Batting', emoji: '🏏' },
-                { key: 'bowling' as RatingField, label: 'Bowling', emoji: '⚡' },
-                { key: 'fielding' as RatingField, label: 'Fielding', emoji: '🎯' },
-                { key: 'teamSpirit' as RatingField, label: 'Team Spirit', emoji: '💪' },
-              ]).map(({ key, label, emoji }) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{emoji}</span>
-                    <span className="font-medium text-gray-200 text-base">{label}</span>
-                    {formData[key] === null && (
-                      <span className="text-xs px-2 py-0.5 bg-slate-600 text-slate-300 rounded-full">N/A</span>
-                    )}
+            <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
+              {/* Form Header Strip */}
+              <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-violet-500/10 border-b border-slate-700/50 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-white" />
                   </div>
-                  <RatingStars
-                    rating={formData[key]}
-                    onChange={(value) => handleInputChange(key, value)}
-                    size="lg"
-                    allowNA={true}
-                    naLabel={NA_LABELS[key]}
-                  />
+                  <div>
+                    <h2 className="text-sm font-bold text-white">Feedback Form</h2>
+                    <p className="text-xs text-slate-400">All fields with * are required</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Player Name */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <User className="w-4 h-4 text-emerald-400" />
+                    Player Name <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.playerName}
+                    onChange={(e) => handleInputChange('playerName', autoCapitalize(e.target.value))}
+                    className={`w-full bg-slate-800/50 border ${errors.playerName ? 'border-rose-500' : 'border-slate-700/50'} rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all`}
+                    placeholder="Enter your name"
+                  />
+                  {errors.playerName && (
+                    <p className="text-xs text-rose-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {errors.playerName}
+                    </p>
+                  )}
+                </div>
 
-          {/* Experience Feedback */}
-          <div className="form-floating">
-            <textarea
-              id="feedbackText"
-              value={formData.feedbackText}
-              onChange={(e) => handleInputChange('feedbackText', autoCapitalize(e.target.value))}
-              rows={4}
-              className={`form-control ${errors.feedbackText ? 'is-invalid' : ''}`}
-              placeholder=""
-            />
-            <label htmlFor="feedbackText" className="form-label">Match Experience *</label>
-            {errors.feedbackText && <div className="invalid-feedback">{errors.feedbackText}</div>}
-          </div>
+                {/* Match Date */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    Match Date <span className="text-rose-400">*</span>
+                  </label>
+                  <DatePicker
+                    selected={typeof formData.matchDate === 'string' ? new Date(formData.matchDate) : formData.matchDate}
+                    onChange={(date: Date | null) => {
+                      if (date) {
+                        handleInputChange('matchDate', date);
+                      }
+                    }}
+                    className={`w-full bg-slate-800/50 border ${errors.matchDate ? 'border-rose-500' : 'border-slate-700/50'} rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all`}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Select match date"
+                    todayButton="Today"
+                    showYearDropdown
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={15}
+                    maxDate={new Date()}
+                    withPortal={false}
+                    popperClassName="date-picker-desktop"
+                    popperPlacement="bottom-start"
+                  />
+                  {errors.matchDate && (
+                    <p className="text-xs text-rose-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {errors.matchDate}
+                    </p>
+                  )}
+                </div>
 
-          {/* Issues Faced */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold bg-gradient-to-r from-slate-300 to-slate-500 bg-clip-text text-transparent">⚠️ Issues Faced</h3>
-              <span className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full">Optional</span>
-            </div>
-            
-            <div className="space-y-3">
-              {Object.entries(formData.issues).map(([key, value]) => {
-                const issueLabels: Record<string, string> = {
-                  venue: 'Venue',
-                  timing: 'Timing',
-                  umpiring: 'Umpiring',
-                  other: 'Other'
-                };
-                
-                return (
-                  <div key={key}>
-                    <div 
-                      className={`form-check flex items-center p-4 rounded-xl cursor-pointer transition-all ${value ? 'bg-gradient-to-r from-gray-600 to-gray-700 shadow-lg shadow-gray-600/30 scale-[1.02]' : 'bg-slate-800 hover:bg-slate-700'}`}
-                      onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
-                    >
-                      <div className="mr-4">
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${value ? 'bg-white' : 'border-2 border-slate-500'}`}>
-                          {value && (
-                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
+                {/* Performance Ratings Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                        <span className="text-amber-400">⭐</span>
                       </div>
-                      
-                      <span className={`text-base font-medium ${value ? 'text-white' : 'text-slate-400'}`}>
-                        {issueLabels[key] || key.charAt(0).toUpperCase() + key.slice(1)}
-                      </span>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Performance Ratings</h3>
+                        <p className="text-xs text-slate-400">Rate your match performance</p>
+                      </div>
                     </div>
-                    
-                    {/* Show text input when "Other" is selected */}
-                    {key === 'other' && value && (
-                      <div className="mt-2 ml-10">
-                        <input
-                          type="text"
-                          value={formData.otherIssueText}
-                          onChange={(e) => handleInputChange('otherIssueText', autoCapitalize(e.target.value))}
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder="Please describe the issue..."
-                          className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    <span className="text-[10px] px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">
+                      Min 1 required
+                    </span>
+                  </div>
+                  
+                  {errors.ratings && (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-rose-500/10 border border-rose-500/30 rounded-xl">
+                      <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                      <p className="text-xs text-rose-400">{errors.ratings}</p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    {([
+                      { key: 'batting' as RatingField, label: 'Batting', emoji: '🏏', color: 'emerald' },
+                      { key: 'bowling' as RatingField, label: 'Bowling', emoji: '⚡', color: 'cyan' },
+                      { key: 'fielding' as RatingField, label: 'Fielding', emoji: '🎯', color: 'amber' },
+                      { key: 'teamSpirit' as RatingField, label: 'Team Spirit', emoji: '💪', color: 'violet' },
+                    ]).map(({ key, label, emoji, color }) => (
+                      <div 
+                        key={key} 
+                        className={`bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 hover:border-${color}-500/30 transition-all`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{emoji}</span>
+                            <span className="font-medium text-white text-sm">{label}</span>
+                            {formData[key] === null && (
+                              <span className="text-[10px] px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full">N/A</span>
+                            )}
+                          </div>
+                        </div>
+                        <RatingStars
+                          rating={formData[key]}
+                          onChange={(value) => handleInputChange(key, value)}
+                          size="lg"
+                          allowNA={true}
+                          naLabel={NA_LABELS[key]}
                         />
                       </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Match Experience */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <MessageSquare className="w-4 h-4 text-violet-400" />
+                    Match Experience <span className="text-rose-400">*</span>
+                  </label>
+                  <textarea
+                    value={formData.feedbackText}
+                    onChange={(e) => handleInputChange('feedbackText', autoCapitalize(e.target.value))}
+                    rows={4}
+                    className={`w-full bg-slate-800/50 border ${errors.feedbackText ? 'border-rose-500' : 'border-slate-700/50'} rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all resize-none`}
+                    placeholder="Describe your match experience..."
+                  />
+                  {errors.feedbackText && (
+                    <p className="text-xs text-rose-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {errors.feedbackText}
+                    </p>
+                  )}
+                </div>
+
+                {/* Issues Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Issues Faced</h3>
+                        <p className="text-xs text-slate-400">Select any issues you encountered</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] px-2 py-1 bg-slate-700 text-slate-400 rounded-full">
+                      Optional
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(formData.issues).map(([key, value]) => {
+                      const issueConfig: Record<string, { emoji: string; color: string }> = {
+                        venue: { emoji: '🏟️', color: 'emerald' },
+                        timing: { emoji: '⏰', color: 'amber' },
+                        umpiring: { emoji: '👨‍⚖️', color: 'violet' },
+                        other: { emoji: '📋', color: 'rose' }
+                      };
+                      const config = issueConfig[key] || { emoji: '❓', color: 'slate' };
+                      
+                      return (
+                        <div key={key}>
+                          <button
+                            type="button"
+                            onClick={() => handleIssueChange(key as keyof typeof formData.issues)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                              value 
+                                ? 'bg-emerald-500/20 border-2 border-emerald-500/50 shadow-lg shadow-emerald-500/10' 
+                                : 'bg-slate-800/30 border border-slate-700/50 hover:border-slate-600'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center ${
+                              value ? 'bg-emerald-500' : 'border-2 border-slate-600'
+                            }`}>
+                              {value && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                            </div>
+                            <span className="text-sm">{config.emoji}</span>
+                            <span className={`text-sm font-medium ${value ? 'text-white' : 'text-slate-400'}`}>
+                              {key.charAt(0).toUpperCase() + key.slice(1)}
+                            </span>
+                          </button>
+                          
+                          {key === 'other' && value && (
+                            <input
+                              type="text"
+                              value={formData.otherIssueText}
+                              onChange={(e) => handleInputChange('otherIssueText', autoCapitalize(e.target.value))}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="Describe the issue..."
+                              className="w-full mt-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Ground Rating */}
+                <GroundRatingSelector
+                  value={formData.groundRating}
+                  onChange={(value: GroundRatingType) => handleInputChange('groundRating', value)}
+                />
+
+                {/* Additional Comments */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                    <MessageSquare className="w-4 h-4 text-slate-400" />
+                    Additional Comments
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-700 text-slate-400 rounded-full">Optional</span>
+                  </label>
+                  <textarea
+                    value={formData.additionalComments}
+                    onChange={(e) => handleInputChange('additionalComments', autoCapitalize(e.target.value))}
+                    rows={3}
+                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all resize-none"
+                    placeholder="Any other thoughts or suggestions..."
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="relative w-full group"
+                >
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 via-cyan-500 to-violet-500 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-300" />
+                  <div className="relative flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/25">
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        <span>Submit Feedback</span>
+                        <Sparkles className="w-4 h-4 opacity-60" />
+                      </>
                     )}
                   </div>
-                );
-              })}
+                </button>
+              </form>
             </div>
           </div>
 
-          {/* Ground Rating */}
-          <GroundRatingSelector
-            value={formData.groundRating}
-            onChange={(value: GroundRatingType) => handleInputChange('groundRating', value)}
-          />
-
-          {/* Additional Comments */}
-          <div className="form-floating">
-            <textarea
-              id="additionalComments"
-              value={formData.additionalComments}
-              onChange={(e) => handleInputChange('additionalComments', autoCapitalize(e.target.value))}
-              rows={3}
-              className="form-control"
-              placeholder=""
-            />
-            <label htmlFor="additionalComments" className="form-label">Additional Comments</label>
-          </div>
-
-          {/* Submit Button */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="relative w-full py-3 px-6 rounded-xl font-bold text-white overflow-hidden group transform transition-all hover:scale-105 active:scale-95 shadow-2xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    SUBMIT FEEDBACK
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </>
-                )}
-              </span>
-            </button>
-          </div>
-          </form>
+          {/* Footer Text */}
+          <p className="text-center text-xs text-slate-500 mt-6">
+            CricSmart • AI-Powered Cricket Management
+          </p>
         </div>
       </div>
     </div>
