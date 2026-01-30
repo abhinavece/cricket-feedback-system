@@ -10,19 +10,32 @@ import {
   Trash2,
   Mail,
   RefreshCw,
-  FileText
+  FileText,
+  Brain,
+  Sparkles
 } from 'lucide-react';
 import Footer from '../components/Footer';
 
 const PrivacyPolicyPage: React.FC = () => {
-  const lastUpdated = 'January 27, 2026';
+  const lastUpdated = 'January 29, 2026';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-slate-950">
       {/* Header */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-emerald-600/20"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent"></div>
+        {/* Background effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950" />
+        <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-0 right-1/3 w-[300px] h-[300px] bg-cyan-500/10 rounded-full blur-[100px]" />
+        
+        {/* Grid pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(16, 185, 129, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.5) 1px, transparent 1px)`,
+            backgroundSize: '50px 50px'
+          }}
+        />
         
         <div className="relative max-w-4xl mx-auto px-4 py-8">
           <Link
@@ -34,8 +47,13 @@ const PrivacyPolicyPage: React.FC = () => {
           </Link>
           
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-emerald-500/30">
-              <Shield className="w-8 h-8 text-emerald-400" />
+            <div className="relative">
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center border border-emerald-500/30">
+                <Shield className="w-8 h-8 text-emerald-400" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-violet-500 rounded-full flex items-center justify-center">
+                <Sparkles className="w-3 h-3 text-white" />
+              </div>
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-white">Privacy Policy</h1>
@@ -46,16 +64,16 @@ const PrivacyPolicyPage: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-12">
-        <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
+        <div className="bg-slate-800/30 backdrop-blur-sm rounded-3xl border border-slate-700/50 overflow-hidden">
           <div className="p-6 md:p-10 space-y-10">
             
             {/* Introduction */}
             <section>
               <p className="text-slate-300 leading-relaxed">
-                Mavericks XI ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
-                explains how we collect, use, disclose, and safeguard your information when you use our cricket 
-                team management application and related services, including our WhatsApp integration for match 
-                availability and team communications.
+                CricSmart ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+                explains how we collect, use, disclose, and safeguard your information when you use our 
+                AI-powered cricket team management platform and related services, including our WhatsApp 
+                integration for match availability and team communications.
               </p>
               <p className="text-slate-300 leading-relaxed mt-4">
                 By using our services, you agree to the collection and use of information in accordance with this policy.
@@ -99,6 +117,15 @@ const PrivacyPolicyPage: React.FC = () => {
                     <li>Your responses to availability requests via WhatsApp</li>
                   </ul>
                 </div>
+
+                <div>
+                  <h3 className="font-semibold text-white mb-2">AI Processing Data</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm ml-4">
+                    <li>Payment screenshots uploaded for AI verification</li>
+                    <li>Extracted payment amounts and transaction IDs</li>
+                    <li>OCR-processed text from uploaded images</li>
+                  </ul>
+                </div>
                 
                 <div>
                   <h3 className="font-semibold text-white mb-2">Technical Data</h3>
@@ -108,6 +135,44 @@ const PrivacyPolicyPage: React.FC = () => {
                     <li>Usage patterns and access times</li>
                   </ul>
                 </div>
+              </div>
+            </section>
+
+            {/* AI Features */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-violet-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white">AI-Powered Features</h2>
+              </div>
+              
+              <div className="space-y-4 text-slate-300 text-sm">
+                <p>
+                  CricSmart uses artificial intelligence to enhance your experience. Here's how we use AI:
+                </p>
+                
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-violet-500/20">
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-violet-400 mt-1">•</span>
+                      <span><strong className="text-white">Payment Verification:</strong> AI analyzes uploaded payment screenshots to extract amounts and verify transactions</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-violet-400 mt-1">•</span>
+                      <span><strong className="text-white">OCR Processing:</strong> Optical character recognition extracts text from images for payment tracking</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-violet-400 mt-1">•</span>
+                      <span><strong className="text-white">Smart Notifications:</strong> AI determines optimal timing for availability reminders</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <p>
+                  All AI processing is done securely on our servers. We do not share your images or data 
+                  with third-party AI services without your consent.
+                </p>
               </div>
             </section>
 
@@ -122,11 +187,11 @@ const PrivacyPolicyPage: React.FC = () => {
               
               <div className="space-y-4 text-slate-300 text-sm">
                 <p>
-                  Our application uses the WhatsApp Business API (provided by Meta) to facilitate team 
+                  Our platform uses the WhatsApp Business API (provided by Meta) to facilitate team 
                   communications. When you interact with our WhatsApp number:
                 </p>
                 
-                <div className="bg-slate-900/50 rounded-xl p-4 border border-white/5">
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-green-500/20">
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
                       <span className="text-green-400 mt-1">•</span>
@@ -168,6 +233,7 @@ const PrivacyPolicyPage: React.FC = () => {
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Manage team rosters and match availability</li>
                   <li>Send match announcements and reminders via WhatsApp</li>
+                  <li>Process payment screenshots using AI verification</li>
                   <li>Track and display match feedback and statistics</li>
                   <li>Manage payment tracking for match contributions</li>
                   <li>Improve our application and user experience</li>
@@ -196,7 +262,8 @@ const PrivacyPolicyPage: React.FC = () => {
                   <li>Secure authentication via Google OAuth</li>
                   <li>Role-based access controls within the application</li>
                   <li>Regular security updates and monitoring</li>
-                  <li>Secure cloud infrastructure hosting</li>
+                  <li>Secure cloud infrastructure hosting on Oracle Cloud</li>
+                  <li>AI processing on isolated, secure servers</li>
                 </ul>
                 <p className="mt-4">
                   While we strive to protect your information, no method of electronic transmission or storage 
@@ -269,6 +336,7 @@ const PrivacyPolicyPage: React.FC = () => {
                   <li>Active player data: Retained while you are an active team member</li>
                   <li>Match and feedback data: Retained for historical records and statistics</li>
                   <li>WhatsApp message logs: Retained for up to 2 years</li>
+                  <li>Payment screenshots: Deleted after verification, metadata retained</li>
                   <li>Account data: Deleted within 30 days of account deletion request</li>
                 </ul>
               </div>
@@ -295,7 +363,7 @@ const PrivacyPolicyPage: React.FC = () => {
             </section>
 
             {/* Contact Us */}
-            <section className="bg-emerald-500/10 rounded-2xl p-6 border border-emerald-500/20">
+            <section className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 rounded-2xl p-6 border border-emerald-500/20">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
                   <Mail className="w-5 h-5 text-emerald-400" />
@@ -306,10 +374,9 @@ const PrivacyPolicyPage: React.FC = () => {
               <div className="text-slate-300 text-sm space-y-2">
                 <p>If you have questions or concerns about this Privacy Policy, please contact us at:</p>
                 <div className="mt-4 space-y-1">
-                  <p><strong className="text-white">Mavericks XI Cricket Club</strong></p>
-                  <p>Sector 45, Noida, Uttar Pradesh 201303, India</p>
-                  <p>Email: <a href="mailto:singh09.abhinav@gmail.com" className="text-emerald-400 hover:underline">singh09.abhinav@gmail.com</a></p>
-                  <p>Phone: <a href="tel:+918087102325" className="text-emerald-400 hover:underline">+91 80871 02325</a></p>
+                  <p><strong className="text-white">CricSmart</strong></p>
+                  <p>Noida, Uttar Pradesh, India</p>
+                  <p>Email: <a href="mailto:support@cricsmart.in" className="text-emerald-400 hover:underline">support@cricsmart.in</a></p>
                 </div>
               </div>
             </section>

@@ -9,8 +9,7 @@ import {
   Brain,
   CalendarCheck,
   UsersRound,
-  Twitter,
-  Linkedin,
+  Instagram,
   Globe
 } from 'lucide-react';
 
@@ -61,22 +60,13 @@ const Footer: React.FC<FooterProps> = ({ minimal = false }) => {
             </p>
             <div className="flex gap-3">
               <a 
-                href="https://twitter.com/cricsmart" 
+                href="https://www.instagram.com/_mavericks_xi/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/20 transition-all"
-                aria-label="Twitter"
+                className="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-pink-400 hover:bg-pink-500/20 transition-all"
+                aria-label="Instagram"
               >
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a 
-                href="https://linkedin.com/company/cricsmart" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-blue-500/20 transition-all"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="w-4 h-4" />
+                <Instagram className="w-4 h-4" />
               </a>
               <a 
                 href="https://cricsmart.in" 

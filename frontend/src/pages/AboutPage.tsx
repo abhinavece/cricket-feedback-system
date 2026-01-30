@@ -1,265 +1,358 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  MapPin, 
-  Users, 
-  Trophy, 
-  Calendar, 
-  Mail, 
-  Phone,
   ArrowLeft,
-  Instagram,
-  Globe,
+  Brain,
+  Sparkles,
+  MessageSquare,
+  CreditCard,
+  Users,
+  Zap,
   Target,
   Heart,
-  Zap
+  Mail,
+  MapPin,
+  Instagram,
+  Globe,
+  CheckCircle2,
+  Shield,
+  Clock,
+  TrendingUp
 } from 'lucide-react';
 import Footer from '../components/Footer';
 
-// Placeholder team members - can be replaced with actual data later
-const TEAM_MEMBERS = [
-  { name: 'Captain', role: 'Captain & All-rounder', initials: 'CP' },
-  { name: 'Vice Captain', role: 'Vice Captain & Batsman', initials: 'VC' },
-  { name: 'Player 1', role: 'Opening Batsman', initials: 'P1' },
-  { name: 'Player 2', role: 'Middle Order', initials: 'P2' },
-  { name: 'Player 3', role: 'Wicket Keeper', initials: 'P3' },
-  { name: 'Player 4', role: 'Fast Bowler', initials: 'P4' },
-  { name: 'Player 5', role: 'Spin Bowler', initials: 'P5' },
-  { name: 'Player 6', role: 'All-rounder', initials: 'P6' },
-];
-
-const TEAM_STATS = [
-  { label: 'Matches Played', value: '100+', icon: Calendar },
-  { label: 'Team Members', value: '25+', icon: Users },
-  { label: 'Victories', value: '60+', icon: Trophy },
-];
-
 const AboutPage: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
+
+  const features = [
+    {
+      icon: <Brain className="w-6 h-6" />,
+      title: 'AI-Powered Payments',
+      description: 'Upload payment screenshots and let our AI automatically verify amounts and update records.',
+      color: 'violet',
+    },
+    {
+      icon: <MessageSquare className="w-6 h-6" />,
+      title: 'WhatsApp Automation',
+      description: 'Send availability requests, reminders, and updates directly via WhatsApp.',
+      color: 'green',
+    },
+    {
+      icon: <Users className="w-6 h-6" />,
+      title: 'Smart Squad Building',
+      description: 'Real-time availability tracking helps you build the perfect playing XI.',
+      color: 'cyan',
+    },
+    {
+      icon: <CreditCard className="w-6 h-6" />,
+      title: 'Payment Tracking',
+      description: 'Track dues, split costs, and manage team finances effortlessly.',
+      color: 'blue',
+    },
+  ];
+
+  const stats = [
+    { value: '500+', label: 'Active Players', icon: <Users className="w-5 h-5" /> },
+    { value: '1000+', label: 'Matches Managed', icon: <Target className="w-5 h-5" /> },
+    { value: '50+', label: 'Cricket Grounds', icon: <MapPin className="w-5 h-5" /> },
+    { value: '99%', label: 'Uptime', icon: <TrendingUp className="w-5 h-5" /> },
+  ];
+
+  const values = [
+    {
+      icon: <Zap className="w-6 h-6" />,
+      title: 'Innovation',
+      description: 'We use cutting-edge AI technology to solve real problems for cricket teams.',
+    },
+    {
+      icon: <Shield className="w-6 h-6" />,
+      title: 'Reliability',
+      description: 'Your data is secure and our platform is available when you need it most.',
+    },
+    {
+      icon: <Heart className="w-6 h-6" />,
+      title: 'Passion',
+      description: 'Built by cricket lovers who understand the challenges of managing a local team.',
+    },
+    {
+      icon: <Clock className="w-6 h-6" />,
+      title: 'Simplicity',
+      description: 'Complex problems deserve simple solutions. We make team management effortless.',
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      {/* Header */}
-      <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-emerald-600/20"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent"></div>
+    <div className="min-h-screen bg-slate-950">
+      {/* Hero Section */}
+      <header ref={heroRef} className="relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950" />
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px]" />
+        
+        {/* Grid pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(16, 185, 129, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.5) 1px, transparent 1px)`,
+            backgroundSize: '50px 50px'
+          }}
+        />
         
         <div className="relative max-w-6xl mx-auto px-4 py-8">
+          {/* Back link */}
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Home
           </Link>
           
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/30">
-              <span className="text-3xl font-black text-white">M</span>
+          {/* Hero content */}
+          <div className={`text-center max-w-3xl mx-auto py-12 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            {/* Logo */}
+            <div className="relative w-24 h-24 mx-auto mb-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-3xl blur-xl opacity-50 animate-pulse" style={{ animationDuration: '3s' }} />
+              <div className="relative w-full h-full bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+                <span className="text-white font-black text-5xl">C</span>
+              </div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-violet-500 rounded-full flex items-center justify-center shadow-lg border-2 border-slate-950">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-black text-white">Mavericks XI</h1>
-              <p className="text-emerald-400 font-medium mt-1">Cricket Club • Est. 2024</p>
+
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+              <Brain className="w-4 h-4 text-emerald-400" />
+              <span className="text-emerald-400 text-sm font-medium">AI-Powered Cricket Management</span>
             </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
+              About{' '}
+              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                CricSmart
+              </span>
+            </h1>
+
+            <p className="text-lg sm:text-xl text-slate-300 leading-relaxed">
+              The intelligent platform that transforms how local cricket teams manage matches, 
+              track payments, and communicate with players.
+            </p>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-12 space-y-16">
-        {/* About Section */}
-        <section>
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                  <Heart className="w-5 h-5 text-emerald-400" />
-                </div>
-                Our Story
-              </h2>
-              <div className="space-y-4 text-slate-300">
-                <p>
-                  Mavericks XI is a passionate cricket team based in Noida, bringing together cricket enthusiasts 
-                  who share a love for the game. Founded in 2024, we've grown from a group of friends playing 
-                  weekend matches to a competitive team participating in local tournaments.
-                </p>
-                <p>
-                  Our philosophy is simple: play hard, play fair, and have fun. We believe cricket is more than 
-                  just a sport—it's about building friendships, staying fit, and creating memories that last 
-                  a lifetime.
-                </p>
-                <p>
-                  Whether it's a friendly weekend match or a competitive tournament, Mavericks XI brings 
-                  energy, sportsmanship, and a winning attitude to every game.
-                </p>
-              </div>
+      <main className="relative max-w-6xl mx-auto px-4 py-16 space-y-24">
+        {/* Our Story Section */}
+        <section className="grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full mb-6">
+              <Heart className="w-4 h-4 text-violet-400" />
+              <span className="text-violet-400 text-sm font-medium">Our Story</span>
             </div>
             
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4">
-              {TEAM_STATS.map((stat) => (
-                <div 
-                  key={stat.label}
-                  className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10 text-center"
-                >
-                  <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <stat.icon className="w-6 h-6 text-emerald-400" />
-                  </div>
-                  <p className="text-3xl font-black text-white">{stat.value}</p>
-                  <p className="text-xs text-slate-400 mt-1">{stat.label}</p>
-                </div>
-              ))}
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-6">
+              Built by Cricket Enthusiasts,{' '}
+              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                For Cricket Teams
+              </span>
+            </h2>
+
+            <div className="space-y-4 text-slate-300">
+              <p>
+                CricSmart was born out of frustration. As passionate cricketers ourselves, we spent 
+                countless hours manually tracking availability via WhatsApp, chasing payments after 
+                every match, and struggling to coordinate 15+ players for weekend games.
+              </p>
+              <p>
+                We knew there had to be a better way. So we combined our love for cricket with 
+                modern AI technology to create a platform that actually solves these problems.
+              </p>
+              <p>
+                Today, CricSmart helps hundreds of cricket teams across India manage their matches 
+                effortlessly — from automated availability checks to AI-powered payment verification.
+              </p>
             </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {stats.map((stat, index) => (
+              <div 
+                key={stat.label}
+                className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 text-center hover:border-emerald-500/30 transition-all"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mx-auto mb-3 text-emerald-400">
+                  {stat.icon}
+                </div>
+                <p className="text-3xl font-black text-white">{stat.value}</p>
+                <p className="text-sm text-slate-400 mt-1">{stat.label}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Values Section */}
+        {/* What We Do Section */}
         <section>
-          <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-              <Target className="w-5 h-5 text-emerald-400" />
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full mb-6">
+              <Zap className="w-4 h-4 text-cyan-400" />
+              <span className="text-cyan-400 text-sm font-medium">What We Do</span>
             </div>
-            Our Values
-          </h2>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                title: 'Sportsmanship',
-                description: 'We play fair, respect opponents, and uphold the spirit of cricket in every match.',
-                icon: Trophy,
-                color: 'emerald'
-              },
-              {
-                title: 'Team Spirit',
-                description: 'Together we win, together we learn. Every player is valued and supported.',
-                icon: Users,
-                color: 'teal'
-              },
-              {
-                title: 'Passion',
-                description: 'Cricket is our passion. We bring energy and enthusiasm to every game we play.',
-                icon: Zap,
-                color: 'amber'
-              }
-            ].map((value) => (
+            
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
+              Intelligent Features for{' '}
+              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                Modern Teams
+              </span>
+            </h2>
+            <p className="text-slate-400 max-w-2xl mx-auto">
+              Everything you need to run your cricket team, powered by AI
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <div 
+                key={feature.title}
+                className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-emerald-500/30 transition-all group"
+              >
+                <div className={`w-14 h-14 bg-${feature.color}-500/10 rounded-2xl flex items-center justify-center mb-4 text-${feature.color}-400 group-hover:scale-110 transition-transform`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">{feature.title}</h3>
+                <p className="text-sm text-slate-400">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Our Values Section */}
+        <section>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full mb-6">
+              <Target className="w-4 h-4 text-amber-400" />
+              <span className="text-amber-400 text-sm font-medium">Our Values</span>
+            </div>
+            
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
+              What Drives Us
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {values.map((value, index) => (
               <div 
                 key={value.title}
-                className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:border-emerald-500/30 transition-all"
+                className="text-center p-6"
               >
-                <div className={`w-12 h-12 bg-${value.color}-500/20 rounded-xl flex items-center justify-center mb-4`}>
-                  <value.icon className={`w-6 h-6 text-${value.color}-400`} />
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400 border border-emerald-500/20">
+                  {value.icon}
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">{value.title}</h3>
-                <p className="text-slate-400 text-sm">{value.description}</p>
+                <p className="text-sm text-slate-400">{value.description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Team Members Section */}
+        {/* Contact Section */}
         <section>
-          <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-              <Users className="w-5 h-5 text-emerald-400" />
-            </div>
-            Meet the Team
-          </h2>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {TEAM_MEMBERS.map((member, index) => (
-              <div 
-                key={index}
-                className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-4 border border-white/10 text-center hover:border-emerald-500/30 transition-all group"
-              >
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-3 border border-emerald-500/30 group-hover:scale-110 transition-transform">
-                  <span className="text-lg font-bold text-emerald-400">{member.initials}</span>
+          <div className="bg-gradient-to-br from-emerald-500/10 via-slate-900 to-cyan-500/10 rounded-3xl border border-emerald-500/20 overflow-hidden">
+            <div className="p-8 lg:p-12">
+              <div className="grid lg:grid-cols-2 gap-12 items-center">
+                {/* Left side - Contact info */}
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+                    <Mail className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-400 text-sm font-medium">Get in Touch</span>
+                  </div>
+                  
+                  <h2 className="text-3xl font-black text-white mb-4">
+                    Questions or Feedback?
+                  </h2>
+                  <p className="text-slate-400 mb-8">
+                    We'd love to hear from you. Whether you have questions about CricSmart, 
+                    need help getting started, or want to share feedback — reach out to us.
+                  </p>
+
+                  <div className="space-y-4">
+                    <a 
+                      href="mailto:support@cricsmart.in"
+                      className="flex items-center gap-3 text-slate-300 hover:text-emerald-400 transition-colors"
+                    >
+                      <div className="w-10 h-10 bg-slate-800/50 rounded-xl flex items-center justify-center">
+                        <Mail className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <span>support@cricsmart.in</span>
+                    </a>
+                    
+                    <div className="flex items-center gap-3 text-slate-300">
+                      <div className="w-10 h-10 bg-slate-800/50 rounded-xl flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <span>Noida, Uttar Pradesh, India</span>
+                    </div>
+                  </div>
+
+                  {/* Social links */}
+                  <div className="flex gap-3 mt-8">
+                    <a 
+                      href="https://www.instagram.com/_mavericks_xi/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-11 h-11 bg-slate-800/50 rounded-xl flex items-center justify-center text-slate-400 hover:text-pink-400 hover:bg-pink-500/20 transition-all"
+                    >
+                      <Instagram className="w-5 h-5" />
+                    </a>
+                    <a 
+                      href="https://cricsmart.in" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-11 h-11 bg-slate-800/50 rounded-xl flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/20 transition-all"
+                    >
+                      <Globe className="w-5 h-5" />
+                    </a>
+                  </div>
                 </div>
-                <h3 className="font-bold text-white text-sm">{member.name}</h3>
-                <p className="text-xs text-slate-400 mt-1">{member.role}</p>
-              </div>
-            ))}
-          </div>
-          
-          <p className="text-center text-slate-500 text-sm mt-6 italic">
-            Player profiles coming soon...
-          </p>
-        </section>
 
-        {/* Location & Contact Section */}
-        <section className="grid md:grid-cols-2 gap-8">
-          {/* Location */}
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-emerald-400" />
-              Our Location
-            </h3>
-            <div className="space-y-3">
-              <p className="text-slate-300">
-                Sector 45<br />
-                Noida, Uttar Pradesh<br />
-                201303, India
-              </p>
-              <p className="text-slate-400 text-sm">
-                We primarily play at various cricket grounds across Noida and Greater Noida.
-              </p>
-            </div>
-          </div>
+                {/* Right side - CTA */}
+                <div className="text-center lg:text-left">
+                  <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8">
+                    <h3 className="text-2xl font-bold text-white mb-3">
+                      Ready to Simplify Your Team Management?
+                    </h3>
+                    <p className="text-slate-400 mb-6">
+                      Join hundreds of cricket teams already using CricSmart
+                    </p>
 
-          {/* Contact */}
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Mail className="w-5 h-5 text-emerald-400" />
-              Get in Touch
-            </h3>
-            <div className="space-y-3">
-              <a 
-                href="mailto:singh09.abhinav@gmail.com" 
-                className="flex items-center gap-3 text-slate-300 hover:text-emerald-400 transition-colors"
-              >
-                <Mail className="w-4 h-4" />
-                singh09.abhinav@gmail.com
-              </a>
-              <a 
-                href="tel:+918087102325" 
-                className="flex items-center gap-3 text-slate-300 hover:text-emerald-400 transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                +91 80871 02325
-              </a>
-              <div className="flex gap-3 pt-2">
-                <a 
-                  href="https://www.instagram.com/_mavericks_xi/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center text-slate-400 hover:text-pink-400 hover:bg-pink-500/20 transition-all"
-                >
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a 
-                  href="https://mavericks11.duckdns.org" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/20 transition-all"
-                >
-                  <Globe className="w-5 h-5" />
-                </a>
+                    <div className="space-y-3 mb-6">
+                      {['Free to use', 'No credit card required', 'Setup in 5 minutes'].map((item) => (
+                        <div key={item} className="flex items-center gap-2 text-sm text-slate-300">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+
+                    <a
+                      href="mailto:support@cricsmart.in?subject=Getting Started with CricSmart"
+                      className="inline-flex items-center justify-center gap-2 w-full px-6 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25"
+                    >
+                      <Mail className="w-5 h-5" />
+                      Contact Us
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="text-center">
-          <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 rounded-3xl p-8 border border-emerald-500/20">
-            <h2 className="text-2xl font-bold text-white mb-3">Want to Join the Team?</h2>
-            <p className="text-slate-400 mb-6 max-w-md mx-auto">
-              We're always looking for passionate cricketers. Reach out to us if you'd like to be part of Mavericks XI!
-            </p>
-            <a
-              href="mailto:singh09.abhinav@gmail.com?subject=Interested in Joining Mavericks XI"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/25"
-            >
-              <Mail className="w-5 h-5" />
-              Contact Us
-            </a>
           </div>
         </section>
       </main>
