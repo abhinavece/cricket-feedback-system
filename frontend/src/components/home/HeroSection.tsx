@@ -204,10 +204,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 text-slate-500">
-        <div className="w-6 h-10 border-2 border-slate-700 rounded-full flex justify-center pt-2">
-          <div className="w-1 h-2 bg-emerald-500 rounded-full animate-bounce" />
+      {/* Scroll indicator - centered properly */}
+      <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+        <div className="flex flex-col items-center gap-2 text-slate-500">
+          <div className="w-6 h-10 border-2 border-slate-700 rounded-full flex justify-center pt-2">
+            <div className="w-1 h-2 bg-emerald-500 rounded-full animate-bounce" />
+          </div>
         </div>
       </div>
     </section>

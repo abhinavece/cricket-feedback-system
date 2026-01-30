@@ -5,6 +5,8 @@ import ConfirmDialog from './ConfirmDialog';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackCard from './FeedbackCard';
 import Footer from './Footer';
+import PageHeader from './PageHeader';
+import FeedbackSummary from './FeedbackSummary';
 
 // Lazy load heavy tab components - only loaded when tab is selected
 const UserManagement = lazy(() => import('./UserManagement'));
@@ -358,12 +360,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <>
       <div className="container">
-      <div className="mb-8 hidden md:block">
-        <h1 className="text-4xl font-bold mb-2 transition-all duration-300" style={{color: 'var(--primary-green)'}}>
-          {pageTitle}
-        </h1>
-        <p className="text-secondary transition-all duration-300">{pageDesc}</p>
-      </div>
+      {/* New Elegant Page Header */}
+      <PageHeader activeTab={activeTab} />
         
         {/* Tab Navigation - Elegant & Space Efficient */}
         <div className="mb-8 md:mb-12">
@@ -648,230 +646,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
             
-            {/* Statistics Cards - Only show in active view */}
+            {/* AI-Powered Statistics Dashboard - Only show in active view */}
             {currentView === 'active' && stats && (
-              <>
-                {/* Mobile: Single Aggregated Tile */}
-                <div className="md:hidden mb-8">
-                  <div className="card card-primary overflow-visible">
-                    <div className="relative">
-                      {/* Header */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wider text-primary-solid mb-1">Performance Overview</p>
-                          <div className="flex items-baseline gap-2">
-                            <h3 className="text-2xl font-black text-white">{stats?.totalSubmissions || 0}</h3>
-                            <span className="text-xs font-medium text-primary-solid bg-primary-light px-2 py-0.5 rounded-full">
-                              Submissions
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary-solid to-primary-dark rounded-xl flex items-center justify-center shadow-lg">
-                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </div>
-                      </div>
-                      
-                      {/* Performance Metrics */}
-                      <div className="space-y-3">
-                        {[
-                          { label: 'Batting', value: stats.avgBatting || 0, color: 'emerald', icon: '🏏' },
-                          { label: 'Bowling', value: stats.avgBowling || 0, color: 'sky', icon: '⚡' },
-                          { label: 'Fielding', value: stats.avgFielding || 0, color: 'amber', icon: '🎯' },
-                          { label: 'Team Spirit', value: stats.avgTeamSpirit || 0, color: 'purple', icon: '💪' },
-                        ].map((metric) => (
-                          <div key={metric.label} className="bg-slate-800/30 rounded-lg p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">{metric.icon}</span>
-                                <span className="text-sm font-bold text-white">{metric.label}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className={`text-lg font-black ${
-                                  metric.color === 'emerald' ? 'text-emerald-400' :
-                                  metric.color === 'sky' ? 'text-sky-400' :
-                                  metric.color === 'amber' ? 'text-amber-400' :
-                                  'text-purple-400'
-                                }`}>
-                                  {metric.value.toFixed(1)}
-                                </span>
-                                <span className="text-xs text-slate-500">/5</span>
-                              </div>
-                            </div>
-                            <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                                  metric.color === 'emerald' ? 'bg-emerald-400' :
-                                  metric.color === 'sky' ? 'bg-sky-400' :
-                                  metric.color === 'amber' ? 'bg-amber-400' :
-                                  'bg-purple-400'
-                                }`}
-                                style={{width: `${(metric.value / 5) * 100}%`}}
-                              ></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Overall Average */}
-                      <div className="mt-4 pt-4 border-t border-white/10">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-white">Overall Average</span>
-                          <div className={`px-3 py-1 rounded-full text-sm font-black ${
-                            ((stats.avgBatting + stats.avgBowling + stats.avgFielding + stats.avgTeamSpirit) / 4) >= 4 
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                              : ((stats.avgBatting + stats.avgBowling + stats.avgFielding + stats.avgTeamSpirit) / 4) >= 3
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          }`}>
-                            {((stats.avgBatting + stats.avgBowling + stats.avgFielding + stats.avgTeamSpirit) / 4).toFixed(1)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Desktop: Original Separate Tiles */}
-                <div className="hidden md:block">
-                  <div className="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {/* Total Submissions Card */}
-                    <div className="card card-primary overflow-visible">
-                      <div className="relative">
-                        <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-primary-solid to-primary-dark rounded-2xl flex items-center justify-center shadow-lg transform rotate-12">
-                          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                          </svg>
-                        </div>
-                        
-                        <div className="mb-8">
-                          <p className="text-xs font-semibold uppercase tracking-wider text-primary-solid mb-1">Total Submissions</p>
-                          <div className="flex items-baseline gap-2">
-                            <h3 className="text-4xl font-black text-white">{stats?.totalSubmissions || 0}</h3>
-                            <span className="text-xs font-medium text-primary-solid bg-primary-light px-2 py-0.5 rounded-full">
-                              {(stats?.totalSubmissions || 0) > 0 ? 'Active' : 'No Data'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <div className="stat-item">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-secondary">Avg Batting</span>
-                              <span className="text-sm font-semibold text-white">{(stats.avgBatting || 0).toFixed(1)}</span>
-                            </div>
-                            <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
-                                style={{width: `${((stats?.avgBatting || 0) / 5) * 100}%`}}
-                              ></div>
-                            </div>
-                          </div>
-                          
-                          <div className="stat-item">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-secondary">Avg Bowling</span>
-                              <span className="text-sm font-semibold text-white">{(stats.avgBowling || 0).toFixed(1)}</span>
-                            </div>
-                            <div className="mt-1 h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-gradient-to-r from-primary-solid to-primary-dark rounded-full" 
-                                style={{width: `${((stats?.avgBowling || 0) / 5) * 100}%`}}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Batting Stats Card */}
-                    <div className="card overflow-visible">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Batting Performance</p>
-                          <h3 className="text-3xl font-black text-white">{(stats.avgBatting || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center">
-                          <svg className="w-5 h-5 text-primary-solid" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
-                          </svg>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-center">
-                        <div className="text-2xl text-accent-warning">
-                          {renderStars(Math.round(stats.avgBatting || 0))}
-                        </div>
-                      </div>
-                      
-                      <div className="mt-6 pt-4 border-t border-white/5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-secondary">Team Average</span>
-                          <span className="font-semibold text-white">{stats?.totalSubmissions > 0 ? 'Good' : 'No Data'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Bowling Stats Card */}
-                    <div className="card overflow-visible">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Bowling Performance</p>
-                          <h3 className="text-3xl font-black text-white">{(stats.avgBowling || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-surface-hover flex items-center justify-center">
-                          <svg className="w-5 h-5 text-accent-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-center">
-                        <div className="text-2xl text-accent-warning">
-                          {renderStars(Math.round(stats.avgBowling || 0))}
-                        </div>
-                      </div>
-                      
-                      <div className="mt-6 pt-4 border-t border-white/5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-secondary">Team Average</span>
-                          <span className="font-semibold text-white">{stats?.totalSubmissions > 0 ? 'Good' : 'No Data'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Team Spirit Stats Card */}
-                    <div className="card card-success overflow-visible">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wider text-accent-success mb-1">Team Spirit</p>
-                          <h3 className="text-3xl font-black text-white">{(stats.avgTeamSpirit || 0).toFixed(1)}<span className="text-sm font-medium text-secondary"> / 5</span></h3>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-accent-success/20 flex items-center justify-center">
-                          <svg className="w-5 h-5 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                          </svg>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-center">
-                        <div className="text-2xl text-accent-warning">
-                          {renderStars(Math.round(stats.avgTeamSpirit || 0))}
-                        </div>
-                      </div>
-                      
-                      <div className="mt-6 pt-4 border-t border-white/5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-secondary">Morale Status</span>
-                          <span className="font-semibold text-accent-success">{(stats?.avgTeamSpirit || 0) >= 4 ? 'Excellent' : (stats?.avgTeamSpirit || 0) >= 3 ? 'Good' : 'Needs Attention'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
+              <FeedbackSummary stats={stats} className="mb-8" />
             )}
             {/* Issue Filters - Only show in active view */}
             {currentView === 'active' && (
