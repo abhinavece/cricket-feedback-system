@@ -137,8 +137,10 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     );
   }
 
-  // Show contact page for viewers trying to access admin-only tabs (but not settings)
-  if (isViewer && activeTab !== 'feedback' && activeTab !== 'settings') {
+  // Show contact page only for viewers trying to access admin-only tabs
+  // Viewers CAN access: feedback, matches, payments, grounds, player-history, settings
+  const viewerAccessibleTabs = ['feedback', 'matches', 'payments', 'grounds', 'player-history', 'settings'];
+  if (isViewer && !viewerAccessibleTabs.includes(activeTab)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
         <Suspense fallback={<TabLoadingSpinner />}>

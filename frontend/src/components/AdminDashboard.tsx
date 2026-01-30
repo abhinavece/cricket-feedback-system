@@ -650,51 +650,133 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {currentView === 'active' && stats && (
               <FeedbackSummary stats={stats} className="mb-8" />
             )}
-            {/* Issue Filters - Only show in active view */}
+            {/* Issue Filters - Modern AI-themed Design */}
             {currentView === 'active' && (
-            <div className="filter-section mb-8">
-              <div className="card p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  {/* Filter Pills */}
-                  <div className="w-full md:w-auto">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Filter by Issue</h4>
+            <div className="mb-6">
+              {/* Mobile: Horizontal Scroll */}
+              <div className="md:hidden">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  <span className="text-xs font-medium text-slate-400">Filter Issues</span>
+                  {selectedIssue && (
+                    <button
+                      onClick={() => setSelectedIssue(null)}
+                      className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-medium"
+                    >
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+                  {[
+                    { key: 'venue', label: 'Venue', emoji: '🏟️', color: 'emerald' },
+                    { key: 'equipment', label: 'Equipment', emoji: '🏏', color: 'cyan' },
+                    { key: 'timing', label: 'Timing', emoji: '⏰', color: 'amber' },
+                    { key: 'umpiring', label: 'Umpiring', emoji: '👨‍⚖️', color: 'violet' },
+                    { key: 'other', label: 'Other', emoji: '📋', color: 'rose' },
+                  ].map(({ key, label, emoji, color }) => (
+                    <button
+                      key={key}
+                      onClick={() => handleIssueClick(key)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
+                        selectedIssue === key
+                          ? `bg-${color}-500/20 text-${color}-400 border border-${color}-500/30 shadow-lg shadow-${color}-500/10`
+                          : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:border-slate-600'
+                      }`}
+                      style={selectedIssue === key ? {
+                        backgroundColor: color === 'emerald' ? 'rgba(16, 185, 129, 0.2)' :
+                                         color === 'cyan' ? 'rgba(6, 182, 212, 0.2)' :
+                                         color === 'amber' ? 'rgba(245, 158, 11, 0.2)' :
+                                         color === 'violet' ? 'rgba(139, 92, 246, 0.2)' :
+                                         'rgba(244, 63, 94, 0.2)',
+                        color: color === 'emerald' ? 'rgb(52, 211, 153)' :
+                               color === 'cyan' ? 'rgb(34, 211, 238)' :
+                               color === 'amber' ? 'rgb(251, 191, 36)' :
+                               color === 'violet' ? 'rgb(167, 139, 250)' :
+                               'rgb(251, 113, 133)',
+                        borderColor: color === 'emerald' ? 'rgba(16, 185, 129, 0.3)' :
+                                     color === 'cyan' ? 'rgba(6, 182, 212, 0.3)' :
+                                     color === 'amber' ? 'rgba(245, 158, 11, 0.3)' :
+                                     color === 'violet' ? 'rgba(139, 92, 246, 0.3)' :
+                                     'rgba(244, 63, 94, 0.3)'
+                      } : {}}
+                    >
+                      <span className="text-sm">{emoji}</span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Desktop: Inline Pills */}
+              <div className="hidden md:block bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                      </svg>
+                      <span className="text-sm font-medium text-slate-300">Filter by Issue</span>
+                    </div>
+                    <div className="h-4 w-px bg-slate-700" />
                     <div className="flex flex-wrap gap-2">
                       {[
-                        { key: 'venue', label: 'Venue', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-                        { key: 'equipment', label: 'Equipment', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                        { key: 'timing', label: 'Timing', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-                        { key: 'umpiring', label: 'Umpiring', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                        { key: 'other', label: 'Other', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                      ].map(({ key, label, icon }) => (
+                        { key: 'venue', label: 'Venue', emoji: '🏟️', color: 'emerald' },
+                        { key: 'equipment', label: 'Equipment', emoji: '🏏', color: 'cyan' },
+                        { key: 'timing', label: 'Timing', emoji: '⏰', color: 'amber' },
+                        { key: 'umpiring', label: 'Umpiring', emoji: '👨‍⚖️', color: 'violet' },
+                        { key: 'other', label: 'Other', emoji: '📋', color: 'rose' },
+                      ].map(({ key, label, emoji, color }) => (
                         <button
                           key={key}
-                          className={`filter-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                            selectedIssue === key
-                              ? 'bg-primary-solid text-white shadow-md shadow-primary-solid/20'
-                              : 'bg-surface-hover text-secondary hover:bg-surface-hover/80 hover:text-white'
-                          }`}
                           onClick={() => handleIssueClick(key)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            selectedIssue === key
+                              ? 'shadow-lg'
+                              : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:border-slate-600 hover:text-slate-300'
+                          }`}
+                          style={selectedIssue === key ? {
+                            backgroundColor: color === 'emerald' ? 'rgba(16, 185, 129, 0.2)' :
+                                             color === 'cyan' ? 'rgba(6, 182, 212, 0.2)' :
+                                             color === 'amber' ? 'rgba(245, 158, 11, 0.2)' :
+                                             color === 'violet' ? 'rgba(139, 92, 246, 0.2)' :
+                                             'rgba(244, 63, 94, 0.2)',
+                            color: color === 'emerald' ? 'rgb(52, 211, 153)' :
+                                   color === 'cyan' ? 'rgb(34, 211, 238)' :
+                                   color === 'amber' ? 'rgb(251, 191, 36)' :
+                                   color === 'violet' ? 'rgb(167, 139, 250)' :
+                                   'rgb(251, 113, 133)',
+                            borderColor: color === 'emerald' ? 'rgba(16, 185, 129, 0.3)' :
+                                         color === 'cyan' ? 'rgba(6, 182, 212, 0.3)' :
+                                         color === 'amber' ? 'rgba(245, 158, 11, 0.3)' :
+                                         color === 'violet' ? 'rgba(139, 92, 246, 0.3)' :
+                                         'rgba(244, 63, 94, 0.3)',
+                            border: '1px solid'
+                          } : {}}
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
-                          </svg>
+                          <span>{emoji}</span>
                           {label}
                         </button>
                       ))}
-                      
-                      {selectedIssue && (
-                        <button
-                          className="filter-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 transition-all"
-                          onClick={() => setSelectedIssue(null)}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          Clear Filter
-                        </button>
-                      )}
                     </div>
                   </div>
+                  
+                  {selectedIssue && (
+                    <button
+                      onClick={() => setSelectedIssue(null)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
