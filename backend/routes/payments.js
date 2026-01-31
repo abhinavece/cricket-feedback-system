@@ -1593,6 +1593,11 @@ router.post('/:id/send-requests', auth, requireAdmin, async (req, res) => {
 // Handles both direct screenshots and references to screenshots stored elsewhere
 router.get('/:id/screenshot/:memberId', async (req, res) => {
   try {
+    // Set CORS headers explicitly for image requests
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    
     const payment = await MatchPayment.findById(req.params.id);
     if (!payment) {
       return res.status(404).json({
@@ -1616,6 +1621,7 @@ router.get('/:id/screenshot/:memberId', async (req, res) => {
         const sourceMember = sourcePayment.squadMembers.id(member.screenshotRef.sourceMemberId);
         if (sourceMember?.screenshotImage) {
           res.set('Content-Type', sourceMember.screenshotContentType || 'image/jpeg');
+          res.set('Cache-Control', 'public, max-age=86400');
           return res.send(sourceMember.screenshotImage);
         }
       }
@@ -1630,6 +1636,7 @@ router.get('/:id/screenshot/:memberId', async (req, res) => {
     }
 
     res.set('Content-Type', member.screenshotContentType || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
     res.send(member.screenshotImage);
   } catch (error) {
     console.error('Error fetching screenshot:', error);
@@ -2027,6 +2034,11 @@ router.get('/screenshots/:screenshotId', auth, async (req, res) => {
 // GET /api/payments/screenshots/:screenshotId/image - Get screenshot image binary
 router.get('/screenshots/:screenshotId/image', async (req, res) => {
   try {
+    // Set CORS headers explicitly for image requests
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    
     const screenshot = await PaymentScreenshot.findById(req.params.screenshotId)
       .select('screenshotImage screenshotContentType');
 
@@ -2038,6 +2050,7 @@ router.get('/screenshots/:screenshotId/image', async (req, res) => {
     }
 
     res.set('Content-Type', screenshot.screenshotContentType || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
     res.send(screenshot.screenshotImage);
   } catch (error) {
     console.error('Error fetching screenshot image:', error);

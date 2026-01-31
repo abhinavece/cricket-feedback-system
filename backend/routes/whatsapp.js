@@ -2280,6 +2280,11 @@ router.get('/media/:mediaId', async (req, res) => {
   try {
     const { mediaId } = req.params;
     
+    // Set CORS headers explicitly for image requests
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    
     if (!mediaId) {
       return res.status(400).json({
         success: false,
@@ -2294,6 +2299,7 @@ router.get('/media/:mediaId', async (req, res) => {
       console.log(`Serving cached image for mediaId: ${mediaId}`);
       res.set('Content-Type', cachedMessage.imageMimeType || 'image/jpeg');
       res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin embedding
       return res.send(cachedMessage.imageData);
     }
     
@@ -2330,6 +2336,7 @@ router.get('/media/:mediaId', async (req, res) => {
     // Step 4: Send the image to client
     res.set('Content-Type', mimeType);
     res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin embedding
     res.send(imageBuffer);
     
   } catch (error) {

@@ -1,0 +1,239 @@
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'ai-service/**'
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - frontend
+          - backend
+          - ai-service
+        default: all
+
+env:
+  PROJECT_ID: cricsmart
+  REGION: asia-south1
+  REGISTRY: asia-south1-docker.pkg.dev/cricsmart/cricsmart
+  # Workload Identity Federation
+  WORKLOAD_IDENTITY_PROVIDER: projects/795359678717/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  SERVICE_ACCOUNT: cricsmart-cloudrun@cricsmart.iam.gserviceaccount.com
+
+permissions:
+  contents: read
+  id-token: write  # Required for Workload Identity Federation
+
+jobs:
+  # Detect which components have changed
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      backend: ${{ steps.changes.outputs.backend }}
+      ai-service: ${{ steps.changes.outputs.ai-service }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect file changes
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            component="${{ github.event.inputs.component }}"
+            echo "frontend=$([[ "$component" == "all" || "$component" == "frontend" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "backend=$([[ "$component" == "all" || "$component" == "backend" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "ai-service=$([[ "$component" == "all" || "$component" == "ai-service" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          else
+            echo "frontend=$(git diff --name-only HEAD^ HEAD | grep -q '^frontend/' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "backend=$(git diff --name-only HEAD^ HEAD | grep -q '^backend/' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "ai-service=$(git diff --name-only HEAD^ HEAD | grep -q '^ai-service/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show detected changes
+        run: |
+          echo "Frontend: ${{ steps.changes.outputs.frontend }}"
+          echo "Backend: ${{ steps.changes.outputs.backend }}"
+          echo "AI Service: ${{ steps.changes.outputs.ai-service }}"
+
+  # Build and deploy frontend
+  deploy-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION="$(date +'%Y.%m.%d').${{ github.run_number }}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Get Google Client ID from Secret Manager
+        id: secrets
+        run: |
+          GOOGLE_CLIENT_ID=$(gcloud secrets versions access latest --secret=google-client-id)
+          echo "::add-mask::$GOOGLE_CLIENT_ID"
+          echo "google_client_id=$GOOGLE_CLIENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Build and push frontend
+        run: |
+          docker buildx build --platform linux/amd64 \
+            --build-arg REACT_APP_API_URL=https://app.cricsmart.in/api \
+            --build-arg REACT_APP_GOOGLE_CLIENT_ID=${{ steps.secrets.outputs.google_client_id }} \
+            -t ${{ env.REGISTRY }}/frontend:${{ steps.version.outputs.tag }} \
+            -f frontend/Dockerfile.cloudrun \
+            --push \
+            ./frontend
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update cricsmart-frontend \
+            --region=${{ env.REGION }} \
+            --image=${{ env.REGISTRY }}/frontend:${{ steps.version.outputs.tag }}
+
+      - name: Summary
+        run: |
+          echo "### Frontend Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.REGISTRY }}/frontend:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # Build and deploy backend
+  deploy-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION="$(date +'%Y.%m.%d').${{ github.run_number }}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Get AI Service URL
+        id: ai-service
+        run: |
+          AI_SERVICE_URL=$(gcloud run services describe cricsmart-ai-service --region=${{ env.REGION }} --format='value(status.url)')
+          echo "url=$AI_SERVICE_URL" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/backend:${{ steps.version.outputs.tag }} \
+            -f backend/Dockerfile \
+            --push \
+            ./backend
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update cricsmart-backend \
+            --region=${{ env.REGION }} \
+            --image=${{ env.REGISTRY }}/backend:${{ steps.version.outputs.tag }} \
+            --set-env-vars="AI_SERVICE_URL=${{ steps.ai-service.outputs.url }}"
+
+      - name: Summary
+        run: |
+          echo "### Backend Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.REGISTRY }}/backend:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # Build and deploy AI service
+  deploy-ai-service:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ai-service == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION="$(date +'%Y.%m.%d').${{ github.run_number }}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push AI service
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/ai-service:${{ steps.version.outputs.tag }} \
+            -f ai-service/Dockerfile.prod \
+            --push \
+            ./ai-service
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update cricsmart-ai-service \
+            --region=${{ env.REGION }} \
+            --image=${{ env.REGISTRY }}/ai-service:${{ steps.version.outputs.tag }}
+
+      - name: Summary
+        run: |
+          echo "### AI Service Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.REGISTRY }}/ai-service:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # Final summary
+  summary:
+    needs: [detect-changes, deploy-frontend, deploy-backend, deploy-ai-service]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "### Cloud Run Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ needs.deploy-frontend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI Service | ${{ needs.deploy-ai-service.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** ${{ env.PROJECT_ID }}" >> $GITHUB_STEP_SUMMARY

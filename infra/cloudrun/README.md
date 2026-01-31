@@ -313,14 +313,53 @@ curl https://cricsmart.in/
 | Component | Name | Purpose |
 |-----------|------|---------|
 | Static IP | `cricsmart-ip` | 136.110.208.131 |
-| SSL Certificate | `cricsmart-ssl` | Google-managed for all domains |
+| SSL Certificate | `cricsmart-ssl-v2` | Google-managed for all domains |
 | HTTPS Proxy | `cricsmart-https-proxy` | Routes HTTPS traffic |
 | HTTP Proxy | `cricsmart-http-proxy` | Redirects HTTP to HTTPS |
 | URL Map | `cricsmart-url-map` | Path-based routing |
-| Backend Service (API) | `cricsmart-backend-api` | Routes /api/* |
-| Backend Service (Frontend) | `cricsmart-backend-frontend` | Routes /* |
+| Backend Service (API) | `cricsmart-backend-api` | Routes /api/* (no CDN) |
+| Backend Service (Frontend) | `cricsmart-backend-frontend` | Routes /* (CDN enabled) |
 | NEG (Backend) | `cricsmart-backend-neg` | Serverless NEG for backend |
 | NEG (Frontend) | `cricsmart-frontend-neg` | Serverless NEG for frontend |
+
+### Cloud CDN
+
+CDN is enabled on the frontend backend service for faster content delivery.
+
+**Configuration:**
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| CDN Enabled | `true` | Frontend only |
+| Cache Mode | `USE_ORIGIN_HEADERS` | Respects Cache-Control headers from nginx |
+| Serve While Stale | `86400` (24h) | Serve stale content if origin is down |
+| Request Coalescing | `true` | Combines multiple requests for same content |
+
+**Cache TTLs (set in nginx):**
+
+| Content Type | Cache Duration | Notes |
+|--------------|----------------|-------|
+| JS, CSS | 1 year | Immutable (hashed filenames) |
+| Images, fonts | 7 days | Static media |
+| manifest.json | 1 hour | PWA manifest |
+| HTML | 5 minutes | SPA routes, must-revalidate |
+
+**Invalidating Cache:**
+
+```bash
+# Invalidate all cached content
+gcloud compute url-maps invalidate-cdn-cache cricsmart-url-map \
+  --path="/*" --global
+
+# Invalidate specific path
+gcloud compute url-maps invalidate-cdn-cache cricsmart-url-map \
+  --path="/static/*" --global
+```
+
+**Why API is NOT cached:**
+- API responses are user-specific (authentication, user data)
+- Real-time data (matches, payments, messages)
+- Security-sensitive endpoints
 
 ### URL Routing Rules
 
