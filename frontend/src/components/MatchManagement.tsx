@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-// @ts-ignore
-import { Plus, Filter, Search, Calendar, Trophy, Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  Plus, Filter, Search, Calendar, Trophy, Users, 
+  Sparkles, Brain, RefreshCw, Target, CheckCircle, 
+  Clock, Zap
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import MatchForm from './MatchForm';
 import MatchCard from './MatchCard';
@@ -40,7 +43,6 @@ interface Match {
   };
   createdAt: string;
   notes: string;
-  // Availability tracking fields
   availabilitySent?: boolean;
   availabilitySentAt?: string;
   totalPlayersRequested?: number;
@@ -53,6 +55,7 @@ interface Match {
 }
 
 const MatchManagement: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isViewer } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,6 @@ const MatchManagement: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<Match | null>(null);
   const [initialDetailTab, setInitialDetailTab] = useState<'overview' | 'responses' | 'squad' | 'feedback'>('overview');
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -82,11 +84,91 @@ const MatchManagement: React.FC = () => {
     onConfirm: () => {}
   });
 
-  // Fetch matches with pagination
+  // Animated neural network background
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      opacity: number;
+    }> = [];
+
+    const numParticles = 40;
+    
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.3 + 0.1,
+      });
+    }
+
+    let animationId: number;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity})`;
+        ctx.fill();
+
+        particles.slice(i + 1).forEach((p2) => {
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.06 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
   const fetchMatches = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
-      console.log(`[MatchManagement] Fetching matches - Page: ${pageNum}, Append: ${append}`);
-      
       if (append) {
         setLoadingMore(true);
       } else {
@@ -95,30 +177,14 @@ const MatchManagement: React.FC = () => {
 
       const data = await matchApi.getMatches({ page: pageNum, limit: 10 });
       const pagination = data.pagination || {};
-      
-      // Calculate hasMore: if current page * limit < total, there are more pages
       const hasMoreData = (pageNum * 10) < (pagination.total || 0);
-      
-      console.log(`[MatchManagement] API Response:`, {
-        matchCount: data.matches?.length || 0,
-        pagination,
-        calculatedHasMore: hasMoreData,
-        pageNum,
-        total: pagination.total
-      });
 
       if (append) {
-        setMatches(prev => {
-          const newMatches = [...prev, ...(data.matches || [])];
-          console.log(`[MatchManagement] Appended matches. Total now: ${newMatches.length}`);
-          return newMatches;
-        });
+        setMatches(prev => [...prev, ...(data.matches || [])]);
       } else {
         setMatches(data.matches || []);
-        console.log(`[MatchManagement] Set initial matches: ${data.matches?.length || 0}`);
       }
 
-      console.log(`[MatchManagement] Setting hasMore to: ${hasMoreData}`);
       setHasMore(hasMoreData);
       setCurrentPage(pageNum);
     } catch (error) {
@@ -129,29 +195,12 @@ const MatchManagement: React.FC = () => {
     }
   }, []);
 
-  // Initial load - only once
   useEffect(() => {
     if (hasFetchedInitial.current) return;
     hasFetchedInitial.current = true;
-    console.log('[MatchManagement] Component mounted, fetching initial matches');
     fetchMatches(1, false);
   }, [fetchMatches]);
 
-  // Close filter menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showFilterMenu) {
-        setShowFilterMenu(false);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [showFilterMenu]);
-
-  // Infinite scroll handler
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let isScrolling = false;
@@ -161,26 +210,14 @@ const MatchManagement: React.FC = () => {
       
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        if (loading || loadingMore || !hasMore) {
-          console.log('[MatchManagement] Scroll ignored - loading:', loading, 'loadingMore:', loadingMore, 'hasMore:', hasMore);
-          return;
-        }
+        if (loading || loadingMore || !hasMore) return;
         
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const scrollHeight = document.documentElement.scrollHeight;
         const clientHeight = document.documentElement.clientHeight;
         
-        console.log('[MatchManagement] Scroll position:', {
-          scrollTop,
-          clientHeight,
-          scrollHeight,
-          distanceFromBottom: scrollHeight - (scrollTop + clientHeight)
-        });
-        
-        // Trigger when user is 300px from bottom
         if (scrollTop + clientHeight >= scrollHeight - 300) {
           if (!loadingMore && hasMore) {
-            console.log('[MatchManagement] Triggering load more - next page:', currentPage + 1);
             isScrolling = true;
             fetchMatches(currentPage + 1, true);
             setTimeout(() => { isScrolling = false; }, 500);
@@ -215,9 +252,7 @@ const MatchManagement: React.FC = () => {
       }
       setShowForm(false);
       setEditingMatch(null);
-      console.log('[MatchManagement] Match saved, refreshing list');
       fetchMatches(1, false);
-      // Notify other components about match change
       matchEvents.emit();
     } catch (error) {
       console.error('Error saving match:', error);
@@ -232,9 +267,7 @@ const MatchManagement: React.FC = () => {
       onConfirm: async () => {
         try {
           await matchApi.deleteMatch(matchId);
-          console.log('[MatchManagement] Match deleted, refreshing list');
           fetchMatches(1, false);
-          // Notify other components about match change
           matchEvents.emit();
         } catch (error) {
           console.error('Error deleting match:', error);
@@ -246,12 +279,7 @@ const MatchManagement: React.FC = () => {
 
   const handleFeedback = (match: Match) => {
     setSelectedMatchForDetail(match);
-    setInitialDetailTab('feedback');
-    setShowDetailModal(true);
-  };
-
-  const handleManageSquad = (match: Match) => {
-    setSelectedMatchForDetail(match);
+    setInitialDetailTab('overview'); // Open overview tab by default
     setShowDetailModal(true);
   };
 
@@ -262,8 +290,6 @@ const MatchManagement: React.FC = () => {
 
   const handleSendAvailabilityFromDetail = (match: Match) => {
     setShowDetailModal(false);
-    // Navigate to WhatsApp tab with match pre-selected
-    // This would require lifting state up or using a router
     console.log('Send availability for match:', match._id);
   };
 
@@ -271,9 +297,7 @@ const MatchManagement: React.FC = () => {
     const matchesSearch = match.matchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          match.opponent.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          match.ground.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesStatus = statusFilter === 'all' || match.status === statusFilter;
-    
     return matchesSearch && matchesStatus;
   });
 
@@ -282,7 +306,6 @@ const MatchManagement: React.FC = () => {
     const upcoming = matches.filter(m => new Date(m.date) > new Date()).length;
     const completed = matches.filter(m => m.status === 'completed').length;
     const confirmed = matches.filter(m => m.status === 'confirmed').length;
-
     return { total, upcoming, completed, confirmed };
   };
 
@@ -314,259 +337,214 @@ const MatchManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <div className="bg-slate-800/50 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-6">
-            <div>
-              <h1 className="text-xl sm:text-3xl font-black text-white flex items-center gap-2 sm:gap-3">
-                <Trophy className="w-5 h-5 sm:w-8 sm:h-8 text-emerald-400" />
-                Match Management
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1 hidden sm:block">Create and manage cricket matches with squad availability</p>
-            </div>
-            
-            {!isViewer() && (
-              <button
-                onClick={handleCreateMatch}
-                className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm sm:text-base font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2 w-full sm:w-auto justify-center"
-              >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                Create Match
-              </button>
-            )}
-          </div>
-        </div>
+    <div className="relative min-h-screen">
+      {/* Neural Network Background */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 w-full h-full pointer-events-none opacity-40"
+        style={{ zIndex: 0 }}
+      />
+
+      {/* Gradient Overlays */}
+      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-8">
-        {/* Mobile: Single compact card with inline stats */}
-        <div className="sm:hidden bg-slate-800/50 backdrop-blur-xl rounded-lg border border-white/10 p-3 mb-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <Trophy className="w-3 h-3 text-emerald-400" />
-              <span className="text-xs text-slate-400">Total:</span>
-              <span className="text-sm font-black text-white">{stats.total}</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-amber-400" />
-              <span className="text-xs text-slate-400">Up:</span>
-              <span className="text-sm font-black text-white">{stats.upcoming}</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <Users className="w-3 h-3 text-emerald-400" />
-              <span className="text-xs text-slate-400">Conf:</span>
-              <span className="text-sm font-black text-white">{stats.confirmed}</span>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <Trophy className="w-3 h-3 text-slate-400" />
-              <span className="text-xs text-slate-400">Done:</span>
-              <span className="text-sm font-black text-white">{stats.completed}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop: 4-column grid */}
-        <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-white/10 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm font-medium">Total Matches</p>
-                <p className="text-2xl font-black text-white mt-1">{stats.total}</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-emerald-400" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-white/10 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm font-medium">Upcoming</p>
-                <p className="text-2xl font-black text-white mt-1">{stats.upcoming}</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-amber-400" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-white/10 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm font-medium">Confirmed</p>
-                <p className="text-2xl font-black text-white mt-1">{stats.confirmed}</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-emerald-400" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-white/10 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm font-medium">Completed</p>
-                <p className="text-2xl font-black text-white mt-1">{stats.completed}</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-slate-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-slate-800/50 backdrop-blur-xl rounded-lg border border-white/10 p-3 sm:p-6 mb-4 sm:mb-8">
-          {/* Mobile: Search + Filter Button */}
-          <div className="sm:hidden flex gap-2">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search matches..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
-              />
-            </div>
-            
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFilterMenu(!showFilterMenu);
-                }}
-                className="px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1"
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Desktop: Search + Dropdown */}
-          <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search matches..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 sm:py-3 text-sm sm:text-base bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base bg-slate-700/50 border border-slate-600 rounded-lg text-white transition-all focus:border-emerald-500 focus:ring-emerald-500/20 focus:outline-none focus:ring-2"
-              >
-                <option value="all">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Filter Dropdown - Outside container to avoid clipping */}
-        {showFilterMenu && (
-          <div 
-            className="fixed left-0 right-0 top-32 z-[9999] px-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full max-w-xs mx-auto bg-slate-800 border border-slate-600 rounded-lg shadow-lg overflow-hidden">
-              {['all', 'draft', 'confirmed', 'cancelled', 'completed'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => {
-                    setStatusFilter(status);
-                    setShowFilterMenu(false);
-                  }}
-                  className={`w-full text-left px-4 py-2 text-sm transition-all ${
-                    statusFilter === status
-                      ? 'bg-emerald-500/20 text-emerald-400 border-l-2 border-emerald-400'
-                      : 'text-slate-300 hover:bg-slate-700/50'
-                  }`}
-                >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Matches Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : filteredMatches.length === 0 ? (
-          <div className="text-center py-12">
-            <Trophy className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">No matches found</h3>
-            <p className="text-slate-400 mb-6">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'Try adjusting your filters or search terms' 
-                : 'Get started by creating your first match'
-              }
-            </p>
-            {!isViewer() && !searchTerm && statusFilter === 'all' && (
-              <button
-                onClick={handleCreateMatch}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center gap-2 mx-auto"
-              >
-                <Plus className="w-5 h-5" />
-                Create Your First Match
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredMatches.map((match) => (
-                <MatchCard
-                  key={match._id}
-                  match={match}
-                  onEdit={!isViewer() ? handleEditMatch : undefined}
-                  onDelete={!isViewer() ? handleDeleteMatch : undefined}
-                  onFeedback={handleFeedback}
-                  onViewAvailability={handleViewAvailability}
-                />
-              ))}
-            </div>
-            
-            {/* Loading More Indicator */}
-            {loadingMore && (
-              <div className="flex justify-center items-center py-8">
-                <div className="flex items-center gap-3 text-slate-400">
-                  <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm">Loading more matches...</span>
+      <div className="relative z-10">
+        {/* Header Section */}
+        <div className="bg-slate-900/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <Trophy className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center border-2 border-slate-900">
+                    <Sparkles className="w-2.5 h-2.5 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                    Match Center
+                    <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 bg-violet-500/20 border border-violet-500/30 rounded-full text-xs text-violet-400">
+                      <Brain className="w-3 h-3" />
+                      AI
+                    </span>
+                  </h1>
+                  <p className="text-sm text-slate-400 hidden sm:block">Manage matches & squad availability</p>
                 </div>
               </div>
-            )}
-            
-            {/* No More Matches Indicator */}
-            {!hasMore && matches.length > 0 && (
-              <div className="flex justify-center items-center py-8">
-                <p className="text-sm text-slate-500">No more matches to load</p>
+              
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => fetchMatches(1, false)}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:border-emerald-500/30 transition-all group"
+                >
+                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+                
+                {!isViewer() && (
+                  <button
+                    onClick={handleCreateMatch}
+                    className="relative group"
+                  >
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl blur opacity-60 group-hover:opacity-100 transition" />
+                    <div className="relative flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-medium rounded-xl transition-all">
+                      <Plus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Create Match</span>
+                    </div>
+                  </button>
+                )}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            {[
+              { label: 'Total', value: stats.total, icon: <Trophy className="w-5 h-5" />, color: 'emerald', gradient: 'from-emerald-500/20 to-cyan-500/20' },
+              { label: 'Upcoming', value: stats.upcoming, icon: <Calendar className="w-5 h-5" />, color: 'amber', gradient: 'from-amber-500/20 to-orange-500/20' },
+              { label: 'Confirmed', value: stats.confirmed, icon: <CheckCircle className="w-5 h-5" />, color: 'cyan', gradient: 'from-cyan-500/20 to-blue-500/20' },
+              { label: 'Completed', value: stats.completed, icon: <Target className="w-5 h-5" />, color: 'violet', gradient: 'from-violet-500/20 to-purple-500/20' },
+            ].map((stat, idx) => (
+              <div
+                key={idx}
+                className={`relative group bg-gradient-to-br ${stat.gradient} backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:border-${stat.color}-500/30 transition-all overflow-hidden`}
+              >
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="relative">
+                  <div className={`w-10 h-10 bg-${stat.color}-500/20 rounded-lg flex items-center justify-center text-${stat.color}-400 mb-3`}>
+                    {stat.icon}
+                  </div>
+                  <p className="text-2xl md:text-3xl font-bold text-white">{stat.value}</p>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">{stat.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search & Filters */}
+          <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/30 rounded-2xl p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-3">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search matches, opponents, grounds..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                />
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {[
+                  { id: 'all', label: 'All', icon: <Zap className="w-3 h-3" /> },
+                  { id: 'confirmed', label: 'Confirmed', icon: <CheckCircle className="w-3 h-3" /> },
+                  { id: 'draft', label: 'Draft', icon: <Clock className="w-3 h-3" /> },
+                  { id: 'completed', label: 'Completed', icon: <Target className="w-3 h-3" /> },
+                ].map((filter) => (
+                  <button
+                    key={filter.id}
+                    onClick={() => setStatusFilter(filter.id)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                      statusFilter === filter.id
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-slate-800/50 text-slate-400 border border-transparent hover:border-slate-700'
+                    }`}
+                  >
+                    {filter.icon}
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Matches Grid */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="relative">
+                <div className="w-12 h-12 border-2 border-emerald-500/30 rounded-full" />
+                <div className="absolute inset-0 w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <p className="text-sm text-slate-400">Loading matches...</p>
+            </div>
+          ) : filteredMatches.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="relative">
+                <div className="w-20 h-20 bg-slate-800/50 rounded-2xl flex items-center justify-center">
+                  <Trophy className="w-10 h-10 text-slate-600" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-violet-500/20 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-white mb-2">No matches found</h3>
+                <p className="text-sm text-slate-400 max-w-sm">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your filters or search terms' 
+                    : 'Get started by creating your first match'
+                  }
+                </p>
+              </div>
+              {!isViewer() && !searchTerm && statusFilter === 'all' && (
+                <button
+                  onClick={handleCreateMatch}
+                  className="mt-4 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/20"
+                >
+                  <Plus className="w-5 h-5" />
+                  Create Your First Match
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+                {filteredMatches.map((match, index) => (
+                  <MatchCard
+                    key={match._id}
+                    match={match}
+                    onEdit={!isViewer() ? handleEditMatch : undefined}
+                    onDelete={!isViewer() ? handleDeleteMatch : undefined}
+                    onFeedback={handleFeedback}
+                    onViewAvailability={handleViewAvailability}
+                    animationDelay={index * 50}
+                  />
+                ))}
+              </div>
+              
+              {/* Loading More Indicator */}
+              {loadingMore && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="flex items-center gap-3 px-4 py-2 bg-slate-800/50 rounded-full">
+                    <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-slate-400">Loading more...</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* End of List */}
+              {!hasMore && matches.length > 0 && (
+                <div className="flex justify-center items-center py-8">
+                  <p className="text-sm text-slate-500 px-4 py-2 bg-slate-800/30 rounded-full">
+                    All matches loaded
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Match Detail Modal */}
@@ -578,7 +556,6 @@ const MatchManagement: React.FC = () => {
             setShowDetailModal(false);
             setSelectedMatchForDetail(null);
             setInitialDetailTab('overview');
-            console.log('[MatchManagement] Modal closed, refreshing matches');
             fetchMatches(1, false);
           }}
           onEdit={!isViewer() ? (match) => {
@@ -596,7 +573,7 @@ const MatchManagement: React.FC = () => {
       {/* Availability Dashboard Modal */}
       {showAvailability && selectedMatchForAvailability && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="p-6">
               <MatchAvailabilityDashboard
                 matchId={selectedMatchForAvailability._id}
@@ -619,6 +596,16 @@ const MatchManagement: React.FC = () => {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
       />
+
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,6 +1,9 @@
 import React from 'react';
-// @ts-ignore
-import { Calendar, Clock, MapPin, Users, Trophy, Edit, Trash2, MessageSquare } from 'lucide-react';
+import { 
+  Calendar, Clock, MapPin, Users, Trophy, Edit, Trash2, 
+  MessageSquare, CheckCircle, XCircle, AlertCircle, Circle,
+  Sparkles, Zap, Send
+} from 'lucide-react';
 
 interface SquadMember {
   player: {
@@ -36,15 +39,14 @@ interface MatchCardProps {
     locationLink?: string;
     status: 'draft' | 'confirmed' | 'cancelled' | 'completed';
     matchType?: 'practice' | 'tournament' | 'friendly';
-    squad?: SquadMember[]; // Optional - only present in full endpoint
-    squadStats?: SquadStats; // Pre-computed stats from summary endpoint
+    squad?: SquadMember[];
+    squadStats?: SquadStats;
     createdBy: {
       name: string;
       email: string;
     };
     createdAt: string;
     notes: string;
-    // Availability tracking fields
     availabilitySent?: boolean;
     availabilitySentAt?: string;
     totalPlayersRequested?: number;
@@ -59,6 +61,7 @@ interface MatchCardProps {
   onDelete?: (matchId: string) => void;
   onFeedback?: (match: any) => void;
   onViewAvailability?: (match: any) => void;
+  animationDelay?: number;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({
@@ -66,10 +69,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onEdit,
   onDelete,
   onFeedback,
-  onViewAvailability
+  onViewAvailability,
+  animationDelay = 0
 }) => {
   const getSquadStats = () => {
-    // Priority 1: Use availability tracking fields if available
     if (match.availabilitySent && match.totalPlayersRequested) {
       const total = match.totalPlayersRequested || 0;
       const yes = match.confirmedPlayers || 0;
@@ -78,11 +81,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
       const pending = match.noResponsePlayers || 0;
       const responded = yes + no + tentative;
       const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
-
       return { total, yes, no, tentative, pending, responseRate, responded, isTracking: true };
     }
     
-    // Priority 2: Use pre-computed squadStats from summary endpoint
     if (match.squadStats) {
       const { total, yes, no, tentative, pending } = match.squadStats;
       const responded = yes + no + tentative;
@@ -90,7 +91,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
       return { total, yes, no, tentative, pending, responseRate, responded, isTracking: false };
     }
     
-    // Priority 3: Compute from squad array (full endpoint)
     if (match.squad && match.squad.length > 0) {
       const total = match.squad.length;
       const yes = match.squad.filter(s => s.response === 'yes').length;
@@ -99,205 +99,211 @@ const MatchCard: React.FC<MatchCardProps> = ({
       const pending = match.squad.filter(s => s.response === 'pending').length;
       const responded = yes + no + tentative;
       const responseRate = total > 0 ? Math.round((responded / total) * 100) : 0;
-
       return { total, yes, no, tentative, pending, responseRate, responded, isTracking: false };
     }
     
-    // Fallback: No data available
     return { total: 0, yes: 0, no: 0, tentative: 0, pending: 0, responseRate: 0, responded: 0, isTracking: false };
   };
 
   const stats = getSquadStats();
   const matchDate = new Date(match.date);
   const isUpcoming = matchDate > new Date();
-  const isPast = matchDate < new Date();
 
-  const getStatusColor = () => {
+  const getStatusConfig = () => {
     switch (match.status) {
-      case 'confirmed': return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
-      case 'draft': return 'text-amber-400 bg-amber-500/20 border-amber-500/30';
-      case 'cancelled': return 'text-rose-400 bg-rose-500/20 border-rose-500/30';
-      case 'completed': return 'text-slate-400 bg-slate-500/20 border-slate-500/30';
-      default: return 'text-slate-400 bg-slate-500/20 border-slate-500/30';
+      case 'confirmed':
+        return { 
+          bg: 'bg-emerald-500/20', 
+          text: 'text-emerald-400', 
+          border: 'border-emerald-500/30',
+          icon: <CheckCircle className="w-3 h-3" />,
+          glow: 'shadow-emerald-500/20'
+        };
+      case 'draft':
+        return { 
+          bg: 'bg-amber-500/20', 
+          text: 'text-amber-400', 
+          border: 'border-amber-500/30',
+          icon: <Clock className="w-3 h-3" />,
+          glow: 'shadow-amber-500/20'
+        };
+      case 'cancelled':
+        return { 
+          bg: 'bg-rose-500/20', 
+          text: 'text-rose-400', 
+          border: 'border-rose-500/30',
+          icon: <XCircle className="w-3 h-3" />,
+          glow: 'shadow-rose-500/20'
+        };
+      case 'completed':
+        return { 
+          bg: 'bg-violet-500/20', 
+          text: 'text-violet-400', 
+          border: 'border-violet-500/30',
+          icon: <Trophy className="w-3 h-3" />,
+          glow: 'shadow-violet-500/20'
+        };
+      default:
+        return { 
+          bg: 'bg-slate-500/20', 
+          text: 'text-slate-400', 
+          border: 'border-slate-500/30',
+          icon: <Circle className="w-3 h-3" />,
+          glow: ''
+        };
+    }
+  };
+
+  const getMatchTypeConfig = () => {
+    switch (match.matchType) {
+      case 'tournament':
+        return { emoji: '🏆', bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30' };
+      case 'friendly':
+        return { emoji: '🤝', bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30' };
+      default:
+        return { emoji: '🏏', bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30' };
     }
   };
 
   const getSlotDisplay = () => {
     switch (match.slot) {
-      case 'morning': return 'Morning';
-      case 'evening': return 'Evening';
-      case 'night': return 'Night';
+      case 'morning': return '🌅 Morning';
+      case 'evening': return '🌆 Evening';
+      case 'night': return '🌙 Night';
       case 'custom': return match.time || 'Custom';
       default: return match.slot;
     }
   };
 
+  const statusConfig = getStatusConfig();
+  const matchTypeConfig = getMatchTypeConfig();
+
   return (
     <div 
-      className="group relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-black/20 cursor-pointer"
+      className="group relative bg-slate-800/40 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer"
       onClick={() => onFeedback && onFeedback(match)}
+      style={{ animationDelay: `${animationDelay}ms` }}
     >
-      {/* Status & Match Type Badges */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-1.5 items-end">
-        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor()}`}>
-          {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-        </span>
-        {match.matchType && (
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-            match.matchType === 'tournament' 
-              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' 
-              : match.matchType === 'friendly'
-              ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-              : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-          }`}>
-            {match.matchType === 'tournament' ? '🏆' : match.matchType === 'friendly' ? '🤝' : '🏏'} {match.matchType.charAt(0).toUpperCase() + match.matchType.slice(1)}
-          </span>
-        )}
-      </div>
+      {/* Gradient Border Effect on Hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-cyan-500/0 to-violet-500/0 group-hover:from-emerald-500/5 group-hover:via-cyan-500/5 group-hover:to-violet-500/5 transition-all duration-500 pointer-events-none" />
+      
+      {/* Top Gradient Bar */}
+      <div className={`h-1 w-full bg-gradient-to-r ${
+        match.status === 'confirmed' ? 'from-emerald-500 to-cyan-500' :
+        match.status === 'completed' ? 'from-violet-500 to-purple-500' :
+        match.status === 'cancelled' ? 'from-rose-500 to-pink-500' :
+        'from-amber-500 to-orange-500'
+      }`} />
 
       {/* Header */}
-      <div className="p-6 border-b border-white/5">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="w-5 h-5 text-emerald-400" />
-              <span className="text-lg font-black text-white">{match.matchId}</span>
+      <div className="p-4 md:p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base md:text-lg font-bold text-white truncate">
+                {match.matchId}
+              </span>
+              {match.availabilitySent && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 text-[10px] font-medium rounded border border-cyan-500/30">
+                  <Send className="w-2.5 h-2.5" />
+                </span>
+              )}
             </div>
             {match.opponent && (
-              <p className="text-slate-300 font-medium">vs {match.opponent}</p>
+              <p className="text-sm text-slate-300 truncate">vs {match.opponent}</p>
+            )}
+          </div>
+          
+          {/* Status & Type Badges */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
+            <span className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+              {statusConfig.icon}
+              {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+            </span>
+            {match.matchType && (
+              <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${matchTypeConfig.bg} ${matchTypeConfig.text} ${matchTypeConfig.border}`}>
+                {matchTypeConfig.emoji} {match.matchType.charAt(0).toUpperCase() + match.matchType.slice(1)}
+              </span>
             )}
           </div>
         </div>
 
-        {/* Match Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Calendar className="w-4 h-4" />
-            <span className="text-sm">{matchDate.toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              month: 'short', 
-              day: 'numeric' 
-            })}</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm">{getSlotDisplay()}</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm truncate">{match.ground}</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <Users className="w-4 h-4" />
-            <span className="text-sm">{stats.total} Players</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Squad Stats */}
-      <div className="p-6">
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-300">
-                {stats.isTracking ? 'Availability Tracking' : 'Squad Availability'}
-              </span>
-              {match.availabilitySent && (
-                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">
-                  📤 Sent
-                </span>
-              )}
-            </div>
-            <span className="text-xs text-slate-500">
-              {stats.responded}/{stats.total} Responded ({stats.responseRate}%)
+        {/* Match Details Grid */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="flex items-center gap-2 px-2.5 py-2 bg-slate-900/50 rounded-lg">
+            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-xs text-slate-300 truncate">
+              {matchDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             </span>
           </div>
-          
-          {/* Availability Sent Info */}
-          {match.availabilitySent && match.availabilitySentAt && (
-            <div className="mb-2 text-xs text-slate-400">
-              Sent {new Date(match.availabilitySentAt).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-          )}
-          
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-700/50 rounded-full h-2 mb-3 overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-500"
-              style={{ width: `${stats.responseRate}%` }}
-            ></div>
+          <div className="flex items-center gap-2 px-2.5 py-2 bg-slate-900/50 rounded-lg">
+            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-xs text-slate-300 truncate">{getSlotDisplay()}</span>
           </div>
+          <div className="flex items-center gap-2 px-2.5 py-2 bg-slate-900/50 rounded-lg col-span-2">
+            <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span className="text-xs text-slate-300 truncate">{match.ground}</span>
+          </div>
+        </div>
 
-          {/* Mobile: Compact stats */}
-          <div className="sm:hidden space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-              <span className="text-xs text-emerald-400 font-medium min-w-[50px]">Yes {stats.yes}</span>
-              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.yes / stats.total) * 100 : 0}%` }}></div>
+        {/* Squad Availability Section */}
+        {stats.total > 0 && (
+          <div className="bg-slate-900/30 rounded-xl p-3 mb-4 border border-slate-700/30">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs font-medium text-slate-300">
+                  {stats.isTracking ? 'Availability' : 'Squad'}
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-              <span className="text-xs text-amber-400 font-medium min-w-[50px]">Maybe {stats.tentative}</span>
-              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full bg-amber-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.tentative / stats.total) * 100 : 0}%` }}></div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-              <span className="text-xs text-rose-400 font-medium min-w-[50px]">No {stats.no}</span>
-              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full bg-rose-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.no / stats.total) * 100 : 0}%` }}></div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-              <span className="text-xs text-slate-400 font-medium min-w-[50px]">Pending {stats.pending}</span>
-              <div className="flex-1 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full bg-slate-400 rounded-full" style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop: Stats Grid */}
-          <div className="hidden sm:grid grid-cols-4 gap-2 text-center">
-            <div className="bg-emerald-500/10 rounded-lg p-2">
-              <div className="text-lg font-black text-emerald-400">{stats.yes}</div>
-              <div className="text-xs text-slate-400">✅ Yes</div>
-            </div>
-            <div className="bg-amber-500/10 rounded-lg p-2">
-              <div className="text-lg font-black text-amber-400">{stats.tentative}</div>
-              <div className="text-xs text-slate-400">⏳ Maybe</div>
-            </div>
-            <div className="bg-rose-500/10 rounded-lg p-2">
-              <div className="text-lg font-black text-rose-400">{stats.no}</div>
-              <div className="text-xs text-slate-400">❌ No</div>
-            </div>
-            <div className="bg-slate-500/10 rounded-lg p-2">
-              <div className="text-lg font-black text-slate-400">{stats.pending}</div>
-              <div className="text-xs text-slate-400">⚪ Pending</div>
-            </div>
-          </div>
-          
-          {/* Squad Status Badge */}
-          {match.squadStatus && stats.isTracking && (
-            <div className="mt-3 text-center">
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                match.squadStatus === 'full' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                match.squadStatus === 'partial' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-              }`}>
-                Squad: {match.squadStatus.charAt(0).toUpperCase() + match.squadStatus.slice(1)}
+              <span className="text-[10px] text-slate-500">
+                {stats.responded}/{stats.total} ({stats.responseRate}%)
               </span>
             </div>
-          )}
-        </div>
+
+            {/* Progress Bar */}
+            <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden mb-3">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full transition-all duration-700"
+                style={{ width: `${stats.responseRate}%` }}
+              />
+            </div>
+
+            {/* Mini Stats */}
+            <div className="grid grid-cols-4 gap-1.5">
+              <div className="flex flex-col items-center p-1.5 bg-emerald-500/10 rounded-lg">
+                <span className="text-sm font-bold text-emerald-400">{stats.yes}</span>
+                <span className="text-[9px] text-slate-500">Yes</span>
+              </div>
+              <div className="flex flex-col items-center p-1.5 bg-amber-500/10 rounded-lg">
+                <span className="text-sm font-bold text-amber-400">{stats.tentative}</span>
+                <span className="text-[9px] text-slate-500">Maybe</span>
+              </div>
+              <div className="flex flex-col items-center p-1.5 bg-rose-500/10 rounded-lg">
+                <span className="text-sm font-bold text-rose-400">{stats.no}</span>
+                <span className="text-[9px] text-slate-500">No</span>
+              </div>
+              <div className="flex flex-col items-center p-1.5 bg-slate-500/10 rounded-lg">
+                <span className="text-sm font-bold text-slate-400">{stats.pending}</span>
+                <span className="text-[9px] text-slate-500">Pending</span>
+              </div>
+            </div>
+
+            {/* Squad Status */}
+            {match.squadStatus && stats.isTracking && (
+              <div className="mt-2 flex justify-center">
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                  match.squadStatus === 'full' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                  match.squadStatus === 'partial' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                  'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                }`}>
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Squad: {match.squadStatus.charAt(0).toUpperCase() + match.squadStatus.slice(1)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-2">
@@ -307,11 +313,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
                 e.stopPropagation();
                 onViewAvailability(match);
               }}
-              className="flex-1 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
-              title="View Availability Dashboard"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-medium rounded-lg transition-all border border-cyan-500/20 hover:border-cyan-500/30"
             >
               <Users className="w-3.5 h-3.5" />
-              Availability
+              <span className="hidden sm:inline">Availability</span>
             </button>
           )}
           {onFeedback && (
@@ -320,11 +325,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
                 e.stopPropagation();
                 onFeedback(match);
               }}
-              className="flex-1 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
-              title="View Match Feedback"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-lg transition-all border border-emerald-500/20 hover:border-emerald-500/30"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              Feedback
+              <span className="hidden sm:inline">Details</span>
             </button>
           )}
           {onEdit && (
@@ -333,7 +337,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
                 e.stopPropagation();
                 onEdit(match);
               }}
-              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all duration-200"
+              className="flex items-center justify-center px-2.5 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-all"
+              title="Edit Match"
             >
               <Edit className="w-3.5 h-3.5" />
             </button>
@@ -344,16 +349,14 @@ const MatchCard: React.FC<MatchCardProps> = ({
                 e.stopPropagation();
                 onDelete(match._id);
               }}
-              className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-sm font-medium rounded-lg transition-all duration-200"
+              className="flex items-center justify-center px-2.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all"
+              title="Delete Match"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
-
-      {/* Hover Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
     </div>
   );
 };

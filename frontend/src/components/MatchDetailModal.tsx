@@ -1,5 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, Download, RefreshCw, Search, Filter, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, UserPlus, ChevronDown, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2, Navigation, ExternalLink, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { 
+  X, Calendar, Clock, MapPin, Users, Send, Edit, Trash2, RefreshCw, 
+  Search, Copy, CheckCircle, XCircle, AlertCircle, Circle, Bell, 
+  UserPlus, Image as ImageIcon, Share2, Wifi, WifiOff, Loader2, 
+  ExternalLink, MessageSquare, Trophy, Sparkles, Brain, Eye,
+  LayoutGrid, UserCheck, ChevronRight
+} from 'lucide-react';
 import { getMatchAvailability, sendReminder, updateAvailability, deleteAvailability, getPlayers, createAvailability, sendWhatsAppImage } from '../services/api';
 import { matchApi } from '../services/matchApi';
 import SquadImageGenerator from './SquadImageGenerator';
@@ -82,6 +88,7 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onSendAvailability,
   initialTab = 'overview'
 }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [match, setMatch] = useState<Match>(initialMatch);
   const [availabilities, setAvailabilities] = useState<AvailabilityRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,7 +97,6 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'squad' | 'feedback'>(initialTab);
   const [sendingReminder, setSendingReminder] = useState(false);
   
-  // Availability management state
   const [editingAvailabilityId, setEditingAvailabilityId] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
@@ -99,23 +105,99 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [addingPlayers, setAddingPlayers] = useState(false);
   const [actionMessage, setActionMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
   
-  // Squad Image Share state
   const [showWhatsAppShareModal, setShowWhatsAppShareModal] = useState(false);
   const [squadImageBlob, setSquadImageBlob] = useState<Blob | null>(null);
-  
-  // Public Share Link state
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
 
-  // Full data reload (for manual refresh)
+  // Animated neural network background
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      opacity: number;
+    }> = [];
+
+    const numParticles = 25;
+    
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2,
+        radius: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.2 + 0.1,
+      });
+    }
+
+    let animationId: number;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity})`;
+        ctx.fill();
+
+        particles.slice(i + 1).forEach((p2) => {
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.05 * (1 - dist / 100)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
   const loadMatchAndAvailability = React.useCallback(async () => {
     try {
       setLoading(true);
-
-      // Fetch fresh match data to get updated statistics
       const updatedMatch = await matchApi.getMatch(match._id);
       setMatch(updatedMatch);
 
-      // Fetch availability records if availability was sent
       if (updatedMatch.availabilitySent) {
         const response = await getMatchAvailability(match._id);
         setAvailabilities(response.data || []);
@@ -127,16 +209,11 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     }
   }, [match._id]);
 
-  // SSE subscriptions for this match
   const sseSubscriptions = useMemo(() => [`match:${match._id}`], [match._id]);
 
-  // Handle SSE events for real-time updates
   const handleSSEEvent = useCallback((event: any) => {
-    console.log('📡 SSE Event received:', event.type, event);
-
     switch (event.type) {
       case 'availability:update':
-        // Update single player's availability
         setAvailabilities(prev =>
           prev.map(a =>
             a.playerId === event.playerId
@@ -144,7 +221,6 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               : a
           )
         );
-        // Update match stats from SSE event
         if (event.stats) {
           setMatch(prev => ({
             ...prev,
@@ -156,16 +232,11 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           }));
         }
         break;
-
       case 'availability:new':
-        // New players added - reload full data to get complete records
         loadMatchAndAvailability();
         break;
-
       case 'availability:delete':
-        // Remove player from list
         setAvailabilities(prev => prev.filter(a => a.playerId !== event.playerId));
-        // Update match stats
         if (event.stats) {
           setMatch(prev => ({
             ...prev,
@@ -177,18 +248,12 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           }));
         }
         break;
-
       case 'match:update':
-        // Update specific match field
         setMatch(prev => ({ ...prev, [event.field]: event.value }));
         break;
-
-      default:
-        console.log('📡 Unhandled SSE event type:', event.type);
     }
   }, [loadMatchAndAvailability]);
 
-  // SSE connection for real-time updates
   const { isConnected: sseConnected, status: sseStatus } = useSSE({
     subscriptions: sseSubscriptions,
     onEvent: handleSSEEvent,
@@ -197,7 +262,6 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     enabled: true
   });
 
-  // Initial data load only (no polling - SSE handles updates)
   useEffect(() => {
     loadMatchAndAvailability();
   }, [loadMatchAndAvailability]);
@@ -205,22 +269,30 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const matchDate = new Date(match.date);
   const isUpcoming = matchDate > new Date();
 
-  const getStatusColor = () => {
+  const getStatusConfig = () => {
     switch (match.status) {
-      case 'confirmed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      case 'draft': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'cancelled': return 'bg-rose-500/20 text-rose-400 border-rose-500/30';
-      case 'completed': return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+      case 'confirmed': return { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: <CheckCircle className="w-3 h-3" /> };
+      case 'draft': return { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', icon: <Clock className="w-3 h-3" /> };
+      case 'cancelled': return { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', icon: <XCircle className="w-3 h-3" /> };
+      case 'completed': return { bg: 'bg-violet-500/20', text: 'text-violet-400', border: 'border-violet-500/30', icon: <Trophy className="w-3 h-3" /> };
+      default: return { bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30', icon: <Circle className="w-3 h-3" /> };
     }
   };
 
-  const getResponseIcon = (response: string) => {
+  const getMatchTypeConfig = () => {
+    switch (match.matchType) {
+      case 'tournament': return { emoji: '🏆', text: 'Tournament' };
+      case 'friendly': return { emoji: '🤝', text: 'Friendly' };
+      default: return { emoji: '🏏', text: 'Practice' };
+    }
+  };
+
+  const getResponseIcon = (response: string, size: string = 'w-5 h-5') => {
     switch (response) {
-      case 'yes': return <CheckCircle className="w-5 h-5 text-emerald-400" />;
-      case 'no': return <XCircle className="w-5 h-5 text-rose-400" />;
-      case 'tentative': return <AlertCircle className="w-5 h-5 text-amber-400" />;
-      default: return <Circle className="w-5 h-5 text-slate-400" />;
+      case 'yes': return <CheckCircle className={`${size} text-emerald-400`} />;
+      case 'no': return <XCircle className={`${size} text-rose-400`} />;
+      case 'tentative': return <AlertCircle className={`${size} text-amber-400`} />;
+      default: return <Circle className={`${size} text-slate-400`} />;
     }
   };
 
@@ -267,19 +339,18 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     try {
       setSendingReminder(true);
       const response = await sendReminder(match._id);
-      alert(response.message || 'Reminders sent successfully!');
-      loadMatchAndAvailability(); // Refresh data
+      setActionMessage({ type: 'success', text: response.message || 'Reminders sent!' });
+      loadMatchAndAvailability();
+      setTimeout(() => setActionMessage(null), 3000);
     } catch (err: any) {
-      console.error('Failed to send reminders:', err);
-      alert(err.response?.data?.error || 'Failed to send reminders');
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to send reminders' });
     } finally {
       setSendingReminder(false);
     }
   };
 
   const copySquadList = () => {
-    const squadText = `
-Match: ${match.opponent || 'Practice Match'} @ ${match.ground}
+    const squadText = `Match: ${match.opponent || 'Practice Match'} @ ${match.ground}
 Date: ${matchDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
 
 AVAILABLE (${availableSquad.length}):
@@ -289,21 +360,19 @@ TENTATIVE (${tentativeSquad.length}):
 ${tentativeSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`).join('\n')}
 
 NOT AVAILABLE (${unavailableSquad.length}):
-${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`).join('\n')}
-    `.trim();
+${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`).join('\n')}`.trim();
     
     navigator.clipboard.writeText(squadText);
-    alert('Squad list copied to clipboard!');
+    setActionMessage({ type: 'success', text: 'Squad list copied!' });
+    setTimeout(() => setActionMessage(null), 2000);
   };
 
-  // Handle WhatsApp image share
   const handleShareSquadImage = (imageBlob: Blob) => {
     setSquadImageBlob(imageBlob);
     setShowWhatsAppShareModal(true);
   };
 
   const handleSendWhatsAppImage = async (playerIds: string[], imageBlob: Blob) => {
-    // Convert blob to base64
     return new Promise<void>((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -328,34 +397,31 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
     });
   };
 
-  // Availability management handlers
   const handleUpdateAvailabilityStatus = async (availabilityId: string, newStatus: 'yes' | 'no' | 'tentative') => {
     try {
       setUpdatingStatus(true);
       await updateAvailability(availabilityId, { response: newStatus });
-      setActionMessage({ type: 'success', text: 'Status updated successfully' });
+      setActionMessage({ type: 'success', text: 'Status updated' });
       setEditingAvailabilityId(null);
       loadMatchAndAvailability();
-      setTimeout(() => setActionMessage(null), 3000);
+      setTimeout(() => setActionMessage(null), 2000);
     } catch (err: any) {
-      console.error('Failed to update availability:', err);
-      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update status' });
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update' });
     } finally {
       setUpdatingStatus(false);
     }
   };
 
   const handleDeleteAvailability = async (availabilityId: string, playerName: string) => {
-    if (!window.confirm(`Remove ${playerName} from availability tracking?`)) return;
+    if (!window.confirm(`Remove ${playerName}?`)) return;
     try {
       setUpdatingStatus(true);
       await deleteAvailability(availabilityId);
-      setActionMessage({ type: 'success', text: `${playerName} removed from tracking` });
+      setActionMessage({ type: 'success', text: `${playerName} removed` });
       loadMatchAndAvailability();
-      setTimeout(() => setActionMessage(null), 3000);
+      setTimeout(() => setActionMessage(null), 2000);
     } catch (err: any) {
-      console.error('Failed to delete availability:', err);
-      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to remove player' });
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to remove' });
     } finally {
       setUpdatingStatus(false);
     }
@@ -364,14 +430,11 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
   const handleOpenAddPlayerModal = async () => {
     try {
       const players = await getPlayers();
-      // Filter out players already in availability
       const existingPlayerIds = new Set(availabilities.map(a => a.playerId));
-      const availableToAdd = players.filter((p: any) => !existingPlayerIds.has(p._id));
-      setAllPlayers(availableToAdd);
+      setAllPlayers(players.filter((p: any) => !existingPlayerIds.has(p._id)));
       setSelectedPlayersToAdd([]);
       setShowAddPlayerModal(true);
     } catch (err) {
-      console.error('Failed to load players:', err);
       setActionMessage({ type: 'error', text: 'Failed to load players' });
     }
   };
@@ -381,801 +444,491 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
     try {
       setAddingPlayers(true);
       await createAvailability(match._id, selectedPlayersToAdd);
-      setActionMessage({ type: 'success', text: `Added ${selectedPlayersToAdd.length} player(s) to availability tracking` });
+      setActionMessage({ type: 'success', text: `Added ${selectedPlayersToAdd.length} player(s)` });
       setShowAddPlayerModal(false);
       setSelectedPlayersToAdd([]);
       loadMatchAndAvailability();
-      setTimeout(() => setActionMessage(null), 3000);
+      setTimeout(() => setActionMessage(null), 2000);
     } catch (err: any) {
-      console.error('Failed to add players:', err);
-      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to add players' });
+      setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to add' });
     } finally {
       setAddingPlayers(false);
     }
   };
 
+  const statusConfig = getStatusConfig();
+  const matchTypeConfig = getMatchTypeConfig();
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: <Eye className="w-4 h-4" /> },
+    { id: 'responses', label: 'Responses', icon: <UserCheck className="w-4 h-4" />, count: availabilities.length },
+    { id: 'squad', label: 'Squad', icon: <LayoutGrid className="w-4 h-4" /> },
+    { id: 'feedback', label: 'Feedback', icon: <MessageSquare className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 md:p-4">
+      <div className="relative bg-slate-900 rounded-2xl md:rounded-3xl max-w-5xl w-full max-h-[95vh] overflow-hidden shadow-2xl border border-white/10">
         
-        {/* Header */}
-        <div className="bg-slate-900/95 backdrop-blur-xl border-b border-white/10 p-4 md:p-6">
-          <div className="flex items-start justify-between mb-2 md:mb-4">
-            <div className="flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                <h2 className="text-xl md:text-2xl font-black text-white">{match.matchId}</h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-bold border ${getStatusColor()}`}>
-                    {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                  </span>
-                  {match.matchType && (
-                    <span className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-bold border ${
-                      match.matchType === 'tournament' 
-                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' 
-                        : match.matchType === 'friendly'
-                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                        : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-                    }`}>
-                      {match.matchType === 'tournament' ? '🏆' : match.matchType === 'friendly' ? '🤝' : '🏏'} {match.matchType.charAt(0).toUpperCase() + match.matchType.slice(1)}
-                    </span>
-                  )}
-                  {match.availabilitySent && (
-                    <span className="px-2 py-0.5 md:px-3 md:py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">
-                      📤 Sent
-                    </span>
-                  )}
-                </div>
-              </div>
-              <p className="text-lg md:text-xl text-slate-300 font-semibold">vs {match.opponent || 'TBD'}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"
-            >
-              <X className="w-5 h-5 md:w-6 md:h-6" />
-            </button>
-          </div>
+        {/* Neural Network Background */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none opacity-30"
+          style={{ zIndex: 0 }}
+        />
 
-          {/* Quick Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 mb-2 md:mb-4">
-            <div className="flex items-center gap-2 text-slate-300">
-              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
-              <span className="text-xs md:text-sm">
-                {matchDate.toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <Clock className="w-4 h-4 md:w-5 md:h-5 text-amber-400" />
-              <span className="text-xs md:text-sm">{match.time || match.slot}</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <MapPin className="w-4 h-4 md:w-5 md:h-5 text-rose-400" />
-              {match.locationLink ? (
-                <a
-                  href={match.locationLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs md:text-sm text-rose-300 hover:text-rose-200 underline underline-offset-2 decoration-rose-400/50 hover:decoration-rose-300 transition-colors flex items-center gap-1"
-                >
-                  {match.ground}
-                  <ExternalLink className="w-3 h-3 opacity-60" />
-                </a>
-              ) : (
-                <span className="text-xs md:text-sm truncate">{match.ground}</span>
-              )}
-            </div>
-          </div>
+        {/* Gradient Overlays */}
+        <div className="absolute top-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-1 md:gap-2">
-            {onEdit && (
-              <button
-                onClick={() => onEdit(match)}
-                className="px-2 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2"
-              >
-                <Edit className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Edit Match</span>
-                <span className="sm:hidden">Edit</span>
-              </button>
-            )}
-            {onSendAvailability && isUpcoming && !match.availabilitySent && (
-              <button
-                onClick={() => onSendAvailability(match)}
-                className="px-2 py-1.5 md:px-4 md:py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-emerald-500/30"
-              >
-                <Send className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Send Availability</span>
-                <span className="sm:hidden">Send</span>
-              </button>
-            )}
-            {match.availabilitySent && stats.pending > 0 && (
-              <button
-                onClick={handleSendReminder}
-                disabled={sendingReminder}
-                className="px-2 py-1.5 md:px-4 md:py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-amber-500/30 disabled:opacity-50"
-              >
-                <Bell className={`w-3 h-3 md:w-4 md:h-4 ${sendingReminder ? 'animate-pulse' : ''}`} />
-                <span className="hidden sm:inline">Reminder ({stats.pending})</span>
-                <span className="sm:hidden">Rmd ({stats.pending})</span>
-              </button>
-            )}
-            {availabilities.length > 0 && (
-              <button
-                onClick={copySquadList}
-                className="px-2 py-1.5 md:px-4 md:py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-purple-500/30"
-              >
-                <Copy className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Copy Squad</span>
-                <span className="sm:hidden">Copy</span>
-              </button>
-            )}
-            <button
-              onClick={() => setShowShareLinkModal(true)}
-              className="px-2 py-1.5 md:px-4 md:py-2 bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-pink-500/30"
-            >
-              <Share2 className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Share</span>
-            </button>
-            {onDelete && (
-              <button
-                onClick={() => onDelete(match._id)}
-                className="px-2 py-1.5 md:px-4 md:py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs md:text-sm font-medium rounded-lg transition-all flex items-center gap-1 md:gap-2 border border-rose-500/30"
-              >
-                <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Delete</span>
-              </button>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 md:gap-2 mt-2 md:mt-4 border-b border-white/10">
-            <button
-              onClick={() => setActiveTab('overview')}
-              data-tab="overview"
-              className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all ${
-                activeTab === 'overview'
-                  ? 'text-emerald-400 border-b-2 border-emerald-400'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('responses')}
-              data-tab="responses"
-              className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all ${
-                activeTab === 'responses'
-                  ? 'text-emerald-400 border-b-2 border-emerald-400'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span className="hidden sm:inline">Player Responses</span>
-              <span className="sm:hidden">Responses</span> ({availabilities.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('squad')}
-              data-tab="squad"
-              className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all ${
-                activeTab === 'squad'
-                  ? 'text-emerald-400 border-b-2 border-emerald-400'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span className="hidden sm:inline">Squad Builder</span>
-              <span className="sm:hidden">Squad</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('feedback')}
-              data-tab="feedback"
-              className={`px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium transition-all flex items-center gap-1 ${
-                activeTab === 'feedback'
-                  ? 'text-emerald-400 border-b-2 border-emerald-400'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Feedback</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 md:p-6">
+        <div className="relative z-10 flex flex-col h-full max-h-[95vh]">
           
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              
-              {/* Availability Summary */}
-              {match.availabilitySent && (
+          {/* Header */}
+          <div className="shrink-0 p-4 md:p-6 border-b border-white/5">
+            {/* Top Row */}
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="relative">
+                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center shadow-lg ${
+                    match.status === 'confirmed' ? 'bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-emerald-500/20' :
+                    match.status === 'completed' ? 'bg-gradient-to-br from-violet-500 to-purple-500 shadow-violet-500/20' :
+                    match.status === 'cancelled' ? 'bg-gradient-to-br from-rose-500 to-pink-500 shadow-rose-500/20' :
+                    'bg-gradient-to-br from-amber-500 to-orange-500 shadow-amber-500/20'
+                  }`}>
+                    <Trophy className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center border-2 border-slate-900">
+                    <Sparkles className="w-2.5 h-2.5 text-white" />
+                  </div>
+                </div>
+                
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-4">Availability Summary</h3>
-                  
-                  {/* Stats Cards - Mobile Optimized */}
-                  {/* Desktop: Show 5 separate cards */}
-                  <div className="hidden md:grid md:grid-cols-5 md:gap-4 mb-6">
-                    <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-slate-400 font-medium">Total Sent</p>
-                          <p className="text-2xl font-black text-white">{stats.total}</p>
-                        </div>
-                        <Send className="w-8 h-8 text-blue-400" />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-emerald-400 font-medium">Confirmed</p>
-                          <p className="text-2xl font-black text-emerald-400">{stats.confirmed}</p>
-                        </div>
-                        <CheckCircle className="w-8 h-8 text-emerald-400" />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-rose-400 font-medium">Declined</p>
-                          <p className="text-2xl font-black text-rose-400">{stats.declined}</p>
-                        </div>
-                        <XCircle className="w-8 h-8 text-rose-400" />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-amber-400 font-medium">Tentative</p>
-                          <p className="text-2xl font-black text-amber-400">{stats.tentative}</p>
-                        </div>
-                        <AlertCircle className="w-8 h-8 text-amber-400" />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-slate-500/10 border border-slate-500/30 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-slate-400 font-medium">No Response</p>
-                          <p className="text-2xl font-black text-slate-400">{stats.pending}</p>
-                        </div>
-                        <Circle className="w-8 h-8 text-slate-400" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mobile: Single compact summary card */}
-                  <div className="md:hidden bg-slate-800/50 border border-white/10 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium">Response Summary</p>
-                        <p className="text-lg font-black text-white">{stats.responded}/{stats.total} ({stats.responseRate}%)</p>
-                      </div>
-                      <Send className="w-6 h-6 text-blue-400" />
-                    </div>
-                    
-                    {/* Compact response bars */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                        <span className="text-xs text-emerald-400 font-medium min-w-[70px]">Yes {stats.confirmed}</span>
-                        <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                          <div className="h-full bg-emerald-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.confirmed / stats.total) * 100 : 0}%` }}></div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                        <span className="text-xs text-amber-400 font-medium min-w-[70px]">Tentative {stats.tentative}</span>
-                        <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                          <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.tentative / stats.total) * 100 : 0}%` }}></div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-                        <span className="text-xs text-rose-400 font-medium min-w-[70px]">No {stats.declined}</span>
-                        <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                          <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.declined / stats.total) * 100 : 0}%` }}></div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                        <span className="text-xs text-slate-400 font-medium min-w-[70px]">No Response {stats.pending}</span>
-                        <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                          <div className="h-full bg-slate-400 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Response Rate - Desktop Only */}
-                  <div className="hidden md:block bg-slate-800/50 border border-white/10 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-slate-300">Response Rate</span>
-                      <span className="text-sm font-bold text-white">
-                        {stats.responded}/{stats.total} ({stats.responseRate}%)
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg md:text-xl font-bold text-white">{match.matchId}</h2>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+                      {statusConfig.icon}
+                      {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+                    </span>
+                    {match.matchType && (
+                      <span className="px-2 py-0.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-[10px] text-slate-400">
+                        {matchTypeConfig.emoji} {matchTypeConfig.text}
                       </span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3">
-                      <div
-                        className="bg-gradient-to-r from-emerald-400 to-teal-400 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${stats.responseRate}%` }}
-                      ></div>
-                    </div>
-                    {match.availabilitySentAt && (
-                      <p className="text-xs text-slate-400 mt-2">
-                        Sent on {new Date(match.availabilitySentAt).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
                     )}
                   </div>
+                  <p className="text-sm md:text-base text-slate-300 font-medium mt-0.5">vs {match.opponent || 'TBD'}</p>
+                </div>
+              </div>
 
-                  {/* Player List with Timestamps */}
-                  {availabilities.length > 0 && (
-                    <div className="mt-4 md:mt-6">
-                      <h4 className="text-md font-bold text-white mb-3">Players Sent Availability Request</h4>
-                      <div className="bg-slate-800/50 border border-white/10 rounded-lg p-3 md:p-4 space-y-2">
-                        {availabilities.map((avail) => (
-                          <div key={avail._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-all gap-2">
-                            <div className="flex items-center gap-3 flex-1">
-                              {getResponseIcon(avail.response)}
-                              <div>
-                                <p className="text-sm font-medium text-white">{avail.playerName}</p>
-                                <p className="text-xs text-slate-400">{avail.playerPhone}</p>
+              <button
+                onClick={onClose}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Match Info Cards */}
+            <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4">
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/30 rounded-xl border border-slate-700/30">
+                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-xs text-slate-300 truncate">
+                  {matchDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/30 rounded-xl border border-slate-700/30">
+                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs text-slate-300 truncate">{match.time || match.slot}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/30 rounded-xl border border-slate-700/30">
+                <MapPin className="w-4 h-4 text-rose-400 shrink-0" />
+                {match.locationLink ? (
+                  <a
+                    href={match.locationLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-rose-300 hover:text-rose-200 truncate flex items-center gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {match.ground}
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-300 truncate">{match.ground}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-1.5 md:gap-2">
+              {onEdit && (
+                <button onClick={() => onEdit(match)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 text-xs font-medium rounded-lg transition-all border border-slate-700/50">
+                  <Edit className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Edit</span>
+                </button>
+              )}
+              {onSendAvailability && isUpcoming && !match.availabilitySent && (
+                <button onClick={() => onSendAvailability(match)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-medium rounded-lg transition-all border border-emerald-500/30">
+                  <Send className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Send</span>
+                </button>
+              )}
+              {match.availabilitySent && stats.pending > 0 && (
+                <button onClick={handleSendReminder} disabled={sendingReminder} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-medium rounded-lg transition-all border border-amber-500/30 disabled:opacity-50">
+                  <Bell className={`w-3.5 h-3.5 ${sendingReminder ? 'animate-pulse' : ''}`} />
+                  <span className="hidden sm:inline">Remind</span> ({stats.pending})
+                </button>
+              )}
+              {availabilities.length > 0 && (
+                <button onClick={copySquadList} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-xs font-medium rounded-lg transition-all border border-purple-500/30">
+                  <Copy className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Copy</span>
+                </button>
+              )}
+              <button onClick={() => setShowShareLinkModal(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 text-xs font-medium rounded-lg transition-all border border-pink-500/30">
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+              {onDelete && (
+                <button onClick={() => onDelete(match._id)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs font-medium rounded-lg transition-all border border-rose-500/30">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 mt-4 -mb-4 overflow-x-auto scrollbar-hide">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-1.5 px-3 md:px-4 py-2.5 text-xs font-medium rounded-t-xl transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-slate-800/80 text-emerald-400 border-t border-l border-r border-emerald-500/30'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+                  }`}
+                >
+                  {tab.icon}
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                      activeTab === tab.id ? 'bg-emerald-500/30' : 'bg-slate-700/50'
+                    }`}>{tab.count}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Message Toast */}
+          {actionMessage && (
+            <div className={`mx-4 mt-4 p-3 rounded-xl flex items-center gap-2 ${
+              actionMessage.type === 'success' 
+                ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400' 
+                : 'bg-rose-500/20 border border-rose-500/30 text-rose-400'
+            }`}>
+              {actionMessage.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+              <span className="text-xs font-medium">{actionMessage.text}</span>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                
+                {/* Availability Stats */}
+                {match.availabilitySent ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Users className="w-5 h-5 text-emerald-400" />
+                      <h3 className="text-sm font-bold text-white">Availability Summary</h3>
+                      {match.availabilitySent && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-[10px] font-medium rounded border border-cyan-500/30">
+                          <Send className="w-2.5 h-2.5" /> Sent
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4">
+                      {[
+                        { label: 'Sent', value: stats.total, icon: <Send className="w-4 h-4" />, color: 'cyan' },
+                        { label: 'Yes', value: stats.confirmed, icon: <CheckCircle className="w-4 h-4" />, color: 'emerald' },
+                        { label: 'No', value: stats.declined, icon: <XCircle className="w-4 h-4" />, color: 'rose' },
+                        { label: 'Maybe', value: stats.tentative, icon: <AlertCircle className="w-4 h-4" />, color: 'amber' },
+                        { label: 'Pending', value: stats.pending, icon: <Circle className="w-4 h-4" />, color: 'slate' },
+                      ].map((stat, idx) => (
+                        <div key={idx} className={`p-3 rounded-xl bg-${stat.color}-500/10 border border-${stat.color}-500/20`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-${stat.color}-400`}>{stat.icon}</span>
+                          </div>
+                          <p className={`text-xl font-bold text-${stat.color}-400`}>{stat.value}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-400">Response Rate</span>
+                        <span className="text-xs font-bold text-white">{stats.responded}/{stats.total} ({stats.responseRate}%)</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full transition-all duration-700"
+                          style={{ width: `${stats.responseRate}%` }}
+                        />
+                      </div>
+                      {match.availabilitySentAt && (
+                        <p className="text-[10px] text-slate-500 mt-2">
+                          Sent {new Date(match.availabilitySentAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick Player List */}
+                    {availabilities.length > 0 && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Players</h4>
+                          <button onClick={() => setActiveTab('responses')} className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+                            View All <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="grid gap-2">
+                          {availabilities.slice(0, 5).map((avail) => (
+                            <div key={avail._id} className="flex items-center justify-between p-2.5 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                              <div className="flex items-center gap-2">
+                                {getResponseIcon(avail.response, 'w-4 h-4')}
+                                <span className="text-sm text-white">{avail.playerName}</span>
                               </div>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${getResponseBadge(avail.response)}`}>
+                                {avail.response === 'yes' ? 'Yes' : avail.response === 'no' ? 'No' : avail.response === 'tentative' ? 'Maybe' : 'Pending'}
+                              </span>
                             </div>
-                            <div className="text-right sm:text-left">
-                              <p className="text-xs text-slate-400">
-                                📤 {new Date(avail.createdAt).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                              {avail.respondedAt && (
-                                <p className="text-xs text-emerald-400">
-                                  ✅ {new Date(avail.respondedAt).toLocaleString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </p>
-                              )}
+                          ))}
+                          {availabilities.length > 5 && (
+                            <button onClick={() => setActiveTab('responses')} className="p-2.5 text-center text-xs text-slate-400 hover:text-white bg-slate-800/20 rounded-lg border border-slate-700/30 hover:border-slate-600 transition-all">
+                              +{availabilities.length - 5} more players
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4">
+                      <Send className="w-8 h-8 text-slate-600" />
+                    </div>
+                    <h3 className="text-base font-bold text-white mb-2">No Availability Sent</h3>
+                    <p className="text-sm text-slate-400 max-w-sm mb-4">Send availability requests to track player responses for this match</p>
+                    {onSendAvailability && isUpcoming && (
+                      <button onClick={() => onSendAvailability(match)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-500/20">
+                        <Send className="w-4 h-4" />
+                        Send Availability Request
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Match Notes */}
+                {match.notes && (
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Notes</h3>
+                    <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                      <p className="text-sm text-slate-300 whitespace-pre-wrap">{match.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Responses Tab */}
+            {activeTab === 'responses' && (
+              <div className="space-y-4">
+                {/* Search & Filter */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Search players..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    />
+                  </div>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as any)}
+                    className="px-3 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  >
+                    <option value="all">All</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                    <option value="tentative">Maybe</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                  <button onClick={handleOpenAddPlayerModal} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-xl border border-emerald-500/30 transition-all">
+                    <UserPlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Add</span>
+                  </button>
+                </div>
+
+                {/* Player List */}
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="w-6 h-6 text-emerald-400 animate-spin" />
+                  </div>
+                ) : filteredAvailabilities.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Users className="w-12 h-12 text-slate-600 mb-3" />
+                    <p className="text-sm text-slate-400">{availabilities.length === 0 ? 'No availability sent' : 'No matches'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredAvailabilities.map((avail) => (
+                      <div key={avail._id} className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-3 hover:border-slate-600 transition-all">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {getResponseIcon(avail.response)}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-medium text-white">{avail.playerName}</h4>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getResponseBadge(avail.response)}`}>
+                                  {avail.response === 'yes' ? 'Yes' : avail.response === 'no' ? 'No' : avail.response === 'tentative' ? 'Maybe' : 'Pending'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500">{avail.playerPhone}</p>
                             </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-1">
+                            {editingAvailabilityId === avail._id ? (
+                              <>
+                                <button onClick={() => handleUpdateAvailabilityStatus(avail._id, 'yes')} disabled={updatingStatus} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] rounded hover:bg-emerald-500/30">Y</button>
+                                <button onClick={() => handleUpdateAvailabilityStatus(avail._id, 'tentative')} disabled={updatingStatus} className="px-2 py-1 bg-amber-500/20 text-amber-400 text-[10px] rounded hover:bg-amber-500/30">?</button>
+                                <button onClick={() => handleUpdateAvailabilityStatus(avail._id, 'no')} disabled={updatingStatus} className="px-2 py-1 bg-rose-500/20 text-rose-400 text-[10px] rounded hover:bg-rose-500/30">N</button>
+                                <button onClick={() => setEditingAvailabilityId(null)} className="px-2 py-1 bg-slate-600 text-white text-[10px] rounded">✕</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => setEditingAvailabilityId(avail._id)} className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded transition-all">
+                                  <Edit className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => handleDeleteAvailability(avail._id, avail.playerName)} className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded transition-all">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Squad Tab */}
+            {activeTab === 'squad' && (
+              <div className="space-y-4">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-emerald-400">{availableSquad.length}</p>
+                    <p className="text-xs text-slate-400">Available</p>
+                  </div>
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-amber-400">{tentativeSquad.length}</p>
+                    <p className="text-xs text-slate-400">Maybe</p>
+                  </div>
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-rose-400">{unavailableSquad.length}</p>
+                    <p className="text-xs text-slate-400">Unavailable</p>
+                  </div>
+                </div>
+
+                {/* Share Image Card */}
+                <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                        <ImageIcon className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-white">Share Squad Image</h4>
+                        <p className="text-[10px] text-slate-400">Generate & share availability</p>
+                      </div>
+                    </div>
+                    <SquadImageGenerator
+                      match={match}
+                      availableSquad={availableSquad}
+                      tentativeSquad={tentativeSquad}
+                      unavailableSquad={unavailableSquad}
+                      onShareWhatsApp={handleShareSquadImage}
+                      teamName="Mavericks XI"
+                    />
+                  </div>
+                </div>
+
+                {/* Squad Lists */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  {[
+                    { title: 'Available', data: availableSquad, color: 'emerald', icon: <CheckCircle className="w-4 h-4" /> },
+                    { title: 'Maybe', data: tentativeSquad, color: 'amber', icon: <AlertCircle className="w-4 h-4" /> },
+                    { title: 'Unavailable', data: unavailableSquad, color: 'rose', icon: <XCircle className="w-4 h-4" /> },
+                  ].map((section) => (
+                    <div key={section.title} className={`bg-${section.color}-500/10 border border-${section.color}-500/30 rounded-xl p-4`}>
+                      <div className={`flex items-center gap-2 mb-3 text-${section.color}-400`}>
+                        {section.icon}
+                        <span className="text-sm font-bold">{section.title} ({section.data.length})</span>
+                      </div>
+                      <div className="space-y-2">
+                        {section.data.length === 0 ? (
+                          <p className="text-xs text-slate-500 text-center py-4">None</p>
+                        ) : section.data.map((player, idx) => (
+                          <div key={player._id} className="bg-slate-800/50 rounded-lg p-2.5">
+                            <p className="text-sm text-white">{idx + 1}. {player.playerName}</p>
+                            <p className="text-[10px] text-slate-500">{player.playerPhone}</p>
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Match Notes */}
-              {match.notes && (
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-3">Match Notes</h3>
-                  <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
-                    <p className="text-slate-300 text-sm whitespace-pre-wrap">{match.notes}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Squad Status */}
-              {match.squadStatus && (
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-3">Squad Status</h3>
-                  <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <Users className="w-6 h-6 text-emerald-400" />
-                      <div>
-                        <p className="text-sm text-slate-400">Current Status</p>
-                        <p className="text-lg font-bold text-white capitalize">{match.squadStatus}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Player Responses Tab */}
-          {activeTab === 'responses' && (
-            <div className="space-y-4">
-              
-              {/* Action Message */}
-              {actionMessage && (
-                <div className={`p-3 rounded-lg flex items-center gap-2 ${
-                  actionMessage.type === 'success' 
-                    ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400' 
-                    : 'bg-rose-500/20 border border-rose-500/30 text-rose-400'
-                }`}>
-                  {actionMessage.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                  <span className="text-sm">{actionMessage.text}</span>
-                </div>
-              )}
-              
-              {/* Search, Filter and Add Player */}
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search players by name or phone..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500/50"
-                  />
-                </div>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="px-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
-                >
-                  <option value="all">All Players</option>
-                  <option value="responded">Responded</option>
-                  <option value="pending">No Response</option>
-                  <option value="yes">Confirmed</option>
-                  <option value="no">Declined</option>
-                  <option value="tentative">Tentative</option>
-                </select>
-                <button
-                  onClick={handleOpenAddPlayerModal}
-                  className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg flex items-center gap-2 transition-all"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add Player</span>
-                </button>
-              </div>
-
-              {/* Player List */}
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
-                </div>
-              ) : filteredAvailabilities.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400">
-                    {availabilities.length === 0 
-                      ? 'No availability requests sent yet' 
-                      : 'No players match your search'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredAvailabilities.map((avail) => (
-                    <div
-                      key={avail._id}
-                      className="bg-slate-800/50 border border-white/10 rounded-lg p-4 hover:border-white/20 transition-all"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className="mt-1">
-                            {getResponseIcon(avail.response)}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-bold text-white">{avail.playerName}</h4>
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getResponseBadge(avail.response)}`}>
-                                {avail.response === 'yes' ? 'Confirmed' : 
-                                 avail.response === 'no' ? 'Declined' :
-                                 avail.response === 'tentative' ? 'Tentative' : 'No Response'}
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-400 mb-2">{avail.playerPhone}</p>
-                            
-                            <div className="space-y-1 text-xs text-slate-500">
-                              <p>
-                                📤 Sent: {new Date(avail.createdAt).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                              {avail.respondedAt && (
-                                <p>
-                                  ✅ Responded: {new Date(avail.respondedAt).toLocaleString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </p>
-                              )}
-                              {avail.messageContent && (
-                                <p className="text-slate-400 italic">"{avail.messageContent}"</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Action buttons for availability management */}
-                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 ml-2">
-                          {editingAvailabilityId === avail._id ? (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => handleUpdateAvailabilityStatus(avail._id, 'yes')}
-                                disabled={updatingStatus}
-                                className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded transition-all"
-                              >
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => handleUpdateAvailabilityStatus(avail._id, 'tentative')}
-                                disabled={updatingStatus}
-                                className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs rounded transition-all"
-                              >
-                                Maybe
-                              </button>
-                              <button
-                                onClick={() => handleUpdateAvailabilityStatus(avail._id, 'no')}
-                                disabled={updatingStatus}
-                                className="px-2 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs rounded transition-all"
-                              >
-                                No
-                              </button>
-                              <button
-                                onClick={() => setEditingAvailabilityId(null)}
-                                className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition-all"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => setEditingAvailabilityId(avail._id)}
-                                className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded transition-all"
-                                title="Change status"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteAvailability(avail._id, avail.playerName)}
-                                disabled={updatingStatus}
-                                className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded transition-all"
-                                title="Remove player"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Squad Builder Tab */}
-          {activeTab === 'squad' && (
-            <div className="space-y-4">
-              {/* Squad Summary - Mobile: Compact summary */}
-              <div className="md:hidden bg-slate-800/50 border border-white/10 rounded-lg p-4 mb-4">
-                <h4 className="font-bold text-white mb-3">Squad Summary</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                    <span className="text-xs text-emerald-400 font-medium min-w-[70px]">Available {availableSquad.length}</span>
-                    <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                      <div className="h-full bg-emerald-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (availableSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                    <span className="text-xs text-amber-400 font-medium min-w-[70px]">Tentative {tentativeSquad.length}</span>
-                    <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                      <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (tentativeSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-                    <span className="text-xs text-rose-400 font-medium min-w-[70px]">Not Available {unavailableSquad.length}</span>
-                    <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                      <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${availableSquad.length + tentativeSquad.length + unavailableSquad.length > 0 ? (unavailableSquad.length / (availableSquad.length + tentativeSquad.length + unavailableSquad.length)) * 100 : 0}%` }}></div>
-                    </div>
-                  </div>
-                </div>
               </div>
+            )}
 
-              {/* Squad Summary - Desktop Only */}
-              <div className="hidden md:block bg-slate-800/50 border border-white/10 rounded-lg p-4">
-                <h4 className="font-bold text-white mb-2">Squad Summary</h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-black text-emerald-400">{availableSquad.length}</p>
-                    <p className="text-xs text-slate-400">Confirmed</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-amber-400">{tentativeSquad.length}</p>
-                    <p className="text-xs text-slate-400">Tentative</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-rose-400">{unavailableSquad.length}</p>
-                    <p className="text-xs text-slate-400">Declined</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Generate Squad Image Section */}
-              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
-                      <ImageIcon className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">Share Squad Image</h4>
-                      <p className="text-xs text-slate-400">Generate & share beautiful squad availability image</p>
-                    </div>
-                  </div>
-                  <SquadImageGenerator
-                    match={match}
-                    availableSquad={availableSquad}
-                    tentativeSquad={tentativeSquad}
-                    unavailableSquad={unavailableSquad}
-                    onShareWhatsApp={handleShareSquadImage}
-                    teamName="Mavericks XI"
-                  />
-                </div>
-              </div>
-
-              {/* Desktop: 3-column grid */}
-              <div className="hidden md:grid md:grid-cols-3 md:gap-4">
-                
-                {/* Available */}
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-emerald-400 flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5" />
-                      Available ({availableSquad.length})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {availableSquad.map((player, idx) => (
-                      <div key={player._id} className="bg-slate-800/50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-white">{idx + 1}. {player.playerName}</p>
-                        <p className="text-xs text-slate-400">{player.playerPhone}</p>
-                      </div>
-                    ))}
-                    {availableSquad.length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-4">No confirmed players</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Tentative */}
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-amber-400 flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5" />
-                      Tentative ({tentativeSquad.length})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {tentativeSquad.map((player, idx) => (
-                      <div key={player._id} className="bg-slate-800/50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-white">{idx + 1}. {player.playerName}</p>
-                        <p className="text-xs text-slate-400">{player.playerPhone}</p>
-                      </div>
-                    ))}
-                    {tentativeSquad.length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-4">No tentative players</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Not Available */}
-                <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-rose-400 flex items-center gap-2">
-                      <XCircle className="w-5 h-5" />
-                      Not Available ({unavailableSquad.length})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {unavailableSquad.map((player, idx) => (
-                      <div key={player._id} className="bg-slate-800/50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-white">{idx + 1}. {player.playerName}</p>
-                        <p className="text-xs text-slate-400">{player.playerPhone}</p>
-                      </div>
-                    ))}
-                    {unavailableSquad.length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-4">No declined players</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Feedback Tab */}
-          {activeTab === 'feedback' && (
-            <MatchFeedbackDashboard matchId={match._id} matchOpponent={match.opponent} />
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 flex gap-3 justify-end">
-          {/* Mobile: Minimal footer with SSE status */}
-          <div className="md:hidden flex items-center justify-between gap-2 w-full">
-            <span className={`flex items-center gap-1 text-xs ${sseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {sseConnected ? (
-                <>
-                  <Wifi className="w-3 h-3" />
-                  <span>Live</span>
-                </>
-              ) : sseStatus === 'connecting' ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>Connecting</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3 h-3" />
-                  <span>Offline</span>
-                </>
-              )}
-            </span>
-            <button
-              onClick={onClose}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-all"
-            >
-              Close
-            </button>
+            {/* Feedback Tab */}
+            {activeTab === 'feedback' && (
+              <MatchFeedbackDashboard matchId={match._id} matchOpponent={match.opponent} />
+            )}
           </div>
 
-          {/* Desktop: Full footer */}
-          <div className="hidden md:flex items-center justify-between gap-2 text-xs text-slate-400">
-            <div className="flex flex-row items-center gap-4">
-              {/* SSE Connection Status */}
-              <span className={`flex items-center gap-1 ${sseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
+          {/* Footer */}
+          <div className="shrink-0 p-4 border-t border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`flex items-center gap-1.5 text-xs ${sseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
                 {sseConnected ? (
-                  <>
-                    <Wifi className="w-3 h-3" />
-                    Live updates active
-                  </>
+                  <><Wifi className="w-3 h-3" /> Live</>
                 ) : sseStatus === 'connecting' ? (
-                  <>
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    Connecting...
-                  </>
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Connecting</>
                 ) : (
-                  <>
-                    <WifiOff className="w-3 h-3" />
-                    Reconnecting...
-                  </>
+                  <><WifiOff className="w-3 h-3" /> Offline</>
                 )}
               </span>
               {match.lastAvailabilityUpdate && (
-                <span>
-                  Last updated: {new Date(match.lastAvailabilityUpdate).toLocaleTimeString()}
+                <span className="text-[10px] text-slate-500 hidden md:inline">
+                  Updated {new Date(match.lastAvailabilityUpdate).toLocaleTimeString()}
                 </span>
               )}
             </div>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-all"
-            >
+            <button onClick={onClose} className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-white text-sm font-medium rounded-xl border border-slate-700/50 transition-all">
               Close
             </button>
           </div>
@@ -1185,84 +938,51 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
       {/* Add Player Modal */}
       {showAddPlayerModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-emerald-400" />
-                Add Players to Availability
+                Add Players
               </h3>
-              <button
-                onClick={() => setShowAddPlayerModal(false)}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
-              >
+              <button onClick={() => setShowAddPlayerModal(false)} className="p-1 text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             {allPlayers.length === 0 ? (
               <div className="text-center py-8 text-slate-400">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>All players are already in availability tracking</p>
+                <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">All players already added</p>
               </div>
             ) : (
               <>
-                <div className="mb-3 text-sm text-slate-400">
-                  Select players to add ({selectedPlayersToAdd.length} selected)
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                <p className="text-xs text-slate-400 mb-3">{selectedPlayersToAdd.length} selected</p>
+                <div className="flex-1 overflow-y-auto space-y-1.5 mb-4">
                   {allPlayers.map((player) => {
                     const isSelected = selectedPlayersToAdd.includes(player._id);
                     return (
                       <div
                         key={player._id}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedPlayersToAdd(prev => prev.filter(id => id !== player._id));
-                          } else {
-                            setSelectedPlayersToAdd(prev => [...prev, player._id]);
-                          }
-                        }}
-                        className={`p-3 rounded-lg cursor-pointer transition-all ${
-                          isSelected 
-                            ? 'bg-emerald-500/20 border border-emerald-500/30' 
-                            : 'bg-slate-700/50 border border-transparent hover:border-white/10'
-                        }`}
+                        onClick={() => isSelected ? setSelectedPlayersToAdd(prev => prev.filter(id => id !== player._id)) : setSelectedPlayersToAdd(prev => [...prev, player._id])}
+                        className={`p-3 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-800/50 border border-transparent hover:border-slate-700'}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                            isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'
-                          }`}>
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
                             {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
                           </div>
                           <div>
-                            <p className="text-white font-medium">{player.name}</p>
-                            <p className="text-xs text-slate-400">{player.phone}</p>
+                            <p className="text-sm text-white">{player.name}</p>
+                            <p className="text-[10px] text-slate-500">{player.phone}</p>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowAddPlayerModal(false)}
-                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddPlayersToAvailability}
-                    disabled={selectedPlayersToAdd.length === 0 || addingPlayers}
-                    className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    {addingPlayers ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4" />
-                        Add ({selectedPlayersToAdd.length})
-                      </>
-                    )}
+                <div className="flex gap-2">
+                  <button onClick={() => setShowAddPlayerModal(false)} className="flex-1 py-2.5 bg-slate-800/50 hover:bg-slate-700/50 text-white text-sm rounded-xl border border-slate-700/50 transition-all">Cancel</button>
+                  <button onClick={handleAddPlayersToAvailability} disabled={selectedPlayersToAdd.length === 0 || addingPlayers} className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                    {addingPlayers ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Add ({selectedPlayersToAdd.length})</>}
                   </button>
                 </div>
               </>
@@ -1271,19 +991,14 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         </div>
       )}
 
-      {/* WhatsApp Image Share Modal */}
       <WhatsAppImageShareModal
         isOpen={showWhatsAppShareModal}
-        onClose={() => {
-          setShowWhatsAppShareModal(false);
-          setSquadImageBlob(null);
-        }}
+        onClose={() => { setShowWhatsAppShareModal(false); setSquadImageBlob(null); }}
         imageBlob={squadImageBlob}
         matchTitle={`${match.opponent || 'Match'} @ ${match.ground}`}
         onSend={handleSendWhatsAppImage}
       />
 
-      {/* Public Share Link Modal */}
       <ShareLinkModal
         isOpen={showShareLinkModal}
         onClose={() => setShowShareLinkModal(false)}
@@ -1291,6 +1006,11 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         resourceId={match._id}
         resourceTitle={`${match.opponent || 'Match'} @ ${match.ground} - ${new Date(match.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
       />
+
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 };
