@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#020617"/>
+      <stop offset="50%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#020617"/>
+    </linearGradient>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="badgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#a855f7"/>
+    </linearGradient>
+    <linearGradient id="topBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="50%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="glowGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:0"/>
+    </linearGradient>
+    <linearGradient id="glowCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:0"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+  
+  <!-- Top gradient bar -->
+  <rect x="0" y="0" width="1200" height="6" fill="url(#topBar)"/>
+  
+  <!-- Ambient glow circles -->
+  <ellipse cx="200" cy="100" rx="300" ry="250" fill="url(#glowGreen)"/>
+  <ellipse cx="1000" cy="530" rx="350" ry="280" fill="url(#glowCyan)"/>
+  
+  <!-- Neural network dots and lines (subtle) -->
+  <g opacity="0.15" stroke="#10b981" stroke-width="0.5">
+    <circle cx="100" cy="150" r="2" fill="#10b981"/>
+    <circle cx="200" cy="100" r="2" fill="#10b981"/>
+    <circle cx="150" cy="200" r="2" fill="#10b981"/>
+    <circle cx="300" cy="120" r="2" fill="#06b6d4"/>
+    <circle cx="250" cy="180" r="2" fill="#06b6d4"/>
+    <line x1="100" y1="150" x2="200" y2="100"/>
+    <line x1="200" y1="100" x2="150" y2="200"/>
+    <line x1="150" y1="200" x2="300" y2="120"/>
+    <line x1="300" y1="120" x2="250" y2="180"/>
+    
+    <circle cx="1000" cy="450" r="2" fill="#06b6d4"/>
+    <circle cx="1100" cy="500" r="2" fill="#06b6d4"/>
+    <circle cx="1050" cy="380" r="2" fill="#10b981"/>
+    <circle cx="950" cy="520" r="2" fill="#10b981"/>
+    <line x1="1000" y1="450" x2="1100" y2="500"/>
+    <line x1="1100" y1="500" x2="1050" y2="380"/>
+    <line x1="1050" y1="380" x2="950" y2="520"/>
+  </g>
+  
+  <!-- Main content area -->
+  <g transform="translate(600, 315)">
+    <!-- Logo with glow -->
+    <g transform="translate(-380, -90)">
+      <!-- Glow behind logo -->
+      <rect x="-20" y="-20" width="220" height="220" rx="50" fill="url(#logoGradient)" opacity="0.3" filter="url(#softGlow)"/>
+      
+      <!-- Logo container -->
+      <rect x="0" y="0" width="180" height="180" rx="40" fill="url(#logoGradient)"/>
+      
+      <!-- Letter C -->
+      <text x="90" y="130" font-family="Arial Black, Arial, sans-serif" font-size="120" font-weight="900" fill="white" text-anchor="middle">C</text>
+      
+      <!-- AI Badge -->
+      <circle cx="160" cy="30" r="32" fill="url(#badgeGradient)" stroke="#020617" stroke-width="5"/>
+      
+      <!-- Sparkle in badge -->
+      <path d="M160 12 L164 24 L176 28 L164 32 L160 44 L156 32 L144 28 L156 24 Z" fill="white"/>
+    </g>
+    
+    <!-- Text content -->
+    <g transform="translate(-140, 0)">
+      <!-- CricSmart -->
+      <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="90" font-weight="bold" fill="white" filter="url(#glow)">CricSmart</text>
+      
+      <!-- AI Cricket Platform -->
+      <text x="0" y="60" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="600" fill="#10b981" letter-spacing="3">AI CRICKET PLATFORM</text>
+      
+      <!-- Tagline -->
+      <text x="0" y="110" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#64748b">Smart team management powered by artificial intelligence</text>
+    </g>
+  </g>
+  
+  <!-- Bottom branding -->
+  <g transform="translate(600, 580)">
+    <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#475569" text-anchor="middle">cricsmart.in</text>
+  </g>
+  
+  <!-- Decorative cricket element (subtle) -->
+  <g transform="translate(1080, 520)" opacity="0.08">
+    <circle cx="0" cy="0" r="40" fill="none" stroke="#10b981" stroke-width="3"/>
+    <line x1="-28" y1="-28" x2="28" y2="28" stroke="#10b981" stroke-width="2"/>
+    <line x1="28" y1="-28" x2="-28" y2="28" stroke="#10b981" stroke-width="2"/>
+  </g>
+</svg>

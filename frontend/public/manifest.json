@@ -1,21 +1,21 @@
 {
-  "short_name": "Mavericks XI",
-  "name": "Mavericks XI Cricket Team",
-  "description": "Official Cricket Team Portal - Match schedules, player availability & team updates",
+  "short_name": "CricSmart",
+  "name": "CricSmart - AI Cricket Platform",
+  "description": "Smart cricket team management powered by AI. Match scheduling, player availability, payment tracking & performance analytics.",
   "icons": [
     {
-      "src": "mavericks-logo-64.png",
+      "src": "cricsmart-logo-64.png",
       "sizes": "64x64",
       "type": "image/png"
     },
     {
-      "src": "mavericks-logo-192.png",
+      "src": "cricsmart-logo-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "mavericks-logo-512.png",
+      "src": "cricsmart-logo-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
@@ -23,6 +23,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#1e3a5f",
-  "background_color": "#1e3a5f"
+  "theme_color": "#020617",
+  "background_color": "#020617"
 }
