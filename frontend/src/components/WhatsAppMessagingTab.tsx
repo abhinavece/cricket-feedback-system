@@ -7,7 +7,12 @@ import PlayerNameLink from './PlayerNameLink';
 import { validateIndianPhoneNumber, sanitizeIndianPhoneNumber } from '../utils/phoneValidation';
 import { matchEvents } from '../utils/matchEvents';
 import { useSSE } from '../hooks/useSSE';
-import { Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { 
+  Wifi, WifiOff, Loader2, MessageSquare, Users, Send, Plus, Edit, Trash2, 
+  Search, Check, X, Phone, User, Calendar, MapPin, Clock, ChevronDown,
+  Sparkles, Brain, RefreshCw, ExternalLink, MessageCircle, Settings,
+  CheckCircle, XCircle, AlertCircle
+} from 'lucide-react';
 
 interface TemplateConfig {
   id: string;
@@ -57,6 +62,7 @@ const TEMPLATES: TemplateConfig[] = [
 ];
 
 const WhatsAppMessagingTab: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
@@ -94,20 +100,93 @@ const WhatsAppMessagingTab: React.FC = () => {
   const [historyNewMessage, setHistoryNewMessage] = useState('');
   const [sendingHistoryMessage, setSendingHistoryMessage] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendingHistoryMessageRef = useRef(false);
 
-  // Helper function to auto-capitalize text like WhatsApp
+  // Neural network animation
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const particles: Array<{
+      x: number; y: number; vx: number; vy: number; radius: number; opacity: number;
+    }> = [];
+
+    const numParticles = 30;
+    
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.3 + 0.1,
+      });
+    }
+
+    let animationId: number;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity})`;
+        ctx.fill();
+
+        particles.slice(i + 1).forEach((p2) => {
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.08 * (1 - dist / 100)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
   const autoCapitalize = (text: string): string => {
     if (!text) return text;
-    
-    // Capitalize first character
     let result = text.charAt(0).toUpperCase() + text.slice(1);
-    
-    // Find all instances of period followed by space and a letter, and capitalize that letter
     result = result.replace(/\. ([a-z])/g, (match) => `. ${match.charAt(2).toUpperCase()}`);
-    
     return result;
   };
 
@@ -140,7 +219,7 @@ const WhatsAppMessagingTab: React.FC = () => {
       setLoadingMatches(true);
       const response = await getUpcomingMatches();
       setMatches(response);
-      return response; // Return matches for immediate use
+      return response;
     } catch (err) {
       console.error('Failed to load matches:', err);
       return [];
@@ -153,19 +232,14 @@ const WhatsAppMessagingTab: React.FC = () => {
     try {
       setCreatingMatch(true);
       const newMatch = await createMatch(matchData);
-      const updatedMatches = await fetchMatches(); // Refresh matches list and get updated list
-      
-      // Find the match from the updated list to ensure consistent structure with dropdown
+      const updatedMatches = await fetchMatches();
       const matchFromList = updatedMatches.find((m: any) => m._id === newMatch._id);
-      setSelectedMatch(matchFromList || newMatch); // Auto-select the newly created match
-      
-      // Auto-fill match details in the form
+      setSelectedMatch(matchFromList || newMatch);
       const matchToUse = matchFromList || newMatch;
       const matchDate = new Date(matchToUse.date);
       const timeStr = matchToUse.time || matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       setMatchDateTime(`${matchDate.toLocaleDateString()} ${timeStr}`);
       setMatchVenue(matchToUse.ground || '');
-      
       setShowMatchForm(false);
       setSuccess('Match created successfully!');
       setTimeout(() => setSuccess(null), 3000);
@@ -184,15 +258,11 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Name and WhatsApp number are required.');
       return;
     }
-    
-    // Validate and sanitize phone number
     if (!validateIndianPhoneNumber(editingPlayer.phone)) {
-      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
+      setError('Please enter a valid 10-digit Indian phone number');
       return;
     }
-    
     const sanitizedPhone = sanitizeIndianPhoneNumber(editingPlayer.phone);
-    
     try {
       setIsUpdating(true);
       setError(null);
@@ -220,7 +290,6 @@ const WhatsAppMessagingTab: React.FC = () => {
       setSuccess(null);
       await deletePlayer(playerToDelete._id);
       setPlayerToDelete(null);
-      // Remove from selection if it was selected
       setSelectedPlayers(prev => prev.filter(id => id !== playerToDelete._id));
       await fetchPlayers();
       setTimeout(() => setSuccess(null), 3000);
@@ -229,8 +298,6 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError(err?.response?.data?.error || 'Failed to delete player');
     }
   };
-
-  // Single player deletion only
 
   const fetchHistory = async (player: Player, isInitial = true) => {
     try {
@@ -253,19 +320,12 @@ const WhatsAppMessagingTab: React.FC = () => {
     }
   };
 
-  // Load more older messages
   const loadMoreHistory = async () => {
     if (!historyPlayer || !oldestTimestamp || loadingMoreHistory) return;
-    
     try {
       setLoadingMoreHistory(true);
-      const response = await getMessageHistory(historyPlayer.phone, { 
-        limit: 10, 
-        before: oldestTimestamp 
-      });
-      
+      const response = await getMessageHistory(historyPlayer.phone, { limit: 10, before: oldestTimestamp });
       if (response.data && response.data.length > 0) {
-        // Prepend older messages
         setHistoryMessages(prev => [...response.data, ...prev]);
         setOldestTimestamp(response.pagination?.oldestTimestamp || null);
         setHasMoreHistory(response.pagination?.hasMore || false);
@@ -279,11 +339,8 @@ const WhatsAppMessagingTab: React.FC = () => {
     }
   };
 
-  // SSE subscriptions for real-time message updates
   const sseSubscriptions = useMemo(() => {
     if (!historyPlayer) return [];
-    // Subscribe to messages for this specific phone number
-    // Format phone number the same way backend does (remove non-digits, add 91 if needed)
     let formattedPhone = historyPlayer.phone.replace(/\D/g, '');
     if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
       formattedPhone = '91' + formattedPhone;
@@ -291,44 +348,32 @@ const WhatsAppMessagingTab: React.FC = () => {
     return ['messages', `phone:${formattedPhone}`];
   }, [historyPlayer]);
 
-  // Handle SSE events for real-time chat updates
   const handleSSEEvent = useCallback((event: any) => {
-    // Handle new messages (sent or received)
     if (event.type === 'message:received' || event.type === 'message:sent') {
       const messageData = event.data || event;
-      
-      // Get phone from event (backend uses 'to' for outgoing, 'from' for incoming)
       const eventPhone = messageData.to || messageData.from || messageData.phone;
-      
-      // Check if this message is for our current chat (compare last 10 digits)
       if (historyPlayer && eventPhone) {
         const playerLast10 = historyPlayer.phone.slice(-10);
         const eventLast10 = eventPhone.slice(-10);
-        
         if (playerLast10 === eventLast10) {
           setHistoryMessages(prev => {
-            // Check if message already exists (avoid duplicates)
             const existsById = prev.some(m =>
               m._id === messageData.messageId ||
               m.messageId === messageData.messageId ||
               m._id === messageData._id
             );
             if (existsById) return prev;
-
-            // For outgoing: avoid duplicate from SSE when we already have optimistic message (same text, recent)
             if (event.type === 'message:sent') {
               const eventTime = messageData.timestamp ? new Date(messageData.timestamp).getTime() : 0;
               const sameRecentOutgoing = prev.some(m => {
                 if (m.direction !== 'outgoing') return false;
                 const sameText = (m.text || '').trim() === (messageData.text || messageData.message || '').trim();
                 const mTime = m.timestamp ? new Date(m.timestamp).getTime() : 0;
-                const withinSeconds = Math.abs(mTime - eventTime) < 15000; // 15s
+                const withinSeconds = Math.abs(mTime - eventTime) < 15000;
                 return sameText && withinSeconds;
               });
               if (sameRecentOutgoing) return prev;
             }
-
-            // Add new message to the end
             const newMessage = {
               _id: messageData.messageId || messageData._id,
               messageId: messageData.messageId,
@@ -338,12 +383,9 @@ const WhatsAppMessagingTab: React.FC = () => {
               imageId: messageData.imageId,
               status: messageData.status
             };
-
             return [...prev, newMessage];
           });
           setLastSynced(new Date());
-          
-          // Auto-scroll to bottom for new messages
           setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
           }, 100);
@@ -352,22 +394,18 @@ const WhatsAppMessagingTab: React.FC = () => {
     }
   }, [historyPlayer]);
 
-  // SSE connection for real-time chat updates
   const { isConnected: sseConnected, status: sseStatus } = useSSE({
     subscriptions: sseSubscriptions,
     onEvent: handleSSEEvent,
-    enabled: !!historyPlayer // Only connect when chat is open
+    enabled: !!historyPlayer
   });
 
   const handleSendHistoryMessage = async () => {
     if (!historyNewMessage.trim() || !historyPlayer) return;
     if (sendingHistoryMessageRef.current) return;
     sendingHistoryMessageRef.current = true;
-
     const messageText = historyNewMessage.trim();
     const tempId = `temp-${Date.now()}`;
-    
-    // Optimistic update - add message to UI immediately
     const optimisticMessage = {
       _id: tempId,
       direction: 'outgoing',
@@ -377,12 +415,9 @@ const WhatsAppMessagingTab: React.FC = () => {
     };
     setHistoryMessages(prev => [...prev, optimisticMessage]);
     setHistoryNewMessage('');
-    
-    // Scroll to bottom
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
-    
     try {
       setSendingHistoryMessage(true);
       const response = await sendWhatsAppMessage({
@@ -390,8 +425,6 @@ const WhatsAppMessagingTab: React.FC = () => {
         message: messageText,
         previewUrl: false
       });
-      
-      // Update optimistic message with real data
       setHistoryMessages(prev => prev.map(msg => 
         msg._id === tempId 
           ? { ...msg, _id: response.results?.[0]?.messageId || tempId, status: 'sent' }
@@ -399,11 +432,8 @@ const WhatsAppMessagingTab: React.FC = () => {
       ));
     } catch (err: any) {
       console.error(err);
-      // Mark message as failed
       setHistoryMessages(prev => prev.map(msg => 
-        msg._id === tempId 
-          ? { ...msg, status: 'failed' }
-          : msg
+        msg._id === tempId ? { ...msg, status: 'failed' } : msg
       ));
       setError(err?.response?.data?.error || 'Failed to send message');
     } finally {
@@ -419,7 +449,6 @@ const WhatsAppMessagingTab: React.FC = () => {
     fetchMatches();
   }, []);
 
-  // Listen for match changes from other components (unified CRUD sync)
   useEffect(() => {
     const unsubscribe = matchEvents.subscribe(() => {
       fetchMatches();
@@ -432,6 +461,15 @@ const WhatsAppMessagingTab: React.FC = () => {
     const selected = selectedPlayers.length;
     return { total, selected };
   }, [players, selectedPlayers]);
+
+  const filteredPlayers = useMemo(() => {
+    if (!searchTerm) return players;
+    const term = searchTerm.toLowerCase();
+    return players.filter(p => 
+      p.name.toLowerCase().includes(term) || 
+      p.phone.includes(term)
+    );
+  }, [players, searchTerm]);
 
   const toggleSelection = (id: string) => {
     setSelectedPlayers((prev) =>
@@ -455,15 +493,11 @@ const WhatsAppMessagingTab: React.FC = () => {
       setError('Name and WhatsApp number are required.');
       return;
     }
-    
-    // Validate and sanitize phone number
     if (!validateIndianPhoneNumber(newPlayer.phone)) {
-      setError('Please enter a valid 10-digit Indian phone number (without +91 or 91 prefix)');
+      setError('Please enter a valid 10-digit Indian phone number');
       return;
     }
-    
     const sanitizedPhone = sanitizeIndianPhoneNumber(newPlayer.phone);
-    
     try {
       setError(null);
       await createPlayer({
@@ -481,107 +515,82 @@ const WhatsAppMessagingTab: React.FC = () => {
   };
 
   const handleSendMessages = async () => {
-    // Basic validation
     if (!selectedPlayers.length) {
-      setError('Please select at least one player to receive the message.');
+      setError('Please select at least one player.');
       return;
     }
-
     if (sendMode === 'text') {
       if (!message.trim()) {
         setError('Message content cannot be empty.');
         return;
       }
     } else {
-      // Validate match selection for template messages
       if (!selectedMatch) {
         setError('Please select a match for availability tracking.');
         return;
       }
-      
       if (selectedTemplate.id === 'mavericks_team_availability') {
         if (!matchDateTime.trim() || !matchVenue.trim()) {
-          setError('Please provide both Match Time and Venue details for the template.');
+          setError('Please provide Match Time and Venue details.');
           return;
         }
       } else if (selectedTemplate.id === 'custom') {
         if (!templateName.trim()) {
-          setError('Template name is required for custom templates.');
+          setError('Template name is required.');
           return;
         }
       }
     }
-
     const targets = selectedPlayers;
     try {
       setSending(true);
       setError(null);
       setSendResult(null);
-      const payload: Parameters<typeof sendWhatsAppMessage>[0] = {
-        playerIds: targets,
-      };
-
-      // Add match context if match is selected
+      const payload: Parameters<typeof sendWhatsAppMessage>[0] = { playerIds: targets };
       if (selectedMatch) {
         payload.matchId = selectedMatch._id;
         payload.matchTitle = selectedMatch.opponent || 'Practice Match';
       }
-
       if (sendMode === 'text') {
         payload.message = message.trim();
         payload.previewUrl = false;
       } else {
-        // Use selected template config
         if (selectedTemplate.id === 'mavericks_team_availability') {
           payload.template = {
             name: selectedTemplate.name,
             languageCode: templateLanguage.trim() || selectedTemplate.language,
-            components: [
-              {
-                type: 'body',
-                parameters: [
-                  { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
-                  { type: 'text', text: matchDateTime.trim() },
-                  { type: 'text', text: matchVenue.trim() }
-                ]
-              }
-            ]
+            components: [{
+              type: 'body',
+              parameters: [
+                { type: 'text', text: '{{PLAYER_NAME}}' },
+                { type: 'text', text: matchDateTime.trim() },
+                { type: 'text', text: matchVenue.trim() }
+              ]
+            }]
           };
         } else if (selectedTemplate.id === 'team_availability_check_new') {
-          // New template with image header - parameters: playerName, GroundName, Date_Time_Slot
           payload.template = {
             name: selectedTemplate.name,
             languageCode: templateLanguage.trim() || selectedTemplate.language,
-            components: [
-              {
-                type: 'body',
-                parameters: [
-                  { type: 'text', text: '{{PLAYER_NAME}}' }, // Backend will replace this
-                  { type: 'text', text: matchVenue.trim() },  // Ground name
-                  { type: 'text', text: matchDateTime.trim() } // Date, time & slot
-                ]
-              }
-            ]
+            components: [{
+              type: 'body',
+              parameters: [
+                { type: 'text', text: '{{PLAYER_NAME}}' },
+                { type: 'text', text: matchVenue.trim() },
+                { type: 'text', text: matchDateTime.trim() }
+              ]
+            }]
           };
         } else if (selectedTemplate.id === 'custom') {
           const bodyParams = templateBodyParams
             .split('\n')
             .map((line: string) => line.trim())
             .filter(Boolean)
-            .map((text: string) => ({
-              type: 'text',
-              text,
-            }));
-
+            .map((text: string) => ({ type: 'text', text }));
           if (bodyParams.length !== templateExpectedParams) {
-            setError(
-              `Template expects ${templateExpectedParams} placeholder${
-                templateExpectedParams === 1 ? '' : 's'
-              } but you provided ${bodyParams.length}.`
-            );
+            setError(`Template expects ${templateExpectedParams} placeholder(s) but you provided ${bodyParams.length}.`);
             return;
           }
-
           payload.template = {
             name: templateName.trim(),
             languageCode: templateLanguage.trim() || 'en_US',
@@ -589,592 +598,264 @@ const WhatsAppMessagingTab: React.FC = () => {
           };
         }
       }
-
       const response = await sendWhatsAppMessage(payload);
       setSendResult(response?.data || null);
       setShowAlert(true);
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.error || 'Failed to trigger WhatsApp messages');
+      setError(err?.response?.data?.error || 'Failed to send messages');
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--primary-green)' }}>
-            WhatsApp Messaging
-          </h2>
-          <p className="text-secondary text-sm md:text-base">
-            Manage recipients and send WhatsApp notifications directly from the dashboard.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 w-full lg:w-auto">
-          <div className="card text-center px-4 py-3 min-h-[80px] flex flex-col justify-center">
-            <p className="text-[10px] md:text-xs uppercase tracking-wide text-secondary">Total players</p>
-            <p className="text-xl md:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              {stats.total}
-            </p>
-          </div>
-          <div className="card text-center px-4 py-3 min-h-[80px] flex flex-col justify-center">
-            <p className="text-[10px] md:text-xs uppercase tracking-wide text-secondary">Selected</p>
-            <p className="text-xl md:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              {stats.selected}
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="relative min-h-screen">
+      {/* Neural Network Background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-40"
+        style={{ zIndex: 0 }}
+      />
 
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
+      {/* Gradient Overlays */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      {success && (
-        <div className="alert alert-success" style={{
-          backgroundColor: '#ecfdf5',
-          color: '#065f46',
-          border: '1px solid #a7f3d0',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          marginBottom: '16px'
-        }}>
-          {success}
-        </div>
-      )}
-
-      {sendResult && showAlert && (
-        <div className="modal-overlay" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div className="modal-content" style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '650px',
-            width: '90%',
-            maxHeight: '85vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid #e5e7eb',
-            animation: 'slideIn 0.3s ease-out'
-          }}>
-            <style>
-              {`
-                @keyframes slideIn {
-                  from {
-                    opacity: 0;
-                    transform: translateY(-20px) scale(0.95);
-                  }
-                  to {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                  }
-                }
-              `}
-            </style>
-            <div className="d-flex justify-content-between align-items-start mb-4">
-              <div>
-                <h3 className="h4 mb-2" style={{ 
-                  color: sendResult.failed === 0 ? '#059669' : '#d97706',
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  {sendResult.failed === 0 ? (
-                    <>
-                      <span style={{ fontSize: '28px' }}>✅</span>
-                      Messages Sent Successfully!
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ fontSize: '28px' }}>⚠️</span>
-                      Partial Success
-                    </>
-                  )}
-                </h3>
-                <p style={{ 
-                  color: '#6b7280', 
-                  margin: 0,
-                  fontSize: '16px'
-                }}>
-                  {sendResult.sent} of {sendResult.attempted} messages delivered successfully
-                </p>
+      <div className="relative z-10 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <MessageSquare className="w-6 h-6 md:w-7 md:h-7 text-white" />
               </div>
-              <button 
-                onClick={() => setShowAlert(false)}
-                style={{
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  width: '36px',
-                  height: '36px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  fontSize: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e: any) => {
-                  e.target.style.backgroundColor = '#e5e7eb';
-                  e.target.style.color = '#374151';
-                }}
-                onMouseOut={(e: any) => {
-                  e.target.style.backgroundColor = '#f3f4f6';
-                  e.target.style.color = '#6b7280';
-                }}
-              >
-                ×
-              </button>
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center border-2 border-slate-900">
+                <Sparkles className="w-2.5 h-2.5 text-white" />
+              </div>
             </div>
-            
-            {sendResult.results && sendResult.results.length > 0 && (
-              <div>
-                <h5 style={{ 
-                  color: '#111827', 
-                  marginBottom: '20px',
-                  fontSize: '18px',
-                  fontWeight: '600'
-                }}>
-                  Message Delivery Details
-                </h5>
-                <div style={{ 
-                  maxHeight: '350px', 
-                  overflowY: 'auto',
-                  paddingRight: '8px'
-                }}>
-                  {sendResult.results.map((result, index) => (
-                    <div key={index} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '16px',
-                      marginBottom: '12px',
-                      backgroundColor: '#f9fafb',
-                      borderRadius: '12px',
-                      border: `2px solid ${result.status === 'sent' ? '#10b981' : '#ef4444'}`,
-                      transition: 'all 0.2s',
-                      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                    }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ 
-                          fontWeight: '600', 
-                          color: '#111827',
-                          fontSize: '16px',
-                          marginBottom: '4px'
-                        }}>
-                          {result.name}
-                        </div>
-                        <div style={{ 
-                          fontSize: '14px', 
-                          color: '#6b7280',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          📱 {result.phone}
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <span style={{
-                          padding: '6px 16px',
-                          borderRadius: '24px',
-                          fontSize: '13px',
-                          fontWeight: '700',
-                          backgroundColor: result.status === 'sent' ? '#10b981' : '#ef4444',
-                          color: 'white',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                        }}>
-                          {result.status === 'sent' ? '✓' : '✗'} {result.status === 'sent' ? 'Sent' : 'Failed'}
-                        </span>
-                        {result.messageId && (
-                          <div style={{ 
-                            fontSize: '11px', 
-                            color: '#9ca3af', 
-                            marginTop: '6px',
-                            fontFamily: 'monospace'
-                          }}>
-                            ID: {result.messageId.slice(0, 10)}...
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                WhatsApp Hub
+                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 bg-violet-500/20 border border-violet-500/30 rounded-full text-xs text-violet-400">
+                  <Brain className="w-3 h-3" />
+                  AI
+                </span>
+              </h2>
+              <p className="text-sm text-slate-400">Manage contacts & send notifications</p>
+            </div>
+          </div>
+
+          {/* Compact Stats */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
+              <Users className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm text-white font-medium">{stats.total}</span>
+              <span className="text-xs text-slate-500">players</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 rounded-xl border border-emerald-500/30">
+              <Check className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm text-emerald-400 font-medium">{stats.selected}</span>
+              <span className="text-xs text-emerald-400/70">selected</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="p-3 bg-rose-500/20 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-sm">
+            <XCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-auto p-1 hover:bg-rose-500/20 rounded">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {success && (
+          <div className="p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-emerald-400 text-sm">
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            <span>{success}</span>
+          </div>
+        )}
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          
+          {/* Player List - 3 columns */}
+          <div className="lg:col-span-3 bg-slate-800/30 backdrop-blur-sm border border-slate-700/30 rounded-2xl overflow-hidden">
+            {/* List Header */}
+            <div className="p-4 border-b border-slate-700/30">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-400" />
+                  Players
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSelectAll}
+                    disabled={loading || players.length === 0}
+                    className="px-3 py-1.5 text-xs font-medium bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    Select All
+                  </button>
+                  {selectedPlayers.length > 0 && (
+                    <button
+                      onClick={handleClearSelection}
+                      className="px-3 py-1.5 text-xs font-medium bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg transition-all"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setEditingPlayer(null); setNewPlayer({ name: '', phone: '', notes: '' }); setShowPlayerModal(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg shadow-lg shadow-emerald-500/20"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
                 </div>
               </div>
-            )}
-            
-            <div className="mt-5 d-flex justify-content-end gap-3">
-              <button 
-                onClick={() => setShowAlert(false)}
-                style={{
-                  backgroundColor: '#6b7280',
-                  border: 'none',
-                  padding: '12px 32px',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e: any) => {
-                  e.target.style.backgroundColor = '#4b5563';
-                }}
-                onMouseOut={(e: any) => {
-                  e.target.style.backgroundColor = '#6b7280';
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 card">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg md:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Recipients
-              </h3>
-              <p className="text-secondary text-xs md:text-sm">
-                Select players for the next WhatsApp blast.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 items-center justify-between">
-              <div className="flex gap-2">
-                <button
-                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
-                  type="button"
-                  onClick={handleSelectAll}
-                  disabled={loading || players.length === 0}
-                >
-                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  Select all
-                </button>
-                {selectedPlayers.length > 0 && (
-                  <button
-                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
-                    type="button"
-                    onClick={handleClearSelection}
-                  >
-                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Clear
-                  </button>
-                )}
-              </div>
-              
-              <div className="flex gap-2">
-                {selectedPlayers.length === 1 && (
-                  <>
-                    <button
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
-                      type="button"
-                      onClick={() => {
-                        const player = players.find(p => p._id === selectedPlayers[0]);
-                        if (player) {
-                          setEditingPlayer(player);
-                          setShowPlayerModal(true);
-                        }
-                      }}
-                    >
-                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Edit
-                    </button>
-                    <button
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-colors"
-                      type="button"
-                      onClick={() => {
-                        const player = players.find(p => p._id === selectedPlayers[0]);
-                        if (player) setPlayerToDelete(player);
-                      }}
-                    >
-                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Delete
-                    </button>
-                  </>
-                )}
-                <button
-                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-[#128C7E] text-white hover:bg-[#075E54] transition-colors shadow-sm"
-                  type="button"
-                  onClick={() => {
-                    setEditingPlayer(null);
-                    setNewPlayer({ name: '', phone: '', notes: '' });
-                    setShowPlayerModal(true);
-                  }}
-                >
-                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add Player
-                </button>
+              {/* Search */}
+              <div className="mt-3 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search players..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                />
               </div>
             </div>
-          </div>
 
-          <div className="mt-6 overflow-x-auto">
-            <div className="min-w-full overflow-hidden">
-              {/* Desktop view - Table */}
-              <table className="min-w-full text-sm hidden md:table">
-                <thead>
-                  <tr className="text-left text-secondary uppercase text-xs tracking-wide">
-                    <th className="py-3 pr-4">Contact</th>
-                    <th className="py-3 pr-4">Details</th>
-                    <th className="py-3 pr-4">Added</th>
-                    <th className="py-3 pr-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-secondary">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="w-6 h-6 border-2 border-gray-600 border-t-gray-400 rounded-full animate-spin"></div>
-                          <p>Loading players...</p>
+            {/* Player List */}
+            <div className="max-h-[500px] overflow-y-auto">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <RefreshCw className="w-6 h-6 text-emerald-400 animate-spin" />
+                  <p className="text-sm text-slate-400">Loading players...</p>
+                </div>
+              ) : filteredPlayers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Users className="w-10 h-10 text-slate-600" />
+                  <p className="text-sm text-slate-400">{searchTerm ? 'No players found' : 'Add your first player'}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-700/30">
+                  {filteredPlayers.map(player => {
+                    const isSelected = selectedPlayers.includes(player._id);
+                    return (
+                      <div
+                        key={player._id}
+                        className={`p-3 flex items-center gap-3 cursor-pointer transition-all hover:bg-slate-800/50 ${isSelected ? 'bg-emerald-500/10' : ''}`}
+                        onClick={() => toggleSelection(player._id)}
+                      >
+                        {/* Selection Checkbox */}
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                          isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600 hover:border-slate-500'
+                        }`}>
+                          {isSelected && <Check className="w-3 h-3 text-white" />}
                         </div>
-                      </td>
-                    </tr>
-                  ) : players.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-secondary">
-                        <p>No players found. Add your first player to get started.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    players.map(player => (
-                    <tr
-                      key={player._id}
-                      className="border-t border-gray-700 hover:bg-gray-800/40 transition-colors"
-                    >
-                      <td className="py-4 pr-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-base">
-                            {player.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <PlayerNameLink
-                              playerId={player._id}
-                              playerName={player.name}
-                              className="font-semibold text-white text-base"
-                            />
-                            <p className="text-sm text-secondary">{player.phone}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-4 text-secondary">
-                        {player.notes ? (
-                          <p className="text-xs text-secondary italic">{player.notes}</p>
-                        ) : (
-                          <p className="text-xs text-gray-500 italic">No notes</p>
-                        )}
-                      </td>
-                      <td className="py-4 pr-4 text-secondary">{player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}</td>
-                      <td className="py-4 pr-4">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => fetchHistory(player)}
-                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#128C7E] text-white rounded-lg hover:bg-[#075E54] transition-all active:scale-95 text-sm font-medium shadow-sm"
-                          >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
-                            </svg>
-                            Chat
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingPlayer(player);
-                              setShowPlayerModal(true);
-                            }}
-                            className="p-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-all active:scale-95 text-sm shadow-sm"
-                            title="Edit player"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => setPlayerToDelete(player)}
-                            className="p-1.5 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-all active:scale-95 text-sm shadow-sm"
-                            title="Delete player"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              
-              {/* Mobile view - Card list */}
-              <div className="md:hidden space-y-3">
-                {loading ? (
-                  <div className="py-8 text-center text-secondary">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-6 h-6 border-2 border-gray-600 border-t-gray-400 rounded-full animate-spin"></div>
-                      <p>Loading players...</p>
-                    </div>
-                  </div>
-                ) : players.length === 0 ? (
-                  <div className="py-8 text-center text-secondary">
-                    <p>No players found. Add your first player to get started.</p>
-                  </div>
-                ) : (
-                  players.map(player => (
-                    <div 
-                      key={player._id}
-                      className="border border-gray-700 rounded-xl p-3 bg-gray-800/20 hover:bg-gray-800/40 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-base shrink-0">
+
+                        {/* Avatar */}
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white font-medium shrink-0">
                           {player.name.charAt(0).toUpperCase()}
                         </div>
+
+                        {/* Info */}
                         <div className="flex-1 min-w-0">
                           <PlayerNameLink
                             playerId={player._id}
                             playerName={player.name}
-                            className="font-semibold text-white text-base truncate block"
+                            className="text-sm font-medium text-white hover:text-emerald-400 transition-colors"
                           />
-                          <p className="text-sm text-secondary truncate">{player.phone}</p>
+                          <p className="text-xs text-slate-500">{player.phone}</p>
                         </div>
-                      </div>
 
-                      {player.notes && (
-                        <div className="px-3 py-1.5 bg-gray-800/40 rounded-lg mb-3">
-                          <p className="text-xs text-secondary italic">{player.notes}</p>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs text-gray-500">
-                          {player.createdAt ? new Date(player.createdAt).toLocaleDateString() : '—'}
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingPlayer(player);
-                              setShowPlayerModal(true);
-                            }}
-                            className="p-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-all active:scale-95 text-sm shadow-sm"
-                            title="Edit player"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => fetchHistory(player)}
-                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#128C7E] text-white rounded-lg hover:bg-[#075E54] transition-all active:scale-95 text-sm font-medium shadow-sm"
+                            className="p-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg transition-all"
+                            title="Chat"
                           >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
-                            </svg>
-                            Chat
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { setEditingPlayer(player); setShowPlayerModal(true); }}
+                            className="p-2 bg-slate-700/50 hover:bg-slate-700 text-slate-400 rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setPlayerToDelete(player)}
-                            className="p-1.5 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-all active:scale-95 text-sm shadow-sm"
-                            title="Delete player"
+                            className="p-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded-lg transition-all"
+                            title="Delete"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        <div className="space-y-6">
+          {/* Message Panel - 2 columns */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Message Settings Card */}
+            <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/30 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Settings className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">Message Settings</h3>
+              </div>
 
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-              Message settings
-            </h3>
-            <div className="space-y-4">
-              <div className="flex gap-4 text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="sendMode"
-                    value="template"
-                    checked={sendMode === 'template'}
-                    onChange={() => setSendMode('template')}
-                  />
-                  Template message
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="sendMode"
-                    value="text"
-                    checked={sendMode === 'text'}
-                    onChange={() => setSendMode('text')}
-                  />
-                  Text message
-                </label>
+              {/* Mode Toggle */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setSendMode('template')}
+                  className={`flex-1 py-2 px-3 text-xs font-medium rounded-lg transition-all ${
+                    sendMode === 'template'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-slate-800/50 text-slate-400 border border-transparent hover:border-slate-700'
+                  }`}
+                >
+                  Template
+                </button>
+                <button
+                  onClick={() => setSendMode('text')}
+                  className={`flex-1 py-2 px-3 text-xs font-medium rounded-lg transition-all ${
+                    sendMode === 'text'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-slate-800/50 text-slate-400 border border-transparent hover:border-slate-700'
+                  }`}
+                >
+                  Text
+                </button>
               </div>
 
               {sendMode === 'text' ? (
                 <div>
-                  <p className="text-secondary text-sm">Message to send</p>
+                  <label className="text-xs text-slate-400 mb-1 block">Message</label>
                   <textarea
-                    className="form-control mt-2"
-                    rows={5}
                     value={message}
                     onChange={(e) => setMessage(autoCapitalize(e.target.value))}
-                    placeholder="Type your WhatsApp message"
+                    placeholder="Type your message..."
+                    className="w-full p-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+                    rows={4}
                   />
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Match Selection */}
                   <div>
-                    <label className="form-label text-sm flex items-center gap-2">
-                      <span>Select Match</span>
-                      <span className="text-xs text-gray-500">(Required for availability tracking)</span>
-                    </label>
+                    <label className="text-xs text-slate-400 mb-1 block">Select Match *</label>
                     <select
-                      className="form-control"
                       value={selectedMatch?._id || ''}
                       onChange={(e) => {
                         if (e.target.value === 'create-new') {
@@ -1184,64 +865,45 @@ const WhatsAppMessagingTab: React.FC = () => {
                         const match = matches.find(m => m._id === e.target.value);
                         setSelectedMatch(match || null);
                         if (match) {
-                          // Auto-fill match details
                           const matchDate = new Date(match.date);
                           const timeStr = match.time || matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                           setMatchDateTime(`${matchDate.toLocaleDateString()} ${timeStr}`);
                           setMatchVenue(match.ground || '');
                         }
                       }}
+                      className="w-full p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     >
-                      <option value="">-- Select a match --</option>
-                      <option value="create-new" className="font-semibold text-green-600 bg-green-50">+ Create a new match</option>
-                      {loadingMatches ? (
-                        <option disabled>Loading matches...</option>
-                      ) : matches.length === 0 ? (
-                        <option disabled>No upcoming matches</option>
-                      ) : (
-                        matches.map(match => {
-                          const matchDate = new Date(match.date);
-                          const dateStr = matchDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                          const opponent = match.opponent || 'Practice Match';
-                          return (
-                            <option key={match._id} value={match._id}>
-                              {dateStr} - {opponent} @ {match.ground}
-                            </option>
-                          );
-                        })
-                      )}
+                      <option value="">-- Select match --</option>
+                      <option value="create-new">+ Create new match</option>
+                      {matches.map(match => {
+                        const matchDate = new Date(match.date);
+                        const dateStr = matchDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        return (
+                          <option key={match._id} value={match._id}>
+                            {dateStr} - {match.opponent || 'Practice'} @ {match.ground}
+                          </option>
+                        );
+                      })}
                     </select>
-                    {selectedMatch && (
-                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="text-sm">
-                          <p className="font-semibold text-blue-900">
-                            {selectedMatch.opponent || 'Practice Match'}
-                          </p>
-                          <p className="text-blue-700">
-                            📅 {new Date(selectedMatch.date).toLocaleDateString('en-US', { 
-                              weekday: 'long', 
-                              month: 'long', 
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </p>
-                          <p className="text-blue-700">
-                            📍 {selectedMatch.ground}
-                          </p>
-                          {selectedMatch.time && (
-                            <p className="text-blue-700">
-                              ⏰ {selectedMatch.time}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
+                  {selectedMatch && (
+                    <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
+                      <div className="flex items-center gap-2 text-xs text-cyan-400 mb-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{new Date(selectedMatch.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-cyan-400">
+                        <MapPin className="w-3 h-3" />
+                        <span>{selectedMatch.ground}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Template Selection */}
                   <div>
-                    <label className="form-label text-sm">Select Template</label>
+                    <label className="text-xs text-slate-400 mb-1 block">Template</label>
                     <select
-                      className="form-control"
                       value={selectedTemplate.id}
                       onChange={(e) => {
                         const template = TEMPLATES.find(t => t.id === e.target.value) || TEMPLATES[0];
@@ -1250,6 +912,7 @@ const WhatsAppMessagingTab: React.FC = () => {
                         setTemplateLanguage(template.language);
                         setTemplateExpectedParams(template.expectedParams);
                       }}
+                      className="w-full p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     >
                       {TEMPLATES.map(t => (
                         <option key={t.id} value={t.id}>{t.label}</option>
@@ -1257,368 +920,206 @@ const WhatsAppMessagingTab: React.FC = () => {
                     </select>
                   </div>
 
-                  {selectedTemplate.id === 'custom' && (
-                    <div className="space-y-3">
+                  {(selectedTemplate.id === 'mavericks_team_availability' || selectedTemplate.id === 'team_availability_check_new') && (
+                    <>
                       <div>
-                        <label className="form-label text-sm">Template Name</label>
+                        <label className="text-xs text-slate-400 mb-1 block">Venue</label>
                         <input
                           type="text"
-                          className="form-control"
+                          value={matchVenue}
+                          onChange={(e) => setMatchVenue(e.target.value)}
+                          placeholder="Ground name"
+                          className="w-full p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Date & Time</label>
+                        <input
+                          type="text"
+                          value={matchDateTime}
+                          onChange={(e) => setMatchDateTime(e.target.value)}
+                          placeholder="Sunday, 11th Jan | 2:00 PM"
+                          className="w-full p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {selectedTemplate.id === 'custom' && (
+                    <>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Template Name</label>
+                        <input
+                          type="text"
                           value={templateName}
                           onChange={(e) => setTemplateName(e.target.value)}
                           placeholder="e.g., hello_world"
+                          className="w-full p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                         />
                       </div>
                       <div>
-                        <label className="form-label text-sm">Language Code</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={templateLanguage}
-                          onChange={(e) => setTemplateLanguage(e.target.value)}
-                          placeholder="e.g., en_US"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {(selectedTemplate.id === 'mavericks_team_availability' || selectedTemplate.id === 'team_availability_check_new') ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="form-label text-sm">Venue / Ground Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={matchVenue}
-                          onChange={(e) => setMatchVenue(e.target.value)}
-                          placeholder="Nityansh Cricket Ground"
-                        />
-                      </div>
-                      <div>
-                        <label className="form-label text-sm">Date, Time & Slot</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={matchDateTime}
-                          onChange={(e) => setMatchDateTime(e.target.value)}
-                          placeholder="Sunday, 11th Jan 2026 | 2:00 PM | Morning Slot"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="form-label text-sm">Body placeholder count</label>
-                        <input
-                          type="number"
-                          min={0}
-                          className="form-control"
-                          value={templateExpectedParams}
-                          onChange={(e) => setTemplateExpectedParams(Math.max(0, Number(e.target.value) || 0))}
-                        />
-                      </div>
-                      <div>
-                        <label className="form-label text-sm">
-                          Body parameters <span className="text-xs text-secondary">(one per line)</span>
-                        </label>
+                        <label className="text-xs text-slate-400 mb-1 block">Parameters (one per line)</label>
                         <textarea
-                          className="form-control mt-2"
-                          rows={4}
                           value={templateBodyParams}
                           onChange={(e) => setTemplateBodyParams(autoCapitalize(e.target.value))}
-                          placeholder={'Abhinav\n7:00 AM'}
+                          placeholder="Param 1&#10;Param 2"
+                          className="w-full p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+                          rows={3}
                         />
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {/* Template Preview */}
                   {selectedTemplate.id !== 'custom' && (
-                    <div className="mt-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">Live Preview</p>
-                      <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-700/50">
-                        {/* WhatsApp-like Background */}
-                        <div className="p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat min-h-[200px] flex flex-col justify-center">
-                          
-                          <div className="flex flex-col items-end max-w-[90%] self-end">
-                            <div className="relative rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed bg-[#dcf8c6] text-gray-800 rounded-tr-none overflow-hidden">
-                              {/* Chat bubble tail */}
-                              <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-[#dcf8c6] border-r-[10px] border-r-transparent"></div>
-                              
-                              {/* Image Header for templates with hasImage */}
-                              {selectedTemplate.hasImage && (
-                                <div className="w-full h-32 bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 flex items-center justify-center relative overflow-hidden">
-                                  <div className="absolute inset-0 opacity-20">
-                                    <div className="absolute top-2 left-4 text-6xl">🏏</div>
-                                    <div className="absolute bottom-2 right-4 text-4xl">⚾</div>
-                                  </div>
-                                  <div className="text-center z-10">
-                                    <div className="text-3xl mb-1">🏏</div>
-                                    <p className="text-white font-bold text-lg tracking-wide">MAVERICKS XI</p>
-                                    <p className="text-emerald-100 text-xs">Cricket Team</p>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              <div className="px-3 py-2 md:px-4 md:py-2.5">
-                                {selectedTemplate.header && !selectedTemplate.hasImage && (
-                                  <p className="text-[14px] font-bold text-gray-900 mb-1 leading-tight border-b border-black/5 pb-1">
-                                    {selectedTemplate.header}
-                                  </p>
-                                )}
-                                
-                                <div className="whitespace-pre-wrap">
-                                  {selectedTemplate.format
-                                    .replace('{{1}}', players[0]?.name || 'Abhinav Singh')
-                                    .replace('{{2}}', matchVenue || 'Nityansh Cricket Ground')
-                                    .replace('{{3}}', matchDateTime || 'Sunday, 11th Jan 2026 | 2:00 PM')}
-                                </div>
-                                
-                                {selectedTemplate.footer && (
-                                  <p className="text-[12px] text-gray-500 mt-2 italic border-t border-black/5 pt-1">
-                                    {selectedTemplate.footer}
-                                  </p>
-                                )}
-
-                                <div className="flex justify-end items-center gap-1 mt-1">
-                                  <span className="text-[10px] opacity-50 font-medium tabular-nums text-gray-600">
-                                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                  <span className="text-sky-500">
-                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                                    </svg>
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Buttons Preview */}
-                            {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
-                              <div className="mt-2 w-full space-y-1">
-                                {selectedTemplate.buttons.map((btn, i) => (
-                                  <div 
-                                    key={i} 
-                                    className={`bg-white rounded-xl py-2 flex items-center justify-center gap-2 shadow-sm border border-gray-200/50 ${
-                                      btn === 'Available' || btn === 'Yes' ? 'hover:bg-green-50' :
-                                      btn === 'Not Available' || btn === 'No' ? 'hover:bg-red-50' :
-                                      'hover:bg-amber-50'
-                                    }`}
-                                  >
-                                    <svg className={`w-4 h-4 ${
-                                      btn === 'Available' || btn === 'Yes' ? 'text-green-500' :
-                                      btn === 'Not Available' || btn === 'No' ? 'text-red-500' :
-                                      'text-amber-500'
-                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                    </svg>
-                                    <span className={`text-sm font-semibold ${
-                                      btn === 'Available' || btn === 'Yes' ? 'text-green-500' :
-                                      btn === 'Not Available' || btn === 'No' ? 'text-red-500' :
-                                      'text-amber-500'
-                                    }`}>{btn}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                    <div>
+                      <label className="text-xs text-slate-400 mb-2 block">Preview</label>
+                      <div className="bg-[#efe7de] rounded-xl p-3 max-h-48 overflow-y-auto">
+                        <div className="bg-[#dcf8c6] rounded-xl px-3 py-2 text-[13px] text-gray-800 max-w-[90%] ml-auto relative">
+                          <div className="whitespace-pre-wrap text-xs leading-relaxed">
+                            {selectedTemplate.format
+                              .replace('{{1}}', players[0]?.name || 'Player Name')
+                              .replace('{{2}}', matchVenue || 'Venue')
+                              .replace('{{3}}', matchDateTime || 'Date & Time')}
+                          </div>
+                          <div className="text-[9px] text-gray-500 text-right mt-1">
+                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="mt-6 space-y-4">
-              {/* Player Selection Section */}
-              <div className="border border-gray-700/50 rounded-xl overflow-hidden">
-                <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-[#128C7E]" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
-                    </svg>
-                    <h4 className="font-medium text-white">Select Recipients</h4>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-                      onClick={handleSelectAll}
-                      disabled={loading || players.length === 0}
-                    >
-                      Select all
-                    </button>
-                    {selectedPlayers.length > 0 && (
-                      <button 
-                        className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-                        onClick={handleClearSelection}
-                      >
-                        Clear
-                      </button>
-                    )}
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#128C7E] text-white text-xs font-bold">
-                      {selectedPlayers.length}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="max-h-60 overflow-y-auto p-2 bg-gray-900/30">
-                  {loading ? (
-                    <div className="flex items-center justify-center p-4">
-                      <div className="w-5 h-5 border-2 border-gray-600 border-t-[#128C7E] rounded-full animate-spin"></div>
-                    </div>
-                  ) : players.length === 0 ? (
-                    <div className="text-center p-4 text-sm text-gray-400">
-                      No players available. Add players to send messages.
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {/* Selected players section */}
-                      {selectedPlayers.length > 0 && (
-                        <div className="mb-2">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <div className="w-2 h-2 rounded-full bg-[#128C7E]"></div>
-                            <p className="text-xs uppercase tracking-wider text-[#128C7E] font-medium">Selected Players</p>
-                          </div>
-                          <div className="space-y-1.5">
-                            {selectedPlayers.map(id => {
-                              const player = players.find(p => p._id === id);
-                              return player ? (
-                                <div 
-                                  key={`selected-${player._id}`}
-                                  className="flex items-center p-2 rounded-lg cursor-pointer transition-colors bg-[#128C7E]/20 border border-[#128C7E]/30"
-                                  onClick={() => toggleSelection(player._id)}
-                                >
-                                  <div className="flex-shrink-0 mr-2">
-                                    <div className="w-8 h-8 rounded-full bg-[#128C7E]/30 flex items-center justify-center text-white font-medium text-sm">
-                                      {player.name.charAt(0).toUpperCase()}
-                                    </div>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">{player.name}</p>
-                                    <p className="text-xs text-gray-400 truncate">{player.phone}</p>
-                                  </div>
-                                  <div className="ml-2">
-                                    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-[#128C7E]">
-                                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null;
-                            })}
-                          </div>
-                          <div className="h-px bg-gray-700/50 my-3"></div>
-                        </div>
-                      )}
-                      
-                      {/* Available players section */}
-                      <div>
-                        {selectedPlayers.length > 0 && (
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                            <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">Other Players</p>
+                        {selectedTemplate.buttons && (
+                          <div className="mt-2 space-y-1">
+                            {selectedTemplate.buttons.map((btn, i) => (
+                              <div key={i} className="bg-white rounded-lg py-1.5 text-center text-xs font-medium text-emerald-600">
+                                {btn}
+                              </div>
+                            ))}
                           </div>
                         )}
-                        <div className="space-y-1.5">
-                          {players
-                            .filter(player => !selectedPlayers.includes(player._id))
-                            .map(player => (
-                              <div 
-                                key={player._id}
-                                className="flex items-center p-2 rounded-lg cursor-pointer transition-colors bg-gray-800/30 border border-gray-700/30 hover:bg-gray-800/50"
-                                onClick={() => toggleSelection(player._id)}
-                              >
-                                <div className="flex-shrink-0 mr-2">
-                                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white font-medium text-sm">
-                                    {player.name.charAt(0).toUpperCase()}
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-white truncate">{player.name}</p>
-                                  <p className="text-xs text-gray-400 truncate">{player.phone}</p>
-                                </div>
-                                <div className="ml-2">
-                                  <div className="w-5 h-5 rounded-full flex items-center justify-center border border-gray-600">
-                                  </div>
-                                </div>
-                              </div>
-                          ))}
-                        </div>
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
-              
-              {/* Validation Prompt */}
-              {(!selectedPlayers.length || (sendMode === 'template' && (!selectedMatch || (selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))))) && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div>
-                    <p className="text-xs font-bold text-amber-500 uppercase tracking-tight mb-1">Ready to send?</p>
-                    <p className="text-xs text-amber-200/80 leading-relaxed">
-                      {!selectedPlayers.length 
-                        ? "Select at least one recipient from the list above to continue." 
-                        : !selectedMatch && sendMode === 'template'
-                        ? "Please select a match for availability tracking."
-                        : "Please fill in the Match Time and Venue details to complete the template."}
-                    </p>
-                  </div>
+              )}
+
+              {/* Validation */}
+              {(!selectedPlayers.length || (sendMode === 'template' && !selectedMatch)) && (
+                <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-400">
+                    {!selectedPlayers.length ? 'Select players from the list to send' : 'Select a match for tracking'}
+                  </p>
                 </div>
               )}
 
+              {/* Send Button */}
               <button
-                className="btn btn-primary w-full flex items-center justify-center gap-2 h-12 shadow-lg shadow-emerald-500/10 transition-all hover:shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale"
                 onClick={handleSendMessages}
-                disabled={sending || loading || selectedPlayers.length === 0 || (sendMode === 'template' && (!selectedMatch || (selectedTemplate.id === 'mavericks_team_availability' && (!matchDateTime.trim() || !matchVenue.trim()))))}
+                disabled={sending || loading || selectedPlayers.length === 0 || (sendMode === 'template' && !selectedMatch)}
+                className="w-full mt-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:shadow-emerald-500/30"
               >
                 {sending ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Sending…
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
                   </>
                 ) : (
                   <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                    Send to {selectedPlayers.length} Players
+                    <Send className="w-4 h-4" />
+                    Send to {selectedPlayers.length} players
                   </>
                 )}
               </button>
-              
-              <p className="text-center text-[10px] text-secondary/60 italic">
-                Immediate WhatsApp API trigger • No cron job scheduled
-              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Message History Modal */}
-      {historyPlayer && (
-        <div className="fixed inset-0 z-[1000] flex items-end justify-center p-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 md:items-center md:p-4">
-          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 animate-in slide-in-from-bottom duration-300 md:animate-in md:zoom-in-95 md:duration-300" style={{ maxHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
-            {/* Modal Header */}
-            <div className="p-4 md:p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+      {/* Send Result Modal */}
+      {sendResult && showAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#128C7E]/10 flex items-center justify-center text-[#128C7E] shrink-0">
-                  <svg className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.47 0-2.84-.39-4.03-1.06l-.29-.17-3.99 1.17 1.19-3.89-.18-.3C4.05 14.56 3.65 13.32 3.65 12c0-4.61 3.74-8.35 8.35-8.35s8.35 3.74 8.35 8.35-3.74 8.35-8.35 8.35z"/>
-                  </svg>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  sendResult.failed === 0 ? 'bg-emerald-500/20' : 'bg-amber-500/20'
+                }`}>
+                  {sendResult.failed === 0 ? (
+                    <CheckCircle className="w-6 h-6 text-emerald-400" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6 text-amber-400" />
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-base md:text-lg font-bold text-gray-900 leading-tight">
-                    {historyPlayer.name}
+                  <h3 className={`font-bold ${sendResult.failed === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {sendResult.failed === 0 ? 'Sent Successfully!' : 'Partial Success'}
                   </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-500 font-medium tabular-nums">{historyPlayer.phone}</span>
-                    {lastSynced && (
-                      <span className="flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold uppercase tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <p className="text-sm text-slate-400">
+                    {sendResult.sent}/{sendResult.attempted} delivered
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowAlert(false)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {sendResult.results && sendResult.results.length > 0 && (
+              <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
+                {sendResult.results.map((result, index) => (
+                  <div key={index} className={`p-3 rounded-xl border ${
+                    result.status === 'sent' 
+                      ? 'bg-emerald-500/10 border-emerald-500/30' 
+                      : 'bg-rose-500/10 border-rose-500/30'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-white">{result.name}</p>
+                        <p className="text-xs text-slate-500">{result.phone}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                        result.status === 'sent'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-rose-500 text-white'
+                      }`}>
+                        {result.status === 'sent' ? '✓ Sent' : '✗ Failed'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowAlert(false)}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Chat History Modal */}
+      {historyPlayer && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm md:p-4">
+          <div className="bg-slate-900 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[90vh] flex flex-col border border-slate-700/50 overflow-hidden">
+            {/* Chat Header */}
+            <div className="p-4 border-b border-slate-700/30 flex items-center justify-between bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <PlayerNameLink
+                    playerId={historyPlayer._id}
+                    playerName={historyPlayer.name}
+                    className="text-base font-bold text-white hover:text-emerald-400 transition-colors"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{historyPlayer.phone}</span>
+                    {sseConnected && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         Live
                       </span>
                     )}
@@ -1628,199 +1129,111 @@ const WhatsAppMessagingTab: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => fetchHistory(historyPlayer)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-                  title="Refresh conversation"
                   disabled={loadingHistory}
+                  className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 transition-all"
                 >
-                  <svg className={`w-5 h-5 ${loadingHistory ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <RefreshCw className={`w-5 h-5 ${loadingHistory ? 'animate-spin' : ''}`} />
                 </button>
                 <button
                   onClick={() => setHistoryPlayer(null)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                  className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 transition-all"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat" style={{ maxHeight: 'calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 bg-[#efe7de] bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat min-h-[300px] max-h-[50vh]">
               {loadingHistory && historyMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full space-y-3">
-                  <div className="w-8 h-8 border-3 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
-                  <p className="text-sm font-medium text-gray-500">Loading conversation...</p>
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                  <p className="text-sm text-gray-600">Loading...</p>
                 </div>
               ) : historyMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full opacity-40">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-600 font-medium">No messages yet</p>
+                <div className="flex flex-col items-center justify-center h-full gap-2 opacity-50">
+                  <MessageCircle className="w-10 h-10 text-gray-500" />
+                  <p className="text-sm text-gray-600">No messages yet</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {/* Load More Button */}
+                <div className="flex flex-col gap-2">
                   {hasMoreHistory && (
-                    <div className="flex justify-center py-2">
-                      <button
-                        onClick={loadMoreHistory}
-                        disabled={loadingMoreHistory}
-                        className="px-4 py-2 text-xs font-medium text-[#128C7E] bg-white rounded-full shadow-sm hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
-                      >
-                        {loadingMoreHistory ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin"></div>
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                            Load older messages
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      onClick={loadMoreHistory}
+                      disabled={loadingMoreHistory}
+                      className="mx-auto px-3 py-1.5 bg-white rounded-full text-xs text-emerald-600 font-medium shadow-sm"
+                    >
+                      {loadingMoreHistory ? 'Loading...' : 'Load older'}
+                    </button>
                   )}
-
                   {historyMessages.map((msg, idx) => {
                     const isIncoming = msg.direction === 'incoming';
-                    const hasImage = msg.imageId;
                     return (
-                      <div
-                        key={msg._id || idx}
-                        className={`flex flex-col ${isIncoming ? 'items-start' : 'items-end'} max-w-[85%] ${isIncoming ? 'self-start' : 'self-end'}`}
-                      >
-                        <div className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm text-[14px] md:text-[15px] leading-relaxed ${
-                          isIncoming
-                            ? 'bg-white text-gray-800 rounded-tl-none'
-                            : 'bg-[#dcf8c6] text-gray-800 rounded-tr-none'
+                      <div key={msg._id || idx} className={`flex ${isIncoming ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
+                          isIncoming ? 'bg-white text-gray-800' : 'bg-[#dcf8c6] text-gray-800'
                         }`}>
-                          {/* Chat bubble tail effect */}
-                          <div className={`absolute top-0 w-0 h-0 border-t-[10px] ${
-                            isIncoming
-                              ? '-left-2 border-t-white border-l-[10px] border-l-transparent'
-                              : '-right-2 border-t-[#dcf8c6] border-r-[10px] border-r-transparent'
-                          }`}></div>
-
-                          {/* Image display */}
-                          {hasImage && (
-                            <div className="mb-2">
-                              <img
-                                src={`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`}
-                                alt="Shared image"
-                                className="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`, '_blank')}
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
-                            </div>
+                          {msg.imageId && (
+                            <img
+                              src={`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`}
+                              alt="Shared"
+                              className="max-w-full rounded-lg mb-1 cursor-pointer"
+                              onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/whatsapp/media/${msg.imageId}`, '_blank')}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
                           )}
-
-                          {/* Text/Caption */}
                           {msg.text && msg.text !== '[Image]' && (
                             <div className="whitespace-pre-wrap">{msg.text}</div>
                           )}
-
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            <span className="text-[10px] opacity-50 font-medium tabular-nums">
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {!isIncoming && (
-                              <span className="text-sky-500">
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                                </svg>
-                              </span>
-                            )}
+                          <div className="text-[10px] text-gray-500 text-right mt-1">
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  <div ref={messagesEndRef} className="h-2" />
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
-            {/* Modal Footer - WhatsApp Input Style */}
-            <div className="p-2 bg-[#f0f2f5] border-t border-gray-200 flex items-center gap-2 shrink-0">
-              {/* Text Input */}
-              <div className="flex-1 relative min-w-0">
-                <textarea
-                  value={historyNewMessage}
-                  onChange={(e) => setHistoryNewMessage(autoCapitalize(e.target.value))}
-                  placeholder="Type a message"
-                  className="w-full bg-white rounded-full py-2 px-4 text-sm text-gray-800 focus:outline-none border-none shadow-sm resize-none max-h-24 min-h-[40px] overflow-hidden"
-                  rows={1}
-                  style={{
-                    width: '100%',
-                    maxWidth: '100%',
-                    boxSizing: 'border-box',
-                    overflowY: 'auto'
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendHistoryMessage();
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Send Button */}
+            {/* Input Area */}
+            <div className="p-3 bg-slate-800/50 border-t border-slate-700/30 flex items-center gap-2">
+              <input
+                type="text"
+                value={historyNewMessage}
+                onChange={(e) => setHistoryNewMessage(autoCapitalize(e.target.value))}
+                placeholder="Type a message..."
+                className="flex-1 p-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendHistoryMessage();
+                  }
+                }}
+              />
               <button
-                type="button"
                 onClick={handleSendHistoryMessage}
                 disabled={!historyNewMessage.trim() || sendingHistoryMessage}
-                className={`w-10 h-10 rounded-full transition-all flex items-center justify-center shrink-0 ${
-                  sendingHistoryMessage
-                    ? 'bg-gray-300 text-white cursor-not-allowed'
-                    : 'bg-[#00a884] text-white hover:bg-[#008f72] active:scale-95 shadow-md'
-                }`}
+                className="w-10 h-10 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl flex items-center justify-center transition-all"
               >
                 {sendingHistoryMessage ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                  </svg>
+                  <Send className="w-5 h-5" />
                 )}
               </button>
             </div>
 
-            <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-              {/* SSE Status */}
-              <span className={`flex items-center gap-1.5 text-xs font-medium ${sseConnected ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {sseConnected ? (
-                  <>
-                    <Wifi className="w-3.5 h-3.5" />
-                    <span>Live updates</span>
-                  </>
-                ) : sseStatus === 'connecting' ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-3.5 h-3.5" />
-                    <span>Offline</span>
-                  </>
-                )}
+            {/* Footer */}
+            <div className="px-4 py-2 bg-slate-800/30 border-t border-slate-700/30 flex items-center justify-between">
+              <span className={`flex items-center gap-1.5 text-xs ${sseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {sseConnected ? <Wifi className="w-3 h-3" /> : sseStatus === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin" /> : <WifiOff className="w-3 h-3" />}
+                {sseConnected ? 'Live' : sseStatus === 'connecting' ? 'Connecting...' : 'Offline'}
               </span>
               <button
                 onClick={() => setHistoryPlayer(null)}
-                className="px-6 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
+                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-all"
               >
                 Close
               </button>
@@ -1831,147 +1244,96 @@ const WhatsAppMessagingTab: React.FC = () => {
 
       {/* Player Add/Edit Modal */}
       {showPlayerModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-300">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-900 sticky top-0 z-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <User className="w-5 h-5 text-emerald-400" />
+                {editingPlayer ? 'Edit Player' : 'Add Player'}
+              </h3>
+              <button
+                onClick={() => { setShowPlayerModal(false); setEditingPlayer(null); }}
+                className="p-2 hover:bg-slate-800 rounded-lg text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={editingPlayer ? handleUpdatePlayer : handleAddPlayer} className="space-y-4">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {editingPlayer ? 'Edit Player' : 'Add New Player'}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {editingPlayer ? 'Update player details' : 'Add a new player to your contacts'}
-                </p>
+                <label className="text-xs text-slate-400 mb-1 block">Name *</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input
+                    type="text"
+                    value={editingPlayer ? editingPlayer.name : newPlayer.name}
+                    onChange={(e) => {
+                      const val = autoCapitalize(e.target.value);
+                      editingPlayer
+                        ? setEditingPlayer(prev => prev ? { ...prev, name: val } : null)
+                        : setNewPlayer(prev => ({ ...prev, name: val }));
+                    }}
+                    placeholder="Player name"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    required
+                  />
+                </div>
               </div>
-              <button 
-                onClick={() => {
-                  setShowPlayerModal(false);
-                  setEditingPlayer(null);
-                }}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Modal Body */}
-            <div className="p-5 overflow-y-auto flex-1">
-              <form className="space-y-5" onSubmit={editingPlayer ? handleUpdatePlayer : handleAddPlayer}>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Player Name</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={editingPlayer ? editingPlayer.name : newPlayer.name}
-                      onChange={(e) => {
-                        const capitalizedValue = autoCapitalize(e.target.value);
-                        editingPlayer 
-                          ? setEditingPlayer(prev => prev ? ({ ...prev, name: capitalizedValue }) : null)
-                          : setNewPlayer((prev) => ({ ...prev, name: capitalizedValue }));
-                      }}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors"
-                      placeholder="Enter player name"
-                      required
-                    />
-                  </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">WhatsApp Number *</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input
+                    type="tel"
+                    value={editingPlayer ? editingPlayer.phone : newPlayer.phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      editingPlayer
+                        ? setEditingPlayer(prev => prev ? { ...prev, phone: val } : null)
+                        : setNewPlayer(prev => ({ ...prev, phone: val }));
+                    }}
+                    placeholder="9876543210"
+                    maxLength={10}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    required
+                  />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">WhatsApp Number</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="tel"
-                      value={editingPlayer ? editingPlayer.phone : newPlayer.phone}
-                      onChange={(e) => {
-                        // Only allow digits and limit to 10 characters
-                        const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        editingPlayer
-                          ? setEditingPlayer(prev => prev ? ({ ...prev, phone: digitsOnly }) : null)
-                          : setNewPlayer((prev) => ({ ...prev, phone: digitsOnly }));
-                      }}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors"
-                      placeholder="9876543210"
-                      inputMode="tel"
-                      maxLength={10}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Notes (optional)</label>
-                  <div className="relative">
-                    <div className="absolute top-3 left-3 flex items-start pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </div>
-                    <textarea
-                      value={editingPlayer ? (editingPlayer.notes || '') : newPlayer.notes}
-                      onChange={(e) => {
-                        const capitalizedValue = autoCapitalize(e.target.value);
-                        editingPlayer
-                          ? setEditingPlayer(prev => prev ? ({ ...prev, notes: capitalizedValue }) : null)
-                          : setNewPlayer(prev => ({ ...prev, notes: capitalizedValue }));
-                      }}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#128C7E] dark:focus:ring-[#075E54] focus:border-transparent transition-colors resize-none"
-                      rows={3}
-                      placeholder="Opening batter, prefers morning matches, etc."
-                    />
-                  </div>
-                </div>
-              </form>
-            </div>
-            
-            {/* Modal Footer */}
-            <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800">
-              <button 
-                type="button" 
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
-                onClick={() => {
-                  setShowPlayerModal(false);
-                  setEditingPlayer(null);
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                className="px-4 py-2 text-sm font-medium text-white bg-[#128C7E] hover:bg-[#075E54] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg focus:outline-none focus:ring-2 focus:ring-[#128C7E] transition-colors flex items-center gap-1.5 shadow-sm"
-                onClick={editingPlayer ? handleUpdatePlayer : handleAddPlayer}
-                disabled={isUpdating || !(editingPlayer ? editingPlayer.name.trim() && validateIndianPhoneNumber(editingPlayer.phone) : newPlayer.name.trim() && validateIndianPhoneNumber(newPlayer.phone))}
-              >
-                {isUpdating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    {editingPlayer ? 'Updating...' : 'Saving...'}
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {editingPlayer ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      )}
-                    </svg>
-                    {editingPlayer ? 'Update Player' : 'Add Player'}
-                  </>
-                )}
-              </button>
-            </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Notes</label>
+                <textarea
+                  value={editingPlayer ? (editingPlayer.notes || '') : newPlayer.notes}
+                  onChange={(e) => {
+                    const val = autoCapitalize(e.target.value);
+                    editingPlayer
+                      ? setEditingPlayer(prev => prev ? { ...prev, notes: val } : null)
+                      : setNewPlayer(prev => ({ ...prev, notes: val }));
+                  }}
+                  placeholder="Optional notes..."
+                  className="w-full p-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowPlayerModal(false); setEditingPlayer(null); }}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating || !(editingPlayer ? editingPlayer.name.trim() && validateIndianPhoneNumber(editingPlayer.phone) : newPlayer.name.trim() && validateIndianPhoneNumber(newPlayer.phone))}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : editingPlayer ? 'Update' : 'Add'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1982,17 +1344,14 @@ const WhatsAppMessagingTab: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Create New Match</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Create Match</h2>
                 <button
                   onClick={() => setShowMatchForm(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-6 h-6" />
                 </button>
               </div>
-              
               <MatchForm
                 mode="create"
                 onSubmit={handleCreateMatch}
@@ -2008,12 +1367,17 @@ const WhatsAppMessagingTab: React.FC = () => {
       <ConfirmDialog
         isOpen={!!playerToDelete}
         title="Delete Player"
-        message={`Are you sure you want to delete ${playerToDelete?.name}? this will remove them from the messaging list.`}
+        message={`Remove ${playerToDelete?.name} from the list?`}
         onConfirm={handleDeletePlayer}
         onCancel={() => setPlayerToDelete(null)}
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 };
