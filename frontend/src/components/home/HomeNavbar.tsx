@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, LogIn, Compass, Info, Sparkles, Brain } from 'lucide-react';
+import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, LayoutDashboard } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getAppUrl } from '../../utils/domain';
 
 interface HomeNavbarProps {
   onLogin: () => void;
+  isAuthenticated?: boolean;
 }
 
-const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
+const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin, isAuthenticated = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -105,13 +107,23 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
                 )
               )}
 
-              <button
-                onClick={onLogin}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25"
-              >
-                <LogIn className="w-4 h-4" />
-                Login
-              </button>
+              {isAuthenticated ? (
+                <a
+                  href={getAppUrl()}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </a>
+              ) : (
+                <button
+                  onClick={onLogin}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </button>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -189,18 +201,28 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin }) => {
               )
             )}
 
-            {/* Login button */}
+            {/* Login/Dashboard button */}
             <div className="pt-4 mt-4 border-t border-white/10">
-              <button
-                onClick={() => {
-                  onLogin();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center justify-center gap-2 w-full p-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300"
-              >
-                <LogIn className="w-5 h-5" />
-                Login
-              </button>
+              {isAuthenticated ? (
+                <a
+                  href={getAppUrl()}
+                  className="flex items-center justify-center gap-2 w-full p-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Go to Dashboard
+                </a>
+              ) : (
+                <button
+                  onClick={() => {
+                    onLogin();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center justify-center gap-2 w-full p-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300"
+                >
+                  <LogIn className="w-5 h-5" />
+                  Login
+                </button>
+              )}
             </div>
           </div>
         </div>

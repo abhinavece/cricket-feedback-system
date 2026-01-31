@@ -22,17 +22,9 @@ const HomePage: React.FC = () => {
   const domainType = getDomainType();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Redirect authenticated users to the app
-  useEffect(() => {
-    if (user) {
-      // If on homepage domain, redirect to app domain
-      if (domainType === 'homepage') {
-        window.location.href = getAppUrl();
-      } else {
-        navigate('/app');
-      }
-    }
-  }, [user, navigate, domainType]);
+  // NOTE: We intentionally do NOT auto-redirect authenticated users from homepage.
+  // Users should be able to visit the homepage even when logged in.
+  // They can use the "Go to Dashboard" button if they want to access the app.
 
   // Show login modal instead of redirecting
   const handleShowLogin = () => {
@@ -73,8 +65,8 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Navigation - Login button shows modal */}
-      <HomeNavbar onLogin={handleShowLogin} />
+      {/* Navigation - Login button shows modal, Dashboard shown when authenticated */}
+      <HomeNavbar onLogin={handleShowLogin} isAuthenticated={!!user} />
 
       {/* Hero Section - Get Started shows modal */}
       <HeroSection
