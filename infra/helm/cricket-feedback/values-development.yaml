@@ -1,5 +1,6 @@
-# Development values for Mavericks XI Cricket Feedback System
-# Override default values.yaml for development deployment
+# Development values for CricSmart Cricket Feedback System
+# Override default values.yaml for OCI cloud deployment
+# Using MongoDB Atlas cloud cluster for database
 
 # Development image tags
 backend:
@@ -28,21 +29,40 @@ frontend:
       cpu: 100m
       memory: 128Mi
 
-# Development MongoDB settings
+# ============================================
+# MongoDB Atlas Cloud Configuration
+# ============================================
+# DISABLED: In-cluster MongoDB is NOT used for OCI deployment
+# We use MongoDB Atlas cloud cluster for better stability
+# Connection string is stored in cricket-secrets -> mongodb-uri
+#
+# To enable in-cluster MongoDB (e.g., for local dev):
+#   1. Set enabled: true
+#   2. Update cricket-secrets with local MongoDB URI:
+#      mongodb://admin:password123@cricket-feedback-mongodb:27017/cricket-feedback?authSource=admin
+# ============================================
 mongodb:
-  auth:
-    password: "password123"
-  architecture: standalone
-  replicaCount: 1
-  persistence:
-    size: 8Gi
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
+  enabled: false
+  # Below config is preserved for local/other environments
+  # auth:
+  #   enabled: true
+  #   rootUser: admin
+  #   rootPassword: "password123"
+  #   username: admin
+  #   password: "password123"
+  #   database: cricket-feedback
+  # architecture: standalone
+  # replicaCount: 1
+  # persistence:
+  #   enabled: true
+  #   size: 8Gi
+  # resources:
+  #   limits:
+  #     cpu: 500m
+  #     memory: 512Mi
+  #   requests:
+  #     cpu: 250m
+  #     memory: 256Mi
 
 # Development ingress
 ingress:
@@ -66,7 +86,7 @@ autoscaling:
 aiService:
   enabled: true
   image:
-    tag: "2026.01.26.31"
+    tag: "2026.01.30.41"
   replicaCount: 1
   resources:
     limits:
@@ -93,3 +113,7 @@ aiService:
       value: "INFO"
     - name: BACKEND_CALLBACK_URL
       value: "http://cricket-feedback-backend-service:5001"
+
+# Secrets are managed via kubectl - DO NOT commit real values
+secrets:
+  enabled: false

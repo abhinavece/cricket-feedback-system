@@ -191,9 +191,26 @@ frontend:
           key: google-client-id
 
 
-# MongoDB configuration
+# ============================================
+# MongoDB Configuration
+# ============================================
+# This is the DEFAULT configuration for in-cluster MongoDB.
+# 
+# DEPLOYMENT OPTIONS:
+#   1. MongoDB Atlas (Cloud) - RECOMMENDED for prod/dev:
+#      - Set mongodb.enabled: false in values-production.yaml or values-development.yaml
+#      - Store Atlas URI in cricket-secrets -> mongodb-uri
+#      - URI format: mongodb+srv://user:pass@cluster.mongodb.net/database?retryWrites=true&w=majority
+#
+#   2. In-Cluster MongoDB - For local development:
+#      - Use values-local.yaml which sets mongodb.enabled: true
+#      - MongoDB deployed as a pod in the cluster
+#      - URI format: mongodb://admin:password123@cricket-feedback-mongodb:27017/cricket-feedback?authSource=admin
+#
+# The mongodb-uri in cricket-secrets takes precedence regardless of this setting.
+# ============================================
 mongodb:
-  enabled: true
+  enabled: true  # Set to false in prod/dev values files to use Atlas
   auth:
     enabled: true
     rootUser: admin

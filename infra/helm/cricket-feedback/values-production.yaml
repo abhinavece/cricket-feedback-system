@@ -1,10 +1,11 @@
-# Production values for Mavericks XI Cricket Feedback System
+# Production values for CricSmart Cricket Feedback System
 # Override default values.yaml for production deployment
+# Using MongoDB Atlas cloud cluster for database
 
-# Production image tags
+# Production image tags (sync with values-development.yaml)
 backend:
   image:
-    tag: "v15"
+    tag: "2026.01.30.41"
   replicaCount: 2
   resources:
     limits:
@@ -16,7 +17,9 @@ backend:
 
 frontend:
   image:
-    tag: "v10"
+    registry: phx.ocir.io/axkw6whnjncs
+    repository: cricket-feedback-frontend
+    tag: "2026.01.31.48"
   replicaCount: 2
   resources:
     limits:
@@ -30,7 +33,7 @@ frontend:
 aiService:
   enabled: true
   image:
-    tag: "v1"
+    tag: "2026.01.30.41"
   replicaCount: 1
   resources:
     limits:
@@ -42,22 +45,31 @@ aiService:
   env:
     - name: DAILY_REQUEST_LIMIT
       value: "1000"
+    - name: AI_SERVICE_ENABLED
+      value: "true"
+    - name: AI_PROVIDER
+      value: "google_ai_studio"
+    - name: GOOGLE_AI_STUDIO_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: ai-service-secrets
+          key: google-ai-studio-api-key
+    - name: MIN_CONFIDENCE_THRESHOLD
+      value: "0.7"
+    - name: LOG_LEVEL
+      value: "INFO"
+    - name: BACKEND_CALLBACK_URL
+      value: "http://cricket-feedback-backend-service:5001"
 
-# Production MongoDB settings
+# ============================================
+# MongoDB Atlas Cloud Configuration
+# ============================================
+# DISABLED: In-cluster MongoDB is NOT used in production
+# We use MongoDB Atlas cloud cluster for better stability & scalability
+# Connection string is stored in cricket-secrets -> mongodb-uri
+# ============================================
 mongodb:
-  auth:
-    password: "secure-production-password-change-me"
-  architecture: replicaset
-  replicaCount: 3
-  persistence:
-    size: 20Gi
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
+  enabled: false
 
 # Production ingress with TLS
 ingress:
@@ -85,13 +97,6 @@ autoscaling:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
 
-# Production secrets (should be overridden with --set or sealed secrets)
+# Secrets are managed via kubectl - DO NOT commit real values
 secrets:
-  data:
-    mongodb-uri: "bW9uZ29kYjovL2FkbWluOnNlY3VyZS1wcm9kdWN0aW9uLXBhc3N3b3JkLWNoYW5nZS1tZUBtb25nb2RiLXNlcnZpY2U6MjcwMTcvY3JpY2tldC1mZWVkYmFjaz9hdXRoU291cmNlPWFkbWlu"
-    jwt-secret: "cHJvZHVjdGlvbi1qd3Qtc2VjcmV0LWtleS1tYWtlLWl0LXZlcnktc3Ryb25nLWFuZC1zZWN1cmU="
-    google-client-id: "cHJvZHVjdGlvbi1nb29nbGUtY2xpZW50LWlk"
-    google-client-secret: "cHJvZHVjdGlvbi1nb29nbGUtY2xpZW50LXNlY3JldA=="
-    admin-password: "cHJvZHVjdGlvbi1hZG1pbi1wYXNzd29yZA=="
-    whatsapp-access-token: "cHJvZHVjdGlvbi13aGF0c2FwcC1hY2Nlc3MtdG9rZW4="
-    whatsapp-phone-number-id: "cHJvZHVjdGlvbi13aGF0c2FwcC1waG9uZS1udW1iZXItaWQ="
+  enabled: false
