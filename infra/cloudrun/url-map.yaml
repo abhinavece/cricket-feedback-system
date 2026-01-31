@@ -1,0 +1,24 @@
+name: cricsmart-url-map
+defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
+hostRules:
+  - hosts:
+      - 'app.cricsmart.in'
+    pathMatcher: app-paths
+  - hosts:
+      - 'cricsmart.in'
+      - 'www.cricsmart.in'
+    pathMatcher: homepage-paths
+pathMatchers:
+  - name: app-paths
+    defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
+    routeRules:
+      - matchRules:
+          - prefixMatch: /api/
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 1
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 2
+  - name: homepage-paths
+    defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend

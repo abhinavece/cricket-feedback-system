@@ -5,12 +5,46 @@
  * Handles communication, timeouts, and fallback responses.
  * 
  * NOTE: This replaces the old ocrService.js
+ * 
+ * Cloud Run Integration:
+ * When running on Cloud Run, this service automatically adds ID token 
+ * authentication for calling internal Cloud Run services.
  */
 
 const axios = require('axios');
 
 // AI Service URL - in k8s this resolves to the ai-service pod
+// In Cloud Run, this should be the Cloud Run service URL
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8010';
+
+// Check if we're running on Cloud Run (has metadata server)
+const isCloudRun = !!process.env.K_SERVICE;
+
+/**
+ * Get ID token for Cloud Run service-to-service authentication
+ * Uses the metadata server to obtain a token for the target audience
+ * 
+ * @param {string} targetAudience - The URL of the service to call
+ * @returns {Promise<string|null>} - ID token or null if not on Cloud Run
+ */
+const getIdToken = async (targetAudience) => {
+  if (!isCloudRun) {
+    return null; // Not on Cloud Run, no token needed
+  }
+  
+  try {
+    // Get token from metadata server
+    const metadataUrl = `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(targetAudience)}`;
+    const response = await axios.get(metadataUrl, {
+      headers: { 'Metadata-Flavor': 'Google' },
+      timeout: 5000
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get ID token from metadata server:', error.message);
+    return null;
+  }
+};
 
 // Timeout for AI requests (30 seconds)
 const AI_REQUEST_TIMEOUT = parseInt(process.env.AI_REQUEST_TIMEOUT || '30000');
@@ -63,15 +97,29 @@ const parsePaymentScreenshot = async (imageBuffer, matchDate = null) => {
       match_date: matchDate ? new Date(matchDate).toISOString() : null
     };
     
+    // Prepare headers
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    // Add ID token for Cloud Run service-to-service auth
+    if (isCloudRun && AI_SERVICE_URL.includes('.run.app')) {
+      console.log('🔐 Adding ID token for Cloud Run auth...');
+      const idToken = await getIdToken(AI_SERVICE_URL);
+      if (idToken) {
+        headers['Authorization'] = `Bearer ${idToken}`;
+      } else {
+        console.warn('⚠️ Could not obtain ID token, request may fail');
+      }
+    }
+    
     // Call AI Service
     const response = await axios.post(
       `${AI_SERVICE_URL}/parse-payment`,
       requestData,
       {
         timeout: AI_REQUEST_TIMEOUT,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       }
     );
     
@@ -138,8 +186,19 @@ const parsePaymentScreenshot = async (imageBuffer, matchDate = null) => {
  */
 const checkHealth = async () => {
   try {
+    const headers = {};
+    
+    // Add ID token for Cloud Run service-to-service auth
+    if (isCloudRun && AI_SERVICE_URL.includes('.run.app')) {
+      const idToken = await getIdToken(AI_SERVICE_URL);
+      if (idToken) {
+        headers['Authorization'] = `Bearer ${idToken}`;
+      }
+    }
+    
     const response = await axios.get(`${AI_SERVICE_URL}/health`, {
-      timeout: 5000
+      timeout: 5000,
+      headers
     });
     return {
       available: true,
@@ -162,8 +221,19 @@ const checkHealth = async () => {
  */
 const getServiceStatus = async () => {
   try {
+    const headers = {};
+    
+    // Add ID token for Cloud Run service-to-service auth
+    if (isCloudRun && AI_SERVICE_URL.includes('.run.app')) {
+      const idToken = await getIdToken(AI_SERVICE_URL);
+      if (idToken) {
+        headers['Authorization'] = `Bearer ${idToken}`;
+      }
+    }
+    
     const response = await axios.get(`${AI_SERVICE_URL}/status`, {
-      timeout: 5000
+      timeout: 5000,
+      headers
     });
     return {
       available: true,

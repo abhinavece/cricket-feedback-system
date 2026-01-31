@@ -1,0 +1,6 @@
+# HTTP to HTTPS Redirect URL Map
+# This URL map redirects all HTTP requests to HTTPS
+name: cricsmart-http-redirect
+defaultUrlRedirect:
+  httpsRedirect: true
+  redirectResponseCode: MOVED_PERMANENTLY_DEFAULT
