@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, LayoutDashboard } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getAppUrl } from '../../utils/domain';
+import { getDomainType, getAppUrl, getAuthCallbackUrl } from '../../utils/domain';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HomeNavbarProps {
   onLogin: () => void;
@@ -11,6 +12,20 @@ interface HomeNavbarProps {
 const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin, isAuthenticated = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { token, user } = useAuth();
+  const domainType = getDomainType();
+
+  // Handle dashboard navigation - need to pass token for cross-domain auth
+  const handleDashboardClick = () => {
+    if (domainType === 'homepage' && token && user) {
+      // Cross-domain: redirect with auth token in URL
+      const callbackUrl = getAuthCallbackUrl(token, user);
+      window.location.href = callbackUrl;
+    } else {
+      // Same domain: direct navigation
+      window.location.href = getAppUrl();
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -108,13 +123,13 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin, isAuthenticated = fals
               )}
 
               {isAuthenticated ? (
-                <a
-                  href={getAppUrl()}
+                <button
+                  onClick={handleDashboardClick}
                   className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25"
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   Dashboard
-                </a>
+                </button>
               ) : (
                 <button
                   onClick={onLogin}
@@ -204,13 +219,16 @@ const HomeNavbar: React.FC<HomeNavbarProps> = ({ onLogin, isAuthenticated = fals
             {/* Login/Dashboard button */}
             <div className="pt-4 mt-4 border-t border-white/10">
               {isAuthenticated ? (
-                <a
-                  href={getAppUrl()}
+                <button
+                  onClick={() => {
+                    handleDashboardClick();
+                    setIsMobileMenuOpen(false);
+                  }}
                   className="flex items-center justify-center gap-2 w-full p-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all duration-300"
                 >
                   <LayoutDashboard className="w-5 h-5" />
                   Go to Dashboard
-                </a>
+                </button>
               ) : (
                 <button
                   onClick={() => {
