@@ -121,7 +121,9 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `API error: ${response.status}`);
+      const error = new Error(errorData.message || `API error: ${response.status}`);
+      (error as any).code = errorData.code;
+      throw error;
     }
 
     return response.json();
@@ -153,7 +155,16 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       return data.organization;
     } catch (err: any) {
       // NO_ORGANIZATION error is expected for new users
-      if (err.message?.includes('No active organization') || err.message?.includes('NO_ORGANIZATION')) {
+      // Check for error code or various error message formats
+      const errorCode = err.code;
+      const errorMsg = err.message?.toLowerCase() || '';
+      const isNoOrgError = 
+        errorCode === 'NO_ORGANIZATION' ||
+        errorMsg.includes('no organization') ||
+        errorMsg.includes('no_organization') ||
+        errorMsg.includes('not a member of any organization');
+      
+      if (isNoOrgError) {
         setCurrentOrg(null);
         return null;
       }

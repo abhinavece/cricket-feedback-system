@@ -36,37 +36,9 @@ const resolveTenant = async (req, res, next) => {
       });
     }
 
-    // Development bypass - automatically use default organization
-    if (process.env.DISABLE_AUTH === 'true' && !req.user.organizations?.length) {
-      console.log('⚠️ Dev mode: Auto-loading default organization');
-      
-      // Try to find the default organization (Mavericks XI)
-      const defaultOrg = await Organization.findOne({ 
-        slug: 'mavericks-xi',
-        isActive: true,
-        isDeleted: false
-      });
-      
-      if (defaultOrg) {
-        req.organization = defaultOrg;
-        req.organizationId = defaultOrg._id;
-        req.organizationRole = 'owner'; // Full access in dev mode
-        req.organizationMembership = {
-          organizationId: defaultOrg._id,
-          role: 'owner',
-          status: 'active'
-        };
-        console.log(`⚠️ Dev mode: Using organization "${defaultOrg.name}"`);
-        return next();
-      }
-      
-      // No organization exists yet - allow bypass
-      console.log('⚠️ Dev mode: No organization found, bypassing tenant check');
-      req.organization = null;
-      req.organizationRole = 'admin';
-      req.skipTenantFilter = true;
-      return next();
-    }
+    // Note: We no longer auto-assign organizations in dev mode
+    // Users without organizations should see the onboarding flow
+    // This ensures the proper multi-tenant experience is tested
 
     // Get organization ID from header or user's active org
     let organizationId = req.headers['x-organization-id'] || 
