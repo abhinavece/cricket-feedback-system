@@ -1128,8 +1128,9 @@ router.post('/:id/member/:memberId/settle-overpayment', auth, resolveTenant, req
         sseManager.broadcast('messages', outgoingPaymentEvent);
         sseManager.broadcast(`phone:${formattedPhone}`, outgoingPaymentEvent);
 
-        // Save message to database
+        // Save message to database with organizationId from payment
         await Message.create({
+          organizationId: payment.organizationId, // Multi-tenant isolation
           from: phoneNumberId,
           to: formattedPhone,
           text: message,
@@ -1531,6 +1532,7 @@ router.post('/:id/send-requests', auth, resolveTenant, requireOrgAdmin, async (r
         sseManager.broadcast(`phone:${formattedPhone}`, paymentRequestEvent);
 
         await Message.create({
+          organizationId: payment.organizationId, // Multi-tenant isolation
           from: phoneNumberId,
           to: formattedPhone,
           text: message,

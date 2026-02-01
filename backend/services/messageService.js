@@ -79,11 +79,18 @@ async function resolveOrganizationId(context = {}) {
     }
   }
 
-  // 5. From phone number
+  // 5. From phone number (try multiple formats)
   if (context.phone) {
     try {
       const formattedPhone = formatPhone(context.phone);
-      const player = await Player.findOne({ phone: formattedPhone }).select('organizationId').lean();
+      // Try exact match first, then regex on last 10 digits
+      let player = await Player.findOne({ phone: formattedPhone }).select('organizationId').lean();
+      if (!player && formattedPhone.length >= 10) {
+        const last10 = formattedPhone.slice(-10);
+        player = await Player.findOne({ 
+          phone: { $regex: last10 + '$' } 
+        }).select('organizationId').lean();
+      }
       if (player?.organizationId) {
         return player.organizationId;
       }

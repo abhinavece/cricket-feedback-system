@@ -549,7 +549,12 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
           phone: { $regex: formattedPhone.slice(-10) }
         });
 
+        // Resolve organizationId from player or use default
+        const incomingOrgId = playerData?.organizationId || 
+          await messageService.resolveOrganizationId({ phone: formattedPhone });
+        
         savedMessage = await Message.create({
+          organizationId: incomingOrgId, // Multi-tenant isolation
           from: formattedPhone,
           to: process.env.WHATSAPP_PHONE_NUMBER_ID,
           text: text,
@@ -572,6 +577,7 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
         try {
           await whatsappAnalyticsService.extendSession(
             formattedPhone,
+            incomingOrgId,
             savedMessage._id,
             playerData?._id,
             playerData?.name
@@ -1021,8 +1027,13 @@ async function saveImageMessage(from, imageId, messageId, caption) {
         // We'll create a new message record with a unique ID
         const newMessageId = messageId + '_' + Date.now();
         
+        // Resolve organizationId from player or phone
+        const imgOrgId = player?.organizationId || 
+          await messageService.resolveOrganizationId({ phone: formattedPhone });
+        
         // Save new message record with unique ID
         const savedMessage = await Message.create({
+          organizationId: imgOrgId, // Multi-tenant isolation
           from: formattedPhone,
           to: process.env.WHATSAPP_PHONE_NUMBER_ID,
           text: caption || '[Image]',
@@ -1045,8 +1056,13 @@ async function saveImageMessage(from, imageId, messageId, caption) {
       }
     }
     
+    // Resolve organizationId from player or phone
+    const imageOrgId = player?.organizationId || 
+      await messageService.resolveOrganizationId({ phone: formattedPhone });
+    
     // Save image message to database (with cached image data)
     const savedMessage = await Message.create({
+      organizationId: imageOrgId, // Multi-tenant isolation
       from: formattedPhone,
       to: process.env.WHATSAPP_PHONE_NUMBER_ID,
       text: caption || '[Image]',
@@ -1157,10 +1173,12 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     if (pendingPayments.length === 0) {
       console.log('❌ No pending payments found for this player');
 
-      // Save as general incoming message
+      // Save as general incoming message with organizationId resolved from phone
       const existingMessage = await Message.findOne({ messageId });
       if (!existingMessage) {
+        const noPendingOrgId = await messageService.resolveOrganizationId({ phone: formattedPhone });
         await Message.create({
+          organizationId: noPendingOrgId, // Multi-tenant isolation
           from: formattedPhone,
           to: process.env.WHATSAPP_PHONE_NUMBER_ID,
           text: caption || '[Image received - no pending payments]',
@@ -1817,8 +1835,10 @@ router.post('/test', async (req, res) => {
     
     console.log('WhatsApp API Response:', response.data);
     
-    // Save outgoing test message to database
+    // Save outgoing test message to database with organizationId
+    const testOrgId = await messageService.resolveOrganizationId({ phone });
     await Message.create({
+      organizationId: testOrgId, // Multi-tenant isolation
       from: phoneNumberId,
       to: phone,
       text: message,
@@ -2184,6 +2204,7 @@ router.post('/send-reminder', auth, async (req, res) => {
         sseManager.broadcast(`phone:${formattedPhone}`, reminderEvent);
         
         await Message.create({
+          organizationId: match.organizationId, // Multi-tenant isolation from match
           from: phoneNumberId,
           to: formattedPhone,
           text: reminderText,

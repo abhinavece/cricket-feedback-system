@@ -354,6 +354,7 @@ router.post('/generate', async (req, res) => {
           .replace('{amount}', '500');
         
         await Message.create({
+          organizationId: match.organizationId, // Multi-tenant isolation
           from: systemPhone,
           to: player.phone,
           text: outgoingText + ' ' + TEST_DATA_MARKER,
@@ -377,6 +378,7 @@ router.post('/generate', async (req, res) => {
           else if (avail.response === 'tentative') responseText = randomItem(['Maybe, will confirm later.', 'Tentative', 'Not sure yet.']);
           
           await Message.create({
+            organizationId: match.organizationId, // Multi-tenant isolation
             from: player.phone,
             to: systemPhone,
             text: responseText + ' ' + TEST_DATA_MARKER,
@@ -433,6 +435,7 @@ router.post('/generate', async (req, res) => {
         for (const member of squadMembers.slice(0, 5)) {
           // Payment request message
           await Message.create({
+            organizationId: match.organizationId, // Multi-tenant isolation
             from: systemPhone,
             to: member.playerPhone,
             text: `Hi ${member.playerName.split(' ')[0]}! Payment of ₹${member.calculatedAmount} is pending for the match vs ${match.opponent}. Please pay via UPI. ${TEST_DATA_MARKER}`,
@@ -451,6 +454,7 @@ router.post('/generate', async (req, res) => {
           // Payment confirmation (for paid members)
           if (member.paymentStatus === 'paid') {
             await Message.create({
+              organizationId: match.organizationId, // Multi-tenant isolation
               from: member.playerPhone,
               to: systemPhone,
               text: `Payment done! Here is the screenshot. ${TEST_DATA_MARKER}`,
