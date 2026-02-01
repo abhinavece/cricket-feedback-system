@@ -77,3 +77,21 @@ export const getHomepageUrl = (): string => {
   }
   return 'https://cricsmart.in';
 };
+
+/**
+ * Get the auth callback URL for cross-domain authentication
+ * This URL accepts token and user data as query parameters
+ */
+export const getAuthCallbackUrl = (token: string, user: object): string => {
+  const userEncoded = btoa(JSON.stringify(user));
+  const params = new URLSearchParams({
+    token,
+    user: userEncoded,
+  });
+  
+  if (isLocalhost()) {
+    return `${window.location.origin}/auth-callback?${params.toString()}`;
+  }
+  
+  return `https://app.cricsmart.in/auth-callback?${params.toString()}`;
+};

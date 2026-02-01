@@ -21,6 +21,7 @@ const AboutPage = lazy(() => import('./pages/AboutPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const TeamOnboarding = lazy(() => import('./components/TeamOnboarding'));
 const InvitePage = lazy(() => import('./pages/InvitePage'));
@@ -334,6 +335,9 @@ const AppRoutes: React.FC = () => (
     {/* Login page */}
     <Route path="/login" element={<LoginPage />} />
     
+    {/* Auth callback for cross-domain authentication */}
+    <Route path="/auth-callback" element={<AuthCallbackPage />} />
+    
     {/* Team onboarding route */}
     <Route path="/onboarding" element={
       <RequireAuth>
@@ -394,6 +398,9 @@ const LocalhostRoutes: React.FC = () => (
     
     {/* Login page */}
     <Route path="/login" element={<LoginPage />} />
+    
+    {/* Auth callback for cross-domain authentication */}
+    <Route path="/auth-callback" element={<AuthCallbackPage />} />
     
     {/* Team onboarding route */}
     <Route path="/onboarding" element={

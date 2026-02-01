@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, Suspense, lazy } from 'react';
 import { X, Brain, Sparkles, Shield, Zap, MessageCircle, CreditCard } from 'lucide-react';
+import { getDomainType, getAuthCallbackUrl } from '../../utils/domain';
 
 const GoogleAuth = lazy(() => import('../GoogleAuth'));
 
@@ -11,6 +12,15 @@ interface LoginModalProps {
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const domainType = getDomainType();
+  const isCrossDomain = domainType === 'homepage';
+
+  // Handle cross-domain authentication
+  const handleAuthData = (token: string, user: object) => {
+    // For homepage domain, redirect to app domain with token in URL
+    const callbackUrl = getAuthCallbackUrl(token, user);
+    window.location.href = callbackUrl;
+  };
 
   // Handle escape key
   useEffect(() => {
@@ -141,7 +151,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess }) =
                   <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               }>
-                <GoogleAuth onSuccess={onSuccess} compact />
+                {isCrossDomain ? (
+                  // Cross-domain: redirect to app with token in URL
+                  <GoogleAuth onAuthData={handleAuthData} skipLocalStorage compact />
+                ) : (
+                  // Same domain: normal login flow
+                  <GoogleAuth onSuccess={onSuccess} compact />
+                )}
               </Suspense>
             </div>
           </div>

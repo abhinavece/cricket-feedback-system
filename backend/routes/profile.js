@@ -179,7 +179,16 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    // Create new player
+    // Get user's active organization ID (required for multi-tenant data isolation)
+    const organizationId = user.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'No active organization. Please join or create a team first.'
+      });
+    }
+
+    // Create new player with organizationId for tenant isolation
     const player = await Player.create({
       name: name.trim(),
       phone: formattedPhone,
@@ -191,7 +200,8 @@ router.post('/', auth, async (req, res) => {
       about: about || null,
       battingStyle: battingStyle || null,
       bowlingStyle: bowlingStyle || null,
-      isActive: true
+      isActive: true,
+      organizationId: organizationId,  // Required for multi-tenant isolation
     });
 
     // Link player to user and mark profile as complete

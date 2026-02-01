@@ -5,10 +5,14 @@ import { Brain, Sparkles, Shield } from 'lucide-react';
 
 interface GoogleAuthProps {
   onSuccess?: () => void;
+  /** Called with raw auth data for cross-domain auth handling */
+  onAuthData?: (token: string, user: object) => void;
+  /** If true, skip storing in localStorage (for cross-domain auth) */
+  skipLocalStorage?: boolean;
   compact?: boolean;
 }
 
-const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess, compact = false }) => {
+const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess, onAuthData, skipLocalStorage = false, compact = false }) => {
   const { login } = useAuth();
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
@@ -24,7 +28,16 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onSuccess, compact = false }) =
       const data = await response.json();
 
       if (response.ok) {
-        login(data.token, data.user);
+        // If onAuthData is provided (for cross-domain auth), call it with raw data
+        if (onAuthData) {
+          onAuthData(data.token, data.user);
+          return;
+        }
+        
+        // Normal flow: store in localStorage
+        if (!skipLocalStorage) {
+          login(data.token, data.user);
+        }
         onSuccess?.();
       } else {
         console.error('Authentication failed:', data.error);
