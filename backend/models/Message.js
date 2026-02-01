@@ -1,6 +1,23 @@
+/**
+ * @fileoverview Message Model
+ * 
+ * Represents WhatsApp messages within an organization.
+ * Tracks conversations, status, and context (match, payment, etc.).
+ * 
+ * @module models/Message
+ */
+
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
+  // Multi-tenant: Organization this message belongs to
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  
   from: {
     type: String,
     required: true,
@@ -129,5 +146,13 @@ const messageSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Indexes for multi-tenant queries
+messageSchema.index({ organizationId: 1, from: 1, timestamp: -1 });
+messageSchema.index({ organizationId: 1, to: 1, timestamp: -1 });
+messageSchema.index({ organizationId: 1, matchId: 1 });
+messageSchema.index({ organizationId: 1, playerId: 1 });
+messageSchema.index({ organizationId: 1, paymentId: 1 });
+messageSchema.index({ organizationId: 1, messageType: 1, timestamp: -1 });
 
 module.exports = mongoose.model('Message', messageSchema);

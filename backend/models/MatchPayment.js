@@ -1,3 +1,11 @@
+/**
+ * @fileoverview MatchPayment Model
+ * 
+ * Tracks payment collection for matches within an organization.
+ * 
+ * @module models/MatchPayment
+ */
+
 const mongoose = require('mongoose');
 const {
   calculatePerPersonShares,
@@ -245,6 +253,14 @@ paymentMemberSchema.virtual('effectiveAmount').get(function() {
 });
 
 const matchPaymentSchema = new mongoose.Schema({
+  // Multi-tenant: Organization this payment belongs to
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  
   matchId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Match',
@@ -340,11 +356,12 @@ const matchPaymentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for quick lookups
-matchPaymentSchema.index({ matchId: 1 }, { unique: true });
-matchPaymentSchema.index({ status: 1 });
-matchPaymentSchema.index({ createdAt: -1 });
-matchPaymentSchema.index({ 'squadMembers.playerPhone': 1 });
+// Indexes for multi-tenant queries
+// matchId is unique within an organization
+matchPaymentSchema.index({ organizationId: 1, matchId: 1 }, { unique: true });
+matchPaymentSchema.index({ organizationId: 1, status: 1 });
+matchPaymentSchema.index({ organizationId: 1, createdAt: -1 });
+matchPaymentSchema.index({ organizationId: 1, 'squadMembers.playerPhone': 1 });
 matchPaymentSchema.index({ 'squadMembers.outgoingMessageId': 1 });
 
 // Method to recalculate amounts when members change

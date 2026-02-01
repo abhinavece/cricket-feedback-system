@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Match Model
+ * 
+ * Represents cricket matches within an organization.
+ * Tracks squad, availability, and match status.
+ * 
+ * @module models/Match
+ */
+
 const mongoose = require('mongoose');
 
 const squadResponseSchema = new mongoose.Schema({
@@ -23,10 +32,19 @@ const squadResponseSchema = new mongoose.Schema({
 }, { _id: false });
 
 const matchSchema = new mongoose.Schema({
+  // Multi-tenant: Organization this match belongs to
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  
   matchId: {
     type: String,
     required: false,
-    unique: true,
+    // Note: unique constraint should be per-organization
+    // Will be handled by compound index
     trim: true
   },
   cricHeroesMatchId: {
@@ -124,9 +142,11 @@ const matchSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better performance
-matchSchema.index({ date: 1 });
-matchSchema.index({ status: 1 });
-matchSchema.index({ 'squad.player': 1 });
+// Indexes for multi-tenant queries
+matchSchema.index({ organizationId: 1, date: -1 });
+matchSchema.index({ organizationId: 1, status: 1 });
+matchSchema.index({ organizationId: 1, 'squad.player': 1 });
+// matchId is unique within an organization
+matchSchema.index({ organizationId: 1, matchId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Match', matchSchema);

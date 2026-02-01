@@ -32,14 +32,27 @@ const auth = async (req, res, next) => {
       console.log('⚠️ Auth bypassed - DISABLE_AUTH is enabled');
       const mongoose = require('mongoose');
       const mockRole = process.env.MOCK_USER_ROLE || 'admin';
+      const mockUserId = new mongoose.Types.ObjectId();
+      
       // Create a mock user for local testing with valid ObjectId
+      // Includes multi-tenant fields for development
       req.user = {
-        _id: new mongoose.Types.ObjectId(),
-        id: new mongoose.Types.ObjectId().toString(),
+        _id: mockUserId,
+        id: mockUserId.toString(),
         email: 'dev@localhost',
         name: 'Local Dev User',
         role: mockRole,
-        isActive: true
+        isActive: true,
+        // Multi-tenant fields
+        organizations: [], // Will be populated by tenant resolver if needed
+        activeOrganizationId: null,
+        platformRole: 'platform_admin',
+        // Helper methods for multi-tenant
+        isMemberOf: () => true, // Allow access in dev mode
+        getRoleInOrganization: () => mockRole,
+        isAdminOf: () => mockRole === 'admin',
+        canEditIn: () => ['admin', 'editor'].includes(mockRole),
+        isPlatformAdmin: () => true,
       };
       console.log('Mock user role:', mockRole);
       return next();
