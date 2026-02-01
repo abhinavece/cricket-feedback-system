@@ -133,7 +133,7 @@ const TeamSettingsTab: React.FC = () => {
 
   // Revoke invite
   const handleRevokeInvite = async (inviteId: string) => {
-    if (!confirm('Are you sure you want to revoke this invite? Anyone with this link will no longer be able to join.')) {
+    if (!window.confirm('Are you sure you want to revoke this invite? Anyone with this link will no longer be able to join.')) {
       return;
     }
     
@@ -182,7 +182,7 @@ const TeamSettingsTab: React.FC = () => {
 
   // Remove member
   const handleRemoveMember = async (userId: string, memberName: string) => {
-    if (!confirm(`Are you sure you want to remove ${memberName} from the team?`)) {
+    if (!window.confirm(`Are you sure you want to remove ${memberName} from the team?`)) {
       return;
     }
     
