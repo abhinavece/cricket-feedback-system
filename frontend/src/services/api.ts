@@ -1591,4 +1591,159 @@ export const joinOrganizationWithInvite = async (code: string): Promise<{
   return response.data;
 };
 
+// ===== Team Discovery & Join Request APIs =====
+
+export interface SearchedOrganization {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo?: string;
+  stats: {
+    playerCount: number;
+    memberCount: number;
+  };
+  isMember: boolean;
+  hasPendingRequest: boolean;
+}
+
+export interface JoinRequest {
+  _id: string;
+  organizationId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatar?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  message?: string;
+  requestedRole: 'viewer' | 'editor';
+  discoveryMethod: 'search' | 'cricheroes_id' | 'direct_link' | 'other';
+  reviewNote?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+// Search for teams by name
+export const searchOrganizations = async (query: string, page = 1, limit = 10): Promise<{
+  success: boolean;
+  organizations: SearchedOrganization[];
+  total: number;
+  hasMore: boolean;
+}> => {
+  const response = await api.get('/organizations/search', {
+    params: { q: query, page, limit },
+  });
+  return response.data;
+};
+
+// Lookup team by CricHeroes ID
+export const lookupOrganizationByCricHeroesId = async (cricHeroesId: string): Promise<{
+  success: boolean;
+  organization: SearchedOrganization;
+}> => {
+  const response = await api.get(`/organizations/lookup/${cricHeroesId}`);
+  return response.data;
+};
+
+// Request to join a team
+export const requestToJoinOrganization = async (orgId: string, data?: {
+  message?: string;
+  discoveryMethod?: 'search' | 'cricheroes_id' | 'direct_link' | 'other';
+}): Promise<{
+  success: boolean;
+  message: string;
+  request: {
+    _id: string;
+    organizationId: string;
+    organizationName: string;
+    status: string;
+    createdAt: string;
+  };
+}> => {
+  const response = await api.post(`/organizations/${orgId}/join-request`, data || {});
+  return response.data;
+};
+
+// Get pending join requests for current organization (admin)
+export const getJoinRequests = async (status = 'pending', page = 1, limit = 20): Promise<{
+  success: boolean;
+  requests: JoinRequest[];
+  total: number;
+  hasMore: boolean;
+}> => {
+  const response = await api.get('/organizations/join-requests', {
+    params: { status, page, limit },
+  });
+  return response.data;
+};
+
+// Get current user's join requests
+export const getMyJoinRequests = async (): Promise<{
+  success: boolean;
+  requests: Array<{
+    _id: string;
+    organization: {
+      _id: string;
+      name: string;
+      slug: string;
+      logo?: string;
+    };
+    status: string;
+    message?: string;
+    reviewNote?: string;
+    createdAt: string;
+    reviewedAt?: string;
+  }>;
+}> => {
+  const response = await api.get('/organizations/my-requests');
+  return response.data;
+};
+
+// Approve or reject a join request (admin)
+export const processJoinRequest = async (requestId: string, data: {
+  action: 'approve' | 'reject';
+  role?: 'viewer' | 'editor';
+  note?: string;
+}): Promise<{
+  success: boolean;
+  message: string;
+  request: {
+    _id: string;
+    status: string;
+    reviewedAt: string;
+  };
+}> => {
+  const response = await api.patch(`/organizations/join-requests/${requestId}`, data);
+  return response.data;
+};
+
+// Cancel a pending join request
+export const cancelJoinRequest = async (requestId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/organizations/join-requests/${requestId}`);
+  return response.data;
+};
+
+// Update organization settings (including cricHeroesTeamId, isDiscoverable)
+export const updateOrganizationSettings = async (settings: {
+  cricHeroesTeamId?: string | null;
+  isDiscoverable?: boolean;
+  name?: string;
+  description?: string;
+}): Promise<{
+  success: boolean;
+  message: string;
+  organization: {
+    cricHeroesTeamId?: string;
+    isDiscoverable: boolean;
+    name: string;
+    description?: string;
+  };
+}> => {
+  const response = await api.patch('/organizations/settings', settings);
+  return response.data;
+};
+
 export default api;

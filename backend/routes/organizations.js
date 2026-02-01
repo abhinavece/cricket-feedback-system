@@ -14,6 +14,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Organization = require('../models/Organization');
 const OrganizationInvite = require('../models/OrganizationInvite');
+const JoinRequest = require('../models/JoinRequest');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const { resolveTenant, requireOrgAdmin, requireOrgOwner, skipTenant } = require('../middleware/tenantResolver');
@@ -918,6 +919,523 @@ router.post('/join/:code', auth, async (req, res) => {
     res.status(500).json({
       error: 'Server error',
       message: 'Failed to join organization',
+    });
+  }
+});
+
+// ===== TEAM DISCOVERY & JOIN REQUEST ENDPOINTS =====
+
+/**
+ * GET /api/organizations/search
+ * Search for discoverable teams by name (public endpoint for logged-in users)
+ * 
+ * @query {string} q - Search query (team name)
+ * @query {number} [page=1] - Page number
+ * @query {number} [limit=10] - Results per page
+ */
+router.get('/search', auth, async (req, res) => {
+  try {
+    const { q, page = 1, limit = 10 } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({
+        error: 'Invalid query',
+        message: 'Search query must be at least 2 characters',
+      });
+    }
+
+    const result = await Organization.searchByName(q.trim(), {
+      page: parseInt(page),
+      limit: Math.min(parseInt(limit), 20), // Max 20 results
+    });
+
+    // Add info about whether user is already a member or has pending request
+    const userOrgIds = req.user.organizations?.map(o => o.organizationId.toString()) || [];
+    const pendingRequests = await JoinRequest.find({
+      userId: req.user._id,
+      status: 'pending',
+    }).select('organizationId');
+    const pendingOrgIds = pendingRequests.map(r => r.organizationId.toString());
+
+    const enrichedOrgs = result.organizations.map(org => ({
+      ...org,
+      isMember: userOrgIds.includes(org._id.toString()),
+      hasPendingRequest: pendingOrgIds.includes(org._id.toString()),
+    }));
+
+    res.json({
+      success: true,
+      organizations: enrichedOrgs,
+      total: result.total,
+      hasMore: result.hasMore,
+    });
+  } catch (error) {
+    console.error('Error searching organizations:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to search organizations',
+    });
+  }
+});
+
+/**
+ * GET /api/organizations/lookup/:cricHeroesId
+ * Find a team by CricHeroes team ID
+ */
+router.get('/lookup/:cricHeroesId', auth, async (req, res) => {
+  try {
+    const { cricHeroesId } = req.params;
+
+    if (!cricHeroesId || cricHeroesId.trim().length < 3) {
+      return res.status(400).json({
+        error: 'Invalid ID',
+        message: 'CricHeroes Team ID must be at least 3 characters',
+      });
+    }
+
+    const organization = await Organization.findByCricHeroesId(cricHeroesId.trim());
+
+    if (!organization) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'No team found with this CricHeroes ID. The team may not have registered yet.',
+      });
+    }
+
+    // Check if not discoverable
+    if (!organization.isDiscoverable) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'This team is not accepting join requests at this time.',
+      });
+    }
+
+    // Check if user is already a member
+    const isMember = req.user.organizations?.some(
+      o => o.organizationId.toString() === organization._id.toString()
+    );
+
+    // Check for pending request
+    const hasPendingRequest = await JoinRequest.hasPendingRequest(req.user._id, organization._id);
+
+    res.json({
+      success: true,
+      organization: {
+        _id: organization._id,
+        name: organization.name,
+        slug: organization.slug,
+        description: organization.description,
+        logo: organization.logo,
+        stats: {
+          playerCount: organization.stats.playerCount,
+          memberCount: organization.stats.memberCount,
+        },
+        isMember,
+        hasPendingRequest,
+      },
+    });
+  } catch (error) {
+    console.error('Error looking up organization:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to lookup organization',
+    });
+  }
+});
+
+/**
+ * POST /api/organizations/:id/join-request
+ * Request to join a team
+ * 
+ * @body {string} [message] - Optional message to team admins
+ * @body {string} [discoveryMethod] - How user found the team
+ */
+router.post('/:id/join-request', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message, discoveryMethod = 'search' } = req.body;
+
+    // Validate organization ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        error: 'Invalid ID',
+        message: 'Invalid organization ID format',
+      });
+    }
+
+    // Find the organization
+    const organization = await Organization.findOne({
+      _id: id,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    if (!organization) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Organization not found',
+      });
+    }
+
+    // Check if organization is discoverable
+    if (!organization.isDiscoverable) {
+      return res.status(403).json({
+        error: 'Not accepting requests',
+        message: 'This team is not accepting join requests. Please ask an admin for an invite link.',
+      });
+    }
+
+    // Check if user is already a member
+    const isMember = req.user.organizations?.some(
+      o => o.organizationId.toString() === organization._id.toString() && o.status === 'active'
+    );
+
+    if (isMember) {
+      return res.status(409).json({
+        error: 'Already a member',
+        message: 'You are already a member of this team',
+      });
+    }
+
+    // Check for existing pending request
+    const hasPending = await JoinRequest.hasPendingRequest(req.user._id, organization._id);
+
+    if (hasPending) {
+      return res.status(409).json({
+        error: 'Request pending',
+        message: 'You already have a pending request to join this team',
+      });
+    }
+
+    // Create the join request
+    const joinRequest = new JoinRequest({
+      organizationId: organization._id,
+      userId: req.user._id,
+      userName: req.user.name,
+      userEmail: req.user.email,
+      userAvatar: req.user.avatar,
+      message: message?.trim().substring(0, 500),
+      discoveryMethod,
+    });
+
+    await joinRequest.save();
+
+    console.log(`Join request created: ${req.user.email} -> ${organization.name}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Join request sent! The team admins will review your request.',
+      request: {
+        _id: joinRequest._id,
+        organizationId: joinRequest.organizationId,
+        organizationName: organization.name,
+        status: joinRequest.status,
+        createdAt: joinRequest.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating join request:', error);
+    
+    // Handle duplicate request error
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: 'Request pending',
+        message: 'You already have a pending request to join this team',
+      });
+    }
+    
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to create join request',
+    });
+  }
+});
+
+/**
+ * GET /api/organizations/join-requests
+ * List pending join requests for current organization (admin only)
+ * 
+ * @query {string} [status=pending] - Filter by status
+ * @query {number} [page=1] - Page number
+ * @query {number} [limit=20] - Results per page
+ */
+router.get('/join-requests', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const { status = 'pending', page = 1, limit = 20 } = req.query;
+
+    const filter = {
+      organizationId: req.organization._id,
+    };
+
+    if (status !== 'all') {
+      filter.status = status;
+    }
+
+    const requests = await JoinRequest.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit))
+      .lean();
+
+    const total = await JoinRequest.countDocuments(filter);
+
+    res.json({
+      success: true,
+      requests,
+      total,
+      hasMore: parseInt(page) * parseInt(limit) < total,
+    });
+  } catch (error) {
+    console.error('Error fetching join requests:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to fetch join requests',
+    });
+  }
+});
+
+/**
+ * GET /api/organizations/my-requests
+ * Get current user's join requests
+ */
+router.get('/my-requests', auth, async (req, res) => {
+  try {
+    const requests = await JoinRequest.find({
+      userId: req.user._id,
+    })
+      .sort({ createdAt: -1 })
+      .populate('organizationId', 'name slug logo')
+      .lean();
+
+    res.json({
+      success: true,
+      requests: requests.map(r => ({
+        _id: r._id,
+        organization: r.organizationId,
+        status: r.status,
+        message: r.message,
+        reviewNote: r.reviewNote,
+        createdAt: r.createdAt,
+        reviewedAt: r.reviewedAt,
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching user join requests:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to fetch your join requests',
+    });
+  }
+});
+
+/**
+ * PATCH /api/organizations/join-requests/:requestId
+ * Approve or reject a join request (admin only)
+ * 
+ * @body {string} action - 'approve' or 'reject'
+ * @body {string} [role='viewer'] - Role to assign if approving
+ * @body {string} [note] - Optional note
+ */
+router.patch('/join-requests/:requestId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { action, role = 'viewer', note } = req.body;
+
+    // Validate action
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        error: 'Invalid action',
+        message: 'Action must be "approve" or "reject"',
+      });
+    }
+
+    // Validate role if approving
+    if (action === 'approve' && !['viewer', 'editor'].includes(role)) {
+      return res.status(400).json({
+        error: 'Invalid role',
+        message: 'Role must be "viewer" or "editor"',
+      });
+    }
+
+    // Find the request
+    const joinRequest = await JoinRequest.findOne({
+      _id: requestId,
+      organizationId: req.organization._id,
+      status: 'pending',
+    });
+
+    if (!joinRequest) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Join request not found or already processed',
+      });
+    }
+
+    if (action === 'approve') {
+      // Approve the request
+      await joinRequest.approve(req.user._id, role, note);
+
+      // Add user to organization
+      const requestingUser = await User.findById(joinRequest.userId);
+      
+      if (requestingUser) {
+        requestingUser.addToOrganization(req.organization._id, role);
+        if (!requestingUser.activeOrganizationId) {
+          requestingUser.activeOrganizationId = req.organization._id;
+        }
+        await requestingUser.save();
+
+        // Update org member count
+        req.organization.stats.memberCount = (req.organization.stats.memberCount || 0) + 1;
+        await req.organization.save();
+
+        console.log(`Join request approved: ${requestingUser.email} -> ${req.organization.name} as ${role}`);
+      }
+
+      res.json({
+        success: true,
+        message: `${joinRequest.userName} has been added to the team as ${role}`,
+        request: {
+          _id: joinRequest._id,
+          status: joinRequest.status,
+          reviewedAt: joinRequest.reviewedAt,
+        },
+      });
+    } else {
+      // Reject the request
+      await joinRequest.reject(req.user._id, note);
+
+      console.log(`Join request rejected: ${joinRequest.userEmail} -> ${req.organization.name}`);
+
+      res.json({
+        success: true,
+        message: 'Join request has been rejected',
+        request: {
+          _id: joinRequest._id,
+          status: joinRequest.status,
+          reviewedAt: joinRequest.reviewedAt,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Error processing join request:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to process join request',
+    });
+  }
+});
+
+/**
+ * DELETE /api/organizations/join-requests/:requestId
+ * Cancel a pending join request (by the requester)
+ */
+router.delete('/join-requests/:requestId', auth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+
+    const joinRequest = await JoinRequest.findOne({
+      _id: requestId,
+      userId: req.user._id,
+      status: 'pending',
+    });
+
+    if (!joinRequest) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Join request not found or already processed',
+      });
+    }
+
+    await joinRequest.cancel();
+
+    res.json({
+      success: true,
+      message: 'Join request cancelled',
+    });
+  } catch (error) {
+    console.error('Error cancelling join request:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to cancel join request',
+    });
+  }
+});
+
+/**
+ * PATCH /api/organizations/settings
+ * Update organization settings (admin only)
+ * Includes cricHeroesTeamId and isDiscoverable
+ */
+router.patch('/settings', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const { cricHeroesTeamId, isDiscoverable, ...otherSettings } = req.body;
+    const updateFields = {};
+
+    // Handle cricHeroesTeamId
+    if (cricHeroesTeamId !== undefined) {
+      if (cricHeroesTeamId === '' || cricHeroesTeamId === null) {
+        updateFields.cricHeroesTeamId = null;
+      } else {
+        // Check if ID is already taken by another org
+        const existingOrg = await Organization.findOne({
+          cricHeroesTeamId: cricHeroesTeamId.trim(),
+          _id: { $ne: req.organization._id },
+        });
+
+        if (existingOrg) {
+          return res.status(409).json({
+            error: 'ID already taken',
+            message: 'This CricHeroes Team ID is already linked to another team',
+          });
+        }
+
+        updateFields.cricHeroesTeamId = cricHeroesTeamId.trim();
+      }
+    }
+
+    // Handle isDiscoverable
+    if (typeof isDiscoverable === 'boolean') {
+      updateFields.isDiscoverable = isDiscoverable;
+    }
+
+    // Handle other settings if needed
+    if (Object.keys(otherSettings).length > 0) {
+      for (const [key, value] of Object.entries(otherSettings)) {
+        if (['name', 'description'].includes(key)) {
+          updateFields[key] = value;
+        }
+      }
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        error: 'No changes',
+        message: 'No valid fields to update',
+      });
+    }
+
+    const updatedOrg = await Organization.findByIdAndUpdate(
+      req.organization._id,
+      { $set: updateFields },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Settings updated',
+      organization: {
+        cricHeroesTeamId: updatedOrg.cricHeroesTeamId,
+        isDiscoverable: updatedOrg.isDiscoverable,
+        name: updatedOrg.name,
+        description: updatedOrg.description,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating organization settings:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to update settings',
     });
   }
 });

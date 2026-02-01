@@ -13,6 +13,12 @@ const mongoose = require('mongoose');
  * WhatsApp configuration schema for BYOT (Bring Your Own Token)
  */
 const whatsappConfigSchema = new mongoose.Schema({
+  // Mode: 'platform' uses shared platform WABA, 'byot' uses team's own
+  mode: {
+    type: String,
+    enum: ['platform', 'byot'],
+    default: 'platform',
+  },
   enabled: {
     type: Boolean,
     default: false,
@@ -142,6 +148,19 @@ const organizationSchema = new mongoose.Schema({
     default: null,
   },
   
+  // CricHeroes Integration
+  cricHeroesTeamId: {
+    type: String,
+    trim: true,
+    sparse: true, // Allows multiple nulls but unique non-null values
+  },
+  
+  // Team Discovery Settings
+  isDiscoverable: {
+    type: Boolean,
+    default: true, // Can be found in team search
+  },
+  
   // Owner - the user who created the organization
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -210,7 +229,11 @@ const organizationSchema = new mongoose.Schema({
 organizationSchema.index({ ownerId: 1 });
 organizationSchema.index({ isActive: 1, isDeleted: 1 });
 organizationSchema.index({ 'whatsapp.phoneNumberId': 1 }, { sparse: true });
+organizationSchema.index({ 'whatsapp.mode': 1 });
 organizationSchema.index({ plan: 1 });
+organizationSchema.index({ cricHeroesTeamId: 1 }, { unique: true, sparse: true });
+organizationSchema.index({ isDiscoverable: 1 });
+organizationSchema.index({ name: 'text' }); // Text search index for team name search
 
 // Virtual for getting members (populated separately)
 organizationSchema.virtual('members', {
@@ -245,6 +268,41 @@ organizationSchema.statics.findByWhatsAppPhoneNumberId = function(phoneNumberId)
     isActive: true,
     isDeleted: false
   });
+};
+
+// Static method: Find by CricHeroes team ID
+organizationSchema.statics.findByCricHeroesId = function(cricHeroesTeamId) {
+  return this.findOne({
+    cricHeroesTeamId,
+    isActive: true,
+    isDeleted: false
+  });
+};
+
+// Static method: Search discoverable organizations by name
+organizationSchema.statics.searchByName = async function(query, options = {}) {
+  const { page = 1, limit = 10 } = options;
+  
+  // Case-insensitive partial match
+  const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  
+  const filter = {
+    name: regex,
+    isDiscoverable: true,
+    isActive: true,
+    isDeleted: false,
+  };
+  
+  const organizations = await this.find(filter)
+    .select('name slug description logo stats.playerCount stats.memberCount')
+    .sort({ 'stats.memberCount': -1, name: 1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+  
+  const total = await this.countDocuments(filter);
+  
+  return { organizations, total, hasMore: page * limit < total };
 };
 
 // Pre-save: Generate slug from name if not provided

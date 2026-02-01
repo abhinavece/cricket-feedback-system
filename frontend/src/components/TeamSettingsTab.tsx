@@ -26,6 +26,14 @@ import {
   UserPlus,
   Mail,
   RefreshCw,
+  MessageSquare,
+  Eye,
+  EyeOff,
+  Wifi,
+  WifiOff,
+  Search,
+  Globe,
+  Trophy,
 } from 'lucide-react';
 import { useOrganization } from '../contexts/OrganizationContext';
 import {
@@ -37,9 +45,13 @@ import {
   removeMember,
   OrganizationInvite,
   OrganizationMember,
+  updateOrganizationSettings,
+  getJoinRequests,
+  processJoinRequest,
+  JoinRequest,
 } from '../services/api';
 
-type TabType = 'overview' | 'invites' | 'members';
+type TabType = 'overview' | 'invites' | 'members' | 'whatsapp' | 'discovery';
 
 const TeamSettingsTab: React.FC = () => {
   const { currentOrg, isOrgOwner, isOrgAdmin, refreshOrganization, loading: orgLoading } = useOrganization();
@@ -65,6 +77,25 @@ const TeamSettingsTab: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+  
+  // Discovery settings state
+  const [cricHeroesTeamId, setCricHeroesTeamId] = useState('');
+  const [isDiscoverable, setIsDiscoverable] = useState(true);
+  const [savingDiscovery, setSavingDiscovery] = useState(false);
+  
+  // WhatsApp BYOT state
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState('');
+  const [waAccessToken, setWaAccessToken] = useState('');
+  const [waBusinessAccountId, setWaBusinessAccountId] = useState('');
+  const [waDisplayPhone, setWaDisplayPhone] = useState('');
+  const [showToken, setShowToken] = useState(false);
+  const [savingWhatsApp, setSavingWhatsApp] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  
+  // Join requests state
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [processingRequest, setProcessingRequest] = useState<string | null>(null);
 
   // Fetch invites
   const fetchInvites = async () => {
@@ -100,8 +131,77 @@ const TeamSettingsTab: React.FC = () => {
       fetchInvites();
     } else if (activeTab === 'members') {
       fetchMembers();
+    } else if (activeTab === 'discovery' && isOrgAdmin) {
+      fetchJoinRequests();
     }
   }, [activeTab, isOrgAdmin]);
+
+  // Load discovery settings from current org
+  useEffect(() => {
+    if (currentOrg) {
+      setCricHeroesTeamId((currentOrg as any).cricHeroesTeamId || '');
+      setIsDiscoverable((currentOrg as any).isDiscoverable !== false);
+    }
+  }, [currentOrg]);
+
+  // Fetch join requests
+  const fetchJoinRequests = async () => {
+    if (!isOrgAdmin) return;
+    
+    try {
+      setLoadingRequests(true);
+      const data = await getJoinRequests('pending');
+      setJoinRequests(data.requests || []);
+    } catch (error) {
+      console.error('Error fetching join requests:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  // Save discovery settings
+  const handleSaveDiscovery = async () => {
+    try {
+      setSavingDiscovery(true);
+      setErrorMessage(null);
+      
+      await updateOrganizationSettings({
+        cricHeroesTeamId: cricHeroesTeamId.trim() || null,
+        isDiscoverable,
+      });
+      
+      setSuccessMessage('Discovery settings saved!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      refreshOrganization();
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || error.message || 'Failed to save settings');
+    } finally {
+      setSavingDiscovery(false);
+    }
+  };
+
+  // Process join request (approve/reject)
+  const handleProcessRequest = async (requestId: string, action: 'approve' | 'reject', role?: 'viewer' | 'editor') => {
+    try {
+      setProcessingRequest(requestId);
+      setErrorMessage(null);
+      
+      await processJoinRequest(requestId, { action, role });
+      
+      setJoinRequests(prev => prev.filter(r => r._id !== requestId));
+      setSuccessMessage(action === 'approve' ? 'Request approved!' : 'Request rejected');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // Refresh org to update member count
+      if (action === 'approve') {
+        refreshOrganization();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || error.message || 'Failed to process request');
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
 
   // Create invite
   const handleCreateInvite = async () => {
@@ -282,11 +382,13 @@ const TeamSettingsTab: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-white/10 pb-2">
+      <div className="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto">
         {[
           { id: 'overview', label: 'Overview', icon: Settings },
-          { id: 'invites', label: 'Invite Links', icon: Link, adminOnly: true },
+          { id: 'invites', label: 'Invites', icon: Link, adminOnly: true },
           { id: 'members', label: 'Members', icon: Users },
+          { id: 'discovery', label: 'Discovery', icon: Search, adminOnly: true },
+          { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, adminOnly: true },
         ].map(tab => {
           if (tab.adminOnly && !isOrgAdmin) return null;
           const Icon = tab.icon;
@@ -675,6 +777,325 @@ const TeamSettingsTab: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Discovery Tab */}
+      {activeTab === 'discovery' && isOrgAdmin && (
+        <div className="space-y-6">
+          {/* Discovery Settings */}
+          <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-emerald-400" />
+              Team Discovery Settings
+            </h3>
+            <p className="text-sm text-slate-400 mb-6">
+              Control how people can find and request to join your team.
+            </p>
+
+            <div className="space-y-6">
+              {/* CricHeroes Team ID */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-purple-400" />
+                  CricHeroes Team ID
+                </label>
+                <input
+                  type="text"
+                  value={cricHeroesTeamId}
+                  onChange={(e) => setCricHeroesTeamId(e.target.value)}
+                  placeholder="e.g., 123456"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Link your CricHeroes team so players can find you using their CricHeroes Team ID.
+                </p>
+              </div>
+
+              {/* Discoverable Toggle */}
+              <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-xl">
+                <div>
+                  <p className="font-medium text-white">Allow Team Discovery</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    When enabled, players can search for your team and request to join.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDiscoverable(!isDiscoverable)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    isDiscoverable ? 'bg-emerald-500' : 'bg-slate-600'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      isDiscoverable ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <button
+                onClick={handleSaveDiscovery}
+                disabled={savingDiscovery}
+                className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {savingDiscovery ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Save Discovery Settings
+              </button>
+            </div>
+          </div>
+
+          {/* Pending Join Requests */}
+          <div className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <h3 className="font-semibold text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-blue-400" />
+                Pending Join Requests ({joinRequests.length})
+              </h3>
+              <button
+                onClick={fetchJoinRequests}
+                disabled={loadingRequests}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingRequests ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {loadingRequests ? (
+              <div className="p-8 text-center">
+                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin mx-auto" />
+              </div>
+            ) : joinRequests.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No pending requests</p>
+                <p className="text-xs mt-1">New join requests will appear here</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {joinRequests.map(request => (
+                  <div key={request._id} className="p-4 hover:bg-slate-700/20 transition-colors">
+                    <div className="flex items-start gap-3">
+                      {request.userAvatar ? (
+                        <img src={request.userAvatar} alt={request.userName} className="w-10 h-10 rounded-full" />
+                      ) : (
+                        <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                          <span className="text-blue-400 font-medium">{request.userName.charAt(0)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-white">{request.userName}</div>
+                        <div className="text-xs text-slate-400">{request.userEmail}</div>
+                        {request.message && (
+                          <p className="mt-2 text-sm text-slate-300 bg-slate-700/30 px-3 py-2 rounded-lg">
+                            "{request.message}"
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(request.createdAt)}
+                          <span className="px-2 py-0.5 bg-slate-700 rounded text-slate-400 capitalize">
+                            via {request.discoveryMethod.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleProcessRequest(request._id, 'approve', 'viewer')}
+                          disabled={processingRequest === request._id}
+                          className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {processingRequest === request._id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Approve'
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleProcessRequest(request._id, 'reject')}
+                          disabled={processingRequest === request._id}
+                          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Tab */}
+      {activeTab === 'whatsapp' && isOrgAdmin && (
+        <div className="space-y-6">
+          {/* Current Status */}
+          <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-emerald-400" />
+              WhatsApp Configuration
+            </h3>
+
+            {/* Status Card */}
+            <div className={`p-4 rounded-xl border flex items-center gap-4 mb-6 ${
+              currentOrg?.whatsapp?.connectionStatus === 'connected'
+                ? 'bg-emerald-500/10 border-emerald-500/30'
+                : 'bg-slate-700/30 border-slate-600'
+            }`}>
+              {currentOrg?.whatsapp?.connectionStatus === 'connected' ? (
+                <Wifi className="w-6 h-6 text-emerald-400" />
+              ) : (
+                <WifiOff className="w-6 h-6 text-slate-400" />
+              )}
+              <div>
+                <p className="font-medium text-white">
+                  {currentOrg?.whatsapp?.connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
+                </p>
+                <p className="text-sm text-slate-400">
+                  {currentOrg?.whatsapp?.displayPhoneNumber || 'Using platform WhatsApp number'}
+                </p>
+              </div>
+              <span className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
+                (currentOrg?.whatsapp as any)?.mode === 'byot'
+                  ? 'bg-purple-500/20 text-purple-400'
+                  : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                {(currentOrg?.whatsapp as any)?.mode === 'byot' ? 'Custom Number' : 'Platform Number'}
+              </span>
+            </div>
+
+            {/* Info */}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+              <p className="text-sm text-blue-300 font-medium mb-2">About WhatsApp Integration</p>
+              <ul className="text-xs text-blue-400/80 space-y-1">
+                <li>• <strong>Platform Number:</strong> Messages sent from our shared WhatsApp number</li>
+                <li>• <strong>Custom Number (BYOT):</strong> Use your own WhatsApp Business number for branding</li>
+                <li>• Custom numbers require Meta Business verification (takes 2-4 weeks)</li>
+              </ul>
+            </div>
+
+            {/* BYOT Setup */}
+            {isOrgOwner && (
+              <div className="border-t border-white/10 pt-6">
+                <h4 className="font-medium text-white mb-4">Configure Custom WhatsApp Number</h4>
+                <p className="text-sm text-slate-400 mb-4">
+                  Upgrade to use your own WhatsApp Business number for better branding.
+                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Phone Number ID
+                    </label>
+                    <input
+                      type="text"
+                      value={waPhoneNumberId}
+                      onChange={(e) => setWaPhoneNumberId(e.target.value)}
+                      placeholder="e.g., 123456789012345"
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Access Token
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showToken ? 'text' : 'password'}
+                        value={waAccessToken}
+                        onChange={(e) => setWaAccessToken(e.target.value)}
+                        placeholder="Your permanent access token"
+                        className="w-full px-4 py-3 pr-12 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowToken(!showToken)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showToken ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Business Account ID
+                    </label>
+                    <input
+                      type="text"
+                      value={waBusinessAccountId}
+                      onChange={(e) => setWaBusinessAccountId(e.target.value)}
+                      placeholder="e.g., 987654321098765"
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Display Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={waDisplayPhone}
+                      onChange={(e) => setWaDisplayPhone(e.target.value)}
+                      placeholder="e.g., +91 98765 43210"
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={() => {/* TODO: Test connection */}}
+                      disabled={testingConnection || !waPhoneNumberId || !waAccessToken}
+                      className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {testingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+                      Test Connection
+                    </button>
+                    <button
+                      onClick={() => {/* TODO: Save WhatsApp config */}}
+                      disabled={savingWhatsApp || !waPhoneNumberId || !waAccessToken}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {savingWhatsApp ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                      Save Configuration
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Webhook Info */}
+          <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+            <h4 className="font-medium text-white mb-4">Webhook Configuration</h4>
+            <p className="text-sm text-slate-400 mb-4">
+              Configure this webhook URL in your Meta Developer Console to receive messages.
+            </p>
+            <div className="bg-slate-700/50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-slate-300">Webhook URL</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/api/whatsapp/webhook`);
+                    setSuccessMessage('Webhook URL copied!');
+                    setTimeout(() => setSuccessMessage(null), 2000);
+                  }}
+                  className="text-emerald-400 hover:text-emerald-300 text-sm flex items-center gap-1"
+                >
+                  <Copy className="w-4 h-4" /> Copy
+                </button>
+              </div>
+              <code className="text-xs text-emerald-400 break-all">
+                {window.location.origin}/api/whatsapp/webhook
+              </code>
+            </div>
+          </div>
         </div>
       )}
     </div>

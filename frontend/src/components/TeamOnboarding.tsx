@@ -3,13 +3,14 @@
  * 
  * Wizard-style onboarding flow for new users to either:
  * 1. Create a new team (for team organizers/captains)
- * 2. Join an existing team (for players with an invite link)
+ * 2. Find and request to join an existing team
+ * 3. Join via invite link (for players with invite)
  * 
  * Industry best practice: Clear separation between creating and joining,
  * with messaging to prevent duplicate team creation.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Building2,
   Users,
@@ -24,8 +25,18 @@ import {
   UserPlus,
   Link,
   AlertCircle,
+  Search,
+  HelpCircle,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import { useOrganization } from '../contexts/OrganizationContext';
+import {
+  searchOrganizations,
+  lookupOrganizationByCricHeroesId,
+  requestToJoinOrganization,
+  SearchedOrganization,
+} from '../services/api';
 
 interface TeamOnboardingProps {
   onComplete: () => void;
@@ -34,18 +45,37 @@ interface TeamOnboardingProps {
   inviteCode?: string;
 }
 
-type OnboardingStep = 'choice' | 'create-info' | 'create-form' | 'create-success' | 'join-info' | 'join-code';
+type OnboardingStep = 
+  | 'choice' 
+  | 'create-info' 
+  | 'create-form' 
+  | 'create-success' 
+  | 'join-options'
+  | 'join-search'
+  | 'join-cricheroes'
+  | 'join-code'
+  | 'request-sent';
 
 const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, inviteCode }) => {
   const { createOrganization } = useOrganization();
   const [step, setStep] = useState<OnboardingStep>(inviteCode ? 'join-code' : 'choice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Form state
   const [teamName, setTeamName] = useState('');
   const [description, setDescription] = useState('');
   const [joinCode, setJoinCode] = useState(inviteCode || '');
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchedOrganization[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [cricHeroesId, setCricHeroesId] = useState('');
+  const [foundTeam, setFoundTeam] = useState<SearchedOrganization | null>(null);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [showCricHeroesGuide, setShowCricHeroesGuide] = useState(false);
 
   const handleCreateTeam = async () => {
     if (!teamName.trim()) {
@@ -81,6 +111,72 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
 
     // Redirect to the invite page which will handle the join flow
     window.location.href = `/invite/${code}`;
+  };
+
+  // Search for teams by name
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setError('Please enter at least 2 characters to search');
+      return;
+    }
+
+    try {
+      setSearching(true);
+      setError(null);
+      
+      const result = await searchOrganizations(searchQuery.trim());
+      setSearchResults(result.organizations);
+      
+      if (result.organizations.length === 0) {
+        setError('No teams found. Try a different search or create your own team.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to search');
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQuery]);
+
+  // Lookup team by CricHeroes ID
+  const handleCricHeroesLookup = async () => {
+    if (!cricHeroesId.trim()) {
+      setError('Please enter a CricHeroes Team ID');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      setFoundTeam(null);
+      
+      const result = await lookupOrganizationByCricHeroesId(cricHeroesId.trim());
+      setFoundTeam(result.organization);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Team not found');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Request to join a team
+  const handleRequestToJoin = async (team: SearchedOrganization, method: 'search' | 'cricheroes_id') => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await requestToJoinOrganization(team._id, {
+        message: requestMessage.trim() || undefined,
+        discoveryMethod: method,
+      });
+      
+      setSuccessMessage(`Request sent to ${team.name}!`);
+      setStep('request-sent');
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to send request');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const features = [
@@ -129,7 +225,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
               </div>
 
               {/* Choice Cards */}
-              <div className="grid md:grid-cols-2 gap-4 mb-8">
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
                 {/* Create Team Card */}
                 <button
                   onClick={() => setStep('create-info')}
@@ -140,27 +236,27 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                   </div>
                   <h3 className="text-lg font-semibold text-white mb-2">Create a Team</h3>
                   <p className="text-sm text-slate-400 mb-4">
-                    I'm starting fresh or I'm the captain/organizer setting up my team.
+                    I'm the captain/organizer setting up my team fresh.
                   </p>
                   <div className="flex items-center text-emerald-400 text-sm font-medium group-hover:gap-2 transition-all">
                     Get Started <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                 </button>
 
-                {/* Join Team Card */}
+                {/* Find Team Card */}
                 <button
-                  onClick={() => setStep('join-info')}
+                  onClick={() => setStep('join-options')}
                   className="group p-6 bg-slate-700/30 hover:bg-blue-500/10 border border-slate-600 hover:border-blue-500/50 rounded-xl text-left transition-all duration-300"
                 >
                   <div className="w-12 h-12 bg-blue-500/20 group-hover:bg-blue-500/30 rounded-xl flex items-center justify-center mb-4 transition-colors">
-                    <UserPlus className="w-6 h-6 text-blue-400" />
+                    <Search className="w-6 h-6 text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Join a Team</h3>
+                  <h3 className="text-lg font-semibold text-white mb-2">Find My Team</h3>
                   <p className="text-sm text-slate-400 mb-4">
-                    My team already exists and I have an invite link from my admin.
+                    Search for my team or use an invite link to join.
                   </p>
                   <div className="flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                    Enter Invite Code <ChevronRight className="w-4 h-4 ml-1" />
+                    Search or Join <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                 </button>
               </div>
@@ -365,74 +461,384 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
             </div>
           )}
 
-          {/* Step: Join Info */}
-          {step === 'join-info' && (
+          {/* Step: Join Options */}
+          {step === 'join-options' && (
             <div className="p-8">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <UserPlus className="w-8 h-8 text-white" />
+                  <Search className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-2">
-                  Join Your Team
+                  Find Your Team
                 </h2>
                 <p className="text-slate-400">
-                  You'll need an invite link from your team admin
+                  Choose how you want to find and join your team
                 </p>
               </div>
 
-              {/* Info about getting invite */}
-              <div className="space-y-4 mb-8">
-                <div className="bg-slate-700/30 rounded-xl p-4 flex gap-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-400 font-bold">1</span>
+              {/* Join Options */}
+              <div className="space-y-3 mb-8">
+                {/* Search by Name */}
+                <button
+                  onClick={() => { setStep('join-search'); setError(null); }}
+                  className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-blue-500/10 border border-slate-600 hover:border-blue-500/50 rounded-xl text-left transition-all"
+                >
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Search className="w-5 h-5 text-blue-400" />
                   </div>
-                  <div>
-                    <p className="text-sm text-white font-medium">Ask your team admin</p>
-                    <p className="text-xs text-slate-400">
-                      Contact your team captain or organizer who manages the team on CricSmart
-                    </p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">Search by Team Name</p>
+                    <p className="text-xs text-slate-400">Find your team by searching its name</p>
                   </div>
-                </div>
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                </button>
 
-                <div className="bg-slate-700/30 rounded-xl p-4 flex gap-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-400 font-bold">2</span>
+                {/* CricHeroes ID */}
+                <button
+                  onClick={() => { setStep('join-cricheroes'); setError(null); }}
+                  className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-purple-500/10 border border-slate-600 hover:border-purple-500/50 rounded-xl text-left transition-all"
+                >
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-5 h-5 text-purple-400" />
                   </div>
-                  <div>
-                    <p className="text-sm text-white font-medium">Get the invite link</p>
-                    <p className="text-xs text-slate-400">
-                      They can create one from Team Settings → Invite Links
-                    </p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">Use CricHeroes Team ID</p>
+                    <p className="text-xs text-slate-400">Find team using CricHeroes app integration</p>
                   </div>
-                </div>
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                </button>
 
-                <div className="bg-slate-700/30 rounded-xl p-4 flex gap-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-400 font-bold">3</span>
+                {/* Invite Code */}
+                <button
+                  onClick={() => { setStep('join-code'); setError(null); }}
+                  className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-emerald-500/10 border border-slate-600 hover:border-emerald-500/50 rounded-xl text-left transition-all"
+                >
+                  <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Link className="w-5 h-5 text-emerald-400" />
                   </div>
-                  <div>
-                    <p className="text-sm text-white font-medium">Enter the code or click the link</p>
-                    <p className="text-xs text-slate-400">
-                      You'll automatically join the team with the right permissions
-                    </p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">I Have an Invite Link</p>
+                    <p className="text-xs text-slate-400">Join instantly with a link from your team admin</p>
                   </div>
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+
+              <button
+                onClick={() => setStep('choice')}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                Back
+              </button>
+            </div>
+          )}
+
+          {/* Step: Search by Name */}
+          {step === 'join-search' && (
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Search for Your Team
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Enter your team's name to find and request to join
+                </p>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {/* Search Input */}
+              <div className="mb-6">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Enter team name..."
+                    className="flex-1 px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSearch}
+                    disabled={searching || searchQuery.trim().length < 2}
+                    className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-600 text-white font-medium rounded-xl transition-colors"
+                  >
+                    {searching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="mb-6 max-h-64 overflow-y-auto space-y-2">
+                  {searchResults.map((team) => (
+                    <div
+                      key={team._id}
+                      className="p-4 bg-slate-700/30 border border-slate-600 rounded-xl"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Building2 className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-white truncate">{team.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {team.stats.playerCount} players · {team.stats.memberCount} members
+                          </p>
+                        </div>
+                        {team.isMember ? (
+                          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-full">
+                            Member
+                          </span>
+                        ) : team.hasPendingRequest ? (
+                          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Pending
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleRequestToJoin(team, 'search')}
+                            disabled={loading}
+                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            Request to Join
+                          </button>
+                        )}
+                      </div>
+                      {team.description && (
+                        <p className="mt-2 text-xs text-slate-400 line-clamp-2">{team.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => { setStep('join-options'); setSearchResults([]); setSearchQuery(''); setError(null); }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                Back
+              </button>
+            </div>
+          )}
+
+          {/* Step: CricHeroes Lookup */}
+          {step === 'join-cricheroes' && (
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Find via CricHeroes
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Enter your team's CricHeroes ID to find them
+                </p>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {/* CricHeroes ID Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  CricHeroes Team ID
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cricHeroesId}
+                    onChange={(e) => setCricHeroesId(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCricHeroesLookup()}
+                    placeholder="e.g., 123456"
+                    className="flex-1 px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleCricHeroesLookup}
+                    disabled={loading || !cricHeroesId.trim()}
+                    className="px-6 py-3 bg-purple-500 hover:bg-purple-600 disabled:bg-slate-600 text-white font-medium rounded-xl transition-colors"
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Help link */}
+              <button
+                onClick={() => setShowCricHeroesGuide(true)}
+                className="mb-6 flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300"
+              >
+                <HelpCircle className="w-4 h-4" />
+                How do I find my CricHeroes Team ID?
+              </button>
+
+              {/* Found Team */}
+              {foundTeam && (
+                <div className="mb-6 p-4 bg-slate-700/30 border border-purple-500/30 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-white">{foundTeam.name}</p>
+                      <p className="text-sm text-slate-400">
+                        {foundTeam.stats.playerCount} players · {foundTeam.stats.memberCount} members
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {foundTeam.isMember ? (
+                    <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400 text-sm flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      You're already a member of this team
+                    </div>
+                  ) : foundTeam.hasPendingRequest ? (
+                    <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400 text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      You have a pending request for this team
+                    </div>
+                  ) : (
+                    <>
+                      <textarea
+                        value={requestMessage}
+                        onChange={(e) => setRequestMessage(e.target.value)}
+                        placeholder="Optional: Add a message for the team admin..."
+                        rows={2}
+                        className="w-full px-3 py-2 mb-3 bg-slate-600/50 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                      />
+                      <button
+                        onClick={() => handleRequestToJoin(foundTeam, 'cricheroes_id')}
+                        disabled={loading}
+                        className="w-full px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                        Request to Join
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() => { setStep('join-options'); setFoundTeam(null); setCricHeroesId(''); setError(null); }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                Back
+              </button>
+            </div>
+          )}
+
+          {/* Step: Request Sent Success */}
+          {step === 'request-sent' && (
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Check className="w-10 h-10 text-white" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-3">
+                Request Sent!
+              </h2>
+              <p className="text-slate-400 mb-8 max-w-md mx-auto">
+                {successMessage || 'Your request has been sent to the team admins. They will review and approve your request.'}
+              </p>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6 text-left">
+                <p className="text-sm text-blue-300 font-medium mb-1">What happens next?</p>
+                <ul className="text-xs text-blue-400/80 space-y-1">
+                  <li>• Team admins will review your request</li>
+                  <li>• You'll be notified when you're approved</li>
+                  <li>• Once approved, you can access the team dashboard</li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => setStep('choice')}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors"
+              >
+                Back to Options
+              </button>
+            </div>
+          )}
+
+          {/* CricHeroes Guide Modal */}
+          {showCricHeroesGuide && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCricHeroesGuide(false)}>
+              <div className="bg-slate-800 border border-white/10 rounded-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">Find Your CricHeroes Team ID</h3>
+                  <button onClick={() => setShowCricHeroesGuide(false)} className="text-slate-400 hover:text-white">
+                    ×
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-purple-400 font-bold text-sm">1</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">Open CricHeroes app</p>
+                      <p className="text-xs text-slate-400">Launch the CricHeroes app on your phone</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-purple-400 font-bold text-sm">2</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">Go to your team page</p>
+                      <p className="text-xs text-slate-400">Navigate to your team's profile</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-purple-400 font-bold text-sm">3</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">Tap "Share Team"</p>
+                      <p className="text-xs text-slate-400">Or look in team settings/info</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-purple-400 font-bold text-sm">4</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">Copy the Team ID from the URL</p>
+                      <p className="text-xs text-slate-400">
+                        The URL will be like: cricheroes.com/team/<span className="text-purple-400 font-mono">123456</span>
+                        <br />
+                        The number at the end is your Team ID
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
                 <button
-                  onClick={() => setStep('choice')}
-                  className="flex items-center justify-center gap-2 px-6 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
+                  onClick={() => setShowCricHeroesGuide(false)}
+                  className="mt-6 w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
                 >
-                  <ChevronLeft className="w-5 h-5" />
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep('join-code')}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium rounded-xl transition-all"
-                >
-                  I Have an Invite
-                  <ChevronRight className="w-5 h-5" />
+                  Got it
                 </button>
               </div>
             </div>
@@ -479,7 +885,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => inviteCode ? (onCancel ? onCancel() : null) : setStep('join-info')}
+                  onClick={() => inviteCode ? (onCancel ? onCancel() : null) : setStep('join-options')}
                   disabled={loading}
                   className="flex items-center justify-center gap-2 px-6 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
                 >
