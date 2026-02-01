@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
@@ -74,7 +74,6 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { hasOrganization, loading } = useOrganization();
-  const navigate = useNavigate();
 
   if (loading) {
     return <LoadingSpinner />;
