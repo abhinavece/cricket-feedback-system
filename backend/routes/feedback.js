@@ -17,6 +17,8 @@ const FeedbackLink = require('../models/FeedbackLink');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
 const { auth, requireEditor, requireAdmin } = require('../middleware/auth');
+const { resolveTenant, requireOrgAdmin, requireOrgEditor } = require('../middleware/tenantResolver.js');
+const { tenantQuery, tenantCreate } = require('../utils/tenantQuery.js');
 const feedbackService = require('../services/feedbackService');
 
 // Use unified feedback service for redaction
@@ -27,7 +29,7 @@ const { redactFeedbackItem, redactFeedbackList } = feedbackService;
  * Submit new general feedback (NOT match-specific)
  * 
  * @route POST /api/feedback
- * @access Public (no auth required for general feedback)
+ * @access Private (requires authentication for tenant context)
  * @param {Object} req.body - Feedback data
  * @param {string} req.body.playerName - Player name
  * @param {string} req.body.matchDate - Match date (ISO format)
@@ -42,7 +44,7 @@ const { redactFeedbackItem, redactFeedbackList } = feedbackService;
  * @returns {Object} 400 - Validation error
  * @returns {Object} 500 - Server error
  */
-router.post('/', async (req, res) => {
+router.post('/', auth, resolveTenant, async (req, res) => {
   try {
     const {
       playerName,
@@ -93,7 +95,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const feedback = new Feedback({
+    const feedback = new Feedback(tenantCreate(req, {
       playerName,
       matchDate: new Date(matchDate),
       batting: batting ?? null,
@@ -110,7 +112,7 @@ router.post('/', async (req, res) => {
       additionalComments: additionalComments || '',
       groundRating: groundRating || null,
       otherIssueText: otherIssueText || '',
-    });
+    }));
 
     const savedFeedback = await feedback.save();
     res.status(201).json(savedFeedback);
@@ -128,18 +130,18 @@ router.post('/', async (req, res) => {
  * Get aggregated feedback statistics (non-deleted only)
  * 
  * @route GET /api/feedback/stats
- * @access Public (no auth required)
+ * @access Private (requires authentication)
  * @returns {Object} 200 - Statistics object with averages and issue counts
  * @returns {Object} 500 - Server error
  * 
  * @note Must be defined BEFORE the main GET / route to avoid route matching issues
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', auth, resolveTenant, async (req, res) => {
   try {
     // Aggregate stats with proper handling of null ratings
     // N/A ratings (null) are excluded from average calculations
     const stats = await Feedback.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: tenantQuery(req, { isDeleted: false }) },
       {
         $group: {
           _id: null,
@@ -238,14 +240,14 @@ router.get('/stats', async (req, res) => {
  * @returns {Object} 401 - Unauthorized
  * @returns {Object} 500 - Server error
  */
-router.get('/summary', auth, async (req, res) => {
+router.get('/summary', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
     // Select only essential fields for list view - exclude feedbackText and additionalComments
-    const feedback = await Feedback.find({ isDeleted: false })
+    const feedback = await Feedback.find(tenantQuery(req, { isDeleted: false }))
       .select('_id playerName matchDate batting bowling fielding teamSpirit issues createdAt feedbackType matchId feedbackLinkId')
       .populate('matchId', 'opponent date time ground slot')
       .sort({ createdAt: -1 })
@@ -253,7 +255,7 @@ router.get('/summary', auth, async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .lean(); // Use lean() for faster query - returns plain JS objects
 
-    const total = await Feedback.countDocuments({ isDeleted: false });
+    const total = await Feedback.countDocuments(tenantQuery(req, { isDeleted: false }));
     const hasMore = (pageNum * limitNum) < total;
 
     // Redact playerName for viewer role
@@ -279,14 +281,14 @@ router.get('/summary', auth, async (req, res) => {
 });
 
 // GET /api/feedback/trash - Get deleted feedback with pagination (must come before /:id route)
-router.get('/trash', auth, async (req, res) => {
+router.get('/trash', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     
     // Exclude large text fields for list view - use /:id for full details
-    const deletedFeedback = await Feedback.find({ isDeleted: true })
+    const deletedFeedback = await Feedback.find(tenantQuery(req, { isDeleted: true }))
       .select('_id playerName matchDate batting bowling fielding teamSpirit issues deletedAt deletedBy createdAt feedbackType matchId feedbackLinkId')
       .populate('matchId', 'opponent date time ground slot')
       .sort({ deletedAt: -1 })
@@ -294,7 +296,7 @@ router.get('/trash', auth, async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .lean();
     
-    const total = await Feedback.countDocuments({ isDeleted: true });
+    const total = await Feedback.countDocuments(tenantQuery(req, { isDeleted: true }));
     const hasMore = (pageNum * limitNum) < total;
 
     // Redact playerName for viewer role
@@ -316,9 +318,9 @@ router.get('/trash', auth, async (req, res) => {
 });
 
 // GET /api/feedback/:id - Get single feedback with full details
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, resolveTenant, async (req, res) => {
   try {
-    const feedback = await Feedback.findById(req.params.id).lean();
+    const feedback = await Feedback.findOne(tenantQuery(req, { _id: req.params.id })).lean();
 
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
@@ -339,20 +341,20 @@ router.get('/:id', auth, async (req, res) => {
 
 // GET /api/feedback - Get all feedback submissions with pagination (non-deleted only)
 // Full data including feedbackText and additionalComments - use for detail view
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
-    const feedback = await Feedback.find({ isDeleted: false })
+    const feedback = await Feedback.find(tenantQuery(req, { isDeleted: false }))
       .populate('matchId', 'opponent date time ground slot')
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
       .lean(); // Use lean() for faster query
 
-    const total = await Feedback.countDocuments({ isDeleted: false });
+    const total = await Feedback.countDocuments(tenantQuery(req, { isDeleted: false }));
     const hasMore = (pageNum * limitNum) < total;
 
     // Redact playerName for viewer role
@@ -377,12 +379,12 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Soft delete feedback (requires authentication)
-router.delete('/:id', auth, requireEditor, async (req, res) => {
+router.delete('/:id', auth, resolveTenant, requireOrgEditor, async (req, res) => {
   try {
     const { id } = req.params;
     const { deletedBy } = req.body; // Optional admin identifier
 
-    const feedback = await Feedback.findById(id);
+    const feedback = await Feedback.findOne(tenantQuery(req, { _id: id }));
     
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
@@ -410,11 +412,11 @@ router.delete('/:id', auth, requireEditor, async (req, res) => {
 });
 
 // Restore feedback from trash (requires authentication)
-router.post('/:id/restore', auth, requireEditor, async (req, res) => {
+router.post('/:id/restore', auth, resolveTenant, requireOrgEditor, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const feedback = await Feedback.findById(id);
+    const feedback = await Feedback.findOne(tenantQuery(req, { _id: id }));
     
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
@@ -442,11 +444,11 @@ router.post('/:id/restore', auth, requireEditor, async (req, res) => {
 });
 
 // Permanently delete feedback (requires authentication)
-router.delete('/:id/permanent', auth, requireEditor, async (req, res) => {
+router.delete('/:id/permanent', auth, resolveTenant, requireOrgEditor, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const feedback = await Feedback.findById(id);
+    const feedback = await Feedback.findOne(tenantQuery(req, { _id: id }));
 
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
@@ -456,7 +458,7 @@ router.delete('/:id/permanent', auth, requireEditor, async (req, res) => {
       return res.status(400).json({ error: 'Feedback must be in trash before permanent deletion' });
     }
 
-    await Feedback.findByIdAndDelete(id);
+    await Feedback.deleteOne(tenantQuery(req, { _id: id }));
 
     res.json({
       message: 'Feedback permanently deleted',
@@ -473,7 +475,7 @@ router.delete('/:id/permanent', auth, requireEditor, async (req, res) => {
 // ============================================================================
 
 // POST /api/feedback/link/generate - Generate a feedback link for a match (Admin only)
-router.post('/link/generate', auth, requireAdmin, async (req, res) => {
+router.post('/link/generate', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { matchId } = req.body;
 
@@ -481,17 +483,17 @@ router.post('/link/generate', auth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'matchId is required' });
     }
 
-    // Validate match exists
-    const match = await Match.findById(matchId);
+    // Validate match exists (with tenant filtering)
+    const match = await Match.findOne(tenantQuery(req, { _id: matchId }));
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
 
-    // Check for existing active link for this match
-    let feedbackLink = await FeedbackLink.findOne({
+    // Check for existing active link for this match (with tenant filtering)
+    let feedbackLink = await FeedbackLink.findOne(tenantQuery(req, {
       matchId: matchId,
       isActive: true
-    });
+    }));
 
     if (feedbackLink) {
       // Reuse existing active link
@@ -518,13 +520,13 @@ router.post('/link/generate', auth, requireAdmin, async (req, res) => {
     const matchDate = new Date(match.date);
     const expiresAt = new Date(matchDate.getTime() + (7 * 24 * 60 * 60 * 1000));
 
-    // Create new feedback link
-    feedbackLink = new FeedbackLink({
+    // Create new feedback link (with tenant context)
+    feedbackLink = new FeedbackLink(tenantCreate(req, {
       token,
       matchId: matchId,
       expiresAt,
       createdBy: req.user.id
-    });
+    }));
 
     await feedbackLink.save();
 
@@ -670,16 +672,22 @@ router.post('/link/:token/submit', async (req, res) => {
     const match = feedbackLink.matchId;
 
     // Try to link playerName to Player model (case-insensitive search)
+    // Filter by organization if the feedback link has one
     let playerId = null;
-    const player = await Player.findOne({
+    const playerQuery = {
       name: { $regex: new RegExp(`^${playerName.trim()}$`, 'i') }
-    });
+    };
+    if (feedbackLink.organizationId) {
+      playerQuery.organizationId = feedbackLink.organizationId;
+    }
+    const player = await Player.findOne(playerQuery);
     if (player) {
       playerId = player._id;
     }
 
     // Create feedback with match binding
-    const feedback = new Feedback({
+    // Inherit organization from the feedback link for multi-tenant support
+    const feedbackData = {
       playerName: playerName.trim(),
       matchDate: match.date,
       batting: batting ?? null,
@@ -701,7 +709,14 @@ router.post('/link/:token/submit', async (req, res) => {
       matchId: match._id,
       feedbackLinkId: feedbackLink._id,
       playerId
-    });
+    };
+    
+    // Inherit tenant context from the feedback link
+    if (feedbackLink.organizationId) {
+      feedbackData.organizationId = feedbackLink.organizationId;
+    }
+    
+    const feedback = new Feedback(feedbackData);
 
     await feedback.save();
 
@@ -724,11 +739,11 @@ router.post('/link/:token/submit', async (req, res) => {
 });
 
 // GET /api/feedback/link/:matchId/links - Get all feedback links for a match (Admin only)
-router.get('/link/:matchId/links', auth, requireAdmin, async (req, res) => {
+router.get('/link/:matchId/links', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { matchId } = req.params;
 
-    const links = await FeedbackLink.find({ matchId })
+    const links = await FeedbackLink.find(tenantQuery(req, { matchId }))
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 })
       .lean();
@@ -747,11 +762,11 @@ router.get('/link/:matchId/links', auth, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/feedback/link/:token - Deactivate a feedback link (Admin only)
-router.delete('/link/:token', auth, requireAdmin, async (req, res) => {
+router.delete('/link/:token', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { token } = req.params;
 
-    const feedbackLink = await FeedbackLink.findOne({ token });
+    const feedbackLink = await FeedbackLink.findOne(tenantQuery(req, { token }));
 
     if (!feedbackLink) {
       return res.status(404).json({ error: 'Feedback link not found' });

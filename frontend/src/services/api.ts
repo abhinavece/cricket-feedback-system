@@ -1338,4 +1338,170 @@ export const getMyGroundReviews = async (params?: {
   return response.data;
 };
 
+// ===== Organization APIs =====
+
+export interface Organization {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo?: string;
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  limits: {
+    maxPlayers: number;
+    maxMatches: number;
+    maxAdmins: number;
+    maxEditors: number;
+  };
+  settings: {
+    defaultTimeSlot: string;
+    defaultGround?: string;
+    feedbackEnabled: boolean;
+    paymentTrackingEnabled: boolean;
+    availabilityTrackingEnabled: boolean;
+    timezone: string;
+  };
+  stats: {
+    playerCount: number;
+    matchCount: number;
+    memberCount: number;
+  };
+  whatsapp: {
+    enabled: boolean;
+    connectionStatus: 'pending' | 'connected' | 'disconnected' | 'error';
+    displayPhoneNumber?: string;
+  };
+  createdAt: string;
+  userRole?: 'owner' | 'admin' | 'editor' | 'viewer';
+}
+
+export interface OrganizationMember {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  playerId?: string;
+  joinedAt: string;
+}
+
+// Get list of user's organizations
+export const getOrganizations = async (): Promise<{
+  success: boolean;
+  organizations: Organization[];
+  activeOrganizationId?: string;
+}> => {
+  const response = await api.get('/organizations');
+  return response.data;
+};
+
+// Get current active organization
+export const getCurrentOrganization = async (): Promise<{
+  success: boolean;
+  organization: Organization;
+  userRole: string;
+}> => {
+  const response = await api.get('/organizations/current');
+  return response.data;
+};
+
+// Create a new organization
+export const createOrganization = async (data: {
+  name: string;
+  description?: string;
+}): Promise<{
+  success: boolean;
+  organization: Organization;
+  message: string;
+}> => {
+  const response = await api.post('/organizations', data);
+  return response.data;
+};
+
+// Update current organization
+export const updateOrganization = async (data: {
+  name?: string;
+  description?: string;
+  settings?: Partial<Organization['settings']>;
+}): Promise<{
+  success: boolean;
+  organization: Organization;
+  message: string;
+}> => {
+  const response = await api.put('/organizations/current', data);
+  return response.data;
+};
+
+// Switch active organization
+export const switchOrganization = async (organizationId: string): Promise<{
+  success: boolean;
+  message: string;
+  organization: { _id: string; name: string; slug: string };
+  userRole: string;
+}> => {
+  const response = await api.post('/organizations/switch', { organizationId });
+  return response.data;
+};
+
+// Get organization members
+export const getOrganizationMembers = async (): Promise<{
+  success: boolean;
+  members: OrganizationMember[];
+  count: number;
+}> => {
+  const response = await api.get('/organizations/members');
+  return response.data;
+};
+
+// Invite a member to organization
+export const inviteOrganizationMember = async (data: {
+  email: string;
+  role?: 'viewer' | 'editor' | 'admin';
+}): Promise<{
+  success: boolean;
+  member?: OrganizationMember;
+  message: string;
+}> => {
+  const response = await api.post('/organizations/members/invite', data);
+  return response.data;
+};
+
+// Update member role
+export const updateMemberRole = async (userId: string, role: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.put(`/organizations/members/${userId}/role`, { role });
+  return response.data;
+};
+
+// Remove member from organization
+export const removeMember = async (userId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/organizations/members/${userId}`);
+  return response.data;
+};
+
+// Leave organization
+export const leaveOrganization = async (): Promise<{
+  success: boolean;
+  message: string;
+  newActiveOrganizationId?: string;
+}> => {
+  const response = await api.post('/organizations/leave');
+  return response.data;
+};
+
+// Delete organization (owner only)
+export const deleteOrganization = async (): Promise<{
+  success: boolean;
+  message: string;
+  newActiveOrganizationId?: string;
+}> => {
+  const response = await api.delete('/organizations/current');
+  return response.data;
+};
+
 export default api;

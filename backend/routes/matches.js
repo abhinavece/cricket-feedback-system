@@ -5,10 +5,12 @@ const Player = require('../models/Player');
 const Feedback = require('../models/Feedback');
 const FeedbackLink = require('../models/FeedbackLink');
 const { auth, requireAdmin } = require('../middleware/auth');
+const { resolveTenant, requireOrgAdmin, requireOrgEditor } = require('../middleware/tenantResolver.js');
+const { tenantQuery, tenantCreate } = require('../utils/tenantQuery.js');
 const feedbackService = require('../services/feedbackService');
 
 // Get matches summary (lightweight, for listing view)
-router.get('/summary', auth, async (req, res) => {
+router.get('/summary', auth, resolveTenant, async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
@@ -20,7 +22,7 @@ router.get('/summary', auth, async (req, res) => {
     }
     
     // Fetch matches without populating squad.player (saves ~80% payload)
-    const matches = await Match.find(query)
+    const matches = await Match.find(tenantQuery(req, query))
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1, date: -1 })
       .limit(limitNum)
@@ -52,7 +54,7 @@ router.get('/summary', auth, async (req, res) => {
       };
     });
     
-    const total = await Match.countDocuments(query);
+    const total = await Match.countDocuments(tenantQuery(req, query));
     const hasMore = (pageNum * limitNum) < total;
     
     res.json({
@@ -70,7 +72,7 @@ router.get('/summary', auth, async (req, res) => {
 });
 
 // Get all matches (optimized - squad only included when explicitly requested)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, resolveTenant, async (req, res) => {
   try {
     const { status, page = 1, limit = 10, includeSquad = 'false' } = req.query;
     const pageNum = parseInt(page);
@@ -82,7 +84,7 @@ router.get('/', auth, async (req, res) => {
       query.status = status;
     }
     
-    let matchQuery = Match.find(query)
+    let matchQuery = Match.find(tenantQuery(req, query))
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1, date: -1 })
       .limit(limitNum)
@@ -118,7 +120,7 @@ router.get('/', auth, async (req, res) => {
       });
     }
     
-    const total = await Match.countDocuments(query);
+    const total = await Match.countDocuments(tenantQuery(req, query));
     const hasMore = (pageNum * limitNum) < total;
     
     res.json({
@@ -136,9 +138,9 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get single match
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, resolveTenant, async (req, res) => {
   try {
-    const match = await Match.findById(req.params.id)
+    const match = await Match.findOne(tenantQuery(req, { _id: req.params.id }))
       .populate('squad.player', 'name phone role team')
       .populate('createdBy', 'name email');
     
@@ -153,7 +155,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Create new match
-router.post('/', auth, requireAdmin, async (req, res) => {
+router.post('/', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { date, slot, ground, locationLink, time, opponent, cricHeroesMatchId, notes, matchType, status } = req.body;
 
@@ -164,8 +166,8 @@ router.post('/', auth, requireAdmin, async (req, res) => {
       });
     }
     
-    // Generate match ID - find max existing matchId to avoid duplicates
-    const lastMatch = await Match.findOne({ matchId: { $regex: /^MATCH-\d+$/ } })
+    // Generate match ID - find max existing matchId within org to avoid duplicates
+    const lastMatch = await Match.findOne(tenantQuery(req, { matchId: { $regex: /^MATCH-\d+$/ } }))
       .sort({ matchId: -1 })
       .select('matchId')
       .lean();
@@ -177,8 +179,8 @@ router.post('/', auth, requireAdmin, async (req, res) => {
     }
     const matchId = `MATCH-${String(nextNum).padStart(4, '0')}`;
     
-    // Create match
-    const match = new Match({
+    // Create match with tenant context
+    const match = new Match(tenantCreate(req, {
       matchId,
       date,
       slot,
@@ -191,12 +193,12 @@ router.post('/', auth, requireAdmin, async (req, res) => {
       matchType: matchType || 'practice',
       status: status || 'draft',
       createdBy: req.user.id
-    });
+    }));
     
     await match.save();
     
-    // Populate squad with all active players initially
-    const activePlayers = await Player.find({ isActive: true });
+    // Populate squad with all active players within the org
+    const activePlayers = await Player.find(tenantQuery(req, { isActive: true }));
     match.squad = activePlayers.map(player => ({
       player: player._id,
       response: 'pending',
@@ -206,7 +208,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
     
     await match.save();
     
-    const populatedMatch = await Match.findById(match._id)
+    const populatedMatch = await Match.findOne(tenantQuery(req, { _id: match._id }))
       .populate('squad.player', 'name phone role team')
       .populate('createdBy', 'name email');
     
@@ -217,11 +219,11 @@ router.post('/', auth, requireAdmin, async (req, res) => {
 });
 
 // Update match
-router.put('/:id', auth, requireAdmin, async (req, res) => {
+router.put('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { date, time, slot, opponent, ground, locationLink, status, matchType, cricHeroesMatchId, notes } = req.body;
 
-    const match = await Match.findById(req.params.id);
+    const match = await Match.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
@@ -240,7 +242,7 @@ router.put('/:id', auth, requireAdmin, async (req, res) => {
     
     await match.save();
     
-    const updatedMatch = await Match.findById(match._id)
+    const updatedMatch = await Match.findOne(tenantQuery(req, { _id: match._id }))
       .populate('squad.player', 'name phone role team')
       .populate('createdBy', 'name email');
     
@@ -251,7 +253,7 @@ router.put('/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // Update squad response (optimized - returns only updated member, not entire match)
-router.put('/:id/squad/:playerId', auth, requireAdmin, async (req, res) => {
+router.put('/:id/squad/:playerId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { response, notes, returnFullMatch = false } = req.body;
 
@@ -259,7 +261,7 @@ router.put('/:id/squad/:playerId', auth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Invalid response' });
     }
     
-    const match = await Match.findById(req.params.id);
+    const match = await Match.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
@@ -279,7 +281,7 @@ router.put('/:id/squad/:playerId', auth, requireAdmin, async (req, res) => {
     // By default, return only the updated member (reduces payload by ~99%)
     // Set returnFullMatch=true in body to get full match data
     if (returnFullMatch) {
-      const updatedMatch = await Match.findById(match._id)
+      const updatedMatch = await Match.findOne(tenantQuery(req, { _id: match._id }))
         .populate('squad.player', 'name phone role team')
         .populate('createdBy', 'name email');
       return res.json(updatedMatch);
@@ -303,7 +305,7 @@ router.put('/:id/squad/:playerId', auth, requireAdmin, async (req, res) => {
 });
 
 // Bulk update squad responses
-router.put('/:id/squad/bulk', auth, requireAdmin, async (req, res) => {
+router.put('/:id/squad/bulk', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { responses } = req.body; // [{ playerId, response, notes }]
 
@@ -311,7 +313,7 @@ router.put('/:id/squad/bulk', auth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Responses must be an array' });
     }
     
-    const match = await Match.findById(req.params.id);
+    const match = await Match.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
@@ -330,7 +332,7 @@ router.put('/:id/squad/bulk', auth, requireAdmin, async (req, res) => {
     
     await match.save();
     
-    const updatedMatch = await Match.findById(match._id)
+    const updatedMatch = await Match.findOne(tenantQuery(req, { _id: match._id }))
       .populate('squad.player', 'name phone role team')
       .populate('createdBy', 'name email');
     
@@ -341,14 +343,14 @@ router.put('/:id/squad/bulk', auth, requireAdmin, async (req, res) => {
 });
 
 // Delete match
-router.delete('/:id', auth, requireAdmin, async (req, res) => {
+router.delete('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
-    const match = await Match.findById(req.params.id);
+    const match = await Match.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
     
-    await Match.findByIdAndDelete(req.params.id);
+    await Match.deleteOne(tenantQuery(req, { _id: req.params.id }));
     res.json({ message: 'Match deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -356,9 +358,9 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // Get match statistics
-router.get('/:id/stats', auth, async (req, res) => {
+router.get('/:id/stats', auth, resolveTenant, async (req, res) => {
   try {
-    const match = await Match.findById(req.params.id);
+    const match = await Match.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
@@ -380,23 +382,23 @@ router.get('/:id/stats', auth, async (req, res) => {
 
 // GET /api/matches/:id/feedback - Get match feedback dashboard with stats
 // Uses unified feedbackService for role-based redaction
-router.get('/:id/feedback', auth, async (req, res) => {
+router.get('/:id/feedback', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const matchId = req.params.id;
     const userRole = req.user.role;
 
-    // Validate match exists
-    const match = await Match.findById(matchId).lean();
+    // Validate match exists within tenant
+    const match = await Match.findOne(tenantQuery(req, { _id: matchId })).lean();
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
     }
 
-    // Get active feedback link for this match
-    const feedbackLink = await FeedbackLink.findOne({
+    // Get active feedback link for this match within tenant
+    const feedbackLink = await FeedbackLink.findOne(tenantQuery(req, {
       matchId: matchId,
       isActive: true
-    }).lean();
+    })).lean();
 
     // Use unified service for stats and feedback with role-based redaction
     const stats = await feedbackService.getMatchFeedbackStats(matchId);

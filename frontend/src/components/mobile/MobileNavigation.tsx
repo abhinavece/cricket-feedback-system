@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import GoogleAuth from '../GoogleAuth';
-import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User, Info } from 'lucide-react';
+import { Menu, X, Home, Settings, LogOut, LogIn, Monitor, User, Info, Building2 } from 'lucide-react';
 
 interface MobileNavigationProps {
   currentView: 'form' | 'admin';
@@ -31,6 +32,7 @@ function MobileNavigation({
 }: MobileNavigationProps) {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const { currentOrg } = useOrganization();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -67,8 +69,18 @@ function MobileNavigation({
                 </div>
               </div>
               <div className="flex flex-col leading-tight">
-                <span className="font-bold text-white text-sm">CricSmart</span>
-                <span className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">AI Cricket Platform</span>
+                {/* Show org name in admin view, otherwise show CricSmart */}
+                {user && currentView === 'admin' && currentOrg ? (
+                  <>
+                    <span className="font-bold text-white text-sm truncate max-w-[120px]">{currentOrg.name}</span>
+                    <span className="text-[9px] text-emerald-400 font-medium capitalize">{currentOrg.userRole}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold text-white text-sm">CricSmart</span>
+                    <span className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">AI Cricket Platform</span>
+                  </>
+                )}
               </div>
             </div>
           </button>

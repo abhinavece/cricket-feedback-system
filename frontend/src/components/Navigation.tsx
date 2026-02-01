@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import GoogleAuth from './GoogleAuth';
 import UserProfile from './UserProfile';
 import Notification from './Notification';
 import CricSmartLogo from './CricSmartLogo';
-import { Menu, X, Home, Settings, MessageSquare, Calendar, Wallet, Users, Smartphone } from 'lucide-react';
+import OrganizationSwitcher from './OrganizationSwitcher';
+import { Menu, X, Home, Settings, MessageSquare, Calendar, Wallet, Users, Smartphone, Building2 } from 'lucide-react';
 
 interface NavigationProps {
   currentView: 'form' | 'admin';
@@ -170,7 +172,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between w-full">
-            <div className="flex items-center">
+            <div className="flex items-center gap-6">
               <button 
                 onClick={() => handleViewChange('form')}
                 className="flex items-center hover:opacity-80 transition-opacity"
@@ -178,6 +180,13 @@ const Navigation: React.FC<NavigationProps> = ({
               >
                 <CricSmartLogo size="sm" showText={true} showTagline={true} showAIBadge={true} />
               </button>
+              
+              {/* Organization Switcher - Show when user is logged in and in admin view */}
+              {user && currentView === 'admin' && (
+                <div className="pl-6 border-l border-white/10">
+                  <OrganizationSwitcher />
+                </div>
+              )}
             </div>
             
             {/* Desktop Navigation */}

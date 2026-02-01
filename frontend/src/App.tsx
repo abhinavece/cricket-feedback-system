@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
 import { submitFeedback } from './services/api';
 import { isMobileDevice } from './hooks/useDevice';
 import { getDomainType, getAppUrl } from './utils/domain';
@@ -21,6 +22,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const TeamOnboarding = lazy(() => import('./components/TeamOnboarding'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -61,6 +63,34 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (!isAuthenticated) {
     // Redirect to login page, saving the attempted location
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+/**
+ * RequireOrganization component - shows onboarding if user has no organization
+ */
+const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { hasOrganization, loading } = useOrganization();
+  const navigate = useNavigate();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  // If user has no organization, show onboarding
+  if (!hasOrganization) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <TeamOnboarding 
+          onComplete={() => {
+            // Refresh the page to load new organization context
+            window.location.reload();
+          }}
+        />
+      </Suspense>
+    );
   }
 
   return <>{children}</>;
@@ -301,22 +331,31 @@ const AppRoutes: React.FC = () => (
     {/* Login page */}
     <Route path="/login" element={<LoginPage />} />
     
-    {/* Dashboard routes - all protected */}
-    <Route path="/feedback" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/messages" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/conversations" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/matches" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/payments" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/grounds" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/history" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/analytics" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/users" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
-    <Route path="/settings" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+    {/* Team onboarding route */}
+    <Route path="/onboarding" element={
+      <RequireAuth>
+        <TeamOnboarding onComplete={() => window.location.href = '/feedback'} />
+      </RequireAuth>
+    } />
+    
+    {/* Dashboard routes - all protected and require organization */}
+    <Route path="/feedback" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/messages" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/conversations" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/matches" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/payments" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/grounds" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/history" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/analytics" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/users" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/settings" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
     
     {/* Player profile - protected */}
     <Route path="/player/:playerId" element={
       <RequireAuth>
-        <PlayerProfilePage />
+        <RequireOrganization>
+          <PlayerProfilePage />
+        </RequireOrganization>
       </RequireAuth>
     } />
     
@@ -349,21 +388,28 @@ const LocalhostRoutes: React.FC = () => (
     {/* Login page */}
     <Route path="/login" element={<LoginPage />} />
     
-    {/* Dashboard routes at /app/* for localhost */}
+    {/* Team onboarding route */}
+    <Route path="/onboarding" element={
+      <RequireAuth>
+        <TeamOnboarding onComplete={() => window.location.href = '/app/feedback'} />
+      </RequireAuth>
+    } />
+    
+    {/* Dashboard routes at /app/* for localhost - require organization */}
     <Route path="/app" element={<Navigate to="/app/feedback" replace />} />
-    <Route path="/app/feedback" element={<DashboardLayout />} />
-    <Route path="/app/messages" element={<DashboardLayout />} />
-    <Route path="/app/conversations" element={<DashboardLayout />} />
-    <Route path="/app/matches" element={<DashboardLayout />} />
-    <Route path="/app/payments" element={<DashboardLayout />} />
-    <Route path="/app/grounds" element={<DashboardLayout />} />
-    <Route path="/app/history" element={<DashboardLayout />} />
-    <Route path="/app/analytics" element={<DashboardLayout />} />
-    <Route path="/app/users" element={<DashboardLayout />} />
-    <Route path="/app/settings" element={<DashboardLayout />} />
+    <Route path="/app/feedback" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/messages" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/conversations" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/matches" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/payments" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/grounds" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/history" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/analytics" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/users" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/settings" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     
     {/* Player profile */}
-    <Route path="/player/:playerId" element={<PlayerProfilePage />} />
+    <Route path="/player/:playerId" element={<RequireOrganization><PlayerProfilePage /></RequireOrganization>} />
     
     {/* Public share routes */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
@@ -413,9 +459,11 @@ function App() {
     <BrowserRouter>
       <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || 'your-google-client-id'}>
         <AuthProvider>
-          <Suspense fallback={<LoadingSpinner />}>
-            <DomainRouter />
-          </Suspense>
+          <OrganizationProvider>
+            <Suspense fallback={<LoadingSpinner />}>
+              <DomainRouter />
+            </Suspense>
+          </OrganizationProvider>
         </AuthProvider>
       </GoogleOAuthProvider>
     </BrowserRouter>
