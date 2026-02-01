@@ -4,6 +4,14 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
+# Build args for version info (baked into image)
+ARG APP_VERSION
+ARG BUILD_DATE
+
+# Set as environment variables
+ENV APP_VERSION=${APP_VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
+
 # Copy package files
 COPY package*.json ./
 

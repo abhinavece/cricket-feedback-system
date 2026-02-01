@@ -103,6 +103,8 @@ jobs:
           docker buildx build --platform linux/amd64 \
             --build-arg REACT_APP_API_URL=https://app.cricsmart.in/api \
             --build-arg REACT_APP_GOOGLE_CLIENT_ID=${{ steps.secrets.outputs.google_client_id }} \
+            --build-arg REACT_APP_VERSION=${{ steps.version.outputs.tag }} \
+            --build-arg REACT_APP_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
             -t ${{ env.REGISTRY }}/frontend:${{ steps.version.outputs.tag }} \
             -f frontend/Dockerfile.cloudrun \
             --push \
@@ -155,6 +157,8 @@ jobs:
       - name: Build and push backend
         run: |
           docker buildx build --platform linux/amd64 \
+            --build-arg APP_VERSION=${{ steps.version.outputs.tag }} \
+            --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
             -t ${{ env.REGISTRY }}/backend:${{ steps.version.outputs.tag }} \
             -f backend/Dockerfile \
             --push \
@@ -202,6 +206,8 @@ jobs:
       - name: Build and push AI service
         run: |
           docker buildx build --platform linux/amd64 \
+            --build-arg APP_VERSION=${{ steps.version.outputs.tag }} \
+            --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
             -t ${{ env.REGISTRY }}/ai-service:${{ steps.version.outputs.tag }} \
             -f ai-service/Dockerfile.prod \
             --push \

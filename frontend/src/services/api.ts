@@ -1338,4 +1338,38 @@ export const getMyGroundReviews = async (params?: {
   return response.data;
 };
 
+// ============================================================
+// Version Information
+// ============================================================
+
+export interface ServiceVersionInfo {
+  service: string;
+  version: string;
+  buildDate: string | null;
+  packageVersion?: string;
+  nodeVersion?: string;
+  environment?: string;
+}
+
+// Get backend version info
+export const getBackendVersion = async (): Promise<ServiceVersionInfo> => {
+  const response = await api.get('/version');
+  return response.data;
+};
+
+// Get AI service version info (via backend proxy)
+export const getAIServiceVersion = async (): Promise<ServiceVersionInfo> => {
+  const response = await api.get('/version/ai-service');
+  return response.data;
+};
+
+// Get frontend version info (from build-time env vars)
+export const getFrontendVersion = (): ServiceVersionInfo => {
+  return {
+    service: 'frontend',
+    version: process.env.REACT_APP_VERSION || '0.0.0',
+    buildDate: process.env.REACT_APP_BUILD_DATE || null,
+  };
+};
+
 export default api;

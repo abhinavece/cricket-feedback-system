@@ -38,7 +38,7 @@
     "eject": "react-scripts eject"
   },
   "devDependencies": {
-    "sharp": "^0.33.5"
+    "puppeteer": "^22.15.0"
   },
   "eslintConfig": {
     "extends": [
