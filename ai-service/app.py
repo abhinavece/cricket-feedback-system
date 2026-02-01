@@ -95,6 +95,22 @@ async def health_check():
     )
 
 
+@app.get("/version")
+async def version_info():
+    """
+    Version information endpoint.
+    
+    Returns deployment version and build date for monitoring.
+    """
+    return {
+        "service": "ai-service",
+        "version": os.environ.get("APP_VERSION", "1.0.0"),
+        "buildDate": os.environ.get("BUILD_DATE"),
+        "pythonVersion": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
+        "environment": os.environ.get("ENVIRONMENT", "development"),
+    }
+
+
 @app.get("/status", response_model=StatusResponse)
 async def service_status():
     """

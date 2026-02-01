@@ -109,6 +109,69 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+/**
+ * GET /api/version
+ * Returns version information for deployed services
+ * 
+ * @route GET /api/version
+ * @access Public
+ * @returns {Object} 200 - Version info for backend service
+ */
+app.get('/api/version', (req, res) => {
+  const packageJson = require('./package.json');
+  res.json({
+    service: 'backend',
+    version: process.env.APP_VERSION || packageJson.version,
+    buildDate: process.env.BUILD_DATE || null,
+    packageVersion: packageJson.version,
+    nodeVersion: process.version,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+/**
+ * GET /api/version/ai-service
+ * Fetches version information from the AI service
+ * 
+ * @route GET /api/version/ai-service
+ * @access Public
+ * @returns {Object} 200 - Version info for AI service
+ */
+app.get('/api/version/ai-service', async (req, res) => {
+  const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
+  
+  if (!AI_SERVICE_URL) {
+    return res.json({
+      service: 'ai-service',
+      version: 'N/A',
+      buildDate: null,
+      error: 'AI service URL not configured'
+    });
+  }
+
+  try {
+    const axios = require('axios');
+    const response = await axios.get(`${AI_SERVICE_URL}/version`, {
+      timeout: 5000,
+      headers: {
+        // For Cloud Run internal service-to-service auth
+        ...(process.env.AI_SERVICE_ID_TOKEN && {
+          'Authorization': `Bearer ${process.env.AI_SERVICE_ID_TOKEN}`
+        })
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching AI service version:', error.message);
+    res.json({
+      service: 'ai-service',
+      version: 'N/A',
+      buildDate: null,
+      error: 'Failed to fetch AI service version'
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

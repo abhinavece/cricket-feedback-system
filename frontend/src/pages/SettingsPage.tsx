@@ -19,6 +19,7 @@ import { getProfile, updateProfile, createProfile, ProfileData, ProfileCreateDat
 import { useAuth } from '../contexts/AuthContext';
 import DeveloperSettings from '../components/DeveloperSettings';
 import DateOfBirthPicker from '../components/DateOfBirthPicker';
+import DeploymentInfo from '../components/DeploymentInfo';
 
 const BATTING_STYLES = [
   { value: '', label: 'Not specified' },
@@ -581,6 +582,11 @@ const SettingsPage: React.FC = () => {
           <DeveloperSettings isMasterDeveloper={isMasterDeveloper} />
         </div>
       )}
+
+      {/* Deployment Info - Always visible at the bottom */}
+      <div className="mt-8">
+        <DeploymentInfo />
+      </div>
     </div>
   );
 };
