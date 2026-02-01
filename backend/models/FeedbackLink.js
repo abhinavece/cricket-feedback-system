@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const feedbackLinkSchema = new mongoose.Schema({
+  // Multi-tenant isolation - required for all tenant-scoped data
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
   token: {
     type: String,
     required: true,
@@ -68,7 +75,9 @@ feedbackLinkSchema.methods.recordSubmission = function(playerName) {
   }
 };
 
-// Compound index for finding active links by match
-feedbackLinkSchema.index({ matchId: 1, isActive: 1 });
+// Compound indexes for multi-tenant queries
+feedbackLinkSchema.index({ organizationId: 1, matchId: 1, isActive: 1 });
+feedbackLinkSchema.index({ organizationId: 1, token: 1 });
+feedbackLinkSchema.index({ organizationId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('FeedbackLink', feedbackLinkSchema);

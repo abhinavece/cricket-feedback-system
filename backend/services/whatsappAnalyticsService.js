@@ -16,51 +16,72 @@ const SystemSettings = require('../models/SystemSettings');
 /**
  * Extend or create a session when a user sends a message
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @param {ObjectId} messageId - The message that triggered this
  * @param {ObjectId} playerId - Optional player ID
  * @param {string} playerName - Optional player name
  */
-async function extendSession(phone, messageId, playerId = null, playerName = null) {
+async function extendSession(phone, organizationId, messageId, playerId = null, playerName = null) {
+  if (!organizationId) {
+    console.warn('extendSession called without organizationId - session tracking skipped');
+    return null;
+  }
+  
   const settings = await SystemSettings.getSettings();
   if (!settings.whatsapp.sessionTrackingEnabled) {
     return null;
   }
-  return WhatsAppSession.extendSession(phone, messageId, playerId, playerName);
+  return WhatsAppSession.extendSession(phone, organizationId, messageId, playerId, playerName);
 }
 
 /**
  * Get session status for a phone number
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @returns {Object} Session status with isActive, expiresAt, remainingMinutes, isFree
  */
-async function getSessionStatus(phone) {
-  return WhatsAppSession.getSessionStatus(phone);
+async function getSessionStatus(phone, organizationId) {
+  if (!organizationId) {
+    console.warn('getSessionStatus called without organizationId');
+    return { isActive: false, hasSession: false, noOrganization: true };
+  }
+  return WhatsAppSession.getSessionStatus(phone, organizationId);
 }
 
 /**
  * Get all active sessions with pagination
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @param {Object} options - Pagination options { page, limit }
  */
-async function getActiveSessions(options = {}) {
-  return WhatsAppSession.getActiveSessions(options);
+async function getActiveSessions(organizationId, options = {}) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for listing sessions');
+  }
+  return WhatsAppSession.getActiveSessions(organizationId, options);
 }
 
 /**
  * Check if a phone has an active session
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @returns {boolean}
  */
-async function hasActiveSession(phone) {
-  const status = await getSessionStatus(phone);
+async function hasActiveSession(phone, organizationId) {
+  const status = await getSessionStatus(phone, organizationId);
   return status.isActive;
 }
 
 /**
  * Increment business message count for a session
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  */
-async function incrementBusinessMessageCount(phone) {
-  return WhatsAppSession.incrementBusinessMessageCount(phone);
+async function incrementBusinessMessageCount(phone, organizationId) {
+  if (!organizationId) {
+    console.warn('incrementBusinessMessageCount called without organizationId - skipping');
+    return;
+  }
+  return WhatsAppSession.incrementBusinessMessageCount(phone, organizationId);
 }
 
 // ============================================================
@@ -70,35 +91,52 @@ async function incrementBusinessMessageCount(phone) {
 /**
  * Check if a template can be sent to a phone (respecting cooldown)
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @returns {Object} { canSend, lastSentAt, cooldownRemaining, totalSent }
  */
-async function checkTemplateRateLimit(phone) {
+async function checkTemplateRateLimit(phone, organizationId) {
+  if (!organizationId) {
+    console.warn('checkTemplateRateLimit called without organizationId - rate limiting skipped');
+    return { canSend: true, rateLimitingDisabled: true, noOrganization: true };
+  }
+  
   const settings = await SystemSettings.getSettings();
   if (!settings.whatsapp.rateLimitingEnabled) {
     return { canSend: true, rateLimitingDisabled: true };
   }
-  return TemplateRateLimit.checkRateLimit(phone, settings.whatsapp.templateCooldownHours);
+  return TemplateRateLimit.checkRateLimit(phone, organizationId, settings.whatsapp.templateCooldownHours);
 }
 
 /**
  * Record that a template was sent
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @param {string} templateName - Template name
  * @param {ObjectId} messageId - Message ID
  * @param {ObjectId} playerId - Optional player ID
  * @param {string} playerName - Optional player name
  */
-async function recordTemplateSent(phone, templateName, messageId, playerId = null, playerName = null) {
-  return TemplateRateLimit.recordTemplateSent(phone, templateName, messageId, playerId, playerName);
+async function recordTemplateSent(phone, organizationId, templateName, messageId, playerId = null, playerName = null) {
+  if (!organizationId) {
+    console.warn('recordTemplateSent called without organizationId - skipping record');
+    return null;
+  }
+  return TemplateRateLimit.recordTemplateSent(phone, organizationId, templateName, messageId, playerId, playerName);
 }
 
 /**
  * Get cooldown remaining for a phone
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  */
-async function getCooldownRemaining(phone) {
+async function getCooldownRemaining(phone, organizationId) {
+  if (!organizationId) {
+    console.warn('getCooldownRemaining called without organizationId');
+    return { cooldownRemainingMs: 0, canSendTemplate: true, noOrganization: true };
+  }
+  
   const settings = await SystemSettings.getSettings();
-  return TemplateRateLimit.getCooldownRemaining(phone, settings.whatsapp.templateCooldownHours);
+  return TemplateRateLimit.getCooldownRemaining(phone, organizationId, settings.whatsapp.templateCooldownHours);
 }
 
 // ============================================================
@@ -475,19 +513,21 @@ async function getFailedMessages(options = {}) {
  * Pre-flight check before sending a message
  * Returns all relevant information about session, rate limit, and cost
  * @param {string} phone - Phone number
+ * @param {ObjectId} organizationId - Organization ID for multi-tenant isolation
  * @param {boolean} isTemplate - Is this a template message?
  * @param {string} templateName - Template name (if applicable)
  * @param {string} templateCategory - Template category
  */
-async function preSendCheck(phone, isTemplate = false, templateName = null, templateCategory = 'utility') {
+async function preSendCheck(phone, organizationId, isTemplate = false, templateName = null, templateCategory = 'utility') {
   const [sessionStatus, rateLimit, costInfo] = await Promise.all([
-    getSessionStatus(phone),
-    isTemplate ? checkTemplateRateLimit(phone) : { canSend: true },
+    getSessionStatus(phone, organizationId),
+    isTemplate ? checkTemplateRateLimit(phone, organizationId) : { canSend: true },
     calculateMessageCost(phone, isTemplate, templateCategory)
   ]);
 
   return {
     phone,
+    organizationId,
     session: sessionStatus,
     rateLimit: isTemplate ? rateLimit : null,
     cost: costInfo,

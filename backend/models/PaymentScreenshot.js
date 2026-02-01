@@ -116,6 +116,13 @@ const aiAnalysisSchema = new mongoose.Schema({
 }, { _id: false });
 
 const paymentScreenshotSchema = new mongoose.Schema({
+  // Multi-tenant isolation - required for all tenant-scoped data
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
   // Player identification
   playerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -232,12 +239,12 @@ const paymentScreenshotSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Compound index for duplicate detection per player
-paymentScreenshotSchema.index({ playerPhone: 1, imageHash: 1 });
-
-// Index for querying screenshots by match
-paymentScreenshotSchema.index({ 'distributions.matchId': 1 });
-paymentScreenshotSchema.index({ 'distributions.paymentId': 1 });
+// Compound indexes for multi-tenant queries and duplicate detection
+paymentScreenshotSchema.index({ organizationId: 1, playerPhone: 1, imageHash: 1 });
+paymentScreenshotSchema.index({ organizationId: 1, playerPhone: 1, receivedAt: -1 });
+paymentScreenshotSchema.index({ organizationId: 1, status: 1 });
+paymentScreenshotSchema.index({ organizationId: 1, 'distributions.matchId': 1 });
+paymentScreenshotSchema.index({ organizationId: 1, 'distributions.paymentId': 1 });
 
 // Virtual for checking if fully distributed
 paymentScreenshotSchema.virtual('isFullyDistributed').get(function() {
@@ -245,18 +252,29 @@ paymentScreenshotSchema.virtual('isFullyDistributed').get(function() {
   return this.totalDistributed >= this.extractedAmount;
 });
 
-// Static method to find duplicate by image hash for a player
-paymentScreenshotSchema.statics.findDuplicate = async function(playerPhone, imageHash) {
+// Static method to find duplicate by image hash for a player within organization
+// organizationId is required for multi-tenant isolation
+paymentScreenshotSchema.statics.findDuplicate = async function(playerPhone, imageHash, organizationId) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for duplicate detection');
+  }
+  
   return this.findOne({
+    organizationId,
     playerPhone,
     imageHash,
     status: { $ne: 'duplicate' } // Don't match against other duplicates
   }).sort({ receivedAt: 1 }); // Get the original (earliest)
 };
 
-// Static method to get all screenshots for a player
-paymentScreenshotSchema.statics.getPlayerScreenshots = async function(playerPhone, options = {}) {
-  const query = { playerPhone };
+// Static method to get all screenshots for a player within organization
+// organizationId is required for multi-tenant isolation
+paymentScreenshotSchema.statics.getPlayerScreenshots = async function(playerPhone, organizationId, options = {}) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for listing player screenshots');
+  }
+  
+  const query = { organizationId, playerPhone };
   
   if (options.excludeDuplicates) {
     query.status = { $ne: 'duplicate' };
@@ -272,9 +290,15 @@ paymentScreenshotSchema.statics.getPlayerScreenshots = async function(playerPhon
     .limit(options.limit || 50);
 };
 
-// Static method to get screenshots for a specific match payment
-paymentScreenshotSchema.statics.getPaymentScreenshots = async function(paymentId, memberId, options = {}) {
+// Static method to get screenshots for a specific match payment within organization
+// organizationId is required for multi-tenant isolation
+paymentScreenshotSchema.statics.getPaymentScreenshots = async function(paymentId, organizationId, memberId, options = {}) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for listing payment screenshots');
+  }
+  
   const query = {
+    organizationId,
     'distributions.paymentId': paymentId
   };
 

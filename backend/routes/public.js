@@ -5,6 +5,8 @@ const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
 const Availability = require('../models/Availability');
 const { auth } = require('../middleware/auth');
+const { resolveTenant } = require('../middleware/tenantResolver');
+const { tenantQuery, tenantCreate } = require('../utils/tenantQuery');
 
 // GET /api/public/:token - Access shared resource (NO AUTH REQUIRED)
 router.get('/:token', async (req, res) => {
@@ -153,7 +155,7 @@ router.get('/:token', async (req, res) => {
 });
 
 // POST /api/public/generate - Generate a new public link (AUTH REQUIRED)
-router.post('/generate', auth, async (req, res) => {
+router.post('/generate', auth, resolveTenant, async (req, res) => {
   try {
     const { resourceType, resourceId, viewType, expiresInDays } = req.body;
     
@@ -171,12 +173,12 @@ router.post('/generate', auth, async (req, res) => {
       });
     }
     
-    // Verify the resource exists
+    // Verify the resource exists and belongs to this organization
     let resource;
     if (resourceType === 'match') {
-      resource = await Match.findById(resourceId);
+      resource = await Match.findOne(tenantQuery(req, { _id: resourceId }));
     } else if (resourceType === 'payment') {
-      resource = await MatchPayment.findById(resourceId);
+      resource = await MatchPayment.findOne(tenantQuery(req, { _id: resourceId }));
     }
     
     if (!resource) {
@@ -186,8 +188,8 @@ router.post('/generate', auth, async (req, res) => {
       });
     }
     
-    // Check if a valid link already exists for this resource
-    let existingLink = await PublicLink.findOne({
+    // Check if a valid link already exists for this resource in this organization
+    let existingLink = await PublicLink.findOne(tenantQuery(req, {
       resourceType,
       resourceId,
       viewType: viewType || 'full',
@@ -196,7 +198,7 @@ router.post('/generate', auth, async (req, res) => {
         { expiresAt: null },
         { expiresAt: { $gt: new Date() } }
       ]
-    });
+    }));
     
     if (existingLink) {
       // Return existing link - use origin only, strip any path
@@ -230,15 +232,15 @@ router.post('/generate', auth, async (req, res) => {
       expiresAt.setDate(expiresAt.getDate() + expiresInDays);
     }
     
-    // Create public link
-    const publicLink = new PublicLink({
+    // Create public link with organizationId
+    const publicLink = new PublicLink(tenantCreate(req, {
       token,
       resourceType,
       resourceId,
       viewType: viewType || 'full',
       createdBy: req.user._id,
       expiresAt
-    });
+    }));
     
     await publicLink.save();
     
@@ -271,11 +273,12 @@ router.post('/generate', auth, async (req, res) => {
 });
 
 // DELETE /api/public/:token - Deactivate a public link (AUTH REQUIRED)
-router.delete('/:token', auth, async (req, res) => {
+router.delete('/:token', auth, resolveTenant, async (req, res) => {
   try {
     const { token } = req.params;
     
-    const publicLink = await PublicLink.findOne({ token });
+    // Only allow deactivating links that belong to this organization
+    const publicLink = await PublicLink.findOne(tenantQuery(req, { token }));
     
     if (!publicLink) {
       return res.status(404).json({
@@ -302,15 +305,16 @@ router.delete('/:token', auth, async (req, res) => {
 });
 
 // GET /api/public/list/:resourceType/:resourceId - List all links for a resource (AUTH REQUIRED)
-router.get('/list/:resourceType/:resourceId', auth, async (req, res) => {
+router.get('/list/:resourceType/:resourceId', auth, resolveTenant, async (req, res) => {
   try {
     const { resourceType, resourceId } = req.params;
     
-    const links = await PublicLink.find({
+    // Only list links that belong to this organization
+    const links = await PublicLink.find(tenantQuery(req, {
       resourceType,
       resourceId,
       isActive: true
-    }).select('token viewType expiresAt accessCount createdAt lastAccessedAt');
+    })).select('token viewType expiresAt accessCount createdAt lastAccessedAt');
     
     // Use origin only, strip any path from FRONTEND_URL
     let baseUrl = process.env.FRONTEND_URL || 'https://app.cricsmart.in';

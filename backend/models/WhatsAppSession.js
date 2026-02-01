@@ -1,11 +1,17 @@
 const mongoose = require('mongoose');
 
 const whatsAppSessionSchema = new mongoose.Schema({
-  // Phone number (normalized format)
+  // Multi-tenant isolation - required for all tenant-scoped data
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  // Phone number (normalized format) - unique per organization
   phone: {
     type: String,
     required: true,
-    unique: true,
     index: true
   },
 
@@ -67,11 +73,16 @@ const whatsAppSessionSchema = new mongoose.Schema({
 });
 
 // Static method to extend or create a session
-whatsAppSessionSchema.statics.extendSession = async function(phone, messageId, playerId = null, playerName = null) {
+// organizationId is required for multi-tenant isolation
+whatsAppSessionSchema.statics.extendSession = async function(phone, organizationId, messageId, playerId = null, playerName = null) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for session management');
+  }
+  
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
 
-  const existingSession = await this.findOne({ phone });
+  const existingSession = await this.findOne({ phone, organizationId });
 
   if (existingSession) {
     // Extend existing session
@@ -85,8 +96,9 @@ whatsAppSessionSchema.statics.extendSession = async function(phone, messageId, p
     return existingSession;
   }
 
-  // Create new session
+  // Create new session with organizationId
   const session = await this.create({
+    organizationId,
     phone,
     playerId,
     playerName,
@@ -103,8 +115,22 @@ whatsAppSessionSchema.statics.extendSession = async function(phone, messageId, p
 };
 
 // Static method to check if a session is active
-whatsAppSessionSchema.statics.getSessionStatus = async function(phone) {
-  const session = await this.findOne({ phone });
+// organizationId is required for multi-tenant isolation
+whatsAppSessionSchema.statics.getSessionStatus = async function(phone, organizationId) {
+  if (!organizationId) {
+    // Return default inactive status if no organizationId
+    console.warn('getSessionStatus called without organizationId');
+    return {
+      isActive: false,
+      hasSession: false,
+      expiresAt: null,
+      remainingMinutes: 0,
+      isFree: false,
+      noOrganization: true
+    };
+  }
+  
+  const session = await this.findOne({ phone, organizationId });
   const now = new Date();
 
   if (!session) {
@@ -142,17 +168,22 @@ whatsAppSessionSchema.statics.getSessionStatus = async function(phone) {
 };
 
 // Static method to get all active sessions
-whatsAppSessionSchema.statics.getActiveSessions = async function(options = {}) {
+// organizationId is required for multi-tenant isolation
+whatsAppSessionSchema.statics.getActiveSessions = async function(organizationId, options = {}) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for listing sessions');
+  }
+  
   const { page = 1, limit = 20 } = options;
   const now = new Date();
 
-  // First, update all expired sessions
+  // First, update all expired sessions for this organization
   await this.updateMany(
-    { expiresAt: { $lte: now }, status: 'active' },
+    { organizationId, expiresAt: { $lte: now }, status: 'active' },
     { $set: { status: 'expired' } }
   );
 
-  const query = { expiresAt: { $gt: now } };
+  const query = { organizationId, expiresAt: { $gt: now } };
 
   const sessions = await this.find(query)
     .sort({ expiresAt: 1 })
@@ -178,11 +209,23 @@ whatsAppSessionSchema.statics.getActiveSessions = async function(options = {}) {
 };
 
 // Static method to increment business message count
-whatsAppSessionSchema.statics.incrementBusinessMessageCount = async function(phone) {
+// organizationId is required for multi-tenant isolation
+whatsAppSessionSchema.statics.incrementBusinessMessageCount = async function(phone, organizationId) {
+  if (!organizationId) {
+    console.warn('incrementBusinessMessageCount called without organizationId - skipping');
+    return;
+  }
+  
   await this.updateOne(
-    { phone },
+    { phone, organizationId },
     { $inc: { businessMessageCount: 1 } }
   );
 };
+
+// Compound indexes for multi-tenant queries
+whatsAppSessionSchema.index({ organizationId: 1, phone: 1 }, { unique: true });
+whatsAppSessionSchema.index({ organizationId: 1, expiresAt: 1 });
+whatsAppSessionSchema.index({ organizationId: 1, status: 1 });
+whatsAppSessionSchema.index({ organizationId: 1, playerId: 1 });
 
 module.exports = mongoose.model('WhatsAppSession', whatsAppSessionSchema);

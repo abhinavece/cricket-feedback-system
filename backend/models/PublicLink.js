@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const publicLinkSchema = new mongoose.Schema({
+  // Multi-tenant isolation - required for all tenant-scoped data
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
   token: {
     type: String,
     required: true,
@@ -75,9 +82,10 @@ publicLinkSchema.virtual('resourceModel').get(function() {
   return modelMap[this.resourceType];
 });
 
-// Index for efficient queries
-publicLinkSchema.index({ resourceType: 1, resourceId: 1 });
-publicLinkSchema.index({ createdBy: 1 });
+// Compound indexes for multi-tenant queries
+publicLinkSchema.index({ organizationId: 1, resourceType: 1, resourceId: 1 });
+publicLinkSchema.index({ organizationId: 1, createdBy: 1 });
+publicLinkSchema.index({ organizationId: 1, isActive: 1, expiresAt: 1 });
 publicLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const PublicLink = mongoose.model('PublicLink', publicLinkSchema);

@@ -1,11 +1,17 @@
 const mongoose = require('mongoose');
 
 const templateRateLimitSchema = new mongoose.Schema({
-  // Phone number (normalized format)
+  // Multi-tenant isolation - required for all tenant-scoped data
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  // Phone number (normalized format) - unique per organization
   phone: {
     type: String,
     required: true,
-    unique: true,
     index: true
   },
 
@@ -44,8 +50,13 @@ const templateRateLimitSchema = new mongoose.Schema({
 });
 
 // Static method to check if template can be sent (respecting cooldown)
-templateRateLimitSchema.statics.checkRateLimit = async function(phone, cooldownHours = 12) {
-  const record = await this.findOne({ phone });
+// organizationId is required for multi-tenant isolation
+templateRateLimitSchema.statics.checkRateLimit = async function(phone, organizationId, cooldownHours = 12) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for rate limit check');
+  }
+  
+  const record = await this.findOne({ phone, organizationId });
 
   if (!record) {
     return {
@@ -73,18 +84,24 @@ templateRateLimitSchema.statics.checkRateLimit = async function(phone, cooldownH
 };
 
 // Static method to record a template send
-templateRateLimitSchema.statics.recordTemplateSent = async function(phone, templateName, messageId, playerId = null, playerName = null) {
+// organizationId is required for multi-tenant isolation
+templateRateLimitSchema.statics.recordTemplateSent = async function(phone, organizationId, templateName, messageId, playerId = null, playerName = null) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for recording template send');
+  }
+  
   const now = new Date();
 
   const result = await this.findOneAndUpdate(
-    { phone },
+    { phone, organizationId },
     {
       $set: {
         lastTemplateSentAt: now,
         lastTemplateName: templateName,
         lastMessageId: messageId,
         playerId,
-        playerName
+        playerName,
+        organizationId  // Ensure organizationId is set on upsert
       },
       $inc: { totalTemplatesSent: 1 }
     },
@@ -99,8 +116,13 @@ templateRateLimitSchema.statics.recordTemplateSent = async function(phone, templ
 };
 
 // Static method to get cooldown remaining for a phone
-templateRateLimitSchema.statics.getCooldownRemaining = async function(phone, cooldownHours = 12) {
-  const check = await this.checkRateLimit(phone, cooldownHours);
+// organizationId is required for multi-tenant isolation
+templateRateLimitSchema.statics.getCooldownRemaining = async function(phone, organizationId, cooldownHours = 12) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for cooldown check');
+  }
+  
+  const check = await this.checkRateLimit(phone, organizationId, cooldownHours);
   return {
     phone,
     cooldownRemainingMs: check.cooldownRemainingMs || 0,
@@ -113,17 +135,22 @@ templateRateLimitSchema.statics.getCooldownRemaining = async function(phone, coo
 };
 
 // Static method to get all rate limit records with pagination
-templateRateLimitSchema.statics.getAllRecords = async function(options = {}) {
+// organizationId is required for multi-tenant isolation
+templateRateLimitSchema.statics.getAllRecords = async function(organizationId, options = {}) {
+  if (!organizationId) {
+    throw new Error('organizationId is required for listing records');
+  }
+  
   const { page = 1, limit = 20 } = options;
 
-  const records = await this.find()
+  const records = await this.find({ organizationId })
     .sort({ lastTemplateSentAt: -1 })
     .limit(limit)
     .skip((page - 1) * limit)
     .populate('playerId', 'name phone')
     .lean();
 
-  const total = await this.countDocuments();
+  const total = await this.countDocuments({ organizationId });
 
   return {
     records,
@@ -135,5 +162,10 @@ templateRateLimitSchema.statics.getAllRecords = async function(options = {}) {
     }
   };
 };
+
+// Compound indexes for multi-tenant queries
+templateRateLimitSchema.index({ organizationId: 1, phone: 1 }, { unique: true });
+templateRateLimitSchema.index({ organizationId: 1, lastTemplateSentAt: -1 });
+templateRateLimitSchema.index({ organizationId: 1, playerId: 1 });
 
 module.exports = mongoose.model('TemplateRateLimit', templateRateLimitSchema);

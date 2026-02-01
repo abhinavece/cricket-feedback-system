@@ -11,6 +11,7 @@ const Organization = require('../models/Organization');
 const sseManager = require('../utils/sseManager');
 const crypto = require('crypto');
 const whatsappAnalyticsService = require('../services/whatsappAnalyticsService');
+const messageService = require('../services/messageService');
 
 /**
  * Resolve WhatsApp configuration for a given phone_number_id
@@ -111,9 +112,18 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}, waConfig =
     throw err;
   }
 
-  // Log to Message collection
+  // Log to Message collection with proper organizationId resolution
   try {
+    // Resolve organizationId if not explicitly provided
+    const resolvedOrgId = organizationId || await messageService.resolveOrganizationId({
+      matchId: metadata.matchId,
+      paymentId: metadata.paymentId,
+      playerId: metadata.playerId,
+      phone: toPhone,
+    });
+    
     const savedMsg = await Message.create({
+      organizationId: resolvedOrgId, // Multi-tenant isolation
       from: phoneNumberId,
       to: toPhone,
       text: messageText,
@@ -131,12 +141,11 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}, waConfig =
       playerName: metadata.playerName || null,
       templateCategory: metadata.templateCategory || null,
       messageCost: metadata.messageCost || 0,
-      organizationId: organizationId, // Track which org sent this
     });
 
-    // Increment business message count in session
+    // Increment business message count in session with organizationId
     try {
-      await whatsappAnalyticsService.incrementBusinessMessageCount(toPhone);
+      await whatsappAnalyticsService.incrementBusinessMessageCount(toPhone, resolvedOrgId);
     } catch (sessionErr) {
       // Non-critical, don't fail the message send
     }
@@ -174,7 +183,16 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}, waConfig =
 async function logOutgoingMessage(toPhone, messageText, messageId, metadata = {}) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   try {
+    // Resolve organizationId from context
+    const organizationId = metadata.organizationId || await messageService.resolveOrganizationId({
+      matchId: metadata.matchId,
+      paymentId: metadata.paymentId,
+      playerId: metadata.playerId,
+      phone: toPhone,
+    });
+    
     const savedMsg = await Message.create({
+      organizationId, // Multi-tenant isolation
       from: phoneNumberId,
       to: toPhone,
       text: messageText,
@@ -194,7 +212,7 @@ async function logOutgoingMessage(toPhone, messageText, messageId, metadata = {}
       messageCost: metadata.messageCost || 0
     });
     try {
-      await whatsappAnalyticsService.incrementBusinessMessageCount(toPhone);
+      await whatsappAnalyticsService.incrementBusinessMessageCount(toPhone, organizationId);
     } catch (sessionErr) {
       // Non-critical
     }
@@ -1185,9 +1203,13 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     console.log(`🔐 Image hash: ${imageHash.substring(0, 16)}...`);
 
     // Step 2: Check for duplicate image (skip if bypass flag enabled)
+    // Use organizationId from pending payments for multi-tenant isolation
+    const organizationId = pendingPayments[0].organizationId;
     let existingScreenshot = null;
-    if (!BYPASS_DUPLICATE_CHECK) {
-      existingScreenshot = await PaymentScreenshot.findDuplicate(formattedPhone, imageHash);
+    if (!BYPASS_DUPLICATE_CHECK && organizationId) {
+      existingScreenshot = await PaymentScreenshot.findDuplicate(formattedPhone, imageHash, organizationId);
+    } else if (!organizationId) {
+      console.log('⚠️ No organizationId found - skipping duplicate detection');
     } else {
       console.log('🔓 BYPASS_DUPLICATE_CHECK enabled - skipping duplicate detection');
     }
@@ -1195,8 +1217,9 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     if (existingScreenshot) {
       console.log(`⚠️ DUPLICATE IMAGE DETECTED - Original screenshot ID: ${existingScreenshot._id}`);
       
-      // Create a duplicate record for audit trail
+      // Create a duplicate record for audit trail with organizationId for multi-tenant isolation
       const duplicateScreenshot = new PaymentScreenshot({
+        organizationId: pendingPayments[0].organizationId, // Multi-tenant isolation
         playerId: pendingPayments[0].playerId,
         playerPhone: formattedPhone,
         playerName: pendingPayments[0].playerName,
@@ -1247,7 +1270,9 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
     }
 
     // Step 3: Save screenshot immediately with pending_ai status (NON-BLOCKING)
+    // Include organizationId for multi-tenant isolation
     const screenshot = new PaymentScreenshot({
+      organizationId: pendingPayments[0].organizationId, // Multi-tenant isolation
       playerId: pendingPayments[0].playerId,
       playerPhone: formattedPhone,
       playerName: pendingPayments[0].playerName,
@@ -1942,17 +1967,24 @@ router.post('/send', auth, async (req, res) => {
         let availabilityId = null;
         if (matchId) {
           try {
-            const availability = await Availability.create({
-              matchId,
-              playerId: player._id,
-              playerName: player.name,
-              playerPhone: formattedPhone,
-              response: 'pending',
-              status: 'sent',
-              outgoingMessageId: response.data?.messages?.[0]?.id
-            });
-            availabilityId = availability._id;
-            console.log(`Created availability record for ${player.name} - Match: ${matchId}`);
+            // Get match to obtain organizationId for multi-tenant isolation
+            const matchForOrg = await Match.findById(matchId).select('organizationId');
+            if (!matchForOrg?.organizationId) {
+              console.error(`Match ${matchId} has no organizationId - skipping availability creation`);
+            } else {
+              const availability = await Availability.create({
+                organizationId: matchForOrg.organizationId, // Multi-tenant isolation
+                matchId,
+                playerId: player._id,
+                playerName: player.name,
+                playerPhone: formattedPhone,
+                response: 'pending',
+                status: 'sent',
+                outgoingMessageId: response.data?.messages?.[0]?.id
+              });
+              availabilityId = availability._id;
+              console.log(`Created availability record for ${player.name} - Match: ${matchId}`);
+            }
           } catch (availErr) {
             console.error(`Failed to create availability record for ${player.name}:`, availErr.message);
           }

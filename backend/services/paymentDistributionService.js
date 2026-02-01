@@ -65,6 +65,7 @@ const getPendingPaymentsForPlayer = async (playerPhone) => {
           paymentId: payment._id,
           memberId: member._id,
           playerId: member.playerId, // Include playerId for PaymentScreenshot
+          organizationId: payment.organizationId, // Include organizationId for multi-tenant isolation
           matchId: (payment.matchId && payment.matchId._id) ? payment.matchId._id : payment.matchId,
           matchDate: payment.matchId?.date,
           matchInfo: {
