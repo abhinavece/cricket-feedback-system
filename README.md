@@ -211,6 +211,134 @@ The application is configured with `vercel.json` for automatic deployment.
 - `NODE_ENV`: Set to 'production' automatically by Vercel
 - `PORT`: Set automatically by Vercel
 
+## 🚩 Feature Flags
+
+The application supports feature flags for gradual rollout of new features. This allows you to:
+- Ship features to production but keep them disabled
+- Enable features for specific beta testers by email
+- Enable features for specific organizations
+- Gradually roll out features to all users
+
+### Available Feature Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `FF_MULTI_TENANT` | Master flag for entire multi-tenant system | `false` |
+| `FF_TEAM_DISCOVERY` | Team search and join request features | `false` |
+| `FF_WHATSAPP_BYOT` | Custom WhatsApp number (BYOT) for teams | `false` |
+
+### Configuration
+
+Feature flags are configured via environment variables in your `backend/.env` file:
+
+```bash
+# ============= FEATURE FLAGS =============
+# Set to 'true' to enable globally, or use allowlists for gradual rollout
+
+# Multi-Tenant System (master flag)
+FF_MULTI_TENANT=false
+FF_MULTI_TENANT_USERS=beta@example.com,tester@example.com
+FF_MULTI_TENANT_ORGS=
+
+# Team Discovery (search, join requests)
+FF_TEAM_DISCOVERY=false
+FF_TEAM_DISCOVERY_USERS=
+
+# WhatsApp BYOT (Bring Your Own Token)
+FF_WHATSAPP_BYOT=false
+FF_WHATSAPP_BYOT_ORGS=
+```
+
+### How It Works
+
+1. **Global Toggle**: Set `FF_<FLAG>=true` to enable for all users
+2. **User Allowlist**: Set `FF_<FLAG>_USERS=email1,email2` to enable for specific users
+3. **Organization Allowlist**: Set `FF_<FLAG>_ORGS=orgId1,orgId2` to enable for specific teams
+
+The system checks in this order:
+1. If globally enabled → feature is ON
+2. If user's email is in allowlist → feature is ON for that user
+3. If user's organization is in allowlist → feature is ON for that user
+4. Otherwise → feature is OFF
+
+### Rollout Strategy
+
+**Phase 1: Internal Testing**
+```bash
+FF_TEAM_DISCOVERY=false
+FF_TEAM_DISCOVERY_USERS=your-email@domain.com
+```
+
+**Phase 2: Beta Testers**
+```bash
+FF_TEAM_DISCOVERY=false
+FF_TEAM_DISCOVERY_USERS=beta1@domain.com,beta2@domain.com,beta3@domain.com
+```
+
+**Phase 3: Specific Organizations**
+```bash
+FF_TEAM_DISCOVERY=false
+FF_TEAM_DISCOVERY_ORGS=64abc123def456,64def789abc012
+```
+
+**Phase 4: Global Rollout**
+```bash
+FF_TEAM_DISCOVERY=true
+# Remove allowlists or leave them (they'll be ignored)
+```
+
+### Backend Usage
+
+```javascript
+const { isFeatureEnabled, requireFeature } = require('./config/featureFlags');
+
+// Check in code
+if (isFeatureEnabled('TEAM_DISCOVERY', { user: req.user })) {
+  // Feature-specific code
+}
+
+// Protect entire route
+router.get('/search', auth, requireFeature('TEAM_DISCOVERY'), handler);
+```
+
+### Frontend Usage
+
+```typescript
+import { isFeatureEnabled } from './config/featureFlags';
+
+// Check in component
+if (isFeatureEnabled('TEAM_DISCOVERY')) {
+  return <TeamSearchComponent />;
+}
+```
+
+### Protected Routes When Disabled
+
+When a feature flag is disabled, protected API routes return `404 Not Found`. This:
+- Hides the feature's existence from unauthorized users
+- Prevents accidental access via direct URL
+- Maintains clean error handling
+
+### Debugging
+
+Check which flags are enabled for a user:
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:5000/api/auth/feature-flags
+```
+
+Response:
+```json
+{
+  "success": true,
+  "flags": {
+    "MULTI_TENANT": false,
+    "TEAM_DISCOVERY": true,
+    "WHATSAPP_BYOT": false
+  }
+}
+```
+
 ## Project Structure
 
 ```
