@@ -14,7 +14,7 @@ backend:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/cricket-feedback-backend
-    tag: "2026.02.01.63"
+    tag: "2026.02.01.64"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -113,7 +113,7 @@ aiService:
   image:
     registry: phx.ocir.io
     repository: axkw6whnjncs/ai-service
-    tag: "2026.02.01.63"
+    tag: "2026.02.01.64"
     pullPolicy: IfNotPresent
   replicaCount: 1
   
@@ -173,7 +173,7 @@ frontend:
   image:
     registry: phx.ocir.io/axkw6whnjncs
     repository: cricket-feedback-frontend
-    tag: "2026.01.31.56"
+    tag: "2026.02.01.64"
   replicaCount: 1
   
   service:
