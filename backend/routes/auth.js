@@ -2,9 +2,81 @@ const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.js');
+const Organization = require('../models/Organization.js');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
+
+/**
+ * Helper: Auto-migrate existing user to Mavericks XI organization if not part of any organization
+ * This handles the transition period for existing users
+ */
+async function autoMigrateToDefaultOrg(user) {
+  // Skip if user already has organizations
+  if (user.organizations && user.organizations.length > 0) {
+    // Just ensure activeOrganizationId is set
+    if (!user.activeOrganizationId) {
+      user.activeOrganizationId = user.organizations[0].organizationId;
+      await user.save();
+    }
+    return user;
+  }
+
+  // Find the default organization (Mavericks XI)
+  const defaultOrg = await Organization.findOne({ 
+    slug: 'mavericks-xi',
+    isActive: true,
+    isDeleted: false,
+  });
+
+  if (!defaultOrg) {
+    console.log(`[Auth] Default organization not found, skipping auto-migration for ${user.email}`);
+    return user;
+  }
+
+  console.log(`[Auth] Auto-migrating existing user ${user.email} to ${defaultOrg.name}`);
+
+  // Determine role based on existing role
+  let orgRole = 'viewer';
+  if (user.role === 'admin') {
+    orgRole = defaultOrg.ownerId.equals(user._id) ? 'owner' : 'admin';
+  } else if (user.role === 'editor') {
+    orgRole = 'editor';
+  }
+
+  // Initialize organizations array if needed
+  if (!user.organizations) {
+    user.organizations = [];
+  }
+
+  // Add organization membership
+  user.organizations.push({
+    organizationId: defaultOrg._id,
+    role: orgRole,
+    playerId: user.playerId, // Migrate existing playerId link
+    joinedAt: user.createdAt || new Date(),
+    status: 'active',
+  });
+
+  user.activeOrganizationId = defaultOrg._id;
+  await user.save();
+
+  // Update org member count
+  await Organization.findByIdAndUpdate(defaultOrg._id, {
+    $inc: { 'stats.memberCount': 1 },
+  });
+
+  console.log(`[Auth] Successfully migrated ${user.email} to ${defaultOrg.name} as ${orgRole}`);
+  return user;
+}
+
+/**
+ * Helper: Ensure user has organization set (for existing users after multi-tenant migration)
+ * If user has organizations but no activeOrganizationId, set it to the first one
+ */
+async function ensureActiveOrganization(user) {
+  return autoMigrateToDefaultOrg(user);
+}
 
 // Initialize Google OAuth client
 const oauth2Client = new OAuth2Client(
@@ -58,6 +130,9 @@ router.post('/google', async (req, res) => {
       await user.save();
     }
 
+    // Ensure user has activeOrganizationId set if they have organizations
+    user = await ensureActiveOrganization(user);
+
     // Generate JWT token
     const jwtToken = jwt.sign(
       { 
@@ -69,6 +144,9 @@ router.post('/google', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // Check if user has organizations
+    const hasOrganizations = user.organizations && user.organizations.length > 0;
+
     // Return user data without sensitive fields
     const userData = {
       id: user._id, // Send as 'id' for frontend consistency
@@ -77,7 +155,9 @@ router.post('/google', async (req, res) => {
       avatar: user.avatar,
       role: user.role,
       lastLogin: user.lastLogin,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      hasOrganizations,
+      activeOrganizationId: user.activeOrganizationId,
     };
 
     res.json({
@@ -139,6 +219,9 @@ router.post('/google/mobile', async (req, res) => {
       await user.save();
     }
 
+    // Ensure user has activeOrganizationId set if they have organizations
+    user = await ensureActiveOrganization(user);
+
     // Generate JWT token with longer expiry for mobile
     const jwtToken = jwt.sign(
       { 
@@ -150,6 +233,9 @@ router.post('/google/mobile', async (req, res) => {
       { expiresIn: '30d' } // Longer expiry for mobile
     );
 
+    // Check if user has organizations
+    const hasOrganizations = user.organizations && user.organizations.length > 0;
+
     // Return user data
     const userData = {
       id: user._id,
@@ -158,7 +244,9 @@ router.post('/google/mobile', async (req, res) => {
       avatar: user.avatar,
       role: user.role,
       lastLogin: user.lastLogin,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      hasOrganizations,
+      activeOrganizationId: user.activeOrganizationId,
     };
 
     res.json({
@@ -182,7 +270,7 @@ router.get('/verify', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     
-    const user = await User.findById(decoded.userId).select('-googleId');
+    let user = await User.findById(decoded.userId).select('-googleId');
     
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
@@ -192,6 +280,12 @@ router.get('/verify', async (req, res) => {
       return res.status(401).json({ error: 'User account is inactive' });
     }
 
+    // Ensure user has activeOrganizationId set if they have organizations
+    user = await ensureActiveOrganization(user);
+
+    // Check if user has organizations
+    const hasOrganizations = user.organizations && user.organizations.length > 0;
+
     // Return consistent user data structure
     const userData = {
       id: user._id, // Send as 'id' for frontend consistency
@@ -200,7 +294,9 @@ router.get('/verify', async (req, res) => {
       avatar: user.avatar,
       role: user.role,
       lastLogin: user.lastLogin,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      hasOrganizations,
+      activeOrganizationId: user.activeOrganizationId,
     };
 
     res.json({
