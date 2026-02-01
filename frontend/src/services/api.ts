@@ -1744,6 +1744,8 @@ export const updateOrganizationSettings = async (settings: {
 }> => {
   const response = await api.patch('/organizations/settings', settings);
   return response.data;
+};
+
 // ============================================================
 // Version Information
 // ============================================================
