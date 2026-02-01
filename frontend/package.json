@@ -31,9 +31,14 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "prebuild": "node scripts/generate-og-images.js || echo 'OG image generation skipped'",
     "build": "react-scripts build",
+    "generate-og-images": "node scripts/generate-og-images.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
   },
   "eslintConfig": {
     "extends": [
