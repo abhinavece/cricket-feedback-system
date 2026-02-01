@@ -36,13 +36,35 @@ const resolveTenant = async (req, res, next) => {
       });
     }
 
-    // Development bypass - create mock organization context
+    // Development bypass - automatically use default organization
     if (process.env.DISABLE_AUTH === 'true' && !req.user.organizations?.length) {
-      console.log('⚠️ Tenant resolution bypassed - using mock organization');
-      // In dev mode, we'll handle this in the route or migration will set up org
+      console.log('⚠️ Dev mode: Auto-loading default organization');
+      
+      // Try to find the default organization (Mavericks XI)
+      const defaultOrg = await Organization.findOne({ 
+        slug: 'mavericks-xi',
+        isActive: true,
+        isDeleted: false
+      });
+      
+      if (defaultOrg) {
+        req.organization = defaultOrg;
+        req.organizationId = defaultOrg._id;
+        req.organizationRole = 'owner'; // Full access in dev mode
+        req.organizationMembership = {
+          organizationId: defaultOrg._id,
+          role: 'owner',
+          status: 'active'
+        };
+        console.log(`⚠️ Dev mode: Using organization "${defaultOrg.name}"`);
+        return next();
+      }
+      
+      // No organization exists yet - allow bypass
+      console.log('⚠️ Dev mode: No organization found, bypassing tenant check');
       req.organization = null;
       req.organizationRole = 'admin';
-      req.skipTenantFilter = true; // Flag to skip tenant filtering in dev
+      req.skipTenantFilter = true;
       return next();
     }
 

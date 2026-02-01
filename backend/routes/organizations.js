@@ -142,6 +142,15 @@ router.get('/current', auth, resolveTenant, async (req, res) => {
   try {
     const org = req.organization;
     
+    // Handle case when no organization is set (dev mode bypass)
+    if (!org) {
+      return res.status(404).json({
+        error: 'No organization',
+        code: 'NO_ORGANIZATION',
+        message: 'No active organization. Please create or join an organization.',
+      });
+    }
+    
     // Get member count
     const memberCount = await User.countDocuments({
       'organizations.organizationId': org._id,

@@ -206,7 +206,7 @@ const organizationSchema = new mongoose.Schema({
 });
 
 // Indexes
-organizationSchema.index({ slug: 1 }, { unique: true });
+// Note: slug already has unique: true in field definition
 organizationSchema.index({ ownerId: 1 });
 organizationSchema.index({ isActive: 1, isDeleted: 1 });
 organizationSchema.index({ 'whatsapp.phoneNumberId': 1 }, { sparse: true });
@@ -248,14 +248,13 @@ organizationSchema.statics.findByWhatsAppPhoneNumberId = function(phoneNumberId)
 };
 
 // Pre-save: Generate slug from name if not provided
-organizationSchema.pre('save', function(next) {
+organizationSchema.pre('save', function() {
   if (this.isNew && !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
   }
-  next();
 });
 
 module.exports = mongoose.model('Organization', organizationSchema);
