@@ -61,6 +61,9 @@ spec:
             - name: AI_SERVICE_URL
               value: "http://{{ include "cricket-feedback.fullname" . }}-ai-service:{{ .Values.aiService.service.port }}"
             {{- end }}
+            {{- if .Values.backend.extraEnv }}
+            {{- toYaml .Values.backend.extraEnv | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /api/health

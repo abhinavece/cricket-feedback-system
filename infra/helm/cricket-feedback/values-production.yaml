@@ -14,6 +14,28 @@ backend:
     requests:
       cpu: 500m
       memory: 512Mi
+  # =============================================================
+  # FEATURE FLAGS - Production Override
+  # =============================================================
+  # These are appended to the env vars from values.yaml
+  # To DISABLE a feature quickly: change "true" to "false" below
+  # Then redeploy with:
+  #   helm upgrade cricket-feedback ./infra/helm/cricket-feedback \
+  #     -n cricket-feedback \
+  #     -f ./infra/helm/cricket-feedback/values.yaml \
+  #     -f ./infra/helm/cricket-feedback/values-production.yaml
+  # =============================================================
+  extraEnv:
+    # Feature Flags - All enabled for production
+    - name: FF_MULTI_TENANT
+      value: "true"
+    - name: FF_TEAM_DISCOVERY
+      value: "true"
+    - name: FF_WHATSAPP_BYOT
+      value: "false"
+    # Uncomment to restrict to specific users during rollout:
+    # - name: FF_TEAM_DISCOVERY_USERS
+    #   value: "user1@email.com,user2@email.com"
 
 frontend:
   image:

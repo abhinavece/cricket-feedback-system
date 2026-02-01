@@ -13,9 +13,9 @@ export interface FeatureFlags {
 
 // Default flags (all new features disabled by default)
 const defaultFlags: FeatureFlags = {
-  MULTI_TENANT: false,
-  TEAM_DISCOVERY: false,
-  WHATSAPP_BYOT: false,
+  MULTI_TENANT: true,
+  TEAM_DISCOVERY: true,
+  WHATSAPP_BYOT: true,
 };
 
 // Check environment variables for overrides (useful for local dev)

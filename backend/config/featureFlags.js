@@ -24,7 +24,7 @@ const FEATURE_FLAGS = {
   // Multi-tenant system with team discovery, join requests, BYOT WhatsApp
   MULTI_TENANT: {
     envVar: 'FF_MULTI_TENANT',
-    defaultEnabled: false,
+    defaultEnabled: true,
     description: 'Multi-tenant system with team discovery and join requests',
     // Beta testers - add emails here
     allowedUsers: (process.env.FF_MULTI_TENANT_USERS || '').split(',').filter(Boolean),
@@ -35,7 +35,7 @@ const FEATURE_FLAGS = {
   // Team discovery and join requests (subset of multi-tenant)
   TEAM_DISCOVERY: {
     envVar: 'FF_TEAM_DISCOVERY',
-    defaultEnabled: false,
+    defaultEnabled: true,
     description: 'Allow users to search and request to join teams',
     allowedUsers: (process.env.FF_TEAM_DISCOVERY_USERS || '').split(',').filter(Boolean),
     allowedOrgs: [],
@@ -44,7 +44,7 @@ const FEATURE_FLAGS = {
   // WhatsApp BYOT (Bring Your Own Token)
   WHATSAPP_BYOT: {
     envVar: 'FF_WHATSAPP_BYOT',
-    defaultEnabled: false,
+    defaultEnabled: true,
     description: 'Allow teams to configure their own WhatsApp Business number',
     allowedUsers: [],
     allowedOrgs: (process.env.FF_WHATSAPP_BYOT_ORGS || '').split(',').filter(Boolean),
