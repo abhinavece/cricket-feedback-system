@@ -1,6 +1,22 @@
+/**
+ * @fileoverview Availability Model
+ * 
+ * Tracks player availability responses for matches within an organization.
+ * 
+ * @module models/Availability
+ */
+
 const mongoose = require('mongoose');
 
 const availabilitySchema = new mongoose.Schema({
+  // Multi-tenant: Organization this availability belongs to
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  
   matchId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Match',
@@ -60,14 +76,14 @@ const availabilitySchema = new mongoose.Schema({
   }
 });
 
-// Compound index to ensure one availability record per player per match
-availabilitySchema.index({ matchId: 1, playerId: 1 }, { unique: true });
+// Compound index to ensure one availability record per player per match per organization
+availabilitySchema.index({ organizationId: 1, matchId: 1, playerId: 1 }, { unique: true });
 
-// Index for quick lookups by match
-availabilitySchema.index({ matchId: 1, status: 1 });
+// Index for quick lookups by match within organization
+availabilitySchema.index({ organizationId: 1, matchId: 1, status: 1 });
 
-// Index for quick lookups by player
-availabilitySchema.index({ playerId: 1, response: 1 });
+// Index for quick lookups by player within organization
+availabilitySchema.index({ organizationId: 1, playerId: 1, response: 1 });
 
 // Virtual for match details
 availabilitySchema.virtual('match', {

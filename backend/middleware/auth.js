@@ -30,16 +30,59 @@ const auth = async (req, res, next) => {
     // Bypass auth for local development if DISABLE_AUTH is set
     if (process.env.DISABLE_AUTH === 'true') {
       console.log('⚠️ Auth bypassed - DISABLE_AUTH is enabled');
+      
+      // Check for DEV_USER_EMAIL env var or try to find first admin user
+      const devUserEmail = process.env.DEV_USER_EMAIL;
+      let devUser = null;
+      
+      if (devUserEmail) {
+        // Use specific user by email
+        devUser = await User.findOne({ email: devUserEmail, isActive: true });
+        if (devUser) {
+          console.log(`⚠️ Dev mode: Using user "${devUser.name}" (${devUser.email})`);
+        }
+      }
+      
+      if (!devUser) {
+        // Fallback: Try to find first admin user with organizations
+        devUser = await User.findOne({ 
+          role: 'admin', 
+          isActive: true,
+          'organizations.0': { $exists: true }
+        }).sort({ createdAt: 1 });
+        
+        if (devUser) {
+          console.log(`⚠️ Dev mode: Using first admin user "${devUser.name}" (${devUser.email})`);
+        }
+      }
+      
+      if (devUser) {
+        // Use real user from database - this maintains their organizations
+        req.user = devUser;
+        return next();
+      }
+      
+      // No existing user found - create mock user for testing onboarding
+      console.log('⚠️ Dev mode: No existing user found, using mock user (will trigger onboarding)');
       const mongoose = require('mongoose');
       const mockRole = process.env.MOCK_USER_ROLE || 'admin';
-      // Create a mock user for local testing with valid ObjectId
+      const mockUserId = new mongoose.Types.ObjectId();
+      
       req.user = {
-        _id: new mongoose.Types.ObjectId(),
-        id: new mongoose.Types.ObjectId().toString(),
+        _id: mockUserId,
+        id: mockUserId.toString(),
         email: 'dev@localhost',
         name: 'Local Dev User',
         role: mockRole,
-        isActive: true
+        isActive: true,
+        organizations: [],
+        activeOrganizationId: null,
+        platformRole: 'platform_admin',
+        isMemberOf: () => true,
+        getRoleInOrganization: () => mockRole,
+        isAdminOf: () => mockRole === 'admin',
+        canEditIn: () => ['admin', 'editor'].includes(mockRole),
+        isPlatformAdmin: () => true,
       };
       console.log('Mock user role:', mockRole);
       return next();

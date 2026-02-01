@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ArrowRight, Sparkles, Zap, Brain } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, Brain, Users } from 'lucide-react';
 
 interface HeroSectionProps {
   onGetStarted: () => void;
@@ -176,8 +176,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
           >
             {/* Shimmer effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-            <Sparkles className="w-5 h-5" />
-            Get Started Free
+            <Users className="w-5 h-5" />
+            Create Your Team
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
           
@@ -188,6 +188,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
             See How It Works
           </button>
         </div>
+
+        {/* Free tier info */}
+        <p className="mt-4 text-sm text-slate-500">
+          <Sparkles className="w-3 h-3 inline mr-1" />
+          Free forever for teams up to 50 players. No credit card required.
+        </p>
 
         {/* Stats row */}
         <div className="mt-16 pt-8 border-t border-slate-800/50 grid grid-cols-3 gap-4 max-w-xl mx-auto">

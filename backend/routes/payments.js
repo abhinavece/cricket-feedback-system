@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { auth, requireAdmin } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
+const { resolveTenant, requireOrgAdmin, requireOrgEditor } = require('../middleware/tenantResolver.js');
+const { tenantQuery, tenantCreate } = require('../utils/tenantQuery.js');
 const MatchPayment = require('../models/MatchPayment');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
@@ -18,13 +20,13 @@ const {
 } = require('../services/paymentCalculationService');
 
 // GET /api/payments - Get all payment records (optimized with pagination)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     
-    const payments = await MatchPayment.find()
+    const payments = await MatchPayment.find(tenantQuery(req))
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 })
@@ -55,7 +57,7 @@ router.get('/', auth, async (req, res) => {
       return paymentObj;
     });
 
-    const total = await MatchPayment.countDocuments();
+    const total = await MatchPayment.countDocuments(tenantQuery(req));
     const hasMore = (pageNum * limitNum) < total;
 
     res.json({
@@ -78,12 +80,12 @@ router.get('/', auth, async (req, res) => {
 });
 
 // GET /api/payments/match/:matchId - Get payment for a specific match (optimized)
-router.get('/match/:matchId', auth, async (req, res) => {
+router.get('/match/:matchId', auth, resolveTenant, async (req, res) => {
   try {
     const { matchId } = req.params;
     const { includeHistory = false } = req.query; // Optional query param to include payment history
 
-    const payment = await MatchPayment.findOne({ matchId })
+    const payment = await MatchPayment.findOne(tenantQuery(req, { matchId }))
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('squadMembers.playerId', 'name phone role');
 
@@ -210,9 +212,9 @@ router.get('/match/:matchId', auth, async (req, res) => {
 });
 
 // GET /api/payments/summary - Get lightweight payment summary for list view
-router.get('/summary', auth, async (req, res) => {
+router.get('/summary', auth, resolveTenant, async (req, res) => {
   try {
-    const payments = await MatchPayment.find({})
+    const payments = await MatchPayment.find(tenantQuery(req))
       .sort({ createdAt: -1 });
 
     // Note: Forced recalculation removed - use migration script to fix stale data
@@ -267,17 +269,17 @@ router.get('/summary', auth, async (req, res) => {
 // GET /api/payments/players-summary - Get all players with payment summary stats
 // NOTE: This route MUST be defined BEFORE /:id to avoid route conflict
 // Uses centralized PaymentCalculationService for consistent calculations
-router.get('/players-summary', auth, async (req, res) => {
+router.get('/players-summary', auth, resolveTenant, async (req, res) => {
   try {
     const { search } = req.query;
 
     // Get all active players
-    let playerQuery = { isActive: true };
+    let playerQueryObj = tenantQuery(req, { isActive: true });
     if (search) {
-      playerQuery.name = { $regex: search, $options: 'i' };
+      playerQueryObj.name = { $regex: search, $options: 'i' };
     }
 
-    const players = await Player.find(playerQuery)
+    const players = await Player.find(playerQueryObj)
       .select('_id name phone')
       .sort({ name: 1 })
       .lean();
@@ -286,12 +288,12 @@ router.get('/players-summary', auth, async (req, res) => {
     const playerSummaries = await Promise.all(players.map(async (player) => {
       const matchData = await MatchPayment.aggregate([
         {
-          $match: {
+          $match: tenantQuery(req, {
             $or: [
               { 'squadMembers.playerId': player._id },
               { 'squadMembers.playerPhone': player.phone }
             ]
-          }
+          })
         },
         { $unwind: '$squadMembers' },
         {
@@ -344,7 +346,7 @@ router.get('/players-summary', auth, async (req, res) => {
 // GET /api/payments/player-history/:playerId - Get detailed payment history for a player
 // NOTE: This route MUST be defined BEFORE /:id to avoid route conflict
 // Uses centralized PaymentCalculationService for consistent calculations
-router.get('/player-history/:playerId', auth, async (req, res) => {
+router.get('/player-history/:playerId', auth, resolveTenant, async (req, res) => {
   try {
     const { playerId } = req.params;
     const { page = 1, limit = 20 } = req.query;
@@ -352,7 +354,7 @@ router.get('/player-history/:playerId', auth, async (req, res) => {
     const limitNum = parseInt(limit);
 
     // Get player details
-    const player = await Player.findById(playerId).select('_id name phone').lean();
+    const player = await Player.findOne(tenantQuery(req, { _id: playerId })).select('_id name phone').lean();
     if (!player) {
       return res.status(404).json({
         success: false,
@@ -364,12 +366,12 @@ router.get('/player-history/:playerId', auth, async (req, res) => {
     // Include raw paymentHistory to calculate from source
     const matchHistory = await MatchPayment.aggregate([
       {
-        $match: {
+        $match: tenantQuery(req, {
           $or: [
             { 'squadMembers.playerId': player._id },
             { 'squadMembers.playerPhone': player.phone }
           ]
-        }
+        })
       },
       { $unwind: '$squadMembers' },
       {
@@ -490,11 +492,11 @@ router.get('/player-history/:playerId', auth, async (req, res) => {
 });
 
 // GET /api/payments/:id - Get single payment by ID (optimized)
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, resolveTenant, async (req, res) => {
   try {
     const { includeHistory = false } = req.query; // Optional query param to include payment history
 
-    const payment = await MatchPayment.findById(req.params.id)
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }))
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('squadMembers.playerId', 'name phone role');
 
@@ -541,7 +543,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/payments - Create payment record for a match
-router.post('/', auth, requireAdmin, async (req, res) => {
+router.post('/', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { matchId, totalAmount, squadMembers, notes } = req.body;
 
@@ -553,7 +555,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
     }
 
     // Check if payment already exists for this match
-    const existingPayment = await MatchPayment.findOne({ matchId });
+    const existingPayment = await MatchPayment.findOne(tenantQuery(req, { matchId }));
     if (existingPayment) {
       return res.status(400).json({
         success: false,
@@ -562,7 +564,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
     }
 
     // Validate match exists
-    const match = await Match.findById(matchId);
+    const match = await Match.findOne(tenantQuery(req, { _id: matchId }));
     if (!match) {
       return res.status(404).json({
         success: false,
@@ -589,15 +591,15 @@ router.post('/', auth, requireAdmin, async (req, res) => {
       };
     }));
 
-    const payment = await MatchPayment.create({
+    const payment = await MatchPayment.create(tenantCreate(req, {
       matchId,
       totalAmount,
       squadMembers: formattedMembers,
       createdBy: req.user._id,
       notes: notes || ''
-    });
+    }));
 
-    const populatedPayment = await MatchPayment.findById(payment._id)
+    const populatedPayment = await MatchPayment.findOne(tenantQuery(req, { _id: payment._id }))
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('squadMembers.playerId', 'name phone role');
 
@@ -616,11 +618,11 @@ router.post('/', auth, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/payments/:id - Update payment record
-router.put('/:id', auth, requireAdmin, async (req, res) => {
+router.put('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { totalAmount, squadMembers, notes, status } = req.body;
 
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -678,7 +680,7 @@ router.put('/:id', auth, requireAdmin, async (req, res) => {
 
     await payment.save();
 
-    const populatedPayment = await MatchPayment.findById(payment._id)
+    const populatedPayment = await MatchPayment.findOne(tenantQuery(req, { _id: payment._id }))
       .populate('matchId', 'date opponent ground slot matchId')
       .populate('squadMembers.playerId', 'name phone role');
 
@@ -697,11 +699,11 @@ router.put('/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/payments/:id/member/:memberId - Update single member
-router.put('/:id/member/:memberId', auth, requireAdmin, async (req, res) => {
+router.put('/:id/member/:memberId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { adjustedAmount, paymentStatus, notes, dueDate } = req.body;
 
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -787,7 +789,7 @@ router.put('/:id/member/:memberId', auth, requireAdmin, async (req, res) => {
 });
 
 // POST /api/payments/:id/member/:memberId/add-payment - Record a partial/full payment
-router.post('/:id/member/:memberId/add-payment', auth, requireAdmin, async (req, res) => {
+router.post('/:id/member/:memberId/add-payment', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { amount, paymentMethod, notes, paidAt } = req.body;
 
@@ -798,7 +800,7 @@ router.post('/:id/member/:memberId/add-payment', auth, requireAdmin, async (req,
       });
     }
 
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -926,9 +928,9 @@ router.post('/:id/member/:memberId/add-payment', auth, requireAdmin, async (req,
 });
 
 // POST /api/payments/:id/member/:memberId/mark-unpaid - Mark payment as unpaid
-router.post('/:id/member/:memberId/mark-unpaid', auth, requireAdmin, async (req, res) => {
+router.post('/:id/member/:memberId/mark-unpaid', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -1000,9 +1002,9 @@ router.post('/:id/member/:memberId/mark-unpaid', auth, requireAdmin, async (req,
 });
 
 // POST /api/payments/:id/member/:memberId/settle-overpayment - Settle overpayment and send WhatsApp notification
-router.post('/:id/member/:memberId/settle-overpayment', auth, requireAdmin, async (req, res) => {
+router.post('/:id/member/:memberId/settle-overpayment', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
-    const payment = await MatchPayment.findById(req.params.id)
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }))
       .populate('matchId', 'date opponent ground slot matchId');
     
     if (!payment) {
@@ -1150,7 +1152,7 @@ router.post('/:id/member/:memberId/settle-overpayment', auth, requireAdmin, asyn
     }
 
     // Reload payment to get recalculated values
-    const updatedPayment = await MatchPayment.findById(req.params.id);
+    const updatedPayment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     const updatedMember = updatedPayment.squadMembers.id(req.params.memberId);
     
     // Get payment history for display (include settlement records)
@@ -1207,14 +1209,14 @@ router.post('/:id/member/:memberId/settle-overpayment', auth, requireAdmin, asyn
 });
 
 // GET /api/payments/player/:phone/history - Get payment history for a specific player
-router.get('/player/:phone/history', auth, async (req, res) => {
+router.get('/player/:phone/history', auth, resolveTenant, async (req, res) => {
   try {
     const phone = formatPhoneNumber(req.params.phone);
     
     // Find all payments where this player is involved
-    const payments = await MatchPayment.find({
+    const payments = await MatchPayment.find(tenantQuery(req, {
       'squadMembers.playerPhone': phone
-    })
+    }))
     .populate('matchId', 'date opponent ground slot matchId')
     .sort({ 'matchId.date': -1 });
 
@@ -1272,9 +1274,9 @@ router.get('/player/:phone/history', auth, async (req, res) => {
 });
 
 // DELETE /api/payments/:id/member/:memberId - Remove member from payment
-router.delete('/:id/member/:memberId', auth, requireAdmin, async (req, res) => {
+router.delete('/:id/member/:memberId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -1326,7 +1328,7 @@ router.delete('/:id/member/:memberId', auth, requireAdmin, async (req, res) => {
 });
 
 // POST /api/payments/:id/add-member - Add new member (ad-hoc player)
-router.post('/:id/add-member', auth, requireAdmin, async (req, res) => {
+router.post('/:id/add-member', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { playerName, playerPhone, playerId, adjustedAmount } = req.body;
 
@@ -1337,7 +1339,7 @@ router.post('/:id/add-member', auth, requireAdmin, async (req, res) => {
       });
     }
 
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -1403,11 +1405,11 @@ router.post('/:id/add-member', auth, requireAdmin, async (req, res) => {
 });
 
 // POST /api/payments/:id/send-requests - Send payment request messages
-router.post('/:id/send-requests', auth, requireAdmin, async (req, res) => {
+router.post('/:id/send-requests', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { memberIds, customMessage } = req.body; // Optional: specific members to send to, custom message template
 
-    const payment = await MatchPayment.findById(req.params.id)
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }))
       .populate('matchId', 'date opponent ground slot matchId');
 
     if (!payment) {
@@ -1648,15 +1650,15 @@ router.get('/:id/screenshot/:memberId', async (req, res) => {
 });
 
 // POST /api/payments/load-squad/:matchId - Load squad from availability
-router.post('/load-squad/:matchId', auth, requireAdmin, async (req, res) => {
+router.post('/load-squad/:matchId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { matchId } = req.params;
 
     // Get all players who said "yes" for this match
-    const availabilities = await Availability.find({
+    const availabilities = await Availability.find(tenantQuery(req, {
       matchId,
       response: 'yes'
-    }).populate('playerId', 'name phone role');
+    })).populate('playerId', 'name phone role');
 
     if (availabilities.length === 0) {
       return res.json({
@@ -1688,9 +1690,9 @@ router.post('/load-squad/:matchId', auth, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/payments/:id - Delete payment record
-router.delete('/:id', auth, requireAdmin, async (req, res) => {
+router.delete('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
-    const payment = await MatchPayment.findByIdAndDelete(req.params.id);
+    const payment = await MatchPayment.findOneAndDelete(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -1712,11 +1714,11 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // GET /api/payments/review-required - Get all payments requiring admin review
-router.get('/review-required', auth, async (req, res) => {
+router.get('/review-required', auth, resolveTenant, async (req, res) => {
   try {
-    const payments = await MatchPayment.find({
+    const payments = await MatchPayment.find(tenantQuery(req, {
       'squadMembers.requiresReview': true
-    }).populate('matchId', 'date opponent ground');
+    })).populate('matchId', 'date opponent ground');
 
     // Extract members that need review
     const reviewItems = [];
@@ -1762,12 +1764,12 @@ router.get('/review-required', auth, async (req, res) => {
 });
 
 // PUT /api/payments/:id/member/:memberId/resolve-review - Resolve admin review
-router.put('/:id/member/:memberId/resolve-review', auth, requireAdmin, async (req, res) => {
+router.put('/:id/member/:memberId/resolve-review', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { action, correctedAmount, notes } = req.body;
     // action: 'accept' (accept OCR amount), 'override' (use correctedAmount), 'reject' (mark unpaid)
 
-    const payment = await MatchPayment.findById(req.params.id);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: req.params.id }));
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -1864,7 +1866,7 @@ router.put('/:id/member/:memberId/resolve-review', auth, requireAdmin, async (re
 });
 
 // GET /api/payments/player/:phone/outstanding - Get total outstanding for a player
-router.get('/player/:phone/outstanding', auth, async (req, res) => {
+router.get('/player/:phone/outstanding', auth, resolveTenant, async (req, res) => {
   try {
     const outstanding = await getTotalOutstandingForPlayer(req.params.phone);
     res.json({
@@ -1885,20 +1887,20 @@ router.get('/player/:phone/outstanding', auth, async (req, res) => {
 // ============================================
 
 // GET /api/payments/:id/member/:memberId/screenshots - Get all screenshots for a member
-router.get('/:id/member/:memberId/screenshots', auth, async (req, res) => {
+router.get('/:id/member/:memberId/screenshots', auth, resolveTenant, async (req, res) => {
   try {
     const { id: paymentId, memberId } = req.params;
     
     // Get screenshots linked to this payment/member
-    const screenshots = await PaymentScreenshot.find({
+    const screenshots = await PaymentScreenshot.find(tenantQuery(req, {
       'distributions.paymentId': paymentId,
       'distributions.memberId': memberId
-    })
+    }))
     .select('-screenshotImage') // Exclude binary data
     .sort({ receivedAt: -1 });
 
     // Also get any screenshots directly linked via member's screenshots array
-    const payment = await MatchPayment.findById(paymentId);
+    const payment = await MatchPayment.findOne(tenantQuery(req, { _id: paymentId }));
     const member = payment?.squadMembers.id(memberId);
     
     let allScreenshotIds = screenshots.map(s => s._id.toString());
@@ -1985,9 +1987,9 @@ router.get('/:id/member/:memberId/screenshots', auth, async (req, res) => {
 });
 
 // GET /api/payments/screenshots/:screenshotId - Get single screenshot details (without image)
-router.get('/screenshots/:screenshotId', auth, async (req, res) => {
+router.get('/screenshots/:screenshotId', auth, resolveTenant, async (req, res) => {
   try {
-    const screenshot = await PaymentScreenshot.findById(req.params.screenshotId)
+    const screenshot = await PaymentScreenshot.findOne(tenantQuery(req, { _id: req.params.screenshotId }))
       .select('-screenshotImage')
       .populate('duplicateOf', 'receivedAt extractedAmount status');
 
@@ -2062,7 +2064,7 @@ router.get('/screenshots/:screenshotId/image', async (req, res) => {
 });
 
 // GET /api/payments/player/:phone/screenshots - Get all screenshots for a player
-router.get('/player/:phone/screenshots', auth, async (req, res) => {
+router.get('/player/:phone/screenshots', auth, resolveTenant, async (req, res) => {
   try {
     let phone = req.params.phone.replace(/\D/g, '');
     if (!phone.startsWith('91') && phone.length === 10) {
@@ -2071,10 +2073,12 @@ router.get('/player/:phone/screenshots', auth, async (req, res) => {
 
     const { excludeDuplicates = 'false', limit = 50 } = req.query;
 
+    // Note: getPlayerScreenshots is a static method that may need tenant context passed separately
     const screenshots = await PaymentScreenshot.getPlayerScreenshots(phone, {
       excludeDuplicates: excludeDuplicates === 'true',
       limit: parseInt(limit),
-      includeImage: false
+      includeImage: false,
+      organizationId: req.organizationId
     });
 
     // Manually populate reviewedBy
@@ -2142,10 +2146,10 @@ router.get('/player/:phone/screenshots', auth, async (req, res) => {
 });
 
 // POST /api/payments/screenshots/:screenshotId/review - Admin review a screenshot
-router.post('/screenshots/:screenshotId/review', auth, async (req, res) => {
+router.post('/screenshots/:screenshotId/review', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { action, notes, overrideAmount } = req.body;
-    const screenshot = await PaymentScreenshot.findById(req.params.screenshotId);
+    const screenshot = await PaymentScreenshot.findOne(tenantQuery(req, { _id: req.params.screenshotId }));
 
     if (!screenshot) {
       return res.status(404).json({
@@ -2258,7 +2262,7 @@ router.post('/screenshots/:screenshotId/review', auth, async (req, res) => {
 
     for (const dist of (distributionResult.distributions || [])) {
       if (!dist?.paymentId || !dist?.memberId) continue;
-      const payment = await MatchPayment.findById(dist.paymentId);
+      const payment = await MatchPayment.findOne(tenantQuery(req, { _id: dist.paymentId }));
       const member = payment?.squadMembers.id(dist.memberId);
       if (member) {
         member.requiresReview = false;
@@ -2299,13 +2303,13 @@ router.post('/screenshots/:screenshotId/review', auth, async (req, res) => {
 });
 
 // GET /api/payments/screenshots/pending-review - Get all screenshots pending review
-router.get('/screenshots/pending-review', auth, async (req, res) => {
+router.get('/screenshots/pending-review', auth, resolveTenant, async (req, res) => {
   try {
     const { limit = 50 } = req.query;
 
-    const screenshots = await PaymentScreenshot.find({
+    const screenshots = await PaymentScreenshot.find(tenantQuery(req, {
       status: 'pending_review'
-    })
+    }))
     .select('-screenshotImage')
     .sort({ receivedAt: -1 })
     .limit(parseInt(limit))

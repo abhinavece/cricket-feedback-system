@@ -80,6 +80,14 @@ backend:
       value: "true"
     - name: FRONTEND_URL
       value: "https://app.cricsmart.in"
+    # Feature Flags - Enable/disable new features
+    # Set to "true" to enable, "false" to disable
+    - name: FF_MULTI_TENANT
+      value: "true"
+    - name: FF_TEAM_DISCOVERY
+      value: "true"
+    - name: FF_WHATSAPP_BYOT
+      value: "false"
   
   livenessProbe:
     httpGet:

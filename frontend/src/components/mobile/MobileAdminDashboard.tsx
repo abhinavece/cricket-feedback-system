@@ -12,6 +12,7 @@ const MobileContactTeam = lazy(() => import('./MobileContactTeam'));
 const MobileWhatsAppTab = lazy(() => import('./MobileWhatsAppTab'));
 const MobileChatsTab = lazy(() => import('./MobileChatsTab'));
 const MobileSettingsTab = lazy(() => import('./MobileSettingsTab'));
+const TeamSettingsTab = lazy(() => import('../TeamSettingsTab'));
 const MobileProfileSetup = lazy(() => import('./MobileProfileSetup'));
 const MobileWhatsAppAnalyticsTab = lazy(() => import('./MobileWhatsAppAnalyticsTab'));
 const MobileGroundsTab = lazy(() => import('./MobileGroundsTab'));
@@ -35,8 +36,8 @@ interface FeedbackStats {
 }
 
 interface MobileAdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team') => void;
   onLogout?: () => void;
 }
 
@@ -91,6 +92,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     { id: 'player-history', label: 'History', icon: History },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -138,8 +140,8 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
   }
 
   // Show contact page only for viewers trying to access admin-only tabs
-  // Viewers CAN access: feedback, matches, payments, grounds, player-history, settings
-  const viewerAccessibleTabs = ['feedback', 'matches', 'payments', 'grounds', 'player-history', 'settings'];
+  // Viewers CAN access: feedback, matches, payments, grounds, player-history, team, settings
+  const viewerAccessibleTabs = ['feedback', 'matches', 'payments', 'grounds', 'player-history', 'team', 'settings'];
   if (isViewer && !viewerAccessibleTabs.includes(activeTab)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
@@ -221,6 +223,9 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           )}
           {activeTab === 'settings' && (
             <MobileSettingsTab onLogout={handleLogout} />
+          )}
+          {activeTab === 'team' && (
+            <TeamSettingsTab />
           )}
         </Suspense>
       </div>

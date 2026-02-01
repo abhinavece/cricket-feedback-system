@@ -1338,6 +1338,412 @@ export const getMyGroundReviews = async (params?: {
   return response.data;
 };
 
+// ===== Organization APIs =====
+
+export interface Organization {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo?: string;
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  limits: {
+    maxPlayers: number;
+    maxMatches: number;
+    maxAdmins: number;
+    maxEditors: number;
+  };
+  settings: {
+    defaultTimeSlot: string;
+    defaultGround?: string;
+    feedbackEnabled: boolean;
+    paymentTrackingEnabled: boolean;
+    availabilityTrackingEnabled: boolean;
+    timezone: string;
+  };
+  stats: {
+    playerCount: number;
+    matchCount: number;
+    memberCount: number;
+  };
+  whatsapp: {
+    enabled: boolean;
+    connectionStatus: 'pending' | 'connected' | 'disconnected' | 'error';
+    displayPhoneNumber?: string;
+  };
+  createdAt: string;
+  userRole?: 'owner' | 'admin' | 'editor' | 'viewer';
+}
+
+export interface OrganizationMember {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  playerId?: string;
+  joinedAt: string;
+}
+
+// Get list of user's organizations
+export const getOrganizations = async (): Promise<{
+  success: boolean;
+  organizations: Organization[];
+  activeOrganizationId?: string;
+}> => {
+  const response = await api.get('/organizations');
+  return response.data;
+};
+
+// Get current active organization
+export const getCurrentOrganization = async (): Promise<{
+  success: boolean;
+  organization: Organization;
+  userRole: string;
+}> => {
+  const response = await api.get('/organizations/current');
+  return response.data;
+};
+
+// Create a new organization
+export const createOrganization = async (data: {
+  name: string;
+  description?: string;
+}): Promise<{
+  success: boolean;
+  organization: Organization;
+  message: string;
+}> => {
+  const response = await api.post('/organizations', data);
+  return response.data;
+};
+
+// Update current organization
+export const updateOrganization = async (data: {
+  name?: string;
+  description?: string;
+  settings?: Partial<Organization['settings']>;
+}): Promise<{
+  success: boolean;
+  organization: Organization;
+  message: string;
+}> => {
+  const response = await api.put('/organizations/current', data);
+  return response.data;
+};
+
+// Switch active organization
+export const switchOrganization = async (organizationId: string): Promise<{
+  success: boolean;
+  message: string;
+  organization: { _id: string; name: string; slug: string };
+  userRole: string;
+}> => {
+  const response = await api.post('/organizations/switch', { organizationId });
+  return response.data;
+};
+
+// Get organization members
+export const getOrganizationMembers = async (): Promise<{
+  success: boolean;
+  members: OrganizationMember[];
+  count: number;
+}> => {
+  const response = await api.get('/organizations/members');
+  return response.data;
+};
+
+// Invite a member to organization
+export const inviteOrganizationMember = async (data: {
+  email: string;
+  role?: 'viewer' | 'editor' | 'admin';
+}): Promise<{
+  success: boolean;
+  member?: OrganizationMember;
+  message: string;
+}> => {
+  const response = await api.post('/organizations/members/invite', data);
+  return response.data;
+};
+
+// Update member role
+export const updateMemberRole = async (userId: string, role: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.put(`/organizations/members/${userId}/role`, { role });
+  return response.data;
+};
+
+// Remove member from organization
+export const removeMember = async (userId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/organizations/members/${userId}`);
+  return response.data;
+};
+
+// Leave organization
+export const leaveOrganization = async (): Promise<{
+  success: boolean;
+  message: string;
+  newActiveOrganizationId?: string;
+}> => {
+  const response = await api.post('/organizations/leave');
+  return response.data;
+};
+
+// Delete organization (owner only)
+export const deleteOrganization = async (): Promise<{
+  success: boolean;
+  message: string;
+  newActiveOrganizationId?: string;
+}> => {
+  const response = await api.delete('/organizations/current');
+  return response.data;
+};
+
+// ===== Organization Invite APIs =====
+
+export interface OrganizationInvite {
+  _id: string;
+  code: string;
+  role: 'viewer' | 'editor' | 'admin';
+  maxUses: number | null;
+  useCount: number;
+  expiresAt: string | null;
+  label?: string;
+  inviteUrl: string;
+  isValid: boolean;
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+}
+
+// Create an invite link
+export const createOrganizationInvite = async (data: {
+  role?: 'viewer' | 'editor' | 'admin';
+  maxUses?: number;
+  expiresInDays?: number;
+  label?: string;
+}): Promise<{
+  success: boolean;
+  invite: OrganizationInvite;
+  message: string;
+}> => {
+  const response = await api.post('/organizations/invites', data);
+  return response.data;
+};
+
+// List all invite links for current organization
+export const getOrganizationInvites = async (): Promise<{
+  success: boolean;
+  invites: OrganizationInvite[];
+}> => {
+  const response = await api.get('/organizations/invites');
+  return response.data;
+};
+
+// Revoke an invite link
+export const revokeOrganizationInvite = async (inviteId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/organizations/invites/${inviteId}`);
+  return response.data;
+};
+
+// Get invite details by code (public - no auth required)
+export const getInviteByCode = async (code: string): Promise<{
+  success: boolean;
+  invite: {
+    code: string;
+    role: string;
+    organization: {
+      _id: string;
+      name: string;
+      slug: string;
+      logo?: string;
+    };
+  };
+}> => {
+  const response = await api.get(`/organizations/invite/${code}`);
+  return response.data;
+};
+
+// Join organization using invite code
+export const joinOrganizationWithInvite = async (code: string): Promise<{
+  success: boolean;
+  message: string;
+  organization: {
+    _id: string;
+    name: string;
+    slug: string;
+    logo?: string;
+  };
+  role: string;
+}> => {
+  const response = await api.post(`/organizations/join/${code}`);
+  return response.data;
+};
+
+// ===== Team Discovery & Join Request APIs =====
+
+export interface SearchedOrganization {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo?: string;
+  stats: {
+    playerCount: number;
+    memberCount: number;
+  };
+  isMember: boolean;
+  hasPendingRequest: boolean;
+}
+
+export interface JoinRequest {
+  _id: string;
+  organizationId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatar?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  message?: string;
+  requestedRole: 'viewer' | 'editor';
+  discoveryMethod: 'search' | 'cricheroes_id' | 'direct_link' | 'other';
+  reviewNote?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+// Search for teams by name
+export const searchOrganizations = async (query: string, page = 1, limit = 10): Promise<{
+  success: boolean;
+  organizations: SearchedOrganization[];
+  total: number;
+  hasMore: boolean;
+}> => {
+  const response = await api.get('/organizations/search', {
+    params: { q: query, page, limit },
+  });
+  return response.data;
+};
+
+// Lookup team by CricHeroes ID
+export const lookupOrganizationByCricHeroesId = async (cricHeroesId: string): Promise<{
+  success: boolean;
+  organization: SearchedOrganization;
+}> => {
+  const response = await api.get(`/organizations/lookup/${cricHeroesId}`);
+  return response.data;
+};
+
+// Request to join a team
+export const requestToJoinOrganization = async (orgId: string, data?: {
+  message?: string;
+  discoveryMethod?: 'search' | 'cricheroes_id' | 'direct_link' | 'other';
+}): Promise<{
+  success: boolean;
+  message: string;
+  request: {
+    _id: string;
+    organizationId: string;
+    organizationName: string;
+    status: string;
+    createdAt: string;
+  };
+}> => {
+  const response = await api.post(`/organizations/${orgId}/join-request`, data || {});
+  return response.data;
+};
+
+// Get pending join requests for current organization (admin)
+export const getJoinRequests = async (status = 'pending', page = 1, limit = 20): Promise<{
+  success: boolean;
+  requests: JoinRequest[];
+  total: number;
+  hasMore: boolean;
+}> => {
+  const response = await api.get('/organizations/join-requests', {
+    params: { status, page, limit },
+  });
+  return response.data;
+};
+
+// Get current user's join requests
+export const getMyJoinRequests = async (): Promise<{
+  success: boolean;
+  requests: Array<{
+    _id: string;
+    organization: {
+      _id: string;
+      name: string;
+      slug: string;
+      logo?: string;
+    };
+    status: string;
+    message?: string;
+    reviewNote?: string;
+    createdAt: string;
+    reviewedAt?: string;
+  }>;
+}> => {
+  const response = await api.get('/organizations/my-requests');
+  return response.data;
+};
+
+// Approve or reject a join request (admin)
+export const processJoinRequest = async (requestId: string, data: {
+  action: 'approve' | 'reject';
+  role?: 'viewer' | 'editor';
+  note?: string;
+}): Promise<{
+  success: boolean;
+  message: string;
+  request: {
+    _id: string;
+    status: string;
+    reviewedAt: string;
+  };
+}> => {
+  const response = await api.patch(`/organizations/join-requests/${requestId}`, data);
+  return response.data;
+};
+
+// Cancel a pending join request
+export const cancelJoinRequest = async (requestId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/organizations/join-requests/${requestId}`);
+  return response.data;
+};
+
+// Update organization settings (including cricHeroesTeamId, isDiscoverable)
+export const updateOrganizationSettings = async (settings: {
+  cricHeroesTeamId?: string | null;
+  isDiscoverable?: boolean;
+  name?: string;
+  description?: string;
+}): Promise<{
+  success: boolean;
+  message: string;
+  organization: {
+    cricHeroesTeamId?: string;
+    isDiscoverable: boolean;
+    name: string;
+    description?: string;
+  };
+}> => {
+  const response = await api.patch('/organizations/settings', settings);
+  return response.data;
 // ============================================================
 // Version Information
 // ============================================================

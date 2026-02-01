@@ -4,16 +4,18 @@ const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const Player = require('../models/Player');
 const { auth, requireEditor } = require('../middleware/auth');
+const { resolveTenant, requireOrgAdmin, requireOrgEditor } = require('../middleware/tenantResolver.js');
+const { tenantQuery, tenantCreate } = require('../utils/tenantQuery.js');
 const sseManager = require('../utils/sseManager');
 
 // GET /api/availability/match/:matchId - Get all availability records for a match (optimized)
-router.get('/match/:matchId', auth, async (req, res) => {
+router.get('/match/:matchId', auth, resolveTenant, async (req, res) => {
   try {
     const { matchId } = req.params;
 
     // Don't populate playerId - we already have playerName and playerPhone in the document
     // This reduces redundant data in response
-    const availabilities = await Availability.find({ matchId })
+    const availabilities = await Availability.find(tenantQuery(req, { matchId }))
       .select('_id matchId playerId playerName playerPhone response status respondedAt createdAt')
       .sort({ createdAt: -1 })
       .lean();
@@ -44,21 +46,21 @@ router.get('/match/:matchId', auth, async (req, res) => {
 });
 
 // GET /api/availability/player/:playerId - Get availability history for a player (with pagination)
-router.get('/player/:playerId', auth, async (req, res) => {
+router.get('/player/:playerId', auth, resolveTenant, async (req, res) => {
   try {
     const { playerId } = req.params;
     const { page = 1, limit = 20 } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
-    const availabilities = await Availability.find({ playerId })
+    const availabilities = await Availability.find(tenantQuery(req, { playerId }))
       .populate('matchId', 'date opponent ground')
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .skip((pageNum - 1) * limitNum)
       .lean();
 
-    const total = await Availability.countDocuments({ playerId });
+    const total = await Availability.countDocuments(tenantQuery(req, { playerId }));
     const hasMore = (pageNum * limitNum) < total;
 
     // Calculate player statistics
@@ -93,7 +95,7 @@ router.get('/player/:playerId', auth, async (req, res) => {
 });
 
 // POST /api/availability - Create availability record(s)
-router.post('/', auth, requireEditor, async (req, res) => {
+router.post('/', auth, resolveTenant, requireOrgEditor, async (req, res) => {
   try {
     const { matchId, playerIds } = req.body;
 
@@ -104,8 +106,8 @@ router.post('/', auth, requireEditor, async (req, res) => {
       });
     }
 
-    // Verify match exists
-    const match = await Match.findById(matchId);
+    // Verify match exists within tenant
+    const match = await Match.findOne(tenantQuery(req, { _id: matchId }));
     if (!match) {
       return res.status(404).json({
         success: false,
@@ -113,8 +115,8 @@ router.post('/', auth, requireEditor, async (req, res) => {
       });
     }
 
-    // Get player details
-    const players = await Player.find({ _id: { $in: playerIds } });
+    // Get player details within tenant
+    const players = await Player.find(tenantQuery(req, { _id: { $in: playerIds } }));
     if (players.length !== playerIds.length) {
       return res.status(400).json({
         success: false,
@@ -125,30 +127,33 @@ router.post('/', auth, requireEditor, async (req, res) => {
     // Create availability records
     const availabilityRecords = [];
     for (const player of players) {
-      // Check if record already exists
-      const existing = await Availability.findOne({ matchId, playerId: player._id });
+      // Check if record already exists within tenant
+      const existing = await Availability.findOne(tenantQuery(req, { matchId, playerId: player._id }));
       
       if (!existing) {
-        const record = await Availability.create({
+        const record = await Availability.create(tenantCreate(req, {
           matchId,
           playerId: player._id,
           playerName: player.name,
           playerPhone: player.phone,
           response: 'pending',
           status: 'sent'
-        });
+        }));
         availabilityRecords.push(record);
       } else {
         availabilityRecords.push(existing);
       }
     }
 
-    // Update match statistics
-    await Match.findByIdAndUpdate(matchId, {
-      availabilitySent: true,
-      availabilitySentAt: new Date(),
-      totalPlayersRequested: playerIds.length
-    });
+    // Update match statistics within tenant
+    await Match.findOneAndUpdate(
+      tenantQuery(req, { _id: matchId }),
+      {
+        availabilitySent: true,
+        availabilitySentAt: new Date(),
+        totalPlayersRequested: playerIds.length
+      }
+    );
 
     // Broadcast SSE event for new players added
     const newRecords = availabilityRecords.filter(r => r.response === 'pending');
@@ -180,7 +185,7 @@ router.post('/', auth, requireEditor, async (req, res) => {
 });
 
 // PUT /api/availability/:id - Update availability response
-router.put('/:id', auth, requireEditor, async (req, res) => {
+router.put('/:id', auth, resolveTenant, requireOrgEditor, async (req, res) => {
   try {
     const { id } = req.params;
     const { response, messageContent, incomingMessageId } = req.body;
@@ -192,7 +197,7 @@ router.put('/:id', auth, requireEditor, async (req, res) => {
       });
     }
 
-    const availability = await Availability.findById(id);
+    const availability = await Availability.findOne(tenantQuery(req, { _id: id }));
     if (!availability) {
       return res.status(404).json({
         success: false,
@@ -209,10 +214,10 @@ router.put('/:id', auth, requireEditor, async (req, res) => {
     await availability.save();
 
     // Update match statistics and squad
-    const match = await Match.findById(availability.matchId);
+    const match = await Match.findOne(tenantQuery(req, { _id: availability.matchId }));
     if (match) {
       // Recalculate statistics
-      const allAvailabilities = await Availability.find({ matchId: match._id });
+      const allAvailabilities = await Availability.find(tenantQuery(req, { matchId: match._id }));
       
       match.confirmedPlayers = allAvailabilities.filter(a => a.response === 'yes').length;
       match.declinedPlayers = allAvailabilities.filter(a => a.response === 'no').length;
@@ -283,11 +288,11 @@ router.put('/:id', auth, requireEditor, async (req, res) => {
 });
 
 // DELETE /api/availability/:id - Delete availability record
-router.delete('/:id', auth, requireEditor, async (req, res) => {
+router.delete('/:id', auth, resolveTenant, requireOrgEditor, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const availability = await Availability.findById(id);
+    const availability = await Availability.findOne(tenantQuery(req, { _id: id }));
     if (!availability) {
       return res.status(404).json({
         success: false,
@@ -295,7 +300,7 @@ router.delete('/:id', auth, requireEditor, async (req, res) => {
       });
     }
 
-    await Availability.findByIdAndDelete(id);
+    await Availability.findOneAndDelete(tenantQuery(req, { _id: id }));
 
     // Store info before deletion for SSE broadcast
     const matchId = availability.matchId;
@@ -303,9 +308,9 @@ router.delete('/:id', auth, requireEditor, async (req, res) => {
     const playerName = availability.playerName;
 
     // Update match statistics
-    const match = await Match.findById(matchId);
+    const match = await Match.findOne(tenantQuery(req, { _id: matchId }));
     if (match) {
-      const allAvailabilities = await Availability.find({ matchId: match._id });
+      const allAvailabilities = await Availability.find(tenantQuery(req, { matchId: match._id }));
 
       match.totalPlayersRequested = allAvailabilities.length;
       match.confirmedPlayers = allAvailabilities.filter(a => a.response === 'yes').length;
@@ -345,13 +350,13 @@ router.delete('/:id', auth, requireEditor, async (req, res) => {
 });
 
 // GET /api/availability/stats/summary - Get overall availability statistics
-router.get('/stats/summary', auth, async (req, res) => {
+router.get('/stats/summary', auth, resolveTenant, async (req, res) => {
   try {
-    const totalRecords = await Availability.countDocuments();
-    const responded = await Availability.countDocuments({ status: 'responded' });
-    const confirmed = await Availability.countDocuments({ response: 'yes' });
-    const declined = await Availability.countDocuments({ response: 'no' });
-    const tentative = await Availability.countDocuments({ response: 'tentative' });
+    const totalRecords = await Availability.countDocuments(tenantQuery(req, {}));
+    const responded = await Availability.countDocuments(tenantQuery(req, { status: 'responded' }));
+    const confirmed = await Availability.countDocuments(tenantQuery(req, { response: 'yes' }));
+    const declined = await Availability.countDocuments(tenantQuery(req, { response: 'no' }));
+    const tentative = await Availability.countDocuments(tenantQuery(req, { response: 'tentative' }));
 
     const stats = {
       totalRecords,

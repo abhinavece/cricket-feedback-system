@@ -7,21 +7,84 @@ const Availability = require('../models/Availability');
 const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
 const PaymentScreenshot = require('../models/PaymentScreenshot');
+const Organization = require('../models/Organization');
 const sseManager = require('../utils/sseManager');
 const crypto = require('crypto');
 const whatsappAnalyticsService = require('../services/whatsappAnalyticsService');
 
 /**
+ * Resolve WhatsApp configuration for a given phone_number_id
+ * Supports hybrid model: BYOT teams have their own config, others use platform config
+ * 
+ * @param {string} phoneNumberId - WhatsApp phone number ID from webhook
+ * @returns {Object} WhatsApp config object with token, phoneId, apiVersion, and org (if BYOT)
+ */
+async function resolveWhatsAppConfig(phoneNumberId) {
+  // Default platform configuration
+  const platformConfig = {
+    mode: 'platform',
+    token: process.env.WHATSAPP_ACCESS_TOKEN,
+    phoneId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    apiVersion: process.env.WHATSAPP_API_VERSION || 'v18.0',
+    organization: null,
+  };
+
+  // If no phone number ID provided, use platform config
+  if (!phoneNumberId) {
+    return platformConfig;
+  }
+
+  // Check if this is the platform's phone number
+  if (phoneNumberId === process.env.WHATSAPP_PHONE_NUMBER_ID) {
+    return platformConfig;
+  }
+
+  // Try to find a BYOT organization with this phone number ID
+  try {
+    const org = await Organization.findOne({
+      'whatsapp.mode': 'byot',
+      'whatsapp.phoneNumberId': phoneNumberId,
+      'whatsapp.connectionStatus': 'connected',
+      isActive: true,
+      isDeleted: false,
+    });
+
+    if (org && org.whatsapp.accessToken) {
+      console.log(`🔀 BYOT routing: Found org "${org.name}" for phone ${phoneNumberId}`);
+      return {
+        mode: 'byot',
+        token: org.whatsapp.accessToken, // Note: Should be decrypted in production
+        phoneId: org.whatsapp.phoneNumberId,
+        apiVersion: org.whatsapp.apiVersion || 'v18.0',
+        organization: org,
+        organizationId: org._id,
+      };
+    }
+  } catch (err) {
+    console.error('Error looking up BYOT organization:', err.message);
+  }
+
+  // Fall back to platform config
+  console.log(`📱 Platform routing: Using default config for phone ${phoneNumberId}`);
+  return platformConfig;
+}
+
+/**
  * Send WhatsApp message and log to database
+ * Supports both platform and BYOT (Bring Your Own Token) configurations
+ * 
  * @param {string} toPhone - Recipient phone number
  * @param {string} messageText - Message body text
  * @param {Object} metadata - Optional metadata for logging
+ * @param {Object} waConfig - Optional WhatsApp config (for BYOT support)
  * @returns {Promise<string|null>} - Message ID or null if failed
  */
-async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const apiVersion = process.env.WHATSAPP_API_VERSION || 'v18.0';
+async function sendAndLogMessage(toPhone, messageText, metadata = {}, waConfig = null) {
+  // Use provided config or fall back to platform defaults
+  const phoneNumberId = waConfig?.phoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = waConfig?.token || process.env.WHATSAPP_ACCESS_TOKEN;
+  const apiVersion = waConfig?.apiVersion || process.env.WHATSAPP_API_VERSION || 'v18.0';
+  const organizationId = waConfig?.organizationId || metadata.organizationId || null;
 
   let messageId = null;
 
@@ -42,7 +105,7 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
       }
     );
     messageId = response.data?.messages?.[0]?.id;
-    console.log(`✅ Message sent to ${toPhone}`);
+    console.log(`✅ Message sent to ${toPhone} ${waConfig?.mode === 'byot' ? '(BYOT)' : '(Platform)'}`);
   } catch (err) {
     console.error(`⚠️ Failed to send message to ${toPhone}:`, err.message);
     throw err;
@@ -67,7 +130,8 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
       playerId: metadata.playerId || null,
       playerName: metadata.playerName || null,
       templateCategory: metadata.templateCategory || null,
-      messageCost: metadata.messageCost || 0
+      messageCost: metadata.messageCost || 0,
+      organizationId: organizationId, // Track which org sent this
     });
 
     // Increment business message count in session
@@ -87,7 +151,8 @@ async function sendAndLogMessage(toPhone, messageText, metadata = {}) {
       playerName: metadata.playerName || null,
       direction: 'outgoing',
       messageType: metadata.messageType || 'general',
-      timestamp: savedMsg.timestamp
+      timestamp: savedMsg.timestamp,
+      organizationId: organizationId,
     };
     sseManager.broadcast('messages', outgoingEvent);
     sseManager.broadcast(`phone:${toPhone}`, outgoingEvent);
@@ -251,7 +316,7 @@ router.get('/webhook', (req, res) => {
 });
 
 // Webhook endpoint to receive messages (POST)
-router.post('/webhook', (req, res) => {
+router.post('/webhook', async (req, res) => {
   try {
     const data = req.body;
     
@@ -267,6 +332,21 @@ router.post('/webhook', (req, res) => {
             const messages = value.messages || [];
             const contacts = value.contacts || [];
             const statuses = value.statuses || [];
+            
+            // Extract phone_number_id for BYOT routing
+            const incomingPhoneNumberId = value.metadata?.phone_number_id;
+            
+            // Resolve WhatsApp config (platform vs BYOT)
+            let waConfig = null;
+            try {
+              waConfig = await resolveWhatsAppConfig(incomingPhoneNumberId);
+              if (waConfig.mode === 'byot') {
+                console.log(`📨 Incoming message routed to BYOT org: ${waConfig.organization?.name}`);
+              }
+            } catch (configErr) {
+              console.error('Failed to resolve WhatsApp config:', configErr.message);
+              // Continue with platform config
+            }
 
             // Process status updates (sent, delivered, read, failed)
             for (const status of statuses) {

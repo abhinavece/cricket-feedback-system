@@ -1,6 +1,23 @@
+/**
+ * @fileoverview Feedback Model
+ * 
+ * Represents player feedback within an organization.
+ * Can be general feedback or match-specific.
+ * 
+ * @module models/Feedback
+ */
+
 const mongoose = require('mongoose');
 
 const feedbackSchema = new mongoose.Schema({
+  // Multi-tenant: Organization this feedback belongs to
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+  
   playerName: {
     type: String,
     required: true,
@@ -108,23 +125,23 @@ const feedbackSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Indexes for optimized queries
+// Indexes for multi-tenant queries
 // Compound index for listing active feedback sorted by date
-feedbackSchema.index({ isDeleted: 1, createdAt: -1 });
+feedbackSchema.index({ organizationId: 1, isDeleted: 1, createdAt: -1 });
 
 // Index for trash view
-feedbackSchema.index({ isDeleted: 1, deletedAt: -1 });
+feedbackSchema.index({ organizationId: 1, isDeleted: 1, deletedAt: -1 });
 
 // Index for stats aggregation
-feedbackSchema.index({ isDeleted: 1, batting: 1, bowling: 1, fielding: 1, teamSpirit: 1 });
+feedbackSchema.index({ organizationId: 1, isDeleted: 1, batting: 1, bowling: 1, fielding: 1, teamSpirit: 1 });
 
-// Index for player name search
+// Index for player name search (text index doesn't need organizationId prefix)
 feedbackSchema.index({ playerName: 'text' });
 
 // Index for match feedback queries
-feedbackSchema.index({ matchId: 1, isDeleted: 1 });
+feedbackSchema.index({ organizationId: 1, matchId: 1, isDeleted: 1 });
 
 // Index for player feedback history
-feedbackSchema.index({ playerId: 1, isDeleted: 1 });
+feedbackSchema.index({ organizationId: 1, playerId: 1, isDeleted: 1 });
 
 module.exports = mongoose.model('Feedback', feedbackSchema);
