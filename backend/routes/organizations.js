@@ -18,6 +18,7 @@ const JoinRequest = require('../models/JoinRequest');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const { resolveTenant, requireOrgAdmin, requireOrgOwner, skipTenant } = require('../middleware/tenantResolver');
+const { requireFeature } = require('../config/featureFlags');
 
 /**
  * POST /api/organizations
@@ -925,6 +926,9 @@ router.post('/join/:code', auth, async (req, res) => {
 
 // ===== TEAM DISCOVERY & JOIN REQUEST ENDPOINTS =====
 
+// ===== TEAM DISCOVERY & JOIN REQUEST ENDPOINTS =====
+// These endpoints are behind the TEAM_DISCOVERY feature flag
+
 /**
  * GET /api/organizations/search
  * Search for discoverable teams by name (public endpoint for logged-in users)
@@ -933,7 +937,7 @@ router.post('/join/:code', auth, async (req, res) => {
  * @query {number} [page=1] - Page number
  * @query {number} [limit=10] - Results per page
  */
-router.get('/search', auth, async (req, res) => {
+router.get('/search', auth, requireFeature('TEAM_DISCOVERY'), async (req, res) => {
   try {
     const { q, page = 1, limit = 10 } = req.query;
 
@@ -982,7 +986,7 @@ router.get('/search', auth, async (req, res) => {
  * GET /api/organizations/lookup/:cricHeroesId
  * Find a team by CricHeroes team ID
  */
-router.get('/lookup/:cricHeroesId', auth, async (req, res) => {
+router.get('/lookup/:cricHeroesId', auth, requireFeature('TEAM_DISCOVERY'), async (req, res) => {
   try {
     const { cricHeroesId } = req.params;
 
@@ -1050,7 +1054,7 @@ router.get('/lookup/:cricHeroesId', auth, async (req, res) => {
  * @body {string} [message] - Optional message to team admins
  * @body {string} [discoveryMethod] - How user found the team
  */
-router.post('/:id/join-request', auth, async (req, res) => {
+router.post('/:id/join-request', auth, requireFeature('TEAM_DISCOVERY'), async (req, res) => {
   try {
     const { id } = req.params;
     const { message, discoveryMethod = 'search' } = req.body;
@@ -1159,7 +1163,7 @@ router.post('/:id/join-request', auth, async (req, res) => {
  * @query {number} [page=1] - Page number
  * @query {number} [limit=20] - Results per page
  */
-router.get('/join-requests', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.get('/join-requests', auth, requireFeature('TEAM_DISCOVERY'), resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { status = 'pending', page = 1, limit = 20 } = req.query;
 
@@ -1198,7 +1202,7 @@ router.get('/join-requests', auth, resolveTenant, requireOrgAdmin, async (req, r
  * GET /api/organizations/my-requests
  * Get current user's join requests
  */
-router.get('/my-requests', auth, async (req, res) => {
+router.get('/my-requests', auth, requireFeature('TEAM_DISCOVERY'), async (req, res) => {
   try {
     const requests = await JoinRequest.find({
       userId: req.user._id,
@@ -1236,7 +1240,7 @@ router.get('/my-requests', auth, async (req, res) => {
  * @body {string} [role='viewer'] - Role to assign if approving
  * @body {string} [note] - Optional note
  */
-router.patch('/join-requests/:requestId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.patch('/join-requests/:requestId', auth, requireFeature('TEAM_DISCOVERY'), resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { requestId } = req.params;
     const { action, role = 'viewer', note } = req.body;
@@ -1330,7 +1334,7 @@ router.patch('/join-requests/:requestId', auth, resolveTenant, requireOrgAdmin, 
  * DELETE /api/organizations/join-requests/:requestId
  * Cancel a pending join request (by the requester)
  */
-router.delete('/join-requests/:requestId', auth, async (req, res) => {
+router.delete('/join-requests/:requestId', auth, requireFeature('TEAM_DISCOVERY'), async (req, res) => {
   try {
     const { requestId } = req.params;
 

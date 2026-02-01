@@ -50,12 +50,17 @@ import {
   processJoinRequest,
   JoinRequest,
 } from '../services/api';
+import { isFeatureEnabled } from '../config/featureFlags';
 
 type TabType = 'overview' | 'invites' | 'members' | 'whatsapp' | 'discovery';
 
 const TeamSettingsTab: React.FC = () => {
   const { currentOrg, isOrgOwner, isOrgAdmin, refreshOrganization, loading: orgLoading } = useOrganization();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  
+  // Feature flags
+  const isTeamDiscoveryEnabled = isFeatureEnabled('TEAM_DISCOVERY');
+  const isWhatsAppBYOTEnabled = isFeatureEnabled('WHATSAPP_BYOT');
   
   // Invites state
   const [invites, setInvites] = useState<OrganizationInvite[]>([]);
@@ -387,8 +392,9 @@ const TeamSettingsTab: React.FC = () => {
           { id: 'overview', label: 'Overview', icon: Settings },
           { id: 'invites', label: 'Invites', icon: Link, adminOnly: true },
           { id: 'members', label: 'Members', icon: Users },
-          { id: 'discovery', label: 'Discovery', icon: Search, adminOnly: true },
-          { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, adminOnly: true },
+          // Feature-flagged tabs
+          ...(isTeamDiscoveryEnabled ? [{ id: 'discovery', label: 'Discovery', icon: Search, adminOnly: true }] : []),
+          ...(isWhatsAppBYOTEnabled ? [{ id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, adminOnly: true }] : []),
         ].map(tab => {
           if (tab.adminOnly && !isOrgAdmin) return null;
           const Icon = tab.icon;
@@ -780,8 +786,8 @@ const TeamSettingsTab: React.FC = () => {
         </div>
       )}
 
-      {/* Discovery Tab */}
-      {activeTab === 'discovery' && isOrgAdmin && (
+      {/* Discovery Tab - Feature flagged */}
+      {activeTab === 'discovery' && isOrgAdmin && isTeamDiscoveryEnabled && (
         <div className="space-y-6">
           {/* Discovery Settings */}
           <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
@@ -930,8 +936,8 @@ const TeamSettingsTab: React.FC = () => {
         </div>
       )}
 
-      {/* WhatsApp Tab */}
-      {activeTab === 'whatsapp' && isOrgAdmin && (
+      {/* WhatsApp Tab - Feature flagged */}
+      {activeTab === 'whatsapp' && isOrgAdmin && isWhatsAppBYOTEnabled && (
         <div className="space-y-6">
           {/* Current Status */}
           <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">

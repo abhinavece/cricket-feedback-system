@@ -37,6 +37,7 @@ import {
   requestToJoinOrganization,
   SearchedOrganization,
 } from '../services/api';
+import { isFeatureEnabled } from '../config/featureFlags';
 
 interface TeamOnboardingProps {
   onComplete: () => void;
@@ -59,6 +60,9 @@ type OnboardingStep =
 const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, inviteCode }) => {
   const { createOrganization } = useOrganization();
   const [step, setStep] = useState<OnboardingStep>(inviteCode ? 'join-code' : 'choice');
+  
+  // Check if team discovery feature is enabled
+  const isTeamDiscoveryEnabled = isFeatureEnabled('TEAM_DISCOVERY');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -478,37 +482,41 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
 
               {/* Join Options */}
               <div className="space-y-3 mb-8">
-                {/* Search by Name */}
-                <button
-                  onClick={() => { setStep('join-search'); setError(null); }}
-                  className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-blue-500/10 border border-slate-600 hover:border-blue-500/50 rounded-xl text-left transition-all"
-                >
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Search className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-white">Search by Team Name</p>
-                    <p className="text-xs text-slate-400">Find your team by searching its name</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </button>
+                {/* Search by Name - Only if team discovery is enabled */}
+                {isTeamDiscoveryEnabled && (
+                  <button
+                    onClick={() => { setStep('join-search'); setError(null); }}
+                    className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-blue-500/10 border border-slate-600 hover:border-blue-500/50 rounded-xl text-left transition-all"
+                  >
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Search className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">Search by Team Name</p>
+                      <p className="text-xs text-slate-400">Find your team by searching its name</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </button>
+                )}
 
-                {/* CricHeroes ID */}
-                <button
-                  onClick={() => { setStep('join-cricheroes'); setError(null); }}
-                  className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-purple-500/10 border border-slate-600 hover:border-purple-500/50 rounded-xl text-left transition-all"
-                >
-                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Trophy className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-white">Use CricHeroes Team ID</p>
-                    <p className="text-xs text-slate-400">Find team using CricHeroes app integration</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </button>
+                {/* CricHeroes ID - Only if team discovery is enabled */}
+                {isTeamDiscoveryEnabled && (
+                  <button
+                    onClick={() => { setStep('join-cricheroes'); setError(null); }}
+                    className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-purple-500/10 border border-slate-600 hover:border-purple-500/50 rounded-xl text-left transition-all"
+                  >
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Trophy className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">Use CricHeroes Team ID</p>
+                      <p className="text-xs text-slate-400">Find team using CricHeroes app integration</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </button>
+                )}
 
-                {/* Invite Code */}
+                {/* Invite Code - Always visible */}
                 <button
                   onClick={() => { setStep('join-code'); setError(null); }}
                   className="w-full flex items-center gap-4 p-4 bg-slate-700/30 hover:bg-emerald-500/10 border border-slate-600 hover:border-emerald-500/50 rounded-xl text-left transition-all"
@@ -522,6 +530,15 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
                 </button>
+
+                {/* Coming Soon notice when team discovery is disabled */}
+                {!isTeamDiscoveryEnabled && (
+                  <div className="p-4 bg-slate-700/20 border border-slate-600 rounded-xl">
+                    <p className="text-sm text-slate-400 text-center">
+                      🚀 Team search coming soon! For now, ask your team admin for an invite link.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button

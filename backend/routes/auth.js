@@ -2,6 +2,7 @@ const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.js');
+const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -383,6 +384,32 @@ router.put('/profile', async (req, res) => {
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Get feature flags for current user
+router.get('/feature-flags', auth, async (req, res) => {
+  try {
+    const { getAllFeatureFlags } = require('../config/featureFlags');
+    
+    const flags = getAllFeatureFlags({
+      user: req.user,
+      orgId: req.user?.activeOrganizationId,
+    });
+    
+    // Convert to simple enabled/disabled map for frontend
+    const simpleFlags = {};
+    for (const [name, info] of Object.entries(flags)) {
+      simpleFlags[name] = info.enabled;
+    }
+    
+    res.json({
+      success: true,
+      flags: simpleFlags,
+    });
+  } catch (error) {
+    console.error('Feature flags error:', error);
+    res.status(500).json({ error: 'Failed to get feature flags' });
   }
 });
 
