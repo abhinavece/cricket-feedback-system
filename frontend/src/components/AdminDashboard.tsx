@@ -17,6 +17,7 @@ const HistoryTab = lazy(() => import('./HistoryTab'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const WhatsAppAnalyticsTab = lazy(() => import('./WhatsAppAnalyticsTab'));
 const GroundsTab = lazy(() => import('./GroundsTab'));
+const TeamSettingsTab = lazy(() => import('./TeamSettingsTab'));
 
 // Tab loading spinner
 const TabLoadingSpinner = () => (
@@ -329,6 +330,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return { title: 'User Directory', desc: 'Manage access and roles for the platform' };
       case 'settings':
         return { title: 'Settings', desc: 'Manage your account and player profile' };
+      case 'team':
+        return { title: 'Team Settings', desc: 'Manage your team, invites, and members' };
       default:
         return { title: 'Admin Dashboard', desc: 'Manage cricket feedback and user data' };
     }
@@ -453,6 +456,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Users
               </button>
             )}
+            <button
+              onClick={() => { setActiveTab('team'); onTabChange?.('team' as any); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'team'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              Team
+            </button>
             <button
               onClick={() => { setActiveTab('settings'); onTabChange?.('settings'); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -871,6 +884,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'settings' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <SettingsPage />
+          </Suspense>
+        )}
+        {activeTab === 'team' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <TeamSettingsTab />
           </Suspense>
         )}
       </div>

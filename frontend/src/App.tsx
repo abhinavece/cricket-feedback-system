@@ -354,6 +354,7 @@ const AppRoutes: React.FC = () => (
     <Route path="/history" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
     <Route path="/analytics" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
     <Route path="/users" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
+    <Route path="/team" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
     <Route path="/settings" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
     
     {/* Player profile - protected */}
@@ -415,6 +416,7 @@ const LocalhostRoutes: React.FC = () => (
     <Route path="/app/history" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/analytics" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/users" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/team" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/settings" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     
     {/* Player profile */}
