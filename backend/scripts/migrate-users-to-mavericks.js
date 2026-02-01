@@ -12,9 +12,10 @@
  * This script:
  * 1. Migrates users - Adds organizations[] array and activeOrganizationId
  * 2. Migrates data collections - Adds organizationId to:
- *    - players, matches, feedback, feedbacklinks, availability
+ *    - players, matches, feedbacks, feedbacklinks, availabilities
  *    - messages, matchpayments, paymentscreenshots
  *    - publiclinks, templateratelimits, whatsappsessions
+ *    - joinrequests, organizationinvites
  * 3. Updates organization stats (memberCount, playerCount, matchCount)
  * 4. Verifies migration completeness
  */
@@ -28,19 +29,21 @@ const MAVERICKS_ORG_ID = '697fb2430f8ac0eaeab6e3b8';
 // Check for dry run mode
 const DRY_RUN = process.env.DRY_RUN === 'true';
 
-// Collections that need organizationId added
+// Collections that need organizationId added (exact names from database)
 const COLLECTIONS_TO_MIGRATE = [
   'players',
   'matches',
-  'feedback',
+  'feedbacks',             // plural in DB
   'feedbacklinks',
-  'availability',
+  'availabilities',        // plural in DB
   'messages',
   'matchpayments',
   'paymentscreenshots',
   'publiclinks',
   'templateratelimits',
   'whatsappsessions',
+  'joinrequests',          // already has orgId but include for safety
+  'organizationinvites',   // already has orgId but include for safety
 ];
 
 // Collections to skip (global/shared or use different structure)
