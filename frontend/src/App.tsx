@@ -23,6 +23,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const TeamOnboarding = lazy(() => import('./components/TeamOnboarding'));
+const InvitePage = lazy(() => import('./pages/InvitePage'));
 
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
@@ -306,6 +307,9 @@ const HomepageRoutes: React.FC = () => (
     <Route path="/about" element={<AboutPage />} />
     <Route path="/privacy" element={<PrivacyPolicyPage />} />
     
+    {/* Invite link - redirects to app domain */}
+    <Route path="/invite/:code" element={<InvitePage />} />
+    
     {/* Public share routes */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
@@ -337,6 +341,9 @@ const AppRoutes: React.FC = () => (
         <TeamOnboarding onComplete={() => window.location.href = '/feedback'} />
       </RequireAuth>
     } />
+    
+    {/* Invite link - join a team */}
+    <Route path="/invite/:code" element={<InvitePage />} />
     
     {/* Dashboard routes - all protected and require organization */}
     <Route path="/feedback" element={<RequireAuth><RequireOrganization><DashboardLayout /></RequireOrganization></RequireAuth>} />
@@ -394,6 +401,9 @@ const LocalhostRoutes: React.FC = () => (
         <TeamOnboarding onComplete={() => window.location.href = '/app/feedback'} />
       </RequireAuth>
     } />
+    
+    {/* Invite link - join a team */}
+    <Route path="/invite/:code" element={<InvitePage />} />
     
     {/* Dashboard routes at /app/* for localhost - require organization */}
     <Route path="/app" element={<Navigate to="/app/feedback" replace />} />

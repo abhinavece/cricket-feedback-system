@@ -13,6 +13,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Organization = require('../models/Organization');
+const OrganizationInvite = require('../models/OrganizationInvite');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const { resolveTenant, requireOrgAdmin, requireOrgOwner, skipTenant } = require('../middleware/tenantResolver');
@@ -633,6 +634,290 @@ router.delete('/current', auth, resolveTenant, requireOrgOwner, async (req, res)
     res.status(500).json({
       error: 'Server error',
       message: 'Failed to delete organization',
+    });
+  }
+});
+
+// =====================================================
+// INVITE LINK MANAGEMENT
+// =====================================================
+
+/**
+ * POST /api/organizations/invites
+ * Create an invite link for the organization
+ * 
+ * @body {string} [role='viewer'] - Role for invited users
+ * @body {number} [maxUses] - Maximum number of uses (null = unlimited)
+ * @body {number} [expiresInDays] - Expiration in days (null = never)
+ * @body {string} [label] - Optional label for the invite
+ */
+router.post('/invites', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const { role = 'viewer', maxUses = null, expiresInDays = null, label } = req.body;
+
+    // Validate role
+    const allowedRoles = ['viewer', 'editor'];
+    if (req.organizationRole === 'owner') {
+      allowedRoles.push('admin');
+    }
+    
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        error: 'Invalid role',
+        message: `Role must be one of: ${allowedRoles.join(', ')}`,
+      });
+    }
+
+    // Generate unique code
+    let code;
+    let attempts = 0;
+    do {
+      code = OrganizationInvite.generateCode();
+      const existing = await OrganizationInvite.findOne({ code });
+      if (!existing) break;
+      attempts++;
+    } while (attempts < 5);
+
+    if (attempts >= 5) {
+      throw new Error('Failed to generate unique invite code');
+    }
+
+    // Calculate expiration
+    let expiresAt = null;
+    if (expiresInDays && expiresInDays > 0) {
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+    }
+
+    const invite = new OrganizationInvite({
+      organizationId: req.organization._id,
+      code,
+      role,
+      createdBy: req.user._id,
+      maxUses: maxUses > 0 ? maxUses : null,
+      expiresAt,
+      label: label?.trim(),
+    });
+
+    await invite.save();
+
+    console.log(`Invite created: ${code} for ${req.organization.name} by ${req.user.email}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Invite link created',
+      invite: {
+        _id: invite._id,
+        code: invite.code,
+        role: invite.role,
+        maxUses: invite.maxUses,
+        useCount: invite.useCount,
+        expiresAt: invite.expiresAt,
+        label: invite.label,
+        inviteUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invite/${code}`,
+        createdAt: invite.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating invite:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to create invite link',
+    });
+  }
+});
+
+/**
+ * GET /api/organizations/invites
+ * List all invite links for the organization
+ */
+router.get('/invites', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const invites = await OrganizationInvite.find({
+      organizationId: req.organization._id,
+      isActive: true,
+    })
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    res.json({
+      success: true,
+      invites: invites.map(invite => ({
+        _id: invite._id,
+        code: invite.code,
+        role: invite.role,
+        maxUses: invite.maxUses,
+        useCount: invite.useCount,
+        expiresAt: invite.expiresAt,
+        label: invite.label,
+        inviteUrl: `${baseUrl}/invite/${invite.code}`,
+        isValid: invite.isValid(),
+        createdBy: invite.createdBy,
+        createdAt: invite.createdAt,
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching invites:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to fetch invite links',
+    });
+  }
+});
+
+/**
+ * DELETE /api/organizations/invites/:inviteId
+ * Revoke an invite link
+ */
+router.delete('/invites/:inviteId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const { inviteId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(inviteId)) {
+      return res.status(400).json({ error: 'Invalid invite ID' });
+    }
+
+    const invite = await OrganizationInvite.findOne({
+      _id: inviteId,
+      organizationId: req.organization._id,
+    });
+
+    if (!invite) {
+      return res.status(404).json({ error: 'Invite not found' });
+    }
+
+    invite.isActive = false;
+    await invite.save();
+
+    res.json({
+      success: true,
+      message: 'Invite link revoked',
+    });
+  } catch (error) {
+    console.error('Error revoking invite:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to revoke invite link',
+    });
+  }
+});
+
+/**
+ * GET /api/organizations/invite/:code
+ * Get invite details by code (public - for preview before joining)
+ */
+router.get('/invite/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    const invite = await OrganizationInvite.findValidByCode(code);
+    
+    if (!invite) {
+      return res.status(404).json({
+        error: 'Invalid invite',
+        code: 'INVALID_INVITE',
+        message: 'This invite link is invalid or has expired.',
+      });
+    }
+
+    res.json({
+      success: true,
+      invite: {
+        code: invite.code,
+        role: invite.role,
+        organization: {
+          _id: invite.organizationId._id,
+          name: invite.organizationId.name,
+          slug: invite.organizationId.slug,
+          logo: invite.organizationId.logo,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching invite:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to fetch invite details',
+    });
+  }
+});
+
+/**
+ * POST /api/organizations/join/:code
+ * Join an organization using an invite code
+ */
+router.post('/join/:code', auth, async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    const invite = await OrganizationInvite.findValidByCode(code);
+    
+    if (!invite) {
+      return res.status(404).json({
+        error: 'Invalid invite',
+        code: 'INVALID_INVITE',
+        message: 'This invite link is invalid or has expired.',
+      });
+    }
+
+    const organization = await Organization.findById(invite.organizationId._id);
+    if (!organization || !organization.isActive || organization.isDeleted) {
+      return res.status(404).json({
+        error: 'Organization not found',
+        message: 'The organization for this invite no longer exists.',
+      });
+    }
+
+    // Check if user is already a member
+    const existingMembership = req.user.organizations.find(
+      m => m.organizationId.equals(organization._id)
+    );
+
+    if (existingMembership && existingMembership.status === 'active') {
+      return res.status(409).json({
+        error: 'Already a member',
+        code: 'ALREADY_MEMBER',
+        message: `You are already a member of ${organization.name}`,
+        organization: {
+          _id: organization._id,
+          name: organization.name,
+          slug: organization.slug,
+        },
+      });
+    }
+
+    // Add user to organization
+    req.user.addToOrganization(organization._id, invite.role);
+    req.user.activeOrganizationId = organization._id;
+    await req.user.save();
+
+    // Record invite use
+    await invite.recordUse(req.user._id);
+
+    // Update org member count
+    organization.stats.memberCount = (organization.stats.memberCount || 0) + 1;
+    await organization.save();
+
+    console.log(`User ${req.user.email} joined ${organization.name} via invite ${code}`);
+
+    res.json({
+      success: true,
+      message: `Welcome to ${organization.name}!`,
+      organization: {
+        _id: organization._id,
+        name: organization.name,
+        slug: organization.slug,
+        logo: organization.logo,
+      },
+      role: invite.role,
+    });
+  } catch (error) {
+    console.error('Error joining organization:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to join organization',
     });
   }
 });

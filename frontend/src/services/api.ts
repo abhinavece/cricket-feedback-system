@@ -1504,4 +1504,91 @@ export const deleteOrganization = async (): Promise<{
   return response.data;
 };
 
+// ===== Organization Invite APIs =====
+
+export interface OrganizationInvite {
+  _id: string;
+  code: string;
+  role: 'viewer' | 'editor' | 'admin';
+  maxUses: number | null;
+  useCount: number;
+  expiresAt: string | null;
+  label?: string;
+  inviteUrl: string;
+  isValid: boolean;
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+}
+
+// Create an invite link
+export const createOrganizationInvite = async (data: {
+  role?: 'viewer' | 'editor' | 'admin';
+  maxUses?: number;
+  expiresInDays?: number;
+  label?: string;
+}): Promise<{
+  success: boolean;
+  invite: OrganizationInvite;
+  message: string;
+}> => {
+  const response = await api.post('/organizations/invites', data);
+  return response.data;
+};
+
+// List all invite links for current organization
+export const getOrganizationInvites = async (): Promise<{
+  success: boolean;
+  invites: OrganizationInvite[];
+}> => {
+  const response = await api.get('/organizations/invites');
+  return response.data;
+};
+
+// Revoke an invite link
+export const revokeOrganizationInvite = async (inviteId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/organizations/invites/${inviteId}`);
+  return response.data;
+};
+
+// Get invite details by code (public - no auth required)
+export const getInviteByCode = async (code: string): Promise<{
+  success: boolean;
+  invite: {
+    code: string;
+    role: string;
+    organization: {
+      _id: string;
+      name: string;
+      slug: string;
+      logo?: string;
+    };
+  };
+}> => {
+  const response = await api.get(`/organizations/invite/${code}`);
+  return response.data;
+};
+
+// Join organization using invite code
+export const joinOrganizationWithInvite = async (code: string): Promise<{
+  success: boolean;
+  message: string;
+  organization: {
+    _id: string;
+    name: string;
+    slug: string;
+    logo?: string;
+  };
+  role: string;
+}> => {
+  const response = await api.post(`/organizations/join/${code}`);
+  return response.data;
+};
+
 export default api;
