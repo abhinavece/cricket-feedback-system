@@ -31,6 +31,7 @@ const webhookProxyRoutes = require('./routes/webhookProxy');
 const developerRoutes = require('./routes/developer');
 const groundRoutes = require('./routes/grounds');
 const organizationRoutes = require('./routes/organizations');
+const seoRoutes = require('./routes/seo');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -92,6 +93,7 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/webhook-proxy', webhookProxyRoutes);
 app.use('/api/developer', developerRoutes);
 app.use('/api/grounds', groundRoutes);
+app.use('/api/seo', seoRoutes);  // SEO public endpoints (no auth) for cricsmart.in
 
 /**
  * GET /api/health
