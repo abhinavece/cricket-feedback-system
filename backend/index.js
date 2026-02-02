@@ -31,6 +31,7 @@ const webhookProxyRoutes = require('./routes/webhookProxy');
 const developerRoutes = require('./routes/developer');
 const groundRoutes = require('./routes/grounds');
 const organizationRoutes = require('./routes/organizations');
+const tournamentRoutes = require('./routes/tournaments');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -92,6 +93,7 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/webhook-proxy', webhookProxyRoutes);
 app.use('/api/developer', developerRoutes);
 app.use('/api/grounds', groundRoutes);
+app.use('/api/tournaments', tournamentRoutes);  // Tournament management
 
 /**
  * GET /api/health

@@ -4,9 +4,161 @@ const PublicLink = require('../models/PublicLink');
 const Match = require('../models/Match');
 const MatchPayment = require('../models/MatchPayment');
 const Availability = require('../models/Availability');
+const Tournament = require('../models/Tournament');
+const TournamentEntry = require('../models/TournamentEntry');
 const { auth } = require('../middleware/auth');
 const { resolveTenant } = require('../middleware/tenantResolver');
 const { tenantQuery, tenantCreate } = require('../utils/tenantQuery');
+
+// Helper functions
+function maskPhone(phone) {
+  if (!phone || phone.length < 4) return '';
+  const lastFour = phone.slice(-4);
+  const prefix = phone.slice(0, -4).replace(/\d/g, 'X');
+  return prefix + lastFour;
+}
+
+function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+// GET /api/public/tournament/:token - Access tournament by its publicToken (NO AUTH REQUIRED)
+// This uses the token stored directly on Tournament model (simpler URL pattern)
+router.get('/tournament/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { search, role, teamName, page = 1, limit = 50 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = Math.min(parseInt(limit), 100);
+    
+    // Find tournament by publicToken
+    const tournament = await Tournament.findOne({
+      publicToken: token,
+      isDeleted: false,
+      isActive: true
+    });
+    
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found or link is invalid'
+      });
+    }
+    
+    // Check if tournament is published (not draft)
+    if (tournament.status === 'draft') {
+      return res.status(403).json({
+        success: false,
+        error: 'This tournament is not yet published'
+      });
+    }
+    
+    // Build query for entries
+    const entryQuery = {
+      tournamentId: tournament._id,
+      isDeleted: false
+    };
+    
+    if (role) {
+      entryQuery['entryData.role'] = role;
+    }
+    
+    if (teamName) {
+      entryQuery['entryData.teamName'] = teamName;
+    }
+    
+    // Search across multiple fields
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      entryQuery.$or = [
+        { 'entryData.name': searchRegex },
+        { 'entryData.phone': { $regex: search.slice(-4) } }, // Last 4 digits of phone
+        { 'entryData.cricHeroesId': searchRegex },
+        { 'entryData.companyName': searchRegex },
+        { 'entryData.teamName': searchRegex }
+      ];
+    }
+    
+    // Fetch entries with pagination
+    const entries = await TournamentEntry.find(entryQuery)
+      .sort({ 'entryData.teamName': 1, 'entryData.name': 1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean();
+    
+    const total = await TournamentEntry.countDocuments(entryQuery);
+    const hasMore = (pageNum * limitNum) < total;
+    
+    // Get unique teams and roles for filtering (full list, not paginated)
+    const allTeams = await TournamentEntry.distinct('entryData.teamName', {
+      tournamentId: tournament._id,
+      isDeleted: false
+    });
+    
+    const allRoles = await TournamentEntry.distinct('entryData.role', {
+      tournamentId: tournament._id,
+      isDeleted: false
+    });
+    
+    // Privacy settings
+    const showPhone = tournament.settings?.showPhone ?? false;
+    const showEmail = tournament.settings?.showEmail ?? false;
+    
+    res.json({
+      success: true,
+      data: {
+        tournament: {
+          _id: tournament._id,
+          name: tournament.name,
+          description: tournament.description,
+          startDate: tournament.startDate,
+          endDate: tournament.endDate,
+          status: tournament.status,
+          branding: tournament.branding,
+          stats: tournament.stats
+        },
+        entries: entries.map(entry => ({
+          _id: entry._id,
+          name: entry.entryData.name,
+          role: entry.entryData.role,
+          teamName: entry.entryData.teamName,
+          companyName: entry.entryData.companyName,
+          cricHeroesId: entry.entryData.cricHeroesId,
+          jerseyNumber: entry.entryData.jerseyNumber,
+          phone: showPhone ? maskPhone(entry.entryData.phone) : undefined,
+          email: showEmail ? entry.entryData.email : undefined,
+          age: entry.entryData.dateOfBirth ? calculateAge(entry.entryData.dateOfBirth) : undefined,
+          address: entry.entryData.address || undefined
+        })),
+        filters: {
+          teams: allTeams.filter(Boolean).sort(),
+          roles: allRoles.filter(Boolean).sort()
+        },
+        pagination: {
+          current: pageNum,
+          pages: Math.ceil(total / limitNum),
+          total,
+          hasMore
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error accessing tournament:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to access tournament'
+    });
+  }
+});
 
 // GET /api/public/:token - Access shared resource (NO AUTH REQUIRED)
 router.get('/:token', async (req, res) => {
@@ -133,6 +285,60 @@ router.get('/:token', async (req, res) => {
           createdAt: payment.createdAt
         }
       };
+    } else if (publicLink.resourceType === 'tournament') {
+      const tournament = await Tournament.findById(publicLink.resourceId);
+      
+      if (!tournament || tournament.isDeleted) {
+        return res.status(404).json({
+          success: false,
+          error: 'Tournament not found'
+        });
+      }
+      
+      // Fetch all entries for the tournament
+      const entries = await TournamentEntry.find({
+        tournamentId: tournament._id,
+        isDeleted: false
+      }).sort({ 'entryData.teamName': 1, 'entryData.name': 1 }).lean();
+      
+      // Get unique teams and roles for filtering
+      const teams = [...new Set(entries.map(e => e.entryData.teamName).filter(Boolean))].sort();
+      const roles = [...new Set(entries.map(e => e.entryData.role).filter(Boolean))].sort();
+      
+      // Privacy settings
+      const showPhone = tournament.settings?.showPhone ?? false;
+      const showEmail = tournament.settings?.showEmail ?? false;
+      
+      data = {
+        type: 'tournament',
+        viewType: publicLink.viewType,
+        tournament: {
+          _id: tournament._id,
+          name: tournament.name,
+          description: tournament.description,
+          startDate: tournament.startDate,
+          endDate: tournament.endDate,
+          status: tournament.status,
+          branding: tournament.branding,
+          stats: tournament.stats
+        },
+        entries: entries.map(entry => ({
+          _id: entry._id,
+          name: entry.entryData.name,
+          role: entry.entryData.role,
+          teamName: entry.entryData.teamName,
+          companyName: entry.entryData.companyName,
+          cricHeroesId: entry.entryData.cricHeroesId,
+          jerseyNumber: entry.entryData.jerseyNumber,
+          phone: showPhone ? maskPhone(entry.entryData.phone) : undefined,
+          email: showEmail ? entry.entryData.email : undefined,
+          age: entry.entryData.dateOfBirth ? calculateAge(entry.entryData.dateOfBirth) : undefined
+        })),
+        filters: {
+          teams,
+          roles
+        }
+      };
     }
     
     res.json({
@@ -166,7 +372,7 @@ router.post('/generate', auth, resolveTenant, async (req, res) => {
       });
     }
     
-    if (!['match', 'payment'].includes(resourceType)) {
+    if (!['match', 'payment', 'tournament'].includes(resourceType)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid resource type'
@@ -179,6 +385,8 @@ router.post('/generate', auth, resolveTenant, async (req, res) => {
       resource = await Match.findOne(tenantQuery(req, { _id: resourceId }));
     } else if (resourceType === 'payment') {
       resource = await MatchPayment.findOne(tenantQuery(req, { _id: resourceId }));
+    } else if (resourceType === 'tournament') {
+      resource = await Tournament.findOne(tenantQuery(req, { _id: resourceId, isDeleted: false }));
     }
     
     if (!resource) {

@@ -8,74 +8,25 @@ const { auth } = require('../middleware/auth');
 const router = express.Router();
 
 /**
- * Helper: Auto-migrate existing user to Mavericks XI organization if not part of any organization
- * This handles the transition period for existing users
+ * Helper: Ensure user has active organization set
+ * Returns user and needsOnboarding flag
+ * 
+ * NOTE: We no longer auto-migrate users to Mavericks XI. 
+ * Users without organizations should go through the team selection onboarding flow.
  */
-async function autoMigrateToDefaultOrg(user) {
-  // Skip if user already has organizations
+async function ensureActiveOrganization(user) {
+  // If user has organizations, ensure activeOrganizationId is set
   if (user.organizations && user.organizations.length > 0) {
-    // Just ensure activeOrganizationId is set
     if (!user.activeOrganizationId) {
       user.activeOrganizationId = user.organizations[0].organizationId;
       await user.save();
     }
-    return user;
+    return { user, needsOnboarding: false };
   }
 
-  // Find the default organization (Mavericks XI)
-  const defaultOrg = await Organization.findOne({ 
-    slug: 'mavericks-xi',
-    isActive: true,
-    isDeleted: false,
-  });
-
-  if (!defaultOrg) {
-    console.log(`[Auth] Default organization not found, skipping auto-migration for ${user.email}`);
-    return user;
-  }
-
-  console.log(`[Auth] Auto-migrating existing user ${user.email} to ${defaultOrg.name}`);
-
-  // Determine role based on existing role
-  let orgRole = 'viewer';
-  if (user.role === 'admin') {
-    orgRole = defaultOrg.ownerId.equals(user._id) ? 'owner' : 'admin';
-  } else if (user.role === 'editor') {
-    orgRole = 'editor';
-  }
-
-  // Initialize organizations array if needed
-  if (!user.organizations) {
-    user.organizations = [];
-  }
-
-  // Add organization membership
-  user.organizations.push({
-    organizationId: defaultOrg._id,
-    role: orgRole,
-    playerId: user.playerId, // Migrate existing playerId link
-    joinedAt: user.createdAt || new Date(),
-    status: 'active',
-  });
-
-  user.activeOrganizationId = defaultOrg._id;
-  await user.save();
-
-  // Update org member count
-  await Organization.findByIdAndUpdate(defaultOrg._id, {
-    $inc: { 'stats.memberCount': 1 },
-  });
-
-  console.log(`[Auth] Successfully migrated ${user.email} to ${defaultOrg.name} as ${orgRole}`);
-  return user;
-}
-
-/**
- * Helper: Ensure user has organization set (for existing users after multi-tenant migration)
- * If user has organizations but no activeOrganizationId, set it to the first one
- */
-async function ensureActiveOrganization(user) {
-  return autoMigrateToDefaultOrg(user);
+  // User has no organizations - they need to go through onboarding
+  console.log(`[Auth] User ${user.email} has no organizations - needs onboarding`);
+  return { user, needsOnboarding: true };
 }
 
 // Initialize Google OAuth client
@@ -131,7 +82,8 @@ router.post('/google', async (req, res) => {
     }
 
     // Ensure user has activeOrganizationId set if they have organizations
-    user = await ensureActiveOrganization(user);
+    const { user: updatedUser, needsOnboarding } = await ensureActiveOrganization(user);
+    user = updatedUser;
 
     // Generate JWT token
     const jwtToken = jwt.sign(
@@ -158,11 +110,13 @@ router.post('/google', async (req, res) => {
       createdAt: user.createdAt,
       hasOrganizations,
       activeOrganizationId: user.activeOrganizationId,
+      needsOnboarding, // Flag to indicate if user needs to select/create a team
     };
 
     res.json({
       token: jwtToken,
-      user: userData
+      user: userData,
+      needsOnboarding, // Also at top level for easier access
     });
   } catch (error) {
     console.error('Google auth error:', error);
@@ -220,7 +174,8 @@ router.post('/google/mobile', async (req, res) => {
     }
 
     // Ensure user has activeOrganizationId set if they have organizations
-    user = await ensureActiveOrganization(user);
+    const { user: updatedUser, needsOnboarding } = await ensureActiveOrganization(user);
+    user = updatedUser;
 
     // Generate JWT token with longer expiry for mobile
     const jwtToken = jwt.sign(
@@ -247,11 +202,13 @@ router.post('/google/mobile', async (req, res) => {
       createdAt: user.createdAt,
       hasOrganizations,
       activeOrganizationId: user.activeOrganizationId,
+      needsOnboarding,
     };
 
     res.json({
       token: jwtToken,
-      user: userData
+      user: userData,
+      needsOnboarding,
     });
   } catch (error) {
     console.error('Mobile Google auth error:', error);
@@ -281,7 +238,8 @@ router.get('/verify', async (req, res) => {
     }
 
     // Ensure user has activeOrganizationId set if they have organizations
-    user = await ensureActiveOrganization(user);
+    const { user: updatedUser, needsOnboarding } = await ensureActiveOrganization(user);
+    user = updatedUser;
 
     // Check if user has organizations
     const hasOrganizations = user.organizations && user.organizations.length > 0;
@@ -297,11 +255,13 @@ router.get('/verify', async (req, res) => {
       createdAt: user.createdAt,
       hasOrganizations,
       activeOrganizationId: user.activeOrganizationId,
+      needsOnboarding,
     };
 
     res.json({
       valid: true,
-      user: userData
+      user: userData,
+      needsOnboarding,
     });
   } catch (error) {
     console.error('Token verification error:', error);

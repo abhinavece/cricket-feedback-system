@@ -15,6 +15,7 @@ import './theme.css';
 // Public pages (no auth required)
 const PublicMatchView = lazy(() => import('./pages/PublicMatchView'));
 const PublicPaymentView = lazy(() => import('./pages/PublicPaymentView'));
+const TournamentPublicView = lazy(() => import('./pages/TournamentPublicView'));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
 const MatchFeedbackPage = lazy(() => import('./pages/MatchFeedbackPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
@@ -313,6 +314,7 @@ const HomepageRoutes: React.FC = () => (
     {/* Public share routes */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/tournament/:token" element={<TournamentPublicView />} />
     <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
     
     {/* Redirect /app to app domain */}
@@ -373,6 +375,7 @@ const AppRoutes: React.FC = () => (
     {/* Public share routes (accessible without login) */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/tournament/:token" element={<TournamentPublicView />} />
     <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
     
     {/* Static pages */}
@@ -424,6 +427,7 @@ const LocalhostRoutes: React.FC = () => (
     <Route path="/app/analytics" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/users" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/team" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/tournaments" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/settings" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     
     {/* Player profile */}
@@ -432,6 +436,7 @@ const LocalhostRoutes: React.FC = () => (
     {/* Public share routes */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/tournament/:token" element={<TournamentPublicView />} />
     <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
     
     {/* Static pages */}

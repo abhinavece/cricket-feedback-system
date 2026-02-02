@@ -7,6 +7,7 @@ import FeedbackCard from './FeedbackCard';
 import Footer from './Footer';
 import PageHeader from './PageHeader';
 import FeedbackSummary from './FeedbackSummary';
+import AdminMenu, { getDefaultAdminMenuItems } from './AdminMenu';
 
 // Lazy load heavy tab components - only loaded when tab is selected
 const UserManagement = lazy(() => import('./UserManagement'));
@@ -18,6 +19,7 @@ const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const WhatsAppAnalyticsTab = lazy(() => import('./WhatsAppAnalyticsTab'));
 const GroundsTab = lazy(() => import('./GroundsTab'));
 const TeamSettingsTab = lazy(() => import('./TeamSettingsTab'));
+const MobileTournamentDashboard = lazy(() => import('./mobile/MobileTournamentDashboard'));
 
 // Tab loading spinner
 const TabLoadingSpinner = () => (
@@ -43,8 +45,8 @@ interface FeedbackStats {
 }
 
 interface AdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team') => void;
+  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team' | 'tournaments';
+  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team' | 'tournaments') => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -61,7 +63,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'active' | 'trash'>('active');
   const [trashFeedback, setTrashFeedback] = useState<FeedbackSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team'>(propActiveTab);
+  const [activeTab, setActiveTab] = useState<'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team' | 'tournaments'>(propActiveTab);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const hasFetchedInitial = React.useRef(false);
@@ -332,6 +334,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return { title: 'Settings', desc: 'Manage your account and player profile' };
       case 'team':
         return { title: 'Team Settings', desc: 'Manage your team, invites, and members' };
+      case 'tournaments':
+        return { title: 'Tournaments', desc: 'Create and manage tournaments and entries' };
       default:
         return { title: 'Admin Dashboard', desc: 'Manage cricket feedback and user data' };
     }
@@ -432,30 +436,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               History
             </button>
-            {user?.role === 'admin' && (
-              <button
-                onClick={() => { setActiveTab('analytics'); onTabChange?.('analytics'); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === 'analytics'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                Analytics
-              </button>
-            )}
-            {user?.role === 'admin' && (
-              <button
-                onClick={() => { setActiveTab('users'); onTabChange?.('users'); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === 'users'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                Users
-              </button>
-            )}
             <button
               onClick={() => { setActiveTab('team'); onTabChange?.('team'); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -466,16 +446,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               Team
             </button>
-            <button
-              onClick={() => { setActiveTab('settings'); onTabChange?.('settings'); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'settings'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:text-slate-300'
-              }`}
-            >
-              Settings
-            </button>
+            {/* 9-dot menu only: Analytics, Users, Tournaments, Settings (no duplicates in bar) */}
+            <AdminMenu
+              items={getDefaultAdminMenuItems((tab) => {
+                setActiveTab(tab as typeof activeTab);
+                onTabChange?.(tab as typeof activeTab);
+              })}
+              userRole={user?.role}
+              className="flex-shrink-0"
+            />
           </nav>
 
           {/* Mobile: Clean Segmented Control */}
@@ -889,6 +868,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'team' && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <TeamSettingsTab />
+          </Suspense>
+        )}
+        {activeTab === 'tournaments' && (
+          <Suspense fallback={<TabLoadingSpinner />}>
+            <MobileTournamentDashboard />
           </Suspense>
         )}
       </div>

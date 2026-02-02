@@ -14,6 +14,7 @@ export type TabId =
   | 'analytics' 
   | 'users' 
   | 'team'
+  | 'tournaments'
   | 'settings';
 
 // Legacy tab ID mapping (for backward compatibility)
@@ -28,6 +29,7 @@ export type LegacyTabId =
   | 'analytics' 
   | 'users' 
   | 'team'
+  | 'tournaments'
   | 'settings';
 
 interface RouteConfig {
@@ -49,6 +51,7 @@ export const routes: RouteConfig[] = [
   { path: '/analytics', tabId: 'analytics', legacyTabId: 'analytics', label: 'Analytics', adminOnly: true },
   { path: '/users', tabId: 'users', legacyTabId: 'users', label: 'Users', adminOnly: true },
   { path: '/team', tabId: 'team', legacyTabId: 'team', label: 'Team', adminOnly: false },
+  { path: '/tournaments', tabId: 'tournaments', legacyTabId: 'tournaments', label: 'Tournaments', adminOnly: false },
   { path: '/settings', tabId: 'settings', legacyTabId: 'settings', label: 'Settings', adminOnly: false },
 ];
 
