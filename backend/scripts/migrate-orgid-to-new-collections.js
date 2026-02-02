@@ -27,7 +27,7 @@ const mongoose = require('mongoose');
 
 // Configuration
 const DRY_RUN = process.env.DRY_RUN === 'true';
-const DEFAULT_ORG_ID = process.env.DEFAULT_ORG_ID || '697fb2430f8ac0eaeab6e3b8'; // Mavericks XI
+const DEFAULT_ORG_ID = process.env.DEFAULT_ORG_ID || '697edef86754947859d3a018'; // Mavericks XI
 
 // Logging helpers
 const log = {

@@ -24,7 +24,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Mavericks XI Organization ID (from production database)
-const MAVERICKS_ORG_ID = '697fb2430f8ac0eaeab6e3b8';
+const MAVERICKS_ORG_ID = '697edef86754947859d3a018';
 
 // Check for dry run mode
 const DRY_RUN = process.env.DRY_RUN === 'true';

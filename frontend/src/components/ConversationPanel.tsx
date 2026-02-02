@@ -103,9 +103,14 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
   }, [player, fetchHistory]);
 
   // SSE subscriptions for real-time updates
+  // Format phone number to match backend broadcast format (with 91 prefix)
   const sseSubscriptions = useMemo(() => {
     if (!player) return [];
-    return ['messages', `phone:${player.phone}`];
+    let formattedPhone = player.phone.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+      formattedPhone = '91' + formattedPhone;
+    }
+    return ['messages', `phone:${formattedPhone}`];
   }, [player]);
 
   // Handle SSE events
