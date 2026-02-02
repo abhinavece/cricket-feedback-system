@@ -316,6 +316,10 @@ router.get('/webhook', (req, res) => {
     const challenge = req.query['hub.challenge'];
     const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'mavericks-xi-verify-token-2024';
     
+    // #region agent log
+    console.log('[DEBUG-B] Webhook verification attempt:', JSON.stringify({mode,hasToken:!!token,hasChallenge:!!challenge,tokenMatches:token===verifyToken}));
+    // #endregion
+    
     // Verify the webhook
     if (mode && token) {
       if (mode === 'subscribe' && token === verifyToken) {
@@ -337,6 +341,10 @@ router.get('/webhook', (req, res) => {
 router.post('/webhook', async (req, res) => {
   try {
     const data = req.body;
+    
+    // #region agent log
+    console.log('[DEBUG-A] Webhook POST received:', JSON.stringify({hasBody:!!data,object:data?.object,entryCount:data?.entry?.length}));
+    // #endregion
     
     console.log('Received WhatsApp webhook:', JSON.stringify(data, null, 2));
     
@@ -374,6 +382,10 @@ router.post('/webhook', async (req, res) => {
             }
             
             console.log(`Processing ${messages.length} messages and ${contacts.length} contacts`);
+            
+            // #region agent log
+            console.log('[DEBUG-AD] Processing messages:', JSON.stringify({messageCount:messages.length,statusCount:statuses.length,waConfigMode:waConfig?.mode,hasOrgId:!!waConfig?.organizationId}));
+            // #endregion
             
             for (const message of messages) {
               const from = message.from; // WhatsApp ID of sender
@@ -553,6 +565,10 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
         const incomingOrgId = playerData?.organizationId || 
           await messageService.resolveOrganizationId({ phone: formattedPhone });
         
+        // #region agent log
+        console.log('[DEBUG-CD] Before message save:', JSON.stringify({formattedPhone,incomingOrgId:incomingOrgId?.toString(),hasPlayer:!!playerData,messageId}));
+        // #endregion
+        
         savedMessage = await Message.create({
           organizationId: incomingOrgId, // Multi-tenant isolation
           from: formattedPhone,
@@ -565,6 +581,10 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
           playerId: playerData?._id || null,
           playerName: playerData?.name || null
         });
+
+        // #region agent log
+        console.log('[DEBUG-C] Message saved successfully:', JSON.stringify({savedMessageId:savedMessage?._id?.toString()}));
+        // #endregion
 
         console.log(`✅ Message persisted immediately (ID: ${savedMessage._id})`);
         if (playerData) {
@@ -608,6 +628,9 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
     } catch (saveErr) {
       // Log error but continue processing - don't fail the whole flow
       console.error(`⚠️ Failed to persist message immediately:`, saveErr.message);
+      // #region agent log
+      console.error('[DEBUG-CDE] ERROR saving message:', JSON.stringify({error:saveErr.message,stack:saveErr.stack?.substring(0,500)}));
+      // #endregion
     }
     
     // Try multiple phone formats to find the message
@@ -962,12 +985,18 @@ async function processIncomingMessage(from, text, messageId, contextId = null, m
   } catch (error) {
     console.error('❌ Error processing incoming message:', error);
     console.error('Stack trace:', error.stack);
+    // #region agent log
+    console.error('[DEBUG-E] ERROR in processIncomingMessage:', JSON.stringify({error:error.message,stack:error.stack?.substring(0,500)}));
+    // #endregion
   }
 }
 
 async function saveImageMessage(from, imageId, messageId, caption) {
   try {
     console.log('\n=== SAVING IMAGE MESSAGE TO HISTORY ===');
+    // #region agent log
+    console.log('[DEBUG-E] saveImageMessage called:', JSON.stringify({from,imageId,messageId,hasCaption:!!caption}));
+    // #endregion
     
     // Format phone number
     let formattedPhone = from.replace(/\D/g, '');
@@ -1104,6 +1133,9 @@ async function saveImageMessage(from, imageId, messageId, caption) {
     return savedMessage;
   } catch (error) {
     console.error('❌ Error saving image message:', error.message);
+    // #region agent log
+    console.error('[DEBUG-CDE] ERROR in saveImageMessage:', JSON.stringify({error:error.message,stack:error.stack?.substring(0,500)}));
+    // #endregion
     throw error;
   }
 }
