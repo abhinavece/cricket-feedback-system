@@ -57,6 +57,13 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleSeeHowItWorks = () => {
+    const howItWorksSection = document.getElementById('how-it-works');
+    if (howItWorksSection) {
+      howItWorksSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleAddGround = () => {
     // Show login modal to access the grounds feature
     handleShowLogin();
@@ -79,14 +86,16 @@ const HomePage: React.FC = () => {
       {/* Hero Section - Get Started shows modal */}
       <HeroSection
         onGetStarted={handleShowLogin}
-        onExploreGrounds={handleExploreGrounds}
+        onExploreGrounds={handleSeeHowItWorks}
       />
 
       {/* Social Proof Stats */}
       <StatsBar />
 
-      {/* How It Works */}
-      <HowItWorks />
+      {/* How It Works - with id for scroll navigation */}
+      <div id="how-it-works">
+        <HowItWorks />
+      </div>
 
       {/* Key Features - with id for scroll navigation */}
       <div id="features">
