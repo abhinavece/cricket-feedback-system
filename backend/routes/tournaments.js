@@ -69,12 +69,43 @@ router.get('/', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .lean();
 
+    // Get player and franchise counts for all tournaments in one query
+    const tournamentIds = tournaments.map(t => t._id);
+    
+    const [entryCounts, franchiseCounts] = await Promise.all([
+      TournamentEntry.aggregate([
+        { $match: { tournamentId: { $in: tournamentIds }, isDeleted: false } },
+        { $group: { _id: '$tournamentId', count: { $sum: 1 } } }
+      ]),
+      Franchise.aggregate([
+        { $match: { tournamentId: { $in: tournamentIds }, isDeleted: false } },
+        { $group: { _id: '$tournamentId', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    // Create lookup maps
+    const entryCountMap = entryCounts.reduce((acc, { _id, count }) => {
+      acc[_id.toString()] = count;
+      return acc;
+    }, {});
+    const franchiseCountMap = franchiseCounts.reduce((acc, { _id, count }) => {
+      acc[_id.toString()] = count;
+      return acc;
+    }, {});
+
+    // Add counts to tournaments
+    const tournamentsWithStats = tournaments.map(t => ({
+      ...t,
+      playerCount: entryCountMap[t._id.toString()] || 0,
+      franchiseCount: franchiseCountMap[t._id.toString()] || 0
+    }));
+
     const total = await Tournament.countDocuments(tenantQuery(req, query));
     const hasMore = (pageNum * limitNum) < total;
 
     res.json({
       success: true,
-      data: tournaments,
+      data: tournamentsWithStats,
       pagination: {
         current: pageNum,
         pages: Math.ceil(total / limitNum),
@@ -107,48 +138,36 @@ router.get('/:id', auth, ensureTournamentOrg, resolveTenant, async (req, res) =>
       return res.status(404).json({ error: 'Tournament not found' });
     }
 
-    // Get team breakdown
-    const teamStats = await TournamentEntry.aggregate([
-      {
-        $match: {
-          tournamentId: tournament._id,
-          isDeleted: false
-        }
-      },
-      {
-        $group: {
-          _id: '$entryData.teamName',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
-    ]);
-
-    // Get role breakdown
-    const roleStats = await TournamentEntry.aggregate([
-      {
-        $match: {
-          tournamentId: tournament._id,
-          isDeleted: false
-        }
-      },
-      {
-        $group: {
-          _id: '$entryData.role',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
+    // Get all stats in parallel
+    const [teamStats, roleStats, playerCount, franchiseCount] = await Promise.all([
+      // Team breakdown
+      TournamentEntry.aggregate([
+        { $match: { tournamentId: tournament._id, isDeleted: false } },
+        { $group: { _id: '$entryData.teamName', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Role breakdown
+      TournamentEntry.aggregate([
+        { $match: { tournamentId: tournament._id, isDeleted: false } },
+        { $group: { _id: '$entryData.role', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Total player count
+      TournamentEntry.countDocuments({ tournamentId: tournament._id, isDeleted: false }),
+      // Total franchise count
+      Franchise.countDocuments({ tournamentId: tournament._id, isDeleted: false })
     ]);
 
     res.json({
       success: true,
       data: {
         ...tournament.toObject(),
+        playerCount,
+        franchiseCount,
+        stats: {
+          entryCount: playerCount,
+          teamCount: teamStats.filter(t => t._id).length // Unique team names
+        },
         teamStats: teamStats.map(t => ({ teamName: t._id || 'Unassigned', count: t.count })),
         roleStats: roleStats.map(r => ({ role: r._id || 'player', count: r.count }))
       }

@@ -133,11 +133,11 @@ franchiseSchema.virtual('playerCount', {
 });
 
 // Pre-save: generate shortName if not provided
-franchiseSchema.pre('save', function(next) {
+franchiseSchema.pre('save', function() {
   if (!this.shortName && this.name) {
     this.shortName = this.name.substring(0, 3).toUpperCase();
   }
-  next();
+  // No need to call next() in async-style middleware
 });
 
 module.exports = mongoose.model('Franchise', franchiseSchema);

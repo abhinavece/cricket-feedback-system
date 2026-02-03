@@ -44,7 +44,7 @@ export interface TournamentPlayer {
   basePrice?: number;
   soldPrice?: number;
   franchiseId?: string; // null if unsold/available
-  status?: 'registered' | 'withdrawn' | 'confirmed' | string;
+  status?: 'registered' | 'withdrawn' | 'confirmed' | 'ineligible' | string;
   stats?: PlayerStats;
   createdAt?: string;
   updatedAt?: string;

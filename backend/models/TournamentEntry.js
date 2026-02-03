@@ -127,7 +127,7 @@ const tournamentEntrySchema = new mongoose.Schema({
   
   status: {
     type: String,
-    enum: ['registered', 'confirmed', 'withdrawn'],
+    enum: ['registered', 'confirmed', 'withdrawn', 'ineligible'],
     default: 'registered'
   },
   
