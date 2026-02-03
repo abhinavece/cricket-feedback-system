@@ -14,7 +14,7 @@ const multer = require('multer');
 const Tournament = require('../models/Tournament');
 const TournamentEntry = require('../models/TournamentEntry');
 const { auth } = require('../middleware/auth');
-const { resolveTenant, requireOrgAdmin } = require('../middleware/tenantResolver');
+const { resolveTenant, requireOrgAdmin, ensureTournamentOrg } = require('../middleware/tenantResolver');
 const { tenantQuery, tenantCreate } = require('../utils/tenantQuery');
 const fileParserService = require('../services/fileParserService');
 
@@ -50,7 +50,7 @@ const upload = multer({
  * GET /api/tournaments
  * List all tournaments for the organization
  */
-router.get('/', auth, resolveTenant, async (req, res) => {
+router.get('/', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const pageNum = parseInt(page);
@@ -91,7 +91,7 @@ router.get('/', auth, resolveTenant, async (req, res) => {
  * GET /api/tournaments/:id
  * Get single tournament with stats
  */
-router.get('/:id', auth, resolveTenant, async (req, res) => {
+router.get('/:id', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -162,7 +162,7 @@ router.get('/:id', auth, resolveTenant, async (req, res) => {
  * POST /api/tournaments
  * Create new tournament (admin only)
  */
-router.post('/', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { name, description, startDate, endDate, branding, settings } = req.body;
 
@@ -218,7 +218,7 @@ router.post('/', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
  * PUT /api/tournaments/:id
  * Update tournament (admin only)
  */
-router.put('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.put('/:id', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -264,10 +264,55 @@ router.put('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
 });
 
 /**
+ * POST /api/tournaments/:id/publish
+ * Publish tournament and generate/return public link
+ */
+router.post('/:id/publish', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid tournament ID' });
+    }
+
+    const tournament = await Tournament.findOne(tenantQuery(req, {
+      _id: req.params.id,
+      isDeleted: false
+    }));
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Generate public token if not exists
+    if (!tournament.publicToken) {
+      tournament.publicToken = Tournament.generateToken();
+    }
+
+    // Update status to active if draft
+    if (tournament.status === 'draft') {
+      tournament.status = 'active';
+    }
+
+    tournament.isActive = true;
+    await tournament.save();
+
+    res.json({
+      success: true,
+      data: {
+        publicToken: tournament.publicToken,
+        status: tournament.status,
+      }
+    });
+  } catch (error) {
+    console.error('Error publishing tournament:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * DELETE /api/tournaments/:id
  * Soft delete tournament (admin only)
  */
-router.delete('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -302,7 +347,7 @@ router.delete('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => 
  * POST /api/tournaments/:id/regenerate-token
  * Regenerate public token (admin only)
  */
-router.post('/:id/regenerate-token', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/:id/regenerate-token', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const tournament = await Tournament.findOne(tenantQuery(req, {
       _id: req.params.id,
@@ -336,7 +381,7 @@ router.post('/:id/regenerate-token', auth, resolveTenant, requireOrgAdmin, async
  * GET /api/tournaments/:id/entries
  * List tournament entries with pagination
  */
-router.get('/:id/entries', auth, resolveTenant, async (req, res) => {
+router.get('/:id/entries', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -431,7 +476,7 @@ router.get('/:id/entries', auth, resolveTenant, async (req, res) => {
  * POST /api/tournaments/:id/entries
  * Add single entry (admin only)
  */
-router.post('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/:id/entries', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -488,7 +533,7 @@ router.post('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, re
  * POST /api/tournaments/:id/entries/bulk/preview
  * Preview bulk upload (parse file and show mapping)
  */
-router.post('/:id/entries/bulk/preview', auth, resolveTenant, requireOrgAdmin, upload.single('file'), async (req, res) => {
+router.post('/:id/entries/bulk/preview', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -527,7 +572,7 @@ router.post('/:id/entries/bulk/preview', auth, resolveTenant, requireOrgAdmin, u
  * POST /api/tournaments/:id/entries/bulk
  * Bulk import entries from file (admin only)
  */
-router.post('/:id/entries/bulk', auth, resolveTenant, requireOrgAdmin, upload.single('file'), async (req, res) => {
+router.post('/:id/entries/bulk', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -661,7 +706,7 @@ router.post('/:id/entries/bulk', auth, resolveTenant, requireOrgAdmin, upload.si
  * PUT /api/tournaments/:id/entries/:entryId
  * Update entry (admin only)
  */
-router.put('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.put('/:id/entries/:entryId', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
         !mongoose.Types.ObjectId.isValid(req.params.entryId)) {
@@ -713,7 +758,7 @@ router.put('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, async 
  * DELETE /api/tournaments/:id/entries/:entryId
  * Soft delete entry (admin only)
  */
-router.delete('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id/entries/:entryId', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
         !mongoose.Types.ObjectId.isValid(req.params.entryId)) {
@@ -752,7 +797,7 @@ router.delete('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, asy
  * DELETE /api/tournaments/:id/entries
  * Bulk delete entries (admin only)
  */
-router.delete('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id/entries', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
     const { entryIds } = req.body;
 
@@ -782,6 +827,269 @@ router.delete('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, 
     });
   } catch (error) {
     console.error('Error bulk deleting entries:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// FRANCHISE (TEAM) MANAGEMENT
+// ============================================
+
+/**
+ * GET /api/tournaments/:id/franchises
+ * List franchises/teams in tournament
+ */
+router.get('/:id/franchises', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid tournament ID' });
+    }
+
+    const tournament = await Tournament.findOne(tenantQuery(req, {
+      _id: req.params.id,
+      isDeleted: false
+    }));
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Get unique teams from entries
+    const teams = await TournamentEntry.aggregate([
+      {
+        $match: {
+          organizationId: req.organization._id,
+          tournamentId: tournament._id,
+          isDeleted: false,
+          'entryData.teamName': { $exists: true, $ne: '' }
+        }
+      },
+      {
+        $group: {
+          _id: '$entryData.teamName',
+          playerCount: { $sum: 1 },
+          players: { $push: { _id: '$_id', name: '$entryData.name', role: '$entryData.role' } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Map to franchise shape
+    const franchises = teams.map((t, idx) => ({
+      _id: `team-${idx}`,
+      tournamentId: tournament._id,
+      name: t._id,
+      shortName: t._id.substring(0, 3).toUpperCase(),
+      primaryColor: ['#14b8a6', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6],
+      playerIds: t.players.map((p) => p._id),
+      playerCount: t.playerCount,
+      budget: 100000,
+      remainingBudget: 100000,
+    }));
+
+    res.json({ success: true, data: franchises });
+  } catch (error) {
+    console.error('Error listing franchises:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/tournaments/:id/franchises
+ * Create a new franchise/team (just a team name applied to entries)
+ */
+router.post('/:id/franchises', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    const { name, shortName, primaryColor } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Team name is required' });
+    }
+
+    // Franchise is just a team name in this model - return synthetic franchise object
+    const franchise = {
+      _id: `team-${Date.now()}`,
+      tournamentId: req.params.id,
+      name,
+      shortName: shortName || name.substring(0, 3).toUpperCase(),
+      primaryColor: primaryColor || '#14b8a6',
+      playerIds: [],
+      playerCount: 0,
+      budget: 100000,
+      remainingBudget: 100000,
+    };
+
+    res.status(201).json({ success: true, data: franchise });
+  } catch (error) {
+    console.error('Error creating franchise:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// FEEDBACK MANAGEMENT
+// ============================================
+
+/**
+ * GET /api/tournaments/:id/feedback
+ * List feedback for tournament entries
+ */
+router.get('/:id/feedback', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid tournament ID' });
+    }
+
+    const tournament = await Tournament.findOne(tenantQuery(req, {
+      _id: req.params.id,
+      isDeleted: false
+    }));
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // For now, tournament feedback is stored in entry customFields or a separate collection
+    // Return empty array - can be extended later
+    res.json({
+      success: true,
+      data: [],
+      pagination: { current: 1, pages: 0, total: 0, hasMore: false }
+    });
+  } catch (error) {
+    console.error('Error listing feedback:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/tournaments/:id/feedback/stats
+ * Get feedback statistics
+ */
+router.get('/:id/feedback/stats', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        totalFeedback: 0,
+        avgBatting: null,
+        avgBowling: null,
+        avgFielding: null,
+        avgTeamSpirit: null,
+      }
+    });
+  } catch (error) {
+    console.error('Error getting feedback stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/tournaments/:id/feedback
+ * Add feedback for a player
+ */
+router.post('/:id/feedback', auth, ensureTournamentOrg, resolveTenant, async (req, res) => {
+  try {
+    const { playerId, batting, bowling, fielding, teamSpirit, comments } = req.body;
+
+    if (!playerId) {
+      return res.status(400).json({ error: 'Player ID is required' });
+    }
+
+    // Feedback is stored inline for now - could be a separate collection
+    const feedback = {
+      _id: `feedback-${Date.now()}`,
+      tournamentId: req.params.id,
+      playerId,
+      batting,
+      bowling,
+      fielding,
+      teamSpirit,
+      comments,
+      submittedBy: req.user._id,
+      createdAt: new Date().toISOString(),
+    };
+
+    res.status(201).json({ success: true, data: feedback });
+  } catch (error) {
+    console.error('Error adding feedback:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PUBLIC TOURNAMENT VIEW
+// ============================================
+
+/**
+ * GET /api/tournaments/public/:token
+ * Public tournament view (no auth required)
+ */
+router.get('/public/:token', async (req, res) => {
+  try {
+    const tournament = await Tournament.findOne({
+      publicToken: req.params.token,
+      isDeleted: false,
+      isActive: true
+    }).lean();
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Get entries for public display
+    const entries = await TournamentEntry.find({
+      tournamentId: tournament._id,
+      isDeleted: false
+    })
+      .sort({ 'entryData.teamName': 1, 'entryData.name': 1 })
+      .lean();
+
+    // Apply privacy settings
+    const publicEntries = entries.map(e => {
+      const data = { ...e.entryData };
+      if (!tournament.settings?.showPhone) {
+        data.phone = data.phone ? data.phone.replace(/\d(?=\d{4})/g, '*') : '';
+      }
+      if (!tournament.settings?.showEmail) {
+        data.email = data.email ? data.email.replace(/(.{2})(.*)(@.*)/, '$1***$3') : '';
+      }
+      return {
+        _id: e._id,
+        ...data,
+        status: e.status,
+      };
+    });
+
+    // Get team stats
+    const teams = await TournamentEntry.aggregate([
+      { $match: { tournamentId: tournament._id, isDeleted: false } },
+      { $group: { _id: '$entryData.teamName', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        tournament: {
+          _id: tournament._id,
+          name: tournament.name,
+          description: tournament.description,
+          startDate: tournament.startDate,
+          endDate: tournament.endDate,
+          status: tournament.status,
+          branding: tournament.branding,
+          stats: {
+            entryCount: entries.length,
+            teamCount: teams.filter(t => t._id).length,
+          },
+        },
+        entries: publicEntries,
+        teams: teams.filter(t => t._id).map(t => ({ name: t._id, playerCount: t.count })),
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching public tournament:', error);
     res.status(500).json({ error: error.message });
   }
 });

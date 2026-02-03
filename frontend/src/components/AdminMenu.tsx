@@ -184,6 +184,7 @@ export const getDefaultAdminMenuItems = (
   onNavigate: (tab: string) => void,
   _userRole?: string
 ): AdminMenuItem[] => [
+  { id: 'grounds', label: 'Grounds', icon: <MapPin className="w-4 h-4" />, onClick: () => onNavigate('grounds'), adminOnly: false },
   { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" />, onClick: () => onNavigate('analytics'), adminOnly: true },
   { id: 'users', label: 'Users', icon: <Users className="w-4 h-4" />, onClick: () => onNavigate('users'), adminOnly: true },
   { id: 'tournaments', label: 'Tournaments', icon: <Trophy className="w-4 h-4" />, onClick: () => onNavigate('tournaments'), adminOnly: true },

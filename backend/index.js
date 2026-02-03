@@ -7,11 +7,14 @@
  * @module index
  */
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
+
+// Load .env from backend directory so ALLOW_DEV_LOGIN etc. work when run from repo root
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const connectDB = require('./config/database');
 const feedbackRoutes = require('./routes/feedback');
