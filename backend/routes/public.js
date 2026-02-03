@@ -133,6 +133,8 @@ router.get('/tournament/:token', async (req, res) => {
           companyName: entry.entryData.companyName,
           cricHeroesId: entry.entryData.cricHeroesId,
           jerseyNumber: entry.entryData.jerseyNumber,
+          status: entry.status || 'registered',
+          ineligibilityReason: entry.ineligibilityReason || null,
           phone: showPhone ? maskPhone(entry.entryData.phone) : undefined,
           email: showEmail ? entry.entryData.email : undefined,
           age: entry.entryData.dateOfBirth ? calculateAge(entry.entryData.dateOfBirth) : undefined,
@@ -330,6 +332,8 @@ router.get('/:token', async (req, res) => {
           companyName: entry.entryData.companyName,
           cricHeroesId: entry.entryData.cricHeroesId,
           jerseyNumber: entry.entryData.jerseyNumber,
+          status: entry.status || 'registered',
+          ineligibilityReason: entry.ineligibilityReason || null,
           phone: showPhone ? maskPhone(entry.entryData.phone) : undefined,
           email: showEmail ? entry.entryData.email : undefined,
           age: entry.entryData.dateOfBirth ? calculateAge(entry.entryData.dateOfBirth) : undefined

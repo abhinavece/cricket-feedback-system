@@ -19,6 +19,7 @@ import {
   Hash,
   ExternalLink,
   ChevronRight,
+  Ban,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -33,6 +34,7 @@ interface PublicPlayer {
   battingStyle?: string;
   bowlingStyle?: string;
   status?: string;
+  ineligibilityReason?: string | null;
   dateOfBirth?: string;
   cricHeroesId?: string;
   companyName?: string;
@@ -326,7 +328,7 @@ const PublicTournamentView: React.FC = () => {
   const displayStatus = getDisplayStatus(tournament.status);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white">
       <ParticleField />
 
       {/* Gradient orbs - AI themed colors */}
@@ -623,7 +625,7 @@ const PublicTournamentView: React.FC = () => {
 // Player Card Component
 const PlayerCard: React.FC<{ player: PublicPlayer; index: number; onClick: () => void }> = ({ player, index, onClick }) => {
   const roleStyle = getRoleBadge(player.role);
-  const isIneligible = player.status === 'ineligible';
+  const isIneligible = player.status === 'withdrawn';
 
   return (
     <button
@@ -701,7 +703,7 @@ const PlayerCard: React.FC<{ player: PublicPlayer; index: number; onClick: () =>
 // Player Detail Modal (Bottom Sheet style for mobile)
 const PlayerDetailModal: React.FC<{ player: PublicPlayer; onClose: () => void }> = ({ player, onClose }) => {
   const roleStyle = getRoleBadge(player.role);
-  const isIneligible = player.status === 'ineligible';
+  const isIneligible = player.status === 'withdrawn';
 
   // Format date
   const formatDOB = (dob?: string) => {
@@ -774,6 +776,17 @@ const PlayerDetailModal: React.FC<{ player: PublicPlayer; onClose: () => void }>
 
         {/* Details */}
         <div className="px-5 pb-6 space-y-3">
+          {/* Ineligibility Reason */}
+          {isIneligible && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
+              <div className="flex items-center gap-2 text-rose-400 mb-1">
+                <Ban className="w-3.5 h-3.5" />
+                <span className="text-[10px] uppercase tracking-wider font-semibold">Ineligibility Reason</span>
+              </div>
+              <p className="text-sm text-rose-300">{player.ineligibilityReason || 'NA'}</p>
+            </div>
+          )}
+
           {/* Contact Info */}
           <div className="grid grid-cols-1 gap-3">
             {player.phone && (

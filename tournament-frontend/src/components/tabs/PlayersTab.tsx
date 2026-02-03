@@ -658,12 +658,19 @@ const PlayerDetailModal: React.FC<{
 }> = ({ player, tournamentId, onClose, onEdit, onDelete }) => {
   const queryClient = useQueryClient();
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showReasonDialog, setShowReasonDialog] = useState(false);
+  const [ineligibilityReason, setIneligibilityReason] = useState('');
 
   // Mutation for marking ineligible
   const markIneligibleMutation = useMutation({
-    mutationFn: () => playerApi.update(tournamentId, player._id, { status: 'withdrawn' } as any),
+    mutationFn: () => playerApi.update(tournamentId, player._id, { 
+      status: 'withdrawn',
+      ineligibilityReason: ineligibilityReason || null
+    } as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['players', tournamentId] });
+      setShowReasonDialog(false);
+      setIneligibilityReason('');
       onClose();
     },
   });
@@ -699,16 +706,16 @@ const PlayerDetailModal: React.FC<{
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slide-up">
         {/* Gradient header background */}
         <div className={`absolute inset-x-0 top-0 h-40 bg-gradient-to-br ${roleStyle.bg} opacity-60`} />
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent to-broadcast-800" />
 
         <div className="relative glass-panel rounded-3xl overflow-hidden shadow-2xl">
-          {/* Close button */}
+          {/* Close button - positioned to avoid mobile menu overlap */}
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 z-10 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white/80 hover:text-white transition-all duration-200"
+            className="fixed sm:absolute top-5 right-5 z-50 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white/80 hover:text-white transition-all duration-200"
           >
             <X className="w-5 h-5" />
           </button>
@@ -907,7 +914,7 @@ const PlayerDetailModal: React.FC<{
               </button>
               <button
                 type="button"
-                onClick={() => isIneligible ? markEligibleMutation.mutate() : markIneligibleMutation.mutate()}
+                onClick={() => isIneligible ? markEligibleMutation.mutate() : setShowReasonDialog(true)}
                 disabled={markIneligibleMutation.isPending || markEligibleMutation.isPending}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-heading uppercase tracking-wider text-sm transition-all ${
                   isIneligible
@@ -960,6 +967,40 @@ const PlayerDetailModal: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* Ineligibility Reason Dialog */}
+      {showReasonDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowReasonDialog(false)} />
+          <div className="relative w-full max-w-md glass-panel p-6 animate-slide-up rounded-2xl">
+            <h3 className="font-display text-xl text-white mb-4">Mark Player Ineligible</h3>
+            <p className="text-sm text-slate-400 mb-4">
+              Provide a reason for marking <span className="font-semibold text-white">{player.name}</span> as ineligible (optional)
+            </p>
+            <textarea
+              value={ineligibilityReason}
+              onChange={(e) => setIneligibilityReason(e.target.value)}
+              placeholder="e.g., Failed to meet eligibility criteria, Injury, etc."
+              className="input-field w-full h-24 resize-none mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReasonDialog(false)}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => markIneligibleMutation.mutate()}
+                disabled={markIneligibleMutation.isPending}
+                className="flex-1 btn-primary disabled:opacity-50"
+              >
+                {markIneligibleMutation.isPending ? 'Marking...' : 'Mark Ineligible'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

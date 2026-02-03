@@ -131,6 +131,12 @@ const tournamentEntrySchema = new mongoose.Schema({
     default: 'registered'
   },
   
+  ineligibilityReason: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  
   registeredAt: {
     type: Date,
     default: Date.now
