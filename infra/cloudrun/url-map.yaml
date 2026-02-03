@@ -8,6 +8,9 @@ hostRules:
       - 'cricsmart.in'
       - 'www.cricsmart.in'
     pathMatcher: homepage-paths
+  - hosts:
+      - 'tournament.cricsmart.in'
+    pathMatcher: tournament-paths
 pathMatchers:
   - name: app-paths
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
@@ -22,3 +25,15 @@ pathMatchers:
         priority: 2
   - name: homepage-paths
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
+  - name: tournament-paths
+    # Tournament frontend for static files, SAME backend API for /api/*
+    defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-tournament-frontend
+    routeRules:
+      - matchRules:
+          - prefixMatch: /api/
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 1
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 2

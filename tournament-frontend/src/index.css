@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Selection */
+::selection {
+  background: rgba(20, 184, 166, 0.3);
+  color: white;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.5);
+  outline-offset: 2px;
+}
+
+/* Base styles */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: linear-gradient(180deg, #0a0a0b 0%, #111113 100%);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Component utilities */
+@layer components {
+  /* Broadcast-style stat card */
+  .stat-card {
+    @apply relative overflow-hidden rounded-lg bg-broadcast-800 border border-white/5;
+    @apply before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.03] before:to-transparent;
+  }
+
+  /* Glass panel */
+  .glass-panel {
+    @apply bg-broadcast-800/80 backdrop-blur-xl border border-white/10 rounded-xl;
+  }
+
+  /* Score display (like live match score) */
+  .score-display {
+    font-family: 'Bebas Neue', Impact, sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  /* Tab button */
+  .tab-btn {
+    @apply px-4 py-2 font-heading text-sm uppercase tracking-wider transition-all duration-200;
+    @apply text-slate-400 hover:text-white;
+  }
+
+  .tab-btn.active {
+    @apply text-accent-400 border-b-2 border-accent-400;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply px-5 py-2.5 rounded-lg font-heading uppercase tracking-wider text-sm;
+    @apply bg-gradient-to-r from-accent-500 to-accent-600;
+    @apply hover:from-accent-400 hover:to-accent-500;
+    @apply active:scale-[0.98] transition-all duration-150;
+    @apply shadow-lg shadow-accent-500/20;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply px-5 py-2.5 rounded-lg font-heading uppercase tracking-wider text-sm;
+    @apply bg-broadcast-700 border border-white/10;
+    @apply hover:bg-broadcast-600 hover:border-white/20;
+    @apply active:scale-[0.98] transition-all duration-150;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-lg bg-broadcast-800 border border-white/10;
+    @apply text-white placeholder:text-slate-500;
+    @apply focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20;
+    @apply transition-all duration-200;
+  }
+
+  /* Table row hover */
+  .table-row-hover {
+    @apply hover:bg-white/[0.03] transition-colors duration-150;
+  }
+}
+
+/* Animations */
+@layer utilities {
+  .animate-stagger-1 { animation-delay: 50ms; }
+  .animate-stagger-2 { animation-delay: 100ms; }
+  .animate-stagger-3 { animation-delay: 150ms; }
+  .animate-stagger-4 { animation-delay: 200ms; }
+  .animate-stagger-5 { animation-delay: 250ms; }
+}

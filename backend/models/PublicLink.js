@@ -18,7 +18,7 @@ const publicLinkSchema = new mongoose.Schema({
   resourceType: {
     type: String,
     required: true,
-    enum: ['match', 'payment']
+    enum: ['match', 'payment', 'tournament']
   },
   resourceId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -28,7 +28,7 @@ const publicLinkSchema = new mongoose.Schema({
   viewType: {
     type: String,
     default: 'full',
-    enum: ['full', 'squad', 'overview', 'payment']
+    enum: ['full', 'squad', 'overview', 'payment', 'players']
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -77,7 +77,8 @@ publicLinkSchema.methods.recordAccess = async function() {
 publicLinkSchema.virtual('resourceModel').get(function() {
   const modelMap = {
     'match': 'Match',
-    'payment': 'MatchPayment'
+    'payment': 'MatchPayment',
+    'tournament': 'Tournament'
   };
   return modelMap[this.resourceType];
 });

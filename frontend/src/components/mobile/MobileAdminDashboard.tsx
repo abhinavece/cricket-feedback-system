@@ -1,8 +1,9 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { getStats, getProfile } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { MessageSquare, Calendar, Wallet, Users, Send, History, Monitor, X, TrendingUp, Settings, MessageCircle, BarChart3, MapPin } from 'lucide-react';
+import { MessageSquare, Calendar, Wallet, TrendingUp } from 'lucide-react';
 import Footer from '../Footer';
+import AdminMenu, { getMobileAdminMenuItems } from '../AdminMenu';
 
 // Lazy load tab content - only loaded when tab is selected
 const MobileFeedbackTab = lazy(() => import('./MobileFeedbackTab'));
@@ -16,6 +17,7 @@ const TeamSettingsTab = lazy(() => import('../TeamSettingsTab'));
 const MobileProfileSetup = lazy(() => import('./MobileProfileSetup'));
 const MobileWhatsAppAnalyticsTab = lazy(() => import('./MobileWhatsAppAnalyticsTab'));
 const MobileGroundsTab = lazy(() => import('./MobileGroundsTab'));
+const MobileTournamentDashboard = lazy(() => import('./MobileTournamentDashboard'));
 
 // Reuse desktop components for tabs that don't have mobile versions yet
 const UserManagement = lazy(() => import('../UserManagement'));
@@ -35,9 +37,11 @@ interface FeedbackStats {
   avgTeamSpirit: number;
 }
 
+type TabId = 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team' | 'tournaments';
+
 interface MobileAdminDashboardProps {
-  activeTab?: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team';
-  onTabChange?: (tab: 'feedback' | 'users' | 'whatsapp' | 'chats' | 'matches' | 'payments' | 'player-history' | 'analytics' | 'settings' | 'grounds' | 'team') => void;
+  activeTab?: TabId;
+  onTabChange?: (tab: TabId) => void;
   onLogout?: () => void;
 }
 
@@ -56,7 +60,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     setActiveTab(propActiveTab);
   }, [propActiveTab]);
 
-  // Fetch stats and profile status on initial load
+  // Fetch stats and profile status on initial load (safe access to avoid UI errors)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -64,10 +68,12 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           getStats(),
           getProfile()
         ]);
-        setStats(statsData);
-        setProfileComplete(profileData.data.user.profileComplete);
+        setStats(statsData ?? null);
+        const complete = profileData?.data?.user?.profileComplete;
+        setProfileComplete(typeof complete === 'boolean' ? complete : false);
       } catch (err) {
         console.error('Error fetching data:', err);
+        setStats(null);
         setProfileComplete(false);
       } finally {
         setLoading(false);
@@ -81,27 +87,20 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
     onTabChange?.(tab);
   };
 
-  // Define all tabs - admin users see all, others see only feedback
-  const allTabs = [
+  // Main tabs: only Feedback, Matches, Payments in the bar; everything else in 9-dot "More" menu
+  const mainTabs = [
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },
-    { id: 'chats', label: 'Chats', icon: MessageCircle },
-    { id: 'whatsapp', label: 'WhatsApp', icon: Send },
     { id: 'matches', label: 'Matches', icon: Calendar },
     { id: 'payments', label: 'Payments', icon: Wallet },
-    { id: 'grounds', label: 'Grounds', icon: MapPin },
-    { id: 'player-history', label: 'History', icon: History },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'team', label: 'Team', icon: Users },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  // Admin users see all tabs, viewers see all except whatsapp, chats, analytics, and users
+  const visibleTabs = mainTabs;
   const isViewer = user?.role === 'viewer';
-  const adminOnlyTabs = ['whatsapp', 'chats', 'analytics', 'users'];
-  const visibleTabs = user?.role === 'admin'
-    ? allTabs
-    : allTabs.filter(tab => !adminOnlyTabs.includes(tab.id));
+
+  const adminMenuItems = getMobileAdminMenuItems(
+    (tab) => handleTabChange(tab as TabId),
+    user?.role
+  );
 
   const handleLogout = () => {
     if (onLogout) {
@@ -161,48 +160,51 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
               <span className="text-xs text-slate-400">Total</span>
-              <span className="text-sm font-bold text-white">{stats.totalSubmissions}</span>
+              <span className="text-sm font-bold text-white">{stats.totalSubmissions ?? 0}</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="text-slate-400">Avg:</span>
-              <span className="text-amber-400">⭐ {((stats.avgBatting + stats.avgBowling + stats.avgFielding + stats.avgTeamSpirit) / 4).toFixed(1)}</span>
+              <span className="text-amber-400">
+                ⭐ {(
+                  ((Number(stats.avgBatting) || 0) + (Number(stats.avgBowling) || 0) +
+                   (Number(stats.avgFielding) || 0) + (Number(stats.avgTeamSpirit) || 0)) / 4
+                ).toFixed(1)}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab Navigation - Compact Scrollable Pills */}
-      <div className="sticky top-[52px] z-30 bg-slate-900/95 backdrop-blur-lg border-b border-white/5">
-        <div className="flex overflow-x-auto scrollbar-hide px-3 py-2 gap-2">
+      {/* Tab bar: compact, refined design */}
+      <div className="sticky top-0 z-30 bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-900/95 backdrop-blur-xl">
+        <div className="flex items-center gap-1.5 px-2 py-1.5">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => handleTabChange(tab.id as any)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-slate-800/50 text-slate-400 border border-transparent hover:bg-slate-800'
-                }`}
+                onClick={() => handleTabChange(tab.id as TabId)}
+                className={`
+                  flex-1 flex items-center justify-center gap-1.5 rounded-lg h-9 text-[11px] font-semibold
+                  transition-all duration-150 active:scale-[0.97]
+                  ${isActive
+                    ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}
+                `}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {tab.label}
+                <span>{tab.label}</span>
               </button>
             );
           })}
+          <AdminMenu
+            items={adminMenuItems}
+            userRole={user?.role}
+            variant="mobile"
+          />
         </div>
-      </div>
-
-      {/* Desktop Banner */}
-      <div className="mx-3 mt-2 mb-3 bg-gradient-to-r from-sky-500/10 to-purple-500/10 rounded-xl p-3 border border-sky-500/20">
-        <div className="flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-sky-400" />
-          <p className="text-xs text-slate-300">
-            <span className="text-sky-400 font-medium">Pro tip:</span> Use desktop for full features & better experience
-          </p>
-        </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
       </div>
 
       {/* Tab Content */}
@@ -226,6 +228,11 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           )}
           {activeTab === 'team' && (
             <TeamSettingsTab />
+          )}
+          {activeTab === 'tournaments' && (
+            <MobileTournamentDashboard 
+              onBack={() => handleTabChange('feedback')} 
+            />
           )}
         </Suspense>
       </div>

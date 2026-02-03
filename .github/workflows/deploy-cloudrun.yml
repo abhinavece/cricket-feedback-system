@@ -7,6 +7,7 @@ on:
       - 'frontend/**'
       - 'backend/**'
       - 'ai-service/**'
+      - 'tournament-frontend/**'
   workflow_dispatch:
     inputs:
       component:
@@ -18,6 +19,7 @@ on:
           - frontend
           - backend
           - ai-service
+          - tournament-frontend
         default: all
 
 env:
@@ -40,6 +42,7 @@ jobs:
       frontend: ${{ steps.changes.outputs.frontend }}
       backend: ${{ steps.changes.outputs.backend }}
       ai-service: ${{ steps.changes.outputs.ai-service }}
+      tournament-frontend: ${{ steps.changes.outputs.tournament-frontend }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,10 +56,12 @@ jobs:
             echo "frontend=$([[ "$component" == "all" || "$component" == "frontend" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
             echo "backend=$([[ "$component" == "all" || "$component" == "backend" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
             echo "ai-service=$([[ "$component" == "all" || "$component" == "ai-service" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "tournament-frontend=$([[ "$component" == "all" || "$component" == "tournament-frontend" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
           else
             echo "frontend=$(git diff --name-only HEAD^ HEAD | grep -q '^frontend/' && echo true || echo false)" >> $GITHUB_OUTPUT
             echo "backend=$(git diff --name-only HEAD^ HEAD | grep -q '^backend/' && echo true || echo false)" >> $GITHUB_OUTPUT
             echo "ai-service=$(git diff --name-only HEAD^ HEAD | grep -q '^ai-service/' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "tournament-frontend=$(git diff --name-only HEAD^ HEAD | grep -q '^tournament-frontend/' && echo true || echo false)" >> $GITHUB_OUTPUT
           fi
 
       - name: Show detected changes
@@ -64,6 +69,7 @@ jobs:
           echo "Frontend: ${{ steps.changes.outputs.frontend }}"
           echo "Backend: ${{ steps.changes.outputs.backend }}"
           echo "AI Service: ${{ steps.changes.outputs.ai-service }}"
+          echo "Tournament Frontend: ${{ steps.changes.outputs.tournament-frontend }}"
 
   # Build and deploy frontend
   deploy-frontend:
@@ -225,9 +231,67 @@ jobs:
           echo "- Version: \`${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Image: \`${{ env.REGISTRY }}/ai-service:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
 
+  # Build and deploy tournament frontend
+  deploy-tournament-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.tournament-frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION="$(date +'%Y.%m.%d').${{ github.run_number }}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Get Google Client ID from Secret Manager
+        id: secrets
+        run: |
+          GOOGLE_CLIENT_ID=$(gcloud secrets versions access latest --secret=google-client-id)
+          echo "::add-mask::$GOOGLE_CLIENT_ID"
+          echo "google_client_id=$GOOGLE_CLIENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Build and push tournament frontend
+        run: |
+          docker buildx build --platform linux/amd64 \
+            --build-arg VITE_API_URL=https://app.cricsmart.in/api \
+            --build-arg VITE_GOOGLE_CLIENT_ID=${{ steps.secrets.outputs.google_client_id }} \
+            --build-arg VITE_APP_VERSION=${{ steps.version.outputs.tag }} \
+            --build-arg VITE_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+            -t ${{ env.REGISTRY }}/tournament-frontend:${{ steps.version.outputs.tag }} \
+            -f tournament-frontend/Dockerfile.cloudrun \
+            --push \
+            ./tournament-frontend
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update cricsmart-tournament-frontend \
+            --region=${{ env.REGION }} \
+            --image=${{ env.REGISTRY }}/tournament-frontend:${{ steps.version.outputs.tag }}
+
+      - name: Summary
+        run: |
+          echo "### Tournament Frontend Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.REGISTRY }}/tournament-frontend:${{ steps.version.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://tournament.cricsmart.in" >> $GITHUB_STEP_SUMMARY
+
   # Final summary
   summary:
-    needs: [detect-changes, deploy-frontend, deploy-backend, deploy-ai-service]
+    needs: [detect-changes, deploy-frontend, deploy-backend, deploy-ai-service, deploy-tournament-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -240,6 +304,7 @@ jobs:
           echo "| Frontend | ${{ needs.deploy-frontend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| AI Service | ${{ needs.deploy-ai-service.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tournament Frontend | ${{ needs.deploy-tournament-frontend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Region:** ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Project:** ${{ env.PROJECT_ID }}" >> $GITHUB_STEP_SUMMARY
