@@ -8,6 +8,7 @@ python-multipart==0.0.9
 
 # Google AI
 google-genai>=0.3.0
+google-generativeai>=0.3.0
 
 # HTTP Client
 httpx==0.26.0

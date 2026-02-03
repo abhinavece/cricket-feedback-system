@@ -1391,29 +1391,49 @@ async function processPaymentScreenshot(from, imageId, messageId, contextId, cap
 
 // Async AI processing function (runs in background)
 async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone, pendingPayments, primaryPayment, primaryMember) {
+  const processingStartTime = Date.now();
+  const processingTraceId = `proc_${processingStartTime}_${Math.random().toString(36).substr(2, 9)}`;
+  
   try {
-    console.log(`\n🤖 [ASYNC] Processing AI for screenshot: ${screenshotId}`);
+    console.log(`\n🤖 === AI PROCESSING START ===`);
+    console.log(`🆔 Processing Trace ID: ${processingTraceId}`);
+    console.log(`📸 Screenshot ID: ${screenshotId}`);
+    console.log(`📱 Phone: ${formattedPhone}`);
+    console.log(`👤 Player: ${pendingPayments[0].playerName}`);
+    console.log(`📋 Pending Payments: ${pendingPayments.length}`);
+    console.log(`⏰ Processing Start: ${new Date(processingStartTime).toISOString()}`);
     
     // Get system settings from database
     const systemSettings = await getSystemSettingsForPayment();
     const BYPASS_PAYMENT_REVIEW = systemSettings.payment.bypassImageReview || ENV_BYPASS_PAYMENT_REVIEW;
     const FORCE_REVIEW_THRESHOLD = systemSettings.payment.forceAdminReviewThreshold;
     
+    console.log(`⚙️ System Settings:`);
+    console.log(`   🔓 Bypass Review: ${BYPASS_PAYMENT_REVIEW}`);
+    console.log(`   💰 Force Review Threshold: ${FORCE_REVIEW_THRESHOLD !== null ? '₹' + FORCE_REVIEW_THRESHOLD : 'disabled'}`);
+    
     const screenshot = await PaymentScreenshot.findById(screenshotId);
     if (!screenshot) {
       console.error('❌ Screenshot not found for AI processing');
       return;
     }
+    console.log(`✅ Screenshot found: ${screenshot._id}`);
 
     // Call AI Service
     const matchDate = pendingPayments[0].matchInfo?.date || null;
     console.log('🤖 Calling AI Service to parse payment screenshot...');
+    console.log(`📅 Match Date: ${matchDate || 'Not provided'}`);
     
     let aiResult;
+    let aiCallStartTime = Date.now();
+    
     try {
       aiResult = await parseWithAI(imageBuffer, matchDate);
+      const aiCallDuration = Date.now() - aiCallStartTime;
+      console.log(`✅ AI Service call completed in ${aiCallDuration}ms`);
     } catch (aiError) {
-      console.error('❌ AI Service call failed:', aiError.message);
+      const aiCallDuration = Date.now() - aiCallStartTime;
+      console.error(`❌ AI Service call failed after ${aiCallDuration}ms:`, aiError.message);
       
       // Update screenshot with AI failure status
       screenshot.status = 'ai_failed';
@@ -1431,16 +1451,26 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
         playerName: pendingPayments[0].playerName,
         error: aiError.message
       });
+      
+      console.log(`🏁 === AI PROCESSING FAILED ===\n`);
       return;
     }
 
-    console.log('🔍 AI Result received:');
-    console.log('  aiResult.success:', aiResult.success);
-    console.log('  aiResult.data:', aiResult.data ? 'present' : 'missing');
+    console.log('🔍 AI Result Analysis:');
+    console.log(`   ✅ Success: ${aiResult.success}`);
+    console.log(`   📊 Data Present: ${aiResult.data ? 'yes' : 'no'}`);
+    console.log(`   💰 Amount: ${aiResult.data?.amount || 'N/A'}`);
+    console.log(`   📊 Confidence: ${aiResult.metadata?.confidence ? (aiResult.metadata.confidence * 100).toFixed(1) + '%' : 'N/A'}`);
+    console.log(`   🤖 Model: ${aiResult.metadata?.model || 'N/A'}`);
+    console.log(`   ⏱️ AI Processing Time: ${aiResult.metadata?.processing_time_ms || 'N/A'}ms`);
 
     // Determine review status
     let reviewRequired = requiresReview(aiResult);
     let reviewReason = reviewRequired ? getReviewReason(aiResult) : null;
+
+    console.log(`🔍 Review Analysis:`);
+    console.log(`   ⚠️ Review Required: ${reviewRequired}`);
+    console.log(`   📝 Review Reason: ${reviewReason || 'None'}`);
 
     // BYPASS_PAYMENT_REVIEW flag - skip review if enabled and AI succeeded
     if (BYPASS_PAYMENT_REVIEW && aiResult.success && aiResult.data?.amount) {
@@ -1469,7 +1499,7 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
       payerName: aiResult.data?.payer_name || null,
       payeeName: aiResult.data?.payee_name || null,
       transactionId: aiResult.data?.transaction_id || null,
-      paymentDate: aiResult.data?.date ? new Date(aiResult.data.date) : null,
+      paymentDate: aiResult.data?.date ? new Date(aiResult.data?.date) : null,
       paymentTime: aiResult.data?.time || null,
       paymentMethod: aiResult.data?.payment_method || null,
       upiId: aiResult.data?.upi_id || null,
@@ -1483,7 +1513,11 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
     screenshot.status = reviewRequired ? 'pending_review' : 'ai_complete';
     screenshot.remainingAmount = aiResult.data?.amount || null;
     await screenshot.save();
+    
     console.log(`📸 Screenshot updated with AI results: ${screenshot._id}`);
+    console.log(`   💰 Extracted Amount: ₹${screenshot.extractedAmount || 'N/A'}`);
+    console.log(`   📊 Final Status: ${screenshot.status}`);
+    console.log(`   ⚠️ Requires Review: ${reviewRequired}`);
 
     // Update legacy fields on MatchPayment member
     if (primaryMember && primaryPayment) {
@@ -1573,17 +1607,28 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
       paymentDate: aiResult.data?.date || ''
     };
 
+    console.log('💰 Starting FIFO distribution...');
+    const distributionStartTime = Date.now();
+    
     const distributionResult = await distributePaymentFIFO(
       formattedPhone,
       extractedAmount,
       screenshotData,
       aiData
     );
+    
+    const distributionDuration = Date.now() - distributionStartTime;
+    console.log(`✅ FIFO distribution completed in ${distributionDuration}ms`);
 
     if (!distributionResult.success) {
       console.log('❌ Payment distribution failed');
+      console.log(`   📝 Error: ${distributionResult.message || 'Unknown error'}`);
       return;
     }
+
+    console.log(`💰 Distribution successful:`);
+    console.log(`   💵 Total Applied: ₹${distributionResult.distributions.reduce((sum, d) => sum + d.allocatedAmount, 0)}`);
+    console.log(`   📊 Matches Updated: ${distributionResult.distributions.length}`);
 
     // Update screenshot with distribution results
     screenshot.status = 'auto_applied';
@@ -1656,11 +1701,22 @@ async function processScreenshotWithAI(screenshotId, imageBuffer, formattedPhone
       }))
     });
 
-    console.log('=== AI PROCESSING COMPLETE (AUTO APPLIED) ===\n');
+    const totalProcessingTime = Date.now() - processingStartTime;
+    console.log(`🏁 === AI PROCESSING COMPLETE (AUTO APPLIED) ===`);
+    console.log(`⏱️ Total Processing Time: ${totalProcessingTime}ms`);
+    console.log(`💰 Final Amount Applied: ₹${distributionResult.distributions.reduce((sum, d) => sum + d.allocatedAmount, 0)}`);
+    console.log(`📊 Matches Affected: ${distributionResult.matchesAffected}`);
+    console.log(`📸 Screenshot ID: ${screenshot._id}`);
+    console.log(`🏁 === END PROCESSING ===\n`);
 
   } catch (error) {
-    console.error('❌ Error in async AI processing:', error);
-    console.error('Stack trace:', error.stack);
+    const totalProcessingTime = Date.now() - processingStartTime;
+    console.error(`❌ === AI PROCESSING ERROR ===`);
+    console.error(`🆔 Processing Trace ID: ${processingTraceId}`);
+    console.error(`⏱️ Time Before Error: ${totalProcessingTime}ms`);
+    console.error(`📝 Error: ${error.message}`);
+    console.error(`📂 Stack: ${error.stack}`);
+    console.error(`🏁 === PROCESSING ERROR END ===\n`);
   }
 }
 

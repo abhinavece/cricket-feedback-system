@@ -123,13 +123,12 @@ class GoogleAIStudioProvider(AIProviderBase):
         # List of models to try in order
         models_to_try = [self._model_id]
         
-        # Add fallbacks
+        # Add fallbacks - Updated model names for new Google Gen AI API
         fallbacks = [
             "gemma-3-27b-it", # Try Gemma first
             "gemini-2.0-flash-exp",
-            "gemini-flash-latest",
-            "gemini-2.0-flash-lite-preview-02-05",
-            "gemini-2.0-flash", # Retry if it was default
+            "gemini-2.0-flash", 
+            "gemini-2.0-flash-lite",
             "gemini-1.5-flash", # Fallback to older
             "gemini-1.5-pro",
         ]

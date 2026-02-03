@@ -30,7 +30,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 # WHITELIST of FREE models ONLY - any model not in this list will be BLOCKED
 ALLOWED_FREE_MODELS: Set[str] = {
-    # Google AI Studio free models (Gemini)
+    # Google AI Studio free models (Gemini) - Updated for new API
     "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
     "gemini-1.5-pro",
@@ -41,7 +41,6 @@ ALLOWED_FREE_MODELS: Set[str] = {
     "gemini-2.0-flash-exp",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
-    "gemini-flash-latest",
     # Gemma models (if available)
     "gemma-3-27b-it",
     "google/gemma-3-27b-it:free",
