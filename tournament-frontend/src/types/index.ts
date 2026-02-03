@@ -5,13 +5,17 @@ export interface Tournament {
   description?: string;
   startDate?: string;
   endDate?: string;
-  status: 'draft' | 'active' | 'completed';
+  status: 'draft' | 'published' | 'ongoing' | 'active' | 'completed';
   createdBy: string;
   organizationId: string;
   playerCount?: number;
   franchiseCount?: number;
   publicToken?: string;
   isActive?: boolean;
+  stats?: {
+    entryCount?: number;
+    teamCount?: number;
+  };
   branding?: {
     logo?: string;
     primaryColor?: string;
@@ -28,12 +32,19 @@ export interface TournamentPlayer {
   name: string;
   phone?: string;
   email?: string;
-  role?: 'batsman' | 'bowler' | 'all-rounder' | 'wicket-keeper';
-  battingStyle?: 'right-hand' | 'left-hand';
+  dateOfBirth?: string;
+  cricHeroesId?: string;
+  companyName?: string;
+  address?: string;
+  teamName?: string;
+  jerseyNumber?: number;
+  role?: 'batsman' | 'bowler' | 'all-rounder' | 'wicket-keeper' | string;
+  battingStyle?: 'right-hand' | 'left-hand' | string;
   bowlingStyle?: string;
   basePrice?: number;
   soldPrice?: number;
   franchiseId?: string; // null if unsold/available
+  status?: 'registered' | 'withdrawn' | 'confirmed' | string;
   stats?: PlayerStats;
   createdAt?: string;
   updatedAt?: string;

@@ -115,12 +115,14 @@ const TournamentPage: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
       active: 'bg-accent-500/20 text-accent-400 border-accent-500/30',
+      published: 'bg-accent-500/20 text-accent-400 border-accent-500/30',
+      ongoing: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
       completed: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
       draft: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     };
-    return styles[status as keyof typeof styles] || styles.draft;
+    return styles[status] || styles.draft;
   };
 
   if (isLoading) {
@@ -196,7 +198,7 @@ const TournamentPage: React.FC = () => {
             <span className="text-xs uppercase tracking-wider">Total Players</span>
           </div>
           <p className="score-display text-3xl text-white">
-            {tournament.playerCount || 0}
+            {(tournament as any).stats?.entryCount ?? tournament.playerCount ?? 0}
           </p>
         </div>
         <div className="stat-card p-4">
@@ -205,7 +207,7 @@ const TournamentPage: React.FC = () => {
             <span className="text-xs uppercase tracking-wider">Franchises</span>
           </div>
           <p className="score-display text-3xl text-white">
-            {tournament.franchiseCount || 0}
+            {(tournament as any).stats?.teamCount ?? tournament.franchiseCount ?? 0}
           </p>
         </div>
         <div className="stat-card p-4">
@@ -292,29 +294,27 @@ const TournamentPage: React.FC = () => {
                   <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                     <p className="text-sm text-amber-400">
                       {tournament.status === 'draft' 
-                        ? 'Tournament must be published before it can be shared publicly.'
+                        ? 'This will publish the tournament and generate a shareable link.'
                         : 'No public link generated yet. Click below to create one.'}
                     </p>
                   </div>
-                  {tournament.status !== 'draft' && (
-                    <button
-                      onClick={() => generateLinkMutation.mutate()}
-                      disabled={generateLinkMutation.isPending}
-                      className="w-full btn-primary flex items-center justify-center gap-2"
-                    >
-                      {generateLinkMutation.isPending ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <LinkIcon className="w-4 h-4" />
-                          Generate Public Link
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => generateLinkMutation.mutate()}
+                    disabled={generateLinkMutation.isPending}
+                    className="w-full btn-primary flex items-center justify-center gap-2"
+                  >
+                    {generateLinkMutation.isPending ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {tournament.status === 'draft' ? 'Publishing...' : 'Generating...'}
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon className="w-4 h-4" />
+                        {tournament.status === 'draft' ? 'Publish & Generate Link' : 'Generate Public Link'}
+                      </>
+                    )}
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">

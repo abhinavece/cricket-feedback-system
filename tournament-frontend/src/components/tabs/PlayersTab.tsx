@@ -20,6 +20,10 @@ import {
   ChevronRight,
   Calendar,
   Shield,
+  MapPin,
+  Briefcase,
+  Hash,
+  ExternalLink,
 } from 'lucide-react';
 import { playerApi, franchiseApi } from '../../services/api';
 import type { TournamentPlayer, Franchise } from '../../types';
@@ -174,62 +178,84 @@ const PlayersTab: React.FC<PlayersTabProps> = ({ tournamentId }) => {
         </div>
       ) : (
         <div className="space-y-2">
-          {players.map((player, idx) => (
-            <button
-              key={player._id}
-              type="button"
-              onClick={() => setSelectedPlayer(player)}
-              className="w-full stat-card p-4 hover:border-accent-500/30 hover:bg-accent-500/5 transition-all duration-200 relative group text-left cursor-pointer animate-slide-up"
-              style={{ animationDelay: `${idx * 30}ms` }}
-            >
-              <div className="flex items-center gap-4">
-                {/* Avatar with gradient ring */}
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-400/20 to-accent-600/10 flex items-center justify-center border border-accent-500/20">
-                    <span className="font-display text-lg text-accent-400">
-                      {player.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  {(player as any).status === 'withdrawn' && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
-                      <Ban className="w-2.5 h-2.5 text-white" />
+          {players.map((player, idx) => {
+            const isIneligible = player.status === 'withdrawn';
+            return (
+              <button
+                key={player._id}
+                type="button"
+                onClick={() => setSelectedPlayer(player)}
+                className={`w-full stat-card p-4 hover:border-accent-500/30 hover:bg-accent-500/5 transition-all duration-200 relative group text-left cursor-pointer animate-slide-up ${
+                  isIneligible ? 'opacity-60 border-rose-500/20' : ''
+                }`}
+                style={{ animationDelay: `${idx * 30}ms` }}
+              >
+                <div className="flex items-center gap-4">
+                  {/* Avatar with gradient ring */}
+                  <div className="relative">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                      isIneligible 
+                        ? 'bg-gradient-to-br from-rose-400/20 to-rose-600/10 border-rose-500/20' 
+                        : 'bg-gradient-to-br from-accent-400/20 to-accent-600/10 border-accent-500/20'
+                    }`}>
+                      <span className={`font-display text-lg ${isIneligible ? 'text-rose-400' : 'text-accent-400'}`}>
+                        {player.name.charAt(0).toUpperCase()}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-heading text-white group-hover:text-accent-400 transition-colors truncate">
-                      {player.name}
-                    </h3>
-                    {player.role && (
-                      <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border ${getRoleBadge(player.role)}`}>
-                        {player.role}
-                      </span>
+                    {isIneligible && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center border-2 border-broadcast-800">
+                        <Ban className="w-3 h-3 text-white" />
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                    {player.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {player.phone}
-                      </span>
-                    )}
-                    {player.email && (
-                      <span className="flex items-center gap-1 truncate max-w-[150px]">
-                        <Mail className="w-3 h-3 flex-shrink-0" />
-                        {player.email}
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                {/* Arrow indicator */}
-                <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-accent-400 group-hover:translate-x-1 transition-all" />
-              </div>
-            </button>
-          ))}
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className={`font-heading transition-colors truncate ${
+                        isIneligible ? 'text-rose-300 line-through' : 'text-white group-hover:text-accent-400'
+                      }`}>
+                        {player.name}
+                      </h3>
+                      {isIneligible && (
+                        <span className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border bg-rose-500/20 text-rose-400 border-rose-500/30">
+                          Ineligible
+                        </span>
+                      )}
+                      {player.role && !isIneligible && (
+                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border ${getRoleBadge(player.role)}`}>
+                          {player.role}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
+                      {player.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {player.phone}
+                        </span>
+                      )}
+                      {player.companyName && (
+                        <span className="flex items-center gap-1">
+                          <Briefcase className="w-3 h-3" />
+                          {player.companyName}
+                        </span>
+                      )}
+                      {player.cricHeroesId && (
+                        <span className="flex items-center gap-1">
+                          <Hash className="w-3 h-3" />
+                          {player.cricHeroesId}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Arrow indicator */}
+                  <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-accent-400 group-hover:translate-x-1 transition-all" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -275,6 +301,10 @@ const PlayerFormModal: React.FC<{
     name: player?.name || '',
     phone: player?.phone || '',
     email: player?.email || '',
+    dateOfBirth: player?.dateOfBirth || '',
+    cricHeroesId: player?.cricHeroesId || '',
+    companyName: player?.companyName || '',
+    address: player?.address || '',
     role: player?.role || '',
     battingStyle: player?.battingStyle || '',
     bowlingStyle: player?.bowlingStyle || '',
@@ -353,6 +383,58 @@ const PlayerFormModal: React.FC<{
                 className="input-field"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-heading uppercase tracking-wider text-slate-400 mb-1.5">
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-heading uppercase tracking-wider text-slate-400 mb-1.5">
+                CricHeroes ID
+              </label>
+              <input
+                type="text"
+                value={formData.cricHeroesId}
+                onChange={(e) => setFormData({ ...formData, cricHeroesId: e.target.value })}
+                placeholder="e.g., 12345678"
+                className="input-field"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-heading uppercase tracking-wider text-slate-400 mb-1.5">
+              Company
+            </label>
+            <input
+              type="text"
+              value={formData.companyName}
+              onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+              placeholder="Company name"
+              className="input-field"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-heading uppercase tracking-wider text-slate-400 mb-1.5">
+              Address
+            </label>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="City, State"
+              className="input-field"
+            />
           </div>
 
           <div>
@@ -684,6 +766,62 @@ const PlayerDetailModal: React.FC<{
                       <span className="text-[10px] font-heading uppercase tracking-wider">Email</span>
                     </div>
                     <p className="text-white text-sm truncate">{player.email}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DOB and CricHeroes */}
+            {(player.dateOfBirth || player.cricHeroesId) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {player.dateOfBirth && (
+                  <div className="p-3 rounded-xl bg-broadcast-700/30 border border-white/5">
+                    <div className="flex items-center gap-2 text-slate-500 mb-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-heading uppercase tracking-wider">Date of Birth</span>
+                    </div>
+                    <p className="text-white text-sm">{new Date(player.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                )}
+                {player.cricHeroesId && (
+                  <div className="p-3 rounded-xl bg-broadcast-700/30 border border-white/5">
+                    <div className="flex items-center gap-2 text-slate-500 mb-1">
+                      <Hash className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-heading uppercase tracking-wider">CricHeroes ID</span>
+                    </div>
+                    <a
+                      href={`https://cricheroes.in/player-profile/${player.cricHeroesId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent-400 hover:text-accent-300 text-sm flex items-center gap-1"
+                    >
+                      {player.cricHeroesId}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Company and Address */}
+            {(player.companyName || player.address) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {player.companyName && (
+                  <div className="p-3 rounded-xl bg-broadcast-700/30 border border-white/5">
+                    <div className="flex items-center gap-2 text-slate-500 mb-1">
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-heading uppercase tracking-wider">Company</span>
+                    </div>
+                    <p className="text-white text-sm">{player.companyName}</p>
+                  </div>
+                )}
+                {player.address && (
+                  <div className="p-3 rounded-xl bg-broadcast-700/30 border border-white/5">
+                    <div className="flex items-center gap-2 text-slate-500 mb-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-heading uppercase tracking-wider">Address</span>
+                    </div>
+                    <p className="text-white text-sm">{player.address}</p>
                   </div>
                 )}
               </div>

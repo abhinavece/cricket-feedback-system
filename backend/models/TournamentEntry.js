@@ -99,6 +99,25 @@ const tournamentEntrySchema = new mongoose.Schema({
     ref: 'Player',
     default: null
   },
+
+  // Franchise/Team assignment
+  franchiseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Franchise',
+    default: null,
+    index: true
+  },
+
+  // Auction details (when assigned to franchise)
+  soldPrice: {
+    type: Number,
+    default: null
+  },
+
+  basePrice: {
+    type: Number,
+    default: null
+  },
   
   // Tournament-specific data
   entryData: {

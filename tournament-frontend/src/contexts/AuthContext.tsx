@@ -29,9 +29,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const response = await authApi.verifyToken();
-        if (response.success && response.data?.user) {
-          setUser(response.data.user);
+        const response = await authApi.verifyToken() as any;
+        // Backend returns { valid: true, user: ... } not { success: true, data: { user } }
+        const userData = response.data?.user ?? response.user;
+        const isValid = response.success ?? response.valid;
+        if (isValid && userData) {
+          setUser(userData);
         } else {
           localStorage.removeItem('tournament_token');
         }

@@ -13,6 +13,7 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const Tournament = require('../models/Tournament');
 const TournamentEntry = require('../models/TournamentEntry');
+const Franchise = require('../models/Franchise');
 const { auth } = require('../middleware/auth');
 const { resolveTenant, requireOrgAdmin, ensureTournamentOrg } = require('../middleware/tenantResolver');
 const { tenantQuery, tenantCreate } = require('../utils/tenantQuery');
@@ -287,9 +288,9 @@ router.post('/:id/publish', auth, ensureTournamentOrg, resolveTenant, requireOrg
       tournament.publicToken = Tournament.generateToken();
     }
 
-    // Update status to active if draft
+    // Update status to published if draft
     if (tournament.status === 'draft') {
-      tournament.status = 'active';
+      tournament.status = 'published';
     }
 
     tournament.isActive = true;
@@ -854,40 +855,42 @@ router.get('/:id/franchises', auth, ensureTournamentOrg, resolveTenant, async (r
       return res.status(404).json({ error: 'Tournament not found' });
     }
 
-    // Get unique teams from entries
-    const teams = await TournamentEntry.aggregate([
+    // Get franchises from database
+    const franchises = await Franchise.find(tenantQuery(req, {
+      tournamentId: tournament._id,
+      isDeleted: false
+    })).sort({ name: 1 }).lean();
+
+    // Get player counts for each franchise
+    const playerCounts = await TournamentEntry.aggregate([
       {
         $match: {
           organizationId: req.organization._id,
           tournamentId: tournament._id,
           isDeleted: false,
-          'entryData.teamName': { $exists: true, $ne: '' }
+          franchiseId: { $exists: true, $ne: null }
         }
       },
       {
         $group: {
-          _id: '$entryData.teamName',
-          playerCount: { $sum: 1 },
-          players: { $push: { _id: '$_id', name: '$entryData.name', role: '$entryData.role' } }
+          _id: '$franchiseId',
+          count: { $sum: 1 }
         }
-      },
-      { $sort: { _id: 1 } }
+      }
     ]);
 
-    // Map to franchise shape
-    const franchises = teams.map((t, idx) => ({
-      _id: `team-${idx}`,
-      tournamentId: tournament._id,
-      name: t._id,
-      shortName: t._id.substring(0, 3).toUpperCase(),
-      primaryColor: ['#14b8a6', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6],
-      playerIds: t.players.map((p) => p._id),
-      playerCount: t.playerCount,
-      budget: 100000,
-      remainingBudget: 100000,
+    const countMap = {};
+    playerCounts.forEach(pc => {
+      countMap[pc._id.toString()] = pc.count;
+    });
+
+    // Add player count to each franchise
+    const franchisesWithCounts = franchises.map(f => ({
+      ...f,
+      playerCount: countMap[f._id.toString()] || 0
     }));
 
-    res.json({ success: true, data: franchises });
+    res.json({ success: true, data: franchisesWithCounts });
   } catch (error) {
     console.error('Error listing franchises:', error);
     res.status(500).json({ error: error.message });
@@ -896,32 +899,159 @@ router.get('/:id/franchises', auth, ensureTournamentOrg, resolveTenant, async (r
 
 /**
  * POST /api/tournaments/:id/franchises
- * Create a new franchise/team (just a team name applied to entries)
+ * Create a new franchise/team
  */
 router.post('/:id/franchises', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
   try {
-    const { name, shortName, primaryColor } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid tournament ID' });
+    }
+
+    const tournament = await Tournament.findOne(tenantQuery(req, {
+      _id: req.params.id,
+      isDeleted: false
+    }));
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    const { name, shortName, primaryColor, secondaryColor, logo, owner, budget } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Team name is required' });
     }
 
-    // Franchise is just a team name in this model - return synthetic franchise object
-    const franchise = {
-      _id: `team-${Date.now()}`,
-      tournamentId: req.params.id,
+    // Check for duplicate shortName in tournament
+    const existingShortName = await Franchise.findOne(tenantQuery(req, {
+      tournamentId: tournament._id,
+      shortName: (shortName || name.substring(0, 3)).toUpperCase(),
+      isDeleted: false
+    }));
+
+    if (existingShortName) {
+      return res.status(400).json({ error: 'A team with this short name already exists' });
+    }
+
+    const franchise = new Franchise(tenantCreate(req, {
+      tournamentId: tournament._id,
       name,
       shortName: shortName || name.substring(0, 3).toUpperCase(),
       primaryColor: primaryColor || '#14b8a6',
-      playerIds: [],
-      playerCount: 0,
-      budget: 100000,
-      remainingBudget: 100000,
-    };
+      secondaryColor: secondaryColor || '#0f172a',
+      logo: logo || '',
+      owner: owner || {},
+      budget: budget || 100000,
+      remainingBudget: budget || 100000,
+      createdBy: req.user._id
+    }));
 
-    res.status(201).json({ success: true, data: franchise });
+    await franchise.save();
+
+    res.status(201).json({ 
+      success: true, 
+      data: {
+        ...franchise.toObject(),
+        playerCount: 0
+      }
+    });
   } catch (error) {
     console.error('Error creating franchise:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/tournaments/:id/franchises/:franchiseId
+ * Update franchise details
+ */
+router.put('/:id/franchises/:franchiseId', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
+        !mongoose.Types.ObjectId.isValid(req.params.franchiseId)) {
+      return res.status(400).json({ error: 'Invalid ID' });
+    }
+
+    const franchise = await Franchise.findOne(tenantQuery(req, {
+      _id: req.params.franchiseId,
+      tournamentId: req.params.id,
+      isDeleted: false
+    }));
+
+    if (!franchise) {
+      return res.status(404).json({ error: 'Franchise not found' });
+    }
+
+    const { name, shortName, primaryColor, secondaryColor, logo, owner, budget, remainingBudget, captain } = req.body;
+
+    if (name !== undefined) franchise.name = name;
+    if (shortName !== undefined) franchise.shortName = shortName.toUpperCase();
+    if (primaryColor !== undefined) franchise.primaryColor = primaryColor;
+    if (secondaryColor !== undefined) franchise.secondaryColor = secondaryColor;
+    if (logo !== undefined) franchise.logo = logo;
+    if (owner !== undefined) franchise.owner = owner;
+    if (budget !== undefined) franchise.budget = budget;
+    if (remainingBudget !== undefined) franchise.remainingBudget = remainingBudget;
+    if (captain !== undefined) franchise.captain = captain;
+
+    franchise.updatedBy = req.user._id;
+    await franchise.save();
+
+    // Get player count
+    const playerCount = await TournamentEntry.countDocuments(tenantQuery(req, {
+      franchiseId: franchise._id,
+      isDeleted: false
+    }));
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...franchise.toObject(),
+        playerCount
+      }
+    });
+  } catch (error) {
+    console.error('Error updating franchise:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/tournaments/:id/franchises/:franchiseId
+ * Soft delete franchise
+ */
+router.delete('/:id/franchises/:franchiseId', auth, ensureTournamentOrg, resolveTenant, requireOrgAdmin, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
+        !mongoose.Types.ObjectId.isValid(req.params.franchiseId)) {
+      return res.status(400).json({ error: 'Invalid ID' });
+    }
+
+    const franchise = await Franchise.findOne(tenantQuery(req, {
+      _id: req.params.franchiseId,
+      tournamentId: req.params.id,
+      isDeleted: false
+    }));
+
+    if (!franchise) {
+      return res.status(404).json({ error: 'Franchise not found' });
+    }
+
+    // Remove franchise assignment from all entries
+    await TournamentEntry.updateMany(
+      tenantQuery(req, { franchiseId: franchise._id }),
+      { $unset: { franchiseId: '' } }
+    );
+
+    // Soft delete
+    franchise.isDeleted = true;
+    franchise.deletedAt = new Date();
+    franchise.deletedBy = req.user._id;
+    await franchise.save();
+
+    res.json({ success: true, message: 'Franchise deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting franchise:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1030,7 +1160,7 @@ router.get('/public/:token', async (req, res) => {
     const tournament = await Tournament.findOne({
       publicToken: req.params.token,
       isDeleted: false,
-      isActive: true
+      $or: [{ isActive: true }, { status: { $in: ['published', 'ongoing', 'active'] } }]
     }).lean();
 
     if (!tournament) {

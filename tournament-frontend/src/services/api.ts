@@ -107,18 +107,25 @@ export const tournamentApi = {
 // ============ PLAYERS (backend uses "entries" – map to player shape) ============
 function entryToPlayer(entry: any): TournamentPlayer {
   if (!entry) return entry;
-  const { entryData, tournamentId, _id } = entry;
+  const { entryData, tournamentId, _id, status, createdAt, updatedAt } = entry;
   return {
     _id,
     tournamentId: tournamentId?.toString?.() ?? entry.tournamentId,
     name: entryData?.name ?? '',
-    phone: entryData?.phone,
-    email: entryData?.email,
-    role: entryData?.role,
-    battingStyle: (entryData as any)?.battingStyle,
-    bowlingStyle: (entryData as any)?.bowlingStyle,
-    createdAt: entry.createdAt,
-    updatedAt: entry.updatedAt,
+    phone: entryData?.phone ?? '',
+    email: entryData?.email ?? '',
+    dateOfBirth: entryData?.dateOfBirth ?? '',
+    cricHeroesId: entryData?.cricHeroesId ?? '',
+    companyName: entryData?.companyName ?? '',
+    address: entryData?.address ?? '',
+    teamName: entryData?.teamName ?? '',
+    jerseyNumber: entryData?.jerseyNumber,
+    role: entryData?.role ?? '',
+    battingStyle: entryData?.battingStyle ?? '',
+    bowlingStyle: entryData?.bowlingStyle ?? '',
+    status: status ?? 'registered',
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -157,9 +164,15 @@ export const playerApi = {
           name: data.name ?? '',
           phone: data.phone ?? '',
           email: data.email ?? '',
+          dateOfBirth: data.dateOfBirth ?? '',
+          cricHeroesId: data.cricHeroesId ?? '',
+          companyName: data.companyName ?? '',
+          address: data.address ?? '',
+          teamName: data.teamName ?? '',
+          jerseyNumber: data.jerseyNumber,
           role: data.role ?? 'player',
-          battingStyle: (data as any).battingStyle,
-          bowlingStyle: (data as any).bowlingStyle,
+          battingStyle: data.battingStyle ?? '',
+          bowlingStyle: data.bowlingStyle ?? '',
         },
       }
     );
@@ -168,18 +181,28 @@ export const playerApi = {
   },
 
   update: async (tournamentId: string, playerId: string, data: Partial<TournamentPlayer>) => {
+    // Build entryData only with provided fields
+    const entryData: Record<string, any> = {};
+    if (data.name !== undefined) entryData.name = data.name;
+    if (data.phone !== undefined) entryData.phone = data.phone;
+    if (data.email !== undefined) entryData.email = data.email;
+    if (data.dateOfBirth !== undefined) entryData.dateOfBirth = data.dateOfBirth;
+    if (data.cricHeroesId !== undefined) entryData.cricHeroesId = data.cricHeroesId;
+    if (data.companyName !== undefined) entryData.companyName = data.companyName;
+    if (data.address !== undefined) entryData.address = data.address;
+    if (data.teamName !== undefined) entryData.teamName = data.teamName;
+    if (data.jerseyNumber !== undefined) entryData.jerseyNumber = data.jerseyNumber;
+    if (data.role !== undefined) entryData.role = data.role;
+    if (data.battingStyle !== undefined) entryData.battingStyle = data.battingStyle;
+    if (data.bowlingStyle !== undefined) entryData.bowlingStyle = data.bowlingStyle;
+
+    const payload: Record<string, any> = {};
+    if (Object.keys(entryData).length > 0) payload.entryData = entryData;
+    if ((data as any).status !== undefined) payload.status = (data as any).status;
+
     const res = await api.put<any>(
       `/tournaments/${tournamentId}/entries/${playerId}`,
-      {
-        entryData: {
-          name: data.name,
-          phone: data.phone,
-          email: data.email,
-          role: data.role,
-          battingStyle: (data as any).battingStyle,
-          bowlingStyle: (data as any).bowlingStyle,
-        },
-      }
+      payload
     );
     const entry = res.data?.data ?? res.data;
     return { ...res, data: entryToPlayer(entry) };

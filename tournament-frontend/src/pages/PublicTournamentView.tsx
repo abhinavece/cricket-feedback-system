@@ -178,7 +178,8 @@ const PublicTournamentView: React.FC = () => {
       try {
         setLoading(true);
         const apiUrl = import.meta.env.VITE_API_URL || '/api';
-        const res = await axios.get(`${apiUrl}/public/tournament/${token}`);
+        // Backend route is /api/tournaments/public/:token
+        const res = await axios.get(`${apiUrl}/tournaments/public/${token}`);
         setData(res.data.data);
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load tournament');
