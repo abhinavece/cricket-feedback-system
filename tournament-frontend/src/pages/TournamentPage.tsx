@@ -149,28 +149,29 @@ const TournamentPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Tournament Header */}
+      {/* Tournament Header with AI-driven design */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Link
           to="/"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-300 transition-colors self-start"
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-emerald-400 transition-colors self-start"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back
+          Back to Dashboard
         </Link>
 
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Trophy className="w-6 h-6 text-emerald-400" />
             <h1 className="font-display text-2xl sm:text-3xl text-white">
               {tournament.name}
             </h1>
-            <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border ${getStatusBadge(tournament.status)}`}>
+            <span className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-wider border font-medium ${getStatusBadge(tournament.status)}`}>
               {tournament.status}
             </span>
           </div>
           {tournament.startDate && (
-            <p className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-              <Calendar className="w-3.5 h-3.5" />
+            <p className="flex items-center gap-2 text-sm text-slate-400 mt-2 ml-8">
+              <Calendar className="w-4 h-4 text-emerald-400" />
               {new Date(tournament.startDate).toLocaleDateString('en-US', {
                 month: 'long',
                 day: 'numeric',
@@ -180,44 +181,56 @@ const TournamentPage: React.FC = () => {
           )}
         </div>
 
-        {/* Share Button */}
+        {/* Share Button with AI-driven design */}
         <button
           onClick={() => setShowShareModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-500/20 text-accent-400 border border-accent-500/30 hover:bg-accent-500/30 transition-all text-sm font-heading uppercase tracking-wider"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30 hover:from-emerald-500/30 hover:to-cyan-500/30 hover:border-emerald-500/50 transition-all text-sm font-heading uppercase tracking-wider"
         >
           <Share2 className="w-4 h-4" />
           <span className="hidden sm:inline">Share</span>
         </button>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats Bar with AI-driven design */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="stat-card p-4">
-          <div className="flex items-center gap-2 text-slate-500 mb-1">
-            <Users className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Total Players</span>
+        <div className="relative group overflow-hidden rounded-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-white/10 group-hover:border-emerald-500/30 transition-all" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 to-emerald-500/0 group-hover:from-emerald-500/10 group-hover:to-emerald-500/10 transition-all duration-300" />
+          <div className="relative p-4">
+            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+              <Users className="w-4 h-4" />
+              <span className="text-xs uppercase tracking-wider font-medium">Total Players</span>
+            </div>
+            <p className="score-display text-3xl text-white font-bold">
+              {(tournament as any).stats?.entryCount ?? tournament.playerCount ?? 0}
+            </p>
           </div>
-          <p className="score-display text-3xl text-white">
-            {(tournament as any).stats?.entryCount ?? tournament.playerCount ?? 0}
-          </p>
         </div>
-        <div className="stat-card p-4">
-          <div className="flex items-center gap-2 text-slate-500 mb-1">
-            <Building2 className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Franchises</span>
+        <div className="relative group overflow-hidden rounded-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-white/10 group-hover:border-cyan-500/30 transition-all" />
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/10 group-hover:to-cyan-500/10 transition-all duration-300" />
+          <div className="relative p-4">
+            <div className="flex items-center gap-2 text-cyan-400 mb-2">
+              <Building2 className="w-4 h-4" />
+              <span className="text-xs uppercase tracking-wider font-medium">Franchises</span>
+            </div>
+            <p className="score-display text-3xl text-white font-bold">
+              {(tournament as any).stats?.teamCount ?? tournament.franchiseCount ?? 0}
+            </p>
           </div>
-          <p className="score-display text-3xl text-white">
-            {(tournament as any).stats?.teamCount ?? tournament.franchiseCount ?? 0}
-          </p>
         </div>
-        <div className="stat-card p-4">
-          <div className="flex items-center gap-2 text-slate-500 mb-1">
-            <MessageSquare className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Feedback</span>
+        <div className="relative group overflow-hidden rounded-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-white/10 group-hover:border-emerald-500/30 transition-all" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 to-emerald-500/0 group-hover:from-emerald-500/10 group-hover:to-emerald-500/10 transition-all duration-300" />
+          <div className="relative p-4">
+            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-xs uppercase tracking-wider font-medium">Feedback</span>
+            </div>
+            <p className="score-display text-3xl text-white font-bold">
+              --
+            </p>
           </div>
-          <p className="score-display text-3xl text-accent-400">
-            --
-          </p>
         </div>
       </div>
 

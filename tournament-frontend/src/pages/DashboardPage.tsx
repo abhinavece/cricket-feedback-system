@@ -57,21 +57,24 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
+      {/* Header with AI-driven design */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl text-white">
-            YOUR TOURNAMENTS
-          </h1>
-          <p className="text-slate-400 mt-1">
-            Manage and monitor all your cricket tournaments
+          <div className="flex items-center gap-3 mb-2">
+            <Trophy className="w-8 h-8 text-emerald-400" />
+            <h1 className="font-display text-3xl sm:text-4xl text-white">
+              YOUR TOURNAMENTS
+            </h1>
+          </div>
+          <p className="text-slate-400 mt-1 ml-11">
+            Manage and monitor all your cricket tournaments with AI-powered insights
           </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2 self-start"
+          className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/25 self-start"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           New Tournament
         </button>
       </div>
@@ -184,18 +187,24 @@ const TournamentCard: React.FC<{
 
   return (
     <div
-      className="stat-card group cursor-pointer hover:border-white/10 transition-all duration-200 animate-slide-up"
+      className="relative group cursor-pointer transition-all duration-300 animate-slide-up overflow-hidden rounded-2xl"
       style={{ animationDelay: `${index * 50}ms` }}
       onClick={onNavigate}
     >
-      <div className="p-5">
+      {/* Gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-white/10 group-hover:border-emerald-500/30 transition-all" />
+      
+      {/* Glow effect on hover */}
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/0 to-cyan-500/0 group-hover:from-emerald-500/10 group-hover:via-cyan-500/10 group-hover:to-emerald-500/10 transition-all duration-300" />
+
+      <div className="relative p-6 space-y-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h3 className="font-heading text-lg uppercase text-white truncate group-hover:text-accent-400 transition-colors">
+            <h3 className="font-heading text-lg uppercase text-white truncate group-hover:text-emerald-400 transition-colors">
               {tournament.name}
             </h3>
-            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border ${getStatusColor(tournament.status)}`}>
+            <span className={`inline-flex px-3 py-1 rounded-full text-[10px] uppercase tracking-wider border font-medium mt-2 ${getStatusColor(tournament.status)}`}>
               {tournament.status}
             </span>
           </div>
@@ -204,29 +213,29 @@ const TournamentCard: React.FC<{
               e.stopPropagation();
               onMenuToggle();
             }}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors"
+            className="p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-emerald-400 transition-colors flex-shrink-0"
           >
-            <MoreVertical className="w-4 h-4" />
+            <MoreVertical className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="p-3 rounded-lg bg-broadcast-700/50">
-            <div className="flex items-center gap-2 text-slate-500 mb-1">
-              <Users className="w-3.5 h-3.5" />
-              <span className="text-[10px] uppercase tracking-wider">Players</span>
+        {/* Stats with AI-driven design */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 group-hover:border-emerald-500/40 transition-all">
+            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+              <Users className="w-4 h-4" />
+              <span className="text-[10px] uppercase tracking-wider font-medium">Players</span>
             </div>
-            <p className="score-display text-2xl text-white">
+            <p className="score-display text-3xl text-white font-bold">
               {tournament.playerCount || 0}
             </p>
           </div>
-          <div className="p-3 rounded-lg bg-broadcast-700/50">
-            <div className="flex items-center gap-2 text-slate-500 mb-1">
-              <Building2 className="w-3.5 h-3.5" />
-              <span className="text-[10px] uppercase tracking-wider">Teams</span>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 group-hover:border-cyan-500/40 transition-all">
+            <div className="flex items-center gap-2 text-cyan-400 mb-2">
+              <Building2 className="w-4 h-4" />
+              <span className="text-[10px] uppercase tracking-wider font-medium">Teams</span>
             </div>
-            <p className="score-display text-2xl text-white">
+            <p className="score-display text-3xl text-white font-bold">
               {tournament.franchiseCount || 0}
             </p>
           </div>
@@ -234,13 +243,13 @@ const TournamentCard: React.FC<{
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-white/5">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Calendar className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Calendar className="w-4 h-4 text-emerald-400" />
             {tournament.startDate
               ? new Date(tournament.startDate).toLocaleDateString()
               : 'No date set'}
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-accent-400 transition-colors" />
+          <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-emerald-400 transition-colors transform group-hover:translate-x-1" />
         </div>
       </div>
 

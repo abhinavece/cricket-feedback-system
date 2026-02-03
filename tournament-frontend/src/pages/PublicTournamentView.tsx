@@ -69,7 +69,7 @@ interface PublicData {
   teams: PublicTeam[];
 }
 
-// Background particle animation
+// Neural network background matching homepage design
 const ParticleField: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -80,74 +80,89 @@ const ParticleField: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const resize = () => {
+    const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-    resize();
-    window.addEventListener('resize', resize);
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
+    // Particles matching homepage design
     const particles: Array<{
-      x: number; y: number; vx: number; vy: number; size: number; opacity: number; hue: number;
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      opacity: number;
     }> = [];
 
-    for (let i = 0; i < 60; i++) {
+    const numParticles = Math.min(80, Math.floor(window.innerWidth / 15));
+    
+    for (let i = 0; i < numParticles; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        size: Math.random() * 2 + 0.5,
-        opacity: Math.random() * 0.3 + 0.1,
-        hue: 160 + Math.random() * 40,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        radius: Math.random() * 2 + 1,
+        opacity: Math.random() * 0.5 + 0.2,
       });
     }
 
-    let animId: number;
-    const animate = () => {
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.1)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let animationId: number;
 
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update and draw particles
       particles.forEach((p, i) => {
         p.x += p.vx;
         p.y += p.vy;
 
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        // Wrap around edges
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
 
+        // Draw particle with emerald color
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 70%, 60%, ${p.opacity})`;
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity})`;
         ctx.fill();
 
-        // Connect nearby particles
+        // Draw connections
         particles.slice(i + 1).forEach((p2) => {
           const dx = p.x - p2.x;
           const dy = p.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 100) {
+
+          if (dist < 120) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(${p.hue}, 50%, 50%, ${0.1 * (1 - dist / 100)})`;
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.15 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         });
       });
 
-      animId = requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
     };
+
     animate();
 
     return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationId);
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <canvas 
+      ref={canvasRef} 
       className="fixed inset-0 pointer-events-none z-0"
       style={{ opacity: 0.6 }}
     />
@@ -311,11 +326,27 @@ const PublicTournamentView: React.FC = () => {
   const displayStatus = getDisplayStatus(tournament.status);
 
   return (
-    <div className="min-h-screen bg-broadcast-900 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       <ParticleField />
 
+      {/* Gradient orbs - AI themed colors */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-500/15 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '6s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s', animationDelay: '2s' }} />
+        <div className="absolute top-1/3 right-1/3 w-[300px] h-[300px] bg-teal-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '7s', animationDelay: '1s' }} />
+      </div>
+
+      {/* Grid overlay */}
+      <div 
+        className="fixed inset-0 opacity-[0.02] pointer-events-none z-0"
+        style={{
+          backgroundImage: `linear-gradient(rgba(16, 185, 129, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.3) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px'
+        }}
+      />
+
       {/* CricSmart Branding Header */}
-      <div className="relative z-20 bg-broadcast-900/80 backdrop-blur-lg border-b border-white/5">
+      <div className="relative z-20 bg-slate-900/80 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <a 
             href="https://cricsmart.in" 
@@ -323,14 +354,14 @@ const PublicTournamentView: React.FC = () => {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 group"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow">
+              <span className="text-white font-black text-sm">C</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-display text-lg text-white leading-none group-hover:text-accent-400 transition-colors">
+              <span className="font-display text-lg text-white leading-none group-hover:text-emerald-400 transition-colors">
                 CricSmart
               </span>
-              <span className="text-[9px] uppercase tracking-widest text-slate-500">
+              <span className="text-[9px] uppercase tracking-widest text-emerald-400">
                 AI Cricket Platform
               </span>
             </div>

@@ -28,22 +28,23 @@ const Layout: React.FC = () => {
       <header className="sticky top-0 z-50 bg-broadcast-800/95 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-14">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="relative">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-lg shadow-accent-500/20 group-hover:shadow-accent-500/40 transition-shadow">
-                  <Trophy className="w-5 h-5 text-white" />
+            {/* Logo - Redirect to cricsmart.in */}
+            <a href="https://cricsmart.in" className="flex items-center gap-3 group cursor-pointer">
+              <div className="relative w-9 h-9 group-hover:scale-110 transition-transform duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white font-black text-sm">C</span>
                 </div>
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-display text-xl tracking-wide text-white">
-                  CRICSMART
+                <h1 className="font-display text-lg tracking-wide text-white group-hover:text-emerald-400 transition-colors">
+                  CricSmart
                 </h1>
-                <p className="text-[10px] font-heading uppercase tracking-widest text-accent-400 -mt-1">
-                  Tournament Hub
+                <p className="text-[10px] font-heading uppercase tracking-widest text-emerald-400 -mt-1">
+                  AI Cricket Platform
                 </p>
               </div>
-            </Link>
+            </a>
 
             {/* Center - Current tournament name */}
             {currentTournament && (

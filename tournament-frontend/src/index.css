@@ -41,7 +41,7 @@
 
   body {
     font-family: 'DM Sans', system-ui, sans-serif;
-    background: linear-gradient(180deg, #0a0a0b 0%, #111113 100%);
+    background: linear-gradient(to-b, #0f172a 0%, #1e293b 50%, #0f172a 100%);
     min-height: 100vh;
   }
 
