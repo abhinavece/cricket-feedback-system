@@ -24,7 +24,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Particles - reduced for better performance
+    // Particles
     const particles: Array<{
       x: number;
       y: number;
@@ -34,17 +34,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
       opacity: number;
     }> = [];
 
-    // Reduce particle count for faster initial load
-    const numParticles = Math.min(50, Math.floor(window.innerWidth / 20));
+    const numParticles = Math.min(80, Math.floor(window.innerWidth / 15));
     
     for (let i = 0; i < numParticles; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        radius: Math.random() * 1.5 + 0.5,
-        opacity: Math.random() * 0.4 + 0.1,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        radius: Math.random() * 2 + 1,
+        opacity: Math.random() * 0.5 + 0.2,
       });
     }
 
@@ -71,23 +70,21 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
         ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity})`;
         ctx.fill();
 
-        // Draw connections - only every other frame to reduce CPU usage
-        if (frameCount % 2 === 0) {
-          particles.slice(i + 1, Math.min(i + 6, particles.length)).forEach((p2) => {
-            const dx = p.x - p2.x;
-            const dy = p.y - p2.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+        // Draw connections
+        particles.slice(i + 1).forEach((p2) => {
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < 100) {
-              ctx.beginPath();
-              ctx.moveTo(p.x, p.y);
-              ctx.lineTo(p2.x, p2.y);
-              ctx.strokeStyle = `rgba(16, 185, 129, ${0.1 * (1 - dist / 100)})`;
-              ctx.lineWidth = 0.4;
-              ctx.stroke();
-            }
-          });
-        }
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.15 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
       });
 
       frameCount++;
