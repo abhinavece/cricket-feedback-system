@@ -35,7 +35,8 @@ export interface TournamentPlayer {
   soldPrice?: number;
   franchiseId?: string; // null if unsold/available
   stats?: PlayerStats;
-  createdAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PlayerStats {
