@@ -297,11 +297,22 @@ const PlayerFormModal: React.FC<{
   onClose: () => void;
 }> = ({ tournamentId, player, onClose }) => {
   const queryClient = useQueryClient();
+  
+  // Format DOB to YYYY-MM-DD for date input
+  const formatDateForInput = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
     name: player?.name || '',
     phone: player?.phone || '',
     email: player?.email || '',
-    dateOfBirth: player?.dateOfBirth || '',
+    dateOfBirth: formatDateForInput(player?.dateOfBirth),
     cricHeroesId: player?.cricHeroesId || '',
     companyName: player?.companyName || '',
     address: player?.address || '',
@@ -688,53 +699,67 @@ const PlayerDetailModal: React.FC<{
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-2xl overflow-hidden animate-slide-up">
         {/* Gradient header background */}
-        <div className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br ${roleStyle.bg} opacity-50`} />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-transparent to-broadcast-800" />
+        <div className={`absolute inset-x-0 top-0 h-40 bg-gradient-to-br ${roleStyle.bg} opacity-60`} />
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent to-broadcast-800" />
 
-        <div className="relative glass-panel rounded-2xl overflow-hidden">
+        <div className="relative glass-panel rounded-3xl overflow-hidden shadow-2xl">
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white/70 hover:text-white transition-colors"
+            className="absolute top-5 right-5 z-10 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white/80 hover:text-white transition-all duration-200"
           >
             <X className="w-5 h-5" />
           </button>
 
           {/* Player header */}
-          <div className="relative px-6 pt-8 pb-6">
-            <div className="flex items-start gap-5">
+          <div className="relative px-8 pt-12 pb-8">
+            <div className="flex items-start gap-6">
               {/* Large avatar */}
-              <div className="relative">
-                <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${roleStyle.bg} border-2 border-white/10 flex items-center justify-center shadow-xl`}>
-                  <span className="font-display text-4xl text-white">
+              <div className="relative flex-shrink-0">
+                <div className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${roleStyle.bg} border-3 border-white/20 flex items-center justify-center shadow-2xl`}>
+                  <span className="font-display text-5xl text-white">
                     {player.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 {isIneligible && (
-                  <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-rose-500 border-2 border-broadcast-800 flex items-center justify-center">
-                    <Ban className="w-4 h-4 text-white" />
+                  <div className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full bg-rose-500 border-3 border-broadcast-800 flex items-center justify-center shadow-lg">
+                    <Ban className="w-5 h-5 text-white" />
                   </div>
                 )}
               </div>
 
               {/* Name and role */}
-              <div className="flex-1 pt-2">
-                <h2 className="font-display text-2xl text-white leading-tight">
+              <div className="flex-1 pt-1">
+                <h2 className="font-display text-3xl text-white leading-tight mb-3">
                   {player.name}
                 </h2>
-                {player.role && (
-                  <div className={`inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-gradient-to-r ${roleStyle.bg} border border-white/10`}>
-                    <span className="text-sm">{roleStyle.icon}</span>
-                    <span className={`text-xs font-heading uppercase tracking-wider ${roleStyle.text}`}>
-                      {player.role}
-                    </span>
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {player.role && (
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${roleStyle.bg} border border-white/20 shadow-lg`}>
+                      <span className="text-lg">{roleStyle.icon}</span>
+                      <span className={`text-sm font-heading uppercase tracking-wider font-semibold ${roleStyle.text}`}>
+                        {player.role}
+                      </span>
+                    </div>
+                  )}
+                  {player.cricHeroesId && (
+                    <a
+                      href={`https://cricheroes.in/player-profile/${player.cricHeroesId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/40 hover:border-emerald-500/60 transition-all shadow-lg"
+                    >
+                      <Hash className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-semibold text-emerald-400">{player.cricHeroesId}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                    </a>
+                  )}
+                </div>
                 {isIneligible && (
-                  <p className="text-xs text-rose-400 mt-2 flex items-center gap-1">
-                    <Ban className="w-3 h-3" />
+                  <p className="text-sm text-rose-400 mt-2 flex items-center gap-2 font-medium">
+                    <Ban className="w-4 h-4" />
                     Marked as ineligible
                   </p>
                 )}
@@ -743,7 +768,7 @@ const PlayerDetailModal: React.FC<{
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-6" />
+          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-8" />
 
           {/* Details grid */}
           <div className="px-6 py-5 space-y-4">
