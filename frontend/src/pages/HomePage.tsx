@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getDomainType, getAppUrl } from '../utils/domain';
+import { useViewTracking } from '../hooks/useViewTracking';
 import {
   HomeNavbar,
   HeroSection,
@@ -21,6 +22,13 @@ const HomePage: React.FC = () => {
   const { user } = useAuth();
   const domainType = getDomainType();
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Track homepage views - use a default organization ID for now
+  // In production, this should be dynamically determined based on domain/subdomain
+  useViewTracking({
+    type: 'homepage',
+    organizationId: user?.activeOrganizationId || 'default-org'
+  });
 
   // NOTE: We intentionally do NOT auto-redirect authenticated users from homepage.
   // Users should be able to visit the homepage even when logged in.

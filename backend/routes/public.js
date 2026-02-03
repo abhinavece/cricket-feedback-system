@@ -9,6 +9,7 @@ const TournamentEntry = require('../models/TournamentEntry');
 const { auth } = require('../middleware/auth');
 const { resolveTenant } = require('../middleware/tenantResolver');
 const { tenantQuery, tenantCreate } = require('../utils/tenantQuery');
+const { trackPublicLinkView } = require('../middleware/viewTracker');
 
 // Helper functions
 function maskPhone(phone) {
@@ -32,7 +33,7 @@ function calculateAge(dateOfBirth) {
 
 // GET /api/public/tournament/:token - Access tournament by its publicToken (NO AUTH REQUIRED)
 // This uses the token stored directly on Tournament model (simpler URL pattern)
-router.get('/tournament/:token', async (req, res) => {
+router.get('/tournament/:token', trackPublicLinkView, async (req, res) => {
   try {
     const { token } = req.params;
     const { search, role, teamName, page = 1, limit = 50 } = req.query;
@@ -163,7 +164,7 @@ router.get('/tournament/:token', async (req, res) => {
 });
 
 // GET /api/public/:token - Access shared resource (NO AUTH REQUIRED)
-router.get('/:token', async (req, res) => {
+router.get('/:token', trackPublicLinkView, async (req, res) => {
   try {
     const { token } = req.params;
     

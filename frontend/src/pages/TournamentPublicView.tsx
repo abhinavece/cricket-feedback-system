@@ -7,6 +7,7 @@ import {
   Filter, ChevronDown, Sparkles
 } from 'lucide-react';
 import axios from 'axios';
+import { useViewTracking } from '../hooks/useViewTracking';
 
 // Types
 interface TournamentBranding {
@@ -113,6 +114,13 @@ const TournamentPublicView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const listRef = useRef<React.ComponentRef<typeof List>>(null);
   const { token } = useParams<{ token: string }>();
+
+  // Track public link views
+  useViewTracking({
+    type: 'public-link',
+    token: token,
+    organizationId: 'default-org' // This will be resolved from the public link in the backend
+  });
   
   const [data, setData] = useState<TournamentData | null>(null);
   const [loading, setLoading] = useState(true);

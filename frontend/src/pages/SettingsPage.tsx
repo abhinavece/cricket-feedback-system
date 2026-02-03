@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import DeveloperSettings from '../components/DeveloperSettings';
 import DateOfBirthPicker from '../components/DateOfBirthPicker';
 import DeploymentInfo from '../components/DeploymentInfo';
+import ViewAnalytics from '../components/ViewAnalytics';
 
 const BATTING_STYLES = [
   { value: '', label: 'Not specified' },
@@ -580,6 +581,13 @@ const SettingsPage: React.FC = () => {
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Developer Tools</h2>
           <DeveloperSettings isMasterDeveloper={isMasterDeveloper} />
+        </div>
+      )}
+
+      {/* View Analytics - Admin only, at the bottom before deployment info */}
+      {(user?.role === 'admin') && (
+        <div className="mt-8">
+          <ViewAnalytics />
         </div>
       )}
 
