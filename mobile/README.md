@@ -1,23 +1,31 @@
-# Mavericks Cricket - Mobile App
+# Mobile App
 
-React Native mobile application for the Mavericks Cricket Club management system.
+React Native mobile application for the Cricket Match Feedback & Team Management System.
+
+## Overview
+
+Native mobile app providing match management, payment tracking, team statistics, and user profiles with Google OAuth authentication.
 
 ## Features
 
-- 🏏 **Match Management** - View upcoming and past matches
-- 💰 **Payment Tracking** - Track match payments and dues
-- 📊 **Team Stats** - View team performance statistics
-- 👤 **Profile Management** - User profile and settings
-- 🔐 **Google Sign-In** - Secure authentication
+- **Match Management**: View upcoming and past matches
+- **Payment Tracking**: Track match payments and dues
+- **Team Stats**: View team performance statistics
+- **Profile Management**: User profile and settings
+- **Google Sign-In**: Secure authentication
 
 ## Tech Stack
 
-- **Framework**: React Native with Expo SDK 52+
-- **Navigation**: Expo Router (file-based routing)
-- **Styling**: NativeWind (Tailwind CSS for React Native)
-- **State Management**: Zustand + TanStack Query
-- **Authentication**: expo-auth-session (Google OAuth)
-- **Storage**: expo-secure-store
+| Technology | Purpose |
+|------------|---------|
+| **React Native** | Mobile framework |
+| **Expo SDK 52+** | Development platform |
+| **Expo Router** | File-based navigation |
+| **NativeWind** | Tailwind CSS for React Native |
+| **Zustand** | State management |
+| **TanStack Query** | Data fetching |
+| **expo-auth-session** | Google OAuth |
+| **expo-secure-store** | Secure storage |
 
 ## Prerequisites
 
@@ -176,6 +184,13 @@ The lint errors you see before running `npm install` are expected - they will re
 2. Make your changes
 3. Test on both iOS and Android
 4. Submit a pull request
+
+## Related Documentation
+
+- [Backend README](../backend/README.md) - Backend API service
+- [Frontend README](../frontend/README.md) - Web application
+- [CLAUDE.md](../CLAUDE.md) - Development guidelines
+- [Architecture](../ARCHITECTURE.md) - System architecture
 
 ## License
 

@@ -424,6 +424,13 @@ LOG_LEVEL=DEBUG python -m uvicorn app:app --host 0.0.0.0 --port 8010 --reload
 
 This service is part of the Cricket Feedback System. See project license for details.
 
+## 📚 Related Documentation
+
+- [Backend README](../backend/README.md) - Backend API (calls AI service)
+- [Cloud Run Deployment](../infra/cloudrun/README.md) - GCP Cloud Run deployment
+- [Helm Deployment](../infra/helm/cricket-feedback/README.md) - Kubernetes deployment
+- [Architecture](../ARCHITECTURE.md) - System architecture
+
 ## 🤝 Contributing
 
 ### 📖 **MANDATORY**: Documentation Requirements

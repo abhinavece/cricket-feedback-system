@@ -1,6 +1,10 @@
-# CricSmart Tournament Hub
+# Tournament Hub
 
-A dedicated tournament management application for cricket tournaments at `tournament.cricsmart.in`.
+Tournament management application for cricket tournaments.
+
+## Overview
+
+Dedicated frontend for creating and managing cricket tournaments, player pools, franchises, and performance feedback. Deployed at `tournament.cricsmart.in`.
 
 ## Features
 
@@ -11,11 +15,14 @@ A dedicated tournament management application for cricket tournaments at `tourna
 
 ## Tech Stack
 
-- **React 18** + TypeScript
-- **Vite** for fast development
-- **Tailwind CSS** with custom sports-broadcast theme
-- **TanStack Query** for data fetching
-- **React Router** for navigation
+| Technology | Purpose |
+|------------|---------|
+| **React 18** | UI framework |
+| **TypeScript** | Type safety |
+| **Vite** | Build tool |
+| **Tailwind CSS** | Styling (sports-broadcast theme) |
+| **TanStack Query** | Data fetching |
+| **React Router** | Navigation |
 
 ## Design Aesthetic
 
@@ -115,3 +122,10 @@ Configure your web server to:
 1. Serve static files from `dist/`
 2. Route all requests to `index.html` (SPA routing)
 3. Proxy `/api/*` to your backend server
+
+## Related Documentation
+
+- [Backend README](../backend/README.md) - Backend API (includes tournament endpoints)
+- [Frontend README](../frontend/README.md) - Main web application
+- [CLAUDE.md](../CLAUDE.md) - Development guidelines
+- [Architecture](../ARCHITECTURE.md) - System architecture
