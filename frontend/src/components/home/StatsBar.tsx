@@ -91,7 +91,7 @@ const StatsBar: React.FC = () => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-16 px-4 sm:px-6 bg-slate-900/50">
+    <section ref={sectionRef} className="py-10 px-4 sm:px-6 bg-slate-900/50">
       <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {stats.map((stat, index) => (
