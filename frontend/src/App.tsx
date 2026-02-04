@@ -30,7 +30,18 @@ const InvitePage = lazy(() => import('./pages/InvitePage'));
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
   const saved = localStorage.getItem('forceDeviceMode');
-  if (saved) return saved === 'mobile';
+  if (saved) {
+    // Clear saved mode if it doesn't match current device type
+    if (saved === 'mobile' && !isMobileDevice()) {
+      localStorage.removeItem('forceDeviceMode');
+      return false;
+    }
+    if (saved === 'desktop' && isMobileDevice()) {
+      localStorage.removeItem('forceDeviceMode');
+      return true;
+    }
+    return saved === 'mobile';
+  }
   return isMobileDevice();
 };
 
@@ -120,10 +131,17 @@ function DashboardLayout() {
     localStorage.setItem('forceDeviceMode', newMode ? 'mobile' : 'desktop');
   };
 
-  // Auto-switch to admin view when authenticated
+  // Auto-switch to admin view when authenticated and correct device mode
   useEffect(() => {
     if (isAuthenticated) {
       setCurrentView('admin');
+      
+      // Correct device mode if it doesn't match actual device
+      const shouldBeMobile = isMobileDevice();
+      if (isMobile !== shouldBeMobile) {
+        setIsMobile(shouldBeMobile);
+        localStorage.setItem('forceDeviceMode', shouldBeMobile ? 'mobile' : 'desktop');
+      }
     }
   }, [isAuthenticated]);
 
