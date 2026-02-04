@@ -114,7 +114,7 @@ function MobileNavigation({
       {/* Slide-down Menu */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-x-0 top-[52px] bottom-0 z-30 bg-black/50 backdrop-blur-sm"
           onClick={() => setIsMenuOpen(false)}
         >
           <nav
@@ -220,7 +220,7 @@ function MobileNavigation({
       {/* Auth Modal */}
       {showAuthModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setShowAuthModal(false)}
         >
           <div

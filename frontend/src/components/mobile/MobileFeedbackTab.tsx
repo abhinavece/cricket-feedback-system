@@ -385,9 +385,9 @@ const MobileFeedbackTab: React.FC = () => {
 
       {/* Detail Modal - Slide up sheet */}
       {selectedFeedback && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedFeedback(null)}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedFeedback(null)}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up"
+            className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[calc(100vh-52px)] overflow-y-auto animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle */}
@@ -466,7 +466,7 @@ const MobileFeedbackTab: React.FC = () => {
 
       {/* Loading Detail Overlay */}
       {loadingDetail && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/60 flex items-center justify-center">
           <div className="spinner"></div>
         </div>
       )}

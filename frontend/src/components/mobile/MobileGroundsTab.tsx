@@ -392,8 +392,8 @@ const MobileGroundsTab: React.FC = () => {
 
       {/* City Filter Modal */}
       {showCityFilter && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm">
-          <div className="absolute bottom-0 left-0 right-0 bg-slate-800 rounded-t-2xl max-h-[70vh] overflow-hidden">
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/70 backdrop-blur-sm">
+          <div className="absolute bottom-0 left-0 right-0 bg-slate-800 rounded-t-2xl max-h-[calc(100vh-52px)] overflow-hidden">
             <div className="sticky top-0 bg-slate-800 p-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">Select City</h3>
               <button onClick={() => setShowCityFilter(false)} className="p-2">
@@ -434,7 +434,7 @@ const MobileGroundsTab: React.FC = () => {
 
       {/* Add Ground Modal */}
       {showAddForm && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className="min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div className="bg-slate-800 w-full sm:max-w-lg sm:rounded-xl overflow-hidden">
               {/* Header */}

@@ -876,8 +876,8 @@ const MobileTournamentDashboard: React.FC<MobileTournamentDashboardProps> = ({ o
 
       {/* Upload Preview Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end">
-          <div className="w-full bg-slate-800 rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up">
+        <div className="fixed inset-x-0 top-[52px] bottom-0 bg-black/60 backdrop-blur-sm z-50 flex items-end">
+          <div className="w-full bg-slate-800 rounded-t-3xl max-h-[calc(100vh-52px)] overflow-y-auto animate-slide-up">
             <div className="sticky top-0 bg-slate-800 px-4 pt-4 pb-2 border-b border-white/10">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold text-white">Import Preview</h3>
@@ -940,7 +940,7 @@ const MobileTournamentDashboard: React.FC<MobileTournamentDashboardProps> = ({ o
 
       {/* Share Sheet */}
       {showShareSheet && selectedTournament && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end" onClick={() => setShowShareSheet(false)}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 bg-black/60 backdrop-blur-sm z-50 flex items-end" onClick={() => setShowShareSheet(false)}>
           <div className="w-full bg-slate-800 rounded-t-3xl" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mt-3" />
             
@@ -996,7 +996,7 @@ const MobileTournamentDashboard: React.FC<MobileTournamentDashboardProps> = ({ o
 
       {/* Click outside to close action menu */}
       {showActionMenu && (
-        <div className="fixed inset-0 z-10" onClick={() => setShowActionMenu(null)} />
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-10" onClick={() => setShowActionMenu(null)} />
       )}
     </>
   );
