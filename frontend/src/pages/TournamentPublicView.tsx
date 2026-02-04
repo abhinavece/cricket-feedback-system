@@ -459,7 +459,8 @@ const TournamentPublicView: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-800/50 border border-white/10 rounded-xl pl-10 pr-10 py-2.5
                        text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50
-                       transition-colors"
+                       transition-colors text-base"
+              style={{ fontSize: '16px' }}
             />
             {searchQuery && (
               <button
@@ -496,6 +497,7 @@ const TournamentPublicView: React.FC = () => {
                 onChange={(e) => setSelectedRole(e.target.value)}
                 className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-sm
                          text-white focus:outline-none focus:border-emerald-500/50 flex-shrink-0"
+                style={{ fontSize: '16px' }}
               >
                 <option value="">All Roles</option>
                 {filters.roles.map(role => (
@@ -512,6 +514,7 @@ const TournamentPublicView: React.FC = () => {
                   onChange={(e) => setSelectedTeam(e.target.value)}
                   className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-sm
                            text-white focus:outline-none focus:border-emerald-500/50 flex-shrink-0"
+                  style={{ fontSize: '16px' }}
                 >
                   <option value="">All Teams</option>
                   {filters.teams.map(team => (
