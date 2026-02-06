@@ -86,7 +86,23 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  * RequireOrganization component - shows onboarding if user has no organization
  */
 const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const { hasOrganization, loading } = useOrganization();
+  const location = useLocation();
+
+  // If not authenticated, redirect appropriately based on domain
+  if (!isAuthenticated) {
+    const domainType = getDomainType();
+    
+    if (domainType === 'app') {
+      // On app domain, redirect to homepage
+      window.location.href = 'https://cricsmart.in';
+      return <LoadingSpinner />;
+    }
+    
+    // On localhost/homepage, redirect to login page
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
 
   if (loading) {
     return <LoadingSpinner />;
