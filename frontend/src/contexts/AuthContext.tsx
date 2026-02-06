@@ -20,6 +20,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User, needsOnboarding?: boolean) => void;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
   isAuthenticated: boolean;
   hasPermission: (permission: string) => boolean;
   canEdit: () => boolean;
@@ -107,6 +108,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     googleLogout();
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    localStorage.setItem('authUser', JSON.stringify(updatedUser));
+  };
+
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
 
@@ -136,6 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token,
     login,
     logout,
+    updateUser,
     isAuthenticated: !!user,
     hasPermission,
     canEdit,

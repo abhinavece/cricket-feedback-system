@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { getHomepageUrl } from '../utils/domain';
 
 // Organization interface
 export interface Organization {
@@ -101,7 +102,7 @@ interface OrganizationProviderProps {
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ children }) => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, updateUser } = useAuth();
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [userOrgs, setUserOrgs] = useState<OrganizationMembership[]>([]);
   const [loading, setLoading] = useState(true);
@@ -325,6 +326,14 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       const data = await apiCall('/organizations', {
         method: 'POST',
         body: JSON.stringify({ name, description }),
+      });
+
+      // Update user data in AuthContext - user now has organization and is owner/admin
+      updateUser({
+        hasOrganizations: true,
+        needsOnboarding: false,
+        role: 'admin', // Creator is owner/admin of the org
+        activeOrganizationId: data.organization._id,
       });
 
       // Refresh organization data

@@ -29,7 +29,11 @@ import {
   HelpCircle,
   CheckCircle,
   Clock,
+  Zap,
+  Shield,
+  BarChart3,
 } from 'lucide-react';
+import { getHomepageUrl } from '../utils/domain';
 import { useOrganization } from '../contexts/OrganizationContext';
 import {
   searchOrganizations,
@@ -184,97 +188,155 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
   };
 
   const features = [
-    { icon: Users, title: 'Player Management', desc: 'Track your squad and availability' },
-    { icon: Calendar, title: 'Match Scheduling', desc: 'Organize matches and track stats' },
-    { icon: MessageSquare, title: 'WhatsApp Integration', desc: 'Send updates directly to players' },
-    { icon: Trophy, title: 'Performance Tracking', desc: 'Collect and analyze feedback' },
+    { icon: Users, title: 'Squad Management', desc: 'Track availability & responses', color: 'emerald' },
+    { icon: Calendar, title: 'Match Scheduling', desc: 'Organize fixtures easily', color: 'blue' },
+    { icon: MessageSquare, title: 'WhatsApp Updates', desc: 'One-click notifications', color: 'green' },
+    { icon: BarChart3, title: 'Feedback & Stats', desc: 'Track performance', color: 'purple' },
   ];
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Progress indicator - only for multi-step flows */}
-        {(step.startsWith('create-') && step !== 'choice') && (
-          <div className="flex items-center justify-center gap-2 mb-8">
-            {['create-info', 'create-form', 'create-success'].map((s, i) => (
-              <div
-                key={s}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  s === step
-                    ? 'w-8 bg-emerald-500'
-                    : ['create-info', 'create-form', 'create-success'].indexOf(step) > i
-                    ? 'w-2 bg-emerald-500'
-                    : 'w-2 bg-slate-600'
-                }`}
-              />
-            ))}
-          </div>
-        )}
+  const steps = [
+    { num: 1, title: 'Create Team', desc: 'Name your team' },
+    { num: 2, title: 'Add Players', desc: 'Import or add manually' },
+    { num: 3, title: 'Schedule Match', desc: 'Create your first match' },
+  ];
 
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+  const homepageUrl = getHomepageUrl();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header with Logo */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <a 
+            href={homepageUrl}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
+            <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-white">CricSmart</span>
+          </a>
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <Shield className="w-4 h-4" />
+            <span className="hidden sm:inline">Secure Setup</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="pt-20 pb-8 px-4 flex items-center justify-center min-h-screen">
+        <div className="w-full max-w-2xl">
+          {/* Progress indicator - only for multi-step flows */}
+          {(step.startsWith('create-') && step !== 'choice') && (
+            <div className="flex items-center justify-center gap-2 mb-8">
+              {['create-info', 'create-form', 'create-success'].map((s, i) => (
+                <div
+                  key={s}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    s === step
+                      ? 'w-8 bg-emerald-500'
+                      : ['create-info', 'create-form', 'create-success'].indexOf(step) > i
+                      ? 'w-2 bg-emerald-500'
+                      : 'w-2 bg-slate-600'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
           
           {/* Step: Choice - Create or Join */}
           {step === 'choice' && (
-            <div className="p-8">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Sparkles className="w-10 h-10 text-white" />
+            <div className="p-6 sm:p-8">
+              {/* Welcome Header */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-sm font-medium mb-4">
+                  <Sparkles className="w-4 h-4" />
+                  Welcome to CricSmart
                 </div>
-                <h1 className="text-3xl font-bold text-white mb-3">
-                  Welcome to CricSmart!
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                  Smart Cricket Team Management
                 </h1>
-                <p className="text-slate-400 max-w-md mx-auto">
-                  Let's get you set up. Are you starting a new team or joining an existing one?
+                <p className="text-slate-400 text-sm sm:text-base">
+                  Everything you need to run your cricket team efficiently
                 </p>
               </div>
 
+              {/* What you can do - Visual Features */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                {features.map((feature, i) => (
+                  <div key={i} className="text-center p-3 bg-slate-700/20 rounded-xl">
+                    <div className={`w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center ${
+                      feature.color === 'emerald' ? 'bg-emerald-500/20' :
+                      feature.color === 'blue' ? 'bg-blue-500/20' :
+                      feature.color === 'green' ? 'bg-green-500/20' : 'bg-purple-500/20'
+                    }`}>
+                      <feature.icon className={`w-5 h-5 ${
+                        feature.color === 'emerald' ? 'text-emerald-400' :
+                        feature.color === 'blue' ? 'text-blue-400' :
+                        feature.color === 'green' ? 'text-green-400' : 'text-purple-400'
+                      }`} />
+                    </div>
+                    <p className="text-xs font-medium text-white">{feature.title}</p>
+                    <p className="text-xs text-slate-500 hidden sm:block">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
+
               {/* Choice Cards */}
+              <p className="text-center text-sm text-slate-400 mb-4">How would you like to get started?</p>
               <div className="grid md:grid-cols-2 gap-4 mb-6">
                 {/* Create Team Card */}
                 <button
                   onClick={() => setStep('create-info')}
-                  className="group p-6 bg-slate-700/30 hover:bg-emerald-500/10 border border-slate-600 hover:border-emerald-500/50 rounded-xl text-left transition-all duration-300"
+                  className="group p-5 bg-gradient-to-br from-emerald-500/10 to-teal-500/5 hover:from-emerald-500/20 hover:to-teal-500/10 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl text-left transition-all duration-300"
                 >
-                  <div className="w-12 h-12 bg-emerald-500/20 group-hover:bg-emerald-500/30 rounded-xl flex items-center justify-center mb-4 transition-colors">
-                    <Building2 className="w-6 h-6 text-emerald-400" />
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 bg-emerald-500/20 group-hover:bg-emerald-500/30 rounded-xl flex items-center justify-center transition-colors">
+                      <Building2 className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-white">I'm a Captain</h3>
+                      <p className="text-xs text-slate-400">Create a new team</p>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Create a Team</h3>
-                  <p className="text-sm text-slate-400 mb-4">
-                    I'm the captain/organizer setting up my team fresh.
+                  <p className="text-sm text-slate-400 mb-3">
+                    Set up your team in 30 seconds. Add players, schedule matches, and manage everything.
                   </p>
-                  <div className="flex items-center text-emerald-400 text-sm font-medium group-hover:gap-2 transition-all">
-                    Get Started <ChevronRight className="w-4 h-4 ml-1" />
+                  <div className="flex items-center text-emerald-400 text-sm font-medium">
+                    Create Team <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </button>
 
                 {/* Find Team Card */}
                 <button
                   onClick={() => setStep('join-options')}
-                  className="group p-6 bg-slate-700/30 hover:bg-blue-500/10 border border-slate-600 hover:border-blue-500/50 rounded-xl text-left transition-all duration-300"
+                  className="group p-5 bg-gradient-to-br from-blue-500/10 to-indigo-500/5 hover:from-blue-500/20 hover:to-indigo-500/10 border border-blue-500/30 hover:border-blue-500/50 rounded-xl text-left transition-all duration-300"
                 >
-                  <div className="w-12 h-12 bg-blue-500/20 group-hover:bg-blue-500/30 rounded-xl flex items-center justify-center mb-4 transition-colors">
-                    <Search className="w-6 h-6 text-blue-400" />
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 bg-blue-500/20 group-hover:bg-blue-500/30 rounded-xl flex items-center justify-center transition-colors">
+                      <UserPlus className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-white">I'm a Player</h3>
+                      <p className="text-xs text-slate-400">Join existing team</p>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Find My Team</h3>
-                  <p className="text-sm text-slate-400 mb-4">
-                    Search for my team or use an invite link to join.
+                  <p className="text-sm text-slate-400 mb-3">
+                    Got an invite link? Join your team to respond to matches and give feedback.
                   </p>
-                  <div className="flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                    Search or Join <ChevronRight className="w-4 h-4 ml-1" />
+                  <div className="flex items-center text-blue-400 text-sm font-medium">
+                    Join Team <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </button>
               </div>
 
               {/* Important Notice */}
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-amber-200 font-medium mb-1">
-                    Already have a team on CricSmart?
-                  </p>
-                  <p className="text-xs text-amber-300/80">
-                    Don't create a new team! Ask your team admin to send you an invite link. 
-                    Creating duplicate teams will cause confusion.
+                  <p className="text-xs text-amber-200">
+                    <span className="font-medium">Already have a team on CricSmart?</span> Ask your admin for an invite link instead of creating a duplicate.
                   </p>
                 </div>
               </div>
@@ -292,41 +354,58 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
 
           {/* Step: Create Info */}
           {step === 'create-info' && (
-            <div className="p-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Building2 className="w-8 h-8 text-white" />
+            <div className="p-6 sm:p-8">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-medium mb-3">
+                  <Zap className="w-3 h-3" />
+                  Quick Setup
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">
-                  Create Your Team
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
+                  Here's How It Works
                 </h2>
-                <p className="text-slate-400">
-                  Set up your cricket team in seconds
+                <p className="text-slate-400 text-sm">
+                  Get your team ready in under a minute
                 </p>
               </div>
 
-              {/* Feature highlights */}
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                {features.map((feature, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-3 p-4 bg-slate-700/30 rounded-xl"
-                  >
-                    <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <feature.icon className="w-5 h-5 text-emerald-400" />
+              {/* Visual Steps */}
+              <div className="space-y-3 mb-6">
+                {steps.map((s, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-xl">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {s.num}
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-white">{feature.title}</div>
-                      <div className="text-xs text-slate-400">{feature.desc}</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{s.title}</p>
+                      <p className="text-xs text-slate-400">{s.desc}</p>
                     </div>
+                    {i < steps.length - 1 && (
+                      <ChevronRight className="w-4 h-4 text-slate-600" />
+                    )}
+                    {i === steps.length - 1 && (
+                      <Check className="w-5 h-5 text-emerald-400" />
+                    )}
                   </div>
                 ))}
+              </div>
+
+              {/* What you'll get */}
+              <div className="bg-slate-700/20 rounded-xl p-4 mb-6">
+                <p className="text-xs font-medium text-slate-300 mb-3">What's included:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Player roster', 'Match scheduling', 'WhatsApp updates', 'Payment tracking'].map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
+                      <CheckCircle className="w-3 h-3 text-emerald-400" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep('choice')}
-                  className="flex items-center justify-center gap-2 px-6 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
+                  className="flex items-center justify-center gap-2 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                   Back
@@ -335,7 +414,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                   onClick={() => setStep('create-form')}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-xl transition-all"
                 >
-                  Continue
+                  Let's Go
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
@@ -949,6 +1028,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
             </div>
           )}
 
+          </div>
         </div>
       </div>
     </div>
