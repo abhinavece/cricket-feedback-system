@@ -375,6 +375,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                     onChange={(e) => setTeamName(e.target.value)}
                     placeholder="e.g., Mavericks XI, Street Kings CC"
                     className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                    style={{ fontSize: '16px' }}
                     autoFocus
                   />
                   <p className="mt-2 text-xs text-slate-500">
@@ -392,6 +393,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                     placeholder="Tell us about your team..."
                     rows={3}
                     className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all resize-none"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
               </div>
@@ -583,6 +585,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder="Enter team name..."
                     className="flex-1 px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    style={{ fontSize: '16px' }}
                     autoFocus
                   />
                   <button
@@ -684,6 +687,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                     onKeyDown={(e) => e.key === 'Enter' && handleCricHeroesLookup()}
                     placeholder="e.g., 123456"
                     className="flex-1 px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                    style={{ fontSize: '16px' }}
                     autoFocus
                   />
                   <button
@@ -738,6 +742,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                         placeholder="Optional: Add a message for the team admin..."
                         rows={2}
                         className="w-full px-3 py-2 mb-3 bg-slate-600/50 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                        style={{ fontSize: '16px' }}
                       />
                       <button
                         onClick={() => handleRequestToJoin(foundTeam, 'cricheroes_id')}
@@ -893,6 +898,7 @@ const TeamOnboarding: React.FC<TeamOnboardingProps> = ({ onComplete, onCancel, i
                   onChange={(e) => setJoinCode(e.target.value)}
                   placeholder="e.g., https://cricsmart.in/invite/abc123 or abc123"
                   className="w-full px-4 py-3 bg-slate-700/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                  style={{ fontSize: '16px' }}
                   autoFocus
                 />
                 <p className="mt-2 text-xs text-slate-500">

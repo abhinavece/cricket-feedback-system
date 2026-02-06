@@ -133,10 +133,13 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
   const fetchOrganizations = useCallback(async () => {
     try {
       const data = await apiCall('/organizations');
-      setUserOrgs(data.organizations || []);
-      return data.organizations || [];
-    } catch (err) {
+      const orgs = data.organizations || [];
+      setUserOrgs(orgs);
+      console.log(`[OrganizationContext] Fetched ${orgs.length} organizations`);
+      return orgs;
+    } catch (err: any) {
       console.error('Error fetching organizations:', err);
+      // On error, set empty array to allow onboarding flow
       setUserOrgs([]);
       return [];
     }
@@ -151,6 +154,8 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
           ...data.organization,
           userRole: data.userRole,
         });
+      } else {
+        setCurrentOrg(null);
       }
       return data.organization;
     } catch (err: any) {
@@ -162,13 +167,19 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
         errorCode === 'NO_ORGANIZATION' ||
         errorMsg.includes('no organization') ||
         errorMsg.includes('no_organization') ||
-        errorMsg.includes('not a member of any organization');
+        errorMsg.includes('not a member of any organization') ||
+        errorMsg.includes('no active organization');
       
       if (isNoOrgError) {
+        console.log('[OrganizationContext] User has no organization - onboarding needed');
         setCurrentOrg(null);
+        setError(null); // Clear any previous errors
         return null;
       }
+      
+      // For other errors, log but don't block the UI
       console.error('Error fetching current organization:', err);
+      setCurrentOrg(null); // Ensure we don't get stuck
       setError(err.message);
       return null;
     }
@@ -178,25 +189,34 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
   useEffect(() => {
     const loadOrganizationData = async () => {
       if (!isAuthenticated) {
+        console.log('[OrganizationContext] User not authenticated, clearing data');
         setCurrentOrg(null);
         setUserOrgs([]);
         setLoading(false);
         return;
       }
 
+      console.log('[OrganizationContext] Loading organization data...');
       setLoading(true);
       setError(null);
 
       try {
         // Fetch both in parallel
-        await Promise.all([
+        const [orgs, currentOrg] = await Promise.all([
           fetchOrganizations(),
           fetchCurrentOrganization(),
         ]);
-      } catch (err) {
-        console.error('Error loading organization data:', err);
+        console.log('[OrganizationContext] Load complete:', { 
+          orgsCount: orgs?.length || 0, 
+          hasCurrentOrg: !!currentOrg 
+        });
+      } catch (err: any) {
+        console.error('[OrganizationContext] Error loading organization data:', err);
+        // Don't set error state here - let individual fetch functions handle it
+        // This prevents blocking the UI on network errors
       } finally {
         setLoading(false);
+        console.log('[OrganizationContext] Loading complete');
       }
     };
 

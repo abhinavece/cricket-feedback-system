@@ -86,7 +86,9 @@ router.post('/', auth, async (req, res) => {
         plan: organization.plan,
         settings: organization.settings,
         stats: organization.stats,
+        userRole: 'owner', // Creator is always owner
       },
+      userRole: 'owner', // Also at top level for consistency
     });
   } catch (error) {
     console.error('Error creating organization:', error);
