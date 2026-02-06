@@ -248,19 +248,19 @@ const MobileFeedbackTab: React.FC = () => {
           <div className="grid grid-cols-4 gap-2">
             <div className="bg-emerald-500/10 rounded-lg p-2 text-center border border-emerald-500/20">
               <p className="text-[10px] text-emerald-400 mb-0.5">Batting</p>
-              <p className="text-sm font-bold text-emerald-400">{stats.avgBatting.toFixed(1)}</p>
+              <p className="text-sm font-bold text-emerald-400">{(stats.avgBatting ?? 0).toFixed(1)}</p>
             </div>
             <div className="bg-sky-500/10 rounded-lg p-2 text-center border border-sky-500/20">
               <p className="text-[10px] text-sky-400 mb-0.5">Bowling</p>
-              <p className="text-sm font-bold text-sky-400">{stats.avgBowling.toFixed(1)}</p>
+              <p className="text-sm font-bold text-sky-400">{(stats.avgBowling ?? 0).toFixed(1)}</p>
             </div>
             <div className="bg-amber-500/10 rounded-lg p-2 text-center border border-amber-500/20">
               <p className="text-[10px] text-amber-400 mb-0.5">Fielding</p>
-              <p className="text-sm font-bold text-amber-400">{stats.avgFielding.toFixed(1)}</p>
+              <p className="text-sm font-bold text-amber-400">{(stats.avgFielding ?? 0).toFixed(1)}</p>
             </div>
             <div className="bg-purple-500/10 rounded-lg p-2 text-center border border-purple-500/20">
               <p className="text-[10px] text-purple-400 mb-0.5">Spirit</p>
-              <p className="text-sm font-bold text-purple-400">{stats.avgTeamSpirit.toFixed(1)}</p>
+              <p className="text-sm font-bold text-purple-400">{(stats.avgTeamSpirit ?? 0).toFixed(1)}</p>
             </div>
           </div>
         )}
