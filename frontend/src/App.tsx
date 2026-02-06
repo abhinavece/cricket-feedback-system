@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
 import { submitFeedback } from './services/api';
 import { isMobileDevice } from './hooks/useDevice';
-import { getDomainType, getAppUrl } from './utils/domain';
+import { getDomainType, getAppUrl, getLogoutCallbackUrl } from './utils/domain';
 import { DEFAULT_ROUTE, getLegacyTabIdFromPath, getPathFromTabId, type LegacyTabId } from './config/routes';
 import type { FeedbackForm as FeedbackFormData } from './types';
 import { LogIn } from 'lucide-react';
@@ -190,22 +190,21 @@ function DashboardLayout() {
   const handleLogout = () => {
     const domainType = getDomainType();
     
-    // For app domain, clear storage and redirect to homepage immediately
-    // We do this before calling logout() to avoid React re-render race condition
+    // Clear local storage first
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    
+    // For app domain, redirect to homepage with logout flag to clear auth there too
     if (domainType === 'app') {
-      // Clear storage directly
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
-      // Full page redirect to homepage
-      window.location.href = 'https://cricsmart.in';
+      window.location.href = getLogoutCallbackUrl();
       return;
     }
     
     // For other domains (localhost, homepage), use normal logout flow
     logout();
     if (domainType === 'localhost') {
-      // Redirect to homepage in localhost
-      window.location.href = window.location.origin;
+      // Redirect to homepage in localhost with logout flag
+      window.location.href = window.location.origin + '?logout=true';
     } else {
       setCurrentView('form');
       navigate('/');

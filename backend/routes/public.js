@@ -200,6 +200,11 @@ router.get('/:token', trackPublicLinkView, async (req, res) => {
         });
       }
       
+      // Fetch organization to get team name
+      const Organization = require('../models/Organization');
+      const organization = await Organization.findById(match.organizationId);
+      const teamName = organization ? organization.name : 'Mavericks XI';
+      
       // Fetch availability data for squad
       const availabilities = await Availability.find({ matchId: match._id })
         .select('playerId playerName playerPhone response respondedAt')
@@ -219,7 +224,7 @@ router.get('/:token', trackPublicLinkView, async (req, res) => {
           locationLink: match.locationLink || '',
           status: match.status,
           matchType: match.matchType || 'practice',
-          teamName: match.teamName || 'Mavericks XI',
+          teamName: teamName,
           availabilitySent: match.availabilitySent,
           statistics: match.statistics
         },
@@ -240,13 +245,21 @@ router.get('/:token', trackPublicLinkView, async (req, res) => {
       
     } else if (publicLink.resourceType === 'payment') {
       const payment = await MatchPayment.findById(publicLink.resourceId)
-        .populate('matchId', 'opponent date time ground locationLink');
+        .populate('matchId', 'opponent date time ground locationLink organizationId');
       
       if (!payment) {
         return res.status(404).json({
           success: false,
           error: 'Payment record not found'
         });
+      }
+      
+      // Fetch organization to get team name
+      const Organization = require('../models/Organization');
+      let teamName = 'Mavericks XI';
+      if (payment.matchId?.organizationId) {
+        const organization = await Organization.findById(payment.matchId.organizationId);
+        teamName = organization ? organization.name : 'Mavericks XI';
       }
       
       // Use stored perPersonAmount (calculated based on adjusted vs non-adjusted members)
@@ -262,7 +275,8 @@ router.get('/:token', trackPublicLinkView, async (req, res) => {
             date: payment.matchId.date,
             time: payment.matchId.time,
             ground: payment.matchId.ground,
-            locationLink: payment.matchId.locationLink || ''
+            locationLink: payment.matchId.locationLink || '',
+            teamName: teamName
           } : null,
           title: payment.title,
           totalAmount: payment.totalAmount || 0,

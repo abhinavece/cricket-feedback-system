@@ -28,6 +28,7 @@ interface MatchInfo {
   time: string;
   ground: string;
   locationLink?: string;
+  teamName?: string;
 }
 
 interface PaymentData {
@@ -344,7 +345,9 @@ const PublicPaymentView: React.FC = () => {
               </h1>
               {payment.match && (
                 <p className="text-slate-400">
-                  <span className="text-emerald-400">vs {payment.match.opponent}</span>
+                  <span className="text-emerald-400">{payment.match.teamName || 'Mavericks XI'}</span>
+                  <span className="text-slate-500 mx-2">vs</span>
+                  <span className="text-rose-400">{payment.match.opponent}</span>
                 </p>
               )}
             </div>

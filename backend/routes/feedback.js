@@ -575,6 +575,11 @@ router.get('/link/:token', async (req, res) => {
     await feedbackLink.save();
 
     const match = feedbackLink.matchId;
+    
+    // Fetch organization to get team name
+    const Organization = require('../models/Organization');
+    const organization = await Organization.findById(match.organizationId);
+    const teamName = organization ? organization.name : 'Mavericks XI';
 
     // Check if player can submit (if playerName provided)
     let canSubmit = true;
@@ -591,7 +596,8 @@ router.get('/link/:token', async (req, res) => {
         date: match.date,
         time: match.time || '',
         ground: match.ground,
-        slot: match.slot
+        slot: match.slot,
+        teamName: teamName
       },
       canSubmit,
       alreadySubmitted,

@@ -14,6 +14,7 @@ import ShareLinkModal from './ShareLinkModal';
 import MatchFeedbackDashboard from './MatchFeedbackDashboard';
 import AvailabilityEditModal from './AvailabilityEditModal';
 import { useSSE } from '../hooks/useSSE';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 interface Match {
   _id: string;
@@ -89,6 +90,7 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onSendAvailability,
   initialTab = 'overview'
 }) => {
+  const { currentOrg } = useOrganization();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [match, setMatch] = useState<Match>(initialMatch);
   const [availabilities, setAvailabilities] = useState<AvailabilityRecord[]>([]);
@@ -863,7 +865,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                       tentativeSquad={tentativeSquad}
                       unavailableSquad={unavailableSquad}
                       onShareWhatsApp={handleShareSquadImage}
-                      teamName="Mavericks XI"
+                      teamName={currentOrg?.name || 'Mavericks XI'}
                     />
                   </div>
                 </div>

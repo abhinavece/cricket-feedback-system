@@ -34,6 +34,7 @@ const Navigation: React.FC<NavigationProps> = ({
   onToggleDevice
 }) => {
   const { hasPermission } = useAuth();
+  const { currentOrg } = useOrganization();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPermissionNotification, setShowPermissionNotification] = useState(false);
@@ -147,7 +148,9 @@ const Navigation: React.FC<NavigationProps> = ({
                         )}
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-white truncate">{user.name}</p>
-                          <p className="text-xs text-white/50 uppercase tracking-wider">{user.role}</p>
+                          <p className="text-xs text-white/50 uppercase tracking-wider">
+                            {currentOrg?.userRole === 'owner' ? 'admin' : (currentOrg?.userRole || user.role)}
+                          </p>
                         </div>
                       </div>
                       
@@ -217,7 +220,9 @@ const Navigation: React.FC<NavigationProps> = ({
                     )}
                     <div className="text-sm">
                       <p className="font-semibold text-white">{user.name}</p>
-                      <p className="text-xs text-secondary/70 uppercase">{user.role}</p>
+                      <p className="text-xs text-secondary/70 uppercase">
+                        {currentOrg?.userRole === 'owner' ? 'admin' : (currentOrg?.userRole || user.role)}
+                      </p>
                     </div>
                   </div>
                   <button

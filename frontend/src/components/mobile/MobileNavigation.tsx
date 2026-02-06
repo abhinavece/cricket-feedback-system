@@ -21,15 +21,15 @@ interface MobileNavigationProps {
   onToggleDevice?: () => void;
 }
 
-function MobileNavigation({
+const MobileNavigation: React.FC<MobileNavigationProps> = ({
   currentView,
   onViewChange,
   user,
   onLogout,
   activeTab,
   onTabChange,
-  onToggleDevice,
-}: MobileNavigationProps) {
+  onToggleDevice
+}) => {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { currentOrg } = useOrganization();
@@ -190,7 +190,9 @@ function MobileNavigation({
                   <div className="px-4 py-2">
                     <p className="text-xs text-slate-500">Signed in as</p>
                     <p className="text-sm text-white font-medium truncate">{user.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{user.role}</p>
+                    <p className="text-xs text-slate-500 capitalize">
+                      {currentOrg?.userRole === 'owner' ? 'admin' : (currentOrg?.userRole || user.role)}
+                    </p>
                   </div>
                   <button
                     onClick={() => { onLogout(); setIsMenuOpen(false); }}

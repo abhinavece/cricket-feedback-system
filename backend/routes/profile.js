@@ -188,13 +188,18 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // Fetch organization to get the team name
+    const Organization = require('../models/Organization');
+    const organization = await Organization.findById(organizationId);
+    const teamName = organization ? organization.name : 'Mavericks XI';
+
     // Create new player with organizationId for tenant isolation
     const player = await Player.create({
       name: name.trim(),
       phone: formattedPhone,
       dateOfBirth: new Date(dateOfBirth),
       role: playerRole || 'player',
-      team: team || 'Mavericks XI',
+      team: team || teamName, // Use organization name as team name
       userId: user._id,
       cricHeroesId: cricHeroesId || null,
       about: about || null,

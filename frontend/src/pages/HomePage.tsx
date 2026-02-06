@@ -19,15 +19,27 @@ import Footer from '../components/Footer';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const domainType = getDomainType();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Track homepage views - use a default organization ID for now
-  // In production, this should be dynamically determined based on domain/subdomain
+  // Handle cross-domain logout - clear auth state when redirected with ?logout=true
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('logout') === 'true') {
+      // Clear auth state on this domain
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      logout();
+      // Remove the query parameter from URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [logout]);
+
+  // Track homepage views - only if user has valid organizationId
   useViewTracking({
     type: 'homepage',
-    organizationId: user?.activeOrganizationId || 'default-org'
+    organizationId: user?.activeOrganizationId
   });
 
   // NOTE: We intentionally do NOT auto-redirect authenticated users from homepage.
