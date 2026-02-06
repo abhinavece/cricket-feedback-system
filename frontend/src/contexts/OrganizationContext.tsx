@@ -121,6 +121,31 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || errorData.message || '';
+      
+      // Check for auth-related errors - redirect to homepage
+      const isAuthError = 
+        response.status === 401 || 
+        response.status === 403 ||
+        errorMessage.toLowerCase().includes('invalid authentication') ||
+        errorMessage.toLowerCase().includes('user not found') ||
+        errorMessage.toLowerCase().includes('not authenticated') ||
+        errorMessage.toLowerCase().includes('token expired') ||
+        errorMessage.toLowerCase().includes('unauthorized');
+      
+      if (isAuthError) {
+        // Clear auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        
+        // Redirect to homepage
+        const hostname = window.location.hostname.toLowerCase();
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+        const homepageUrl = isLocalhost ? window.location.origin : 'https://cricsmart.in';
+        window.location.href = `${homepageUrl}?logout=true`;
+        return new Promise(() => {}); // Prevent further processing
+      }
+      
       const error = new Error(errorData.message || `API error: ${response.status}`);
       (error as any).code = errorData.code;
       throw error;

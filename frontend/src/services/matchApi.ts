@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getHomepageUrl } from '../utils/domain';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
@@ -20,6 +21,39 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle auth errors consistently
+// Any auth error redirects to homepage (cricsmart.in)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const errorMessage = error.response?.data?.error || error.response?.data?.message || '';
+    
+    // Check for auth-related errors (401, 403, or specific error messages)
+    const isAuthError = 
+      status === 401 || 
+      status === 403 ||
+      errorMessage.toLowerCase().includes('invalid authentication') ||
+      errorMessage.toLowerCase().includes('user not found') ||
+      errorMessage.toLowerCase().includes('not authenticated') ||
+      errorMessage.toLowerCase().includes('token expired') ||
+      errorMessage.toLowerCase().includes('unauthorized');
+    
+    if (isAuthError) {
+      // Clear auth data
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      
+      // Redirect to homepage with logout flag
+      const homepageUrl = getHomepageUrl();
+      window.location.href = `${homepageUrl}?logout=true`;
+      return new Promise(() => {}); // Prevent further processing
+    }
+    
     return Promise.reject(error);
   }
 );

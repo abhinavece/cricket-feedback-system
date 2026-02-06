@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { FeedbackForm, FeedbackSubmission, Player } from '../types';
+import { getHomepageUrl } from '../utils/domain';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
@@ -25,16 +26,35 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle 401 errors
+// Add response interceptor to handle auth errors consistently
+// Any auth error redirects to homepage (cricsmart.in)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Clear auth data and redirect to login
+    const status = error.response?.status;
+    const errorMessage = error.response?.data?.error || error.response?.data?.message || '';
+    
+    // Check for auth-related errors (401, 403, or specific error messages)
+    const isAuthError = 
+      status === 401 || 
+      status === 403 ||
+      errorMessage.toLowerCase().includes('invalid authentication') ||
+      errorMessage.toLowerCase().includes('user not found') ||
+      errorMessage.toLowerCase().includes('not authenticated') ||
+      errorMessage.toLowerCase().includes('token expired') ||
+      errorMessage.toLowerCase().includes('unauthorized');
+    
+    if (isAuthError) {
+      // Clear auth data
       localStorage.removeItem('authToken');
       localStorage.removeItem('authUser');
-      window.location.href = '/';
+      
+      // Redirect to homepage with logout flag
+      const homepageUrl = getHomepageUrl();
+      window.location.href = `${homepageUrl}?logout=true`;
+      return new Promise(() => {}); // Prevent further processing
     }
+    
     return Promise.reject(error);
   }
 );
