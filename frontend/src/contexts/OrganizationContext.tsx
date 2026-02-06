@@ -248,6 +248,36 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
     loadOrganizationData();
   }, [isAuthenticated, fetchOrganizations, fetchCurrentOrganization]);
 
+  // Refresh role on window focus (catches role changes made by admin)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleFocus = async () => {
+      console.log('[OrganizationContext] Window focused - refreshing role data');
+      try {
+        // Only refresh current org (which includes userRole) - lightweight check
+        await fetchCurrentOrganization();
+      } catch (err) {
+        console.error('[OrganizationContext] Error refreshing on focus:', err);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    // Also refresh periodically every 5 minutes while tab is active
+    const intervalId = setInterval(() => {
+      if (document.hasFocus()) {
+        console.log('[OrganizationContext] Periodic role refresh');
+        fetchCurrentOrganization().catch(console.error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated, fetchCurrentOrganization]);
+
   // Switch organization
   const switchOrganization = async (orgId: string) => {
     try {
