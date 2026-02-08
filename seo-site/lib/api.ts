@@ -115,30 +115,30 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 }
 
-// Grounds API
+// Grounds API (uses /api/seo endpoints - no auth required)
 export async function getPublicGrounds(page = 1, limit = 20): Promise<PaginatedResponse<Ground>> {
-  return fetchApi(`/api/public/grounds?page=${page}&limit=${limit}`);
+  return fetchApi(`/api/seo/grounds?page=${page}&limit=${limit}`);
 }
 
 export async function getGroundBySlug(slug: string): Promise<{ success: boolean; data: Ground }> {
-  return fetchApi(`/api/public/grounds/slug/${slug}`);
+  return fetchApi(`/api/seo/grounds/slug/${slug}`);
 }
 
 export async function getGroundReviews(groundId: string, page = 1, limit = 10): Promise<PaginatedResponse<GroundReview>> {
-  return fetchApi(`/api/public/grounds/${groundId}/reviews?page=${page}&limit=${limit}`);
+  return fetchApi(`/api/seo/grounds/${groundId}/reviews?page=${page}&limit=${limit}`);
 }
 
 export async function getAllGroundSlugs(): Promise<{ slugs: string[] }> {
-  return fetchApi('/api/sitemap/grounds');
+  return fetchApi('/api/seo/sitemap/grounds');
 }
 
-// Players API
+// Players API (uses /api/seo endpoints - no auth required)
 export async function getPublicPlayers(page = 1, limit = 20): Promise<PaginatedResponse<Player>> {
-  return fetchApi(`/api/public/players?page=${page}&limit=${limit}`);
+  return fetchApi(`/api/seo/players?page=${page}&limit=${limit}`);
 }
 
 export async function getPlayerById(id: string): Promise<{ success: boolean; data: Player }> {
-  return fetchApi(`/api/public/players/${id}`);
+  return fetchApi(`/api/seo/players/${id}`);
 }
 
 // Blog API

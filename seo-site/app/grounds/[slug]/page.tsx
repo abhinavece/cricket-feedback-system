@@ -36,6 +36,8 @@ const sampleGround = {
 const sampleReviews = [
   {
     _id: 'r1',
+    groundId: '1',
+    userId: 'u1',
     reviewerName: 'Rahul S.',
     rating: 5,
     comment: 'Amazing stadium with excellent facilities. The pitch is well-maintained and the floodlights are top-notch for evening matches.',
@@ -43,6 +45,8 @@ const sampleReviews = [
   },
   {
     _id: 'r2',
+    groundId: '1',
+    userId: 'u2',
     reviewerName: 'Priya M.',
     rating: 4,
     comment: 'Great atmosphere for cricket. Parking can be challenging on match days but overall a fantastic venue.',
@@ -50,6 +54,8 @@ const sampleReviews = [
   },
   {
     _id: 'r3',
+    groundId: '1',
+    userId: 'u3',
     reviewerName: 'Amit K.',
     rating: 5,
     comment: 'One of the best cricket stadiums in India. The practice nets are excellent for warm-ups.',
@@ -88,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${ground.name} - Cricket Ground | CricSmart`,
       description: ground.description.slice(0, 200),
       url: `${siteConfig.url}/grounds/${ground.slug}`,
-      type: 'place',
+      type: 'website',
     },
   };
 }
