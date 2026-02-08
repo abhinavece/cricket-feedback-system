@@ -15,7 +15,7 @@ const stats: StatItem[] = [
   { value: 4.8, suffix: '★', label: 'Avg Rating', icon: <Star className="w-5 h-5" /> },
 ];
 
-const useCountUp = (end: number, duration: number = 2000, startCounting: boolean = false) => {
+const useCountUp = (end: number, duration: number = 800, startCounting: boolean = false) => {
   const [count, setCount] = useState(0);
   const countRef = useRef(0);
   const startTimeRef = useRef<number | null>(null);
@@ -44,13 +44,13 @@ const useCountUp = (end: number, duration: number = 2000, startCounting: boolean
 };
 
 const StatCard: React.FC<{ stat: StatItem; index: number; isVisible: boolean }> = ({ stat, index, isVisible }) => {
-  const count = useCountUp(stat.value, 2000, isVisible);
+  const count = useCountUp(stat.value, 800, isVisible);
   const displayValue = stat.value % 1 === 0 ? Math.round(count) : count.toFixed(1);
 
   return (
     <div
       className="relative group p-6 bg-slate-800/50 backdrop-blur-sm border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all duration-300 hover:scale-[1.02]"
-      style={{ animationDelay: `${index * 100}ms` }}
+      style={{ animationDelay: `${index * 30}ms` }}
     >
       {/* Glow on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -91,7 +91,7 @@ const StatsBar: React.FC = () => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-16 px-4 sm:px-6 bg-slate-900/50">
+    <section ref={sectionRef} className="py-10 px-4 sm:px-6 bg-slate-900/50">
       <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {stats.map((stat, index) => (

@@ -719,9 +719,9 @@ const MobilePaymentsTab: React.FC = () => {
 
       {/* Detail Modal */}
       {selectedMatch && selectedMatch.payment && !showCreatePayment && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => { setSelectedMatch(null); setDetailPayment(null); }}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => { setSelectedMatch(null); setDetailPayment(null); }}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up"
+            className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[calc(100vh-52px)] overflow-y-auto animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -923,7 +923,7 @@ const MobilePaymentsTab: React.FC = () => {
 
       {/* Add Player Modal */}
       {showAddPlayer && (
-        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowAddPlayer(false)}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowAddPlayer(false)}>
           <div className="bg-slate-800 rounded-2xl p-4 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <Plus className="w-5 h-5 text-emerald-400" /> Add Player
@@ -962,7 +962,7 @@ const MobilePaymentsTab: React.FC = () => {
 
       {/* Payment Modal */}
       {showPaymentModal && paymentMember && (
-        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
           <div className="bg-slate-800 rounded-2xl p-4 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-emerald-400" /> Update Payment
@@ -1056,7 +1056,7 @@ const MobilePaymentsTab: React.FC = () => {
 
       {/* Screenshot Modal */}
       {showScreenshot && detailPayment && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setShowScreenshot(null)}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setShowScreenshot(null)}>
           <div className="w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white font-medium">Screenshot - {showScreenshot.name}</h3>
@@ -1074,7 +1074,7 @@ const MobilePaymentsTab: React.FC = () => {
 
       {/* Create Payment Modal */}
       {showCreatePayment && selectedMatch && (
-        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={() => { setShowCreatePayment(false); setSelectedMatch(null); setTempSquad([]); }}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={() => { setShowCreatePayment(false); setSelectedMatch(null); setTempSquad([]); }}>
           <div className="bg-slate-800 rounded-2xl p-4 w-full max-w-sm max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-emerald-400" /> Create Payment
@@ -1163,7 +1163,7 @@ const MobilePaymentsTab: React.FC = () => {
 
       {/* Manual Add Player Modal */}
       {showManualAdd && (
-        <div className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowManualAdd(false)}>
+        <div className="fixed inset-x-0 top-[52px] bottom-0 z-[70] bg-black/70 flex items-center justify-center p-4" onClick={() => setShowManualAdd(false)}>
           <div className="bg-slate-800 rounded-2xl p-4 w-full max-w-sm max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white font-semibold text-sm flex items-center gap-1">

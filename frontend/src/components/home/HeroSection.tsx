@@ -9,7 +9,7 @@ interface HeroSectionProps {
 const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGrounds }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Animated neural network background
+  // Animated neural network background - optimized for performance
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -48,6 +48,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
     }
 
     let animationId: number;
+    let frameCount = 0;
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -86,6 +87,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
         });
       });
 
+      frameCount++;
       animationId = requestAnimationFrame(animate);
     };
 
@@ -98,7 +100,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
   }, []);
 
   return (
-    <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden pb-8 sm:pb-6">
       {/* Dark gradient base */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
       
@@ -160,7 +162,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
             <span 
               key={feature}
               className="px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-full text-xs text-slate-400 backdrop-blur-sm"
-              style={{ animationDelay: `${i * 100}ms` }}
+              style={{ animationDelay: `${i * 30}ms` }}
             >
               <Zap className="w-3 h-3 inline mr-1 text-emerald-500" />
               {feature}
@@ -169,13 +171,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
         </div>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pointer-events-auto">
           <button
             onClick={onGetStarted}
-            className="group relative w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/30 flex items-center justify-center gap-2 overflow-hidden"
+            className="group relative w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/30 flex items-center justify-center gap-2 overflow-hidden active:scale-95"
           >
             {/* Shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500" />
             <Users className="w-5 h-5" />
             Create Your Team
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -183,7 +185,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
           
           <button
             onClick={onExploreGrounds}
-            className="w-full sm:w-auto px-8 py-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-emerald-500/30 text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-sm"
+            className="w-full sm:w-auto px-8 py-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-emerald-500/30 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 backdrop-blur-sm active:scale-95"
           >
             See How It Works
           </button>
@@ -194,30 +196,19 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
           <Sparkles className="w-3 h-3 inline mr-1" />
           Free forever for teams up to 50 players. No credit card required.
         </p>
-
-        {/* Stats row */}
-        <div className="mt-16 pt-8 border-t border-slate-800/50 grid grid-cols-3 gap-4 max-w-xl mx-auto">
-          {[
-            { value: '500+', label: 'Active Players' },
-            { value: '50+', label: 'Cricket Grounds' },
-            { value: '1000+', label: 'Matches Managed' },
-          ].map((stat, i) => (
-            <div key={stat.label} className="text-center" style={{ animationDelay: `${i * 150}ms` }}>
-              <div className="text-2xl sm:text-3xl font-black text-white">{stat.value}</div>
-              <div className="text-xs sm:text-sm text-slate-500">{stat.label}</div>
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* Scroll indicator - centered properly */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-        <div className="flex flex-col items-center gap-2 text-slate-500">
-          <div className="w-6 h-10 border-2 border-slate-700 rounded-full flex justify-center pt-2">
-            <div className="w-1 h-2 bg-emerald-500 rounded-full animate-bounce" />
+      {/* Scroll indicator - hidden on mobile */}
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center hidden sm:flex">
+        <div className="flex flex-col items-center gap-1 text-slate-500">
+          <div className="w-5 h-8 border-2 border-slate-700 rounded-full flex justify-center pt-1.5">
+            <div className="w-1 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
           </div>
         </div>
       </div>
+
+      {/* Smooth gradient transition to next section */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent via-slate-900/50 to-slate-900/90 pointer-events-none" />
     </section>
   );
 };

@@ -16,6 +16,7 @@ interface MatchInfo {
   time: string;
   ground: string;
   slot: string;
+  teamName?: string;
 }
 
 interface FeedbackLinkInfo {
@@ -319,7 +320,7 @@ const MatchFeedbackPage: React.FC = () => {
                 <div className="w-10 h-10 bg-emerald-500/20 backdrop-blur rounded-xl flex items-center justify-center border border-emerald-500/30">
                   <span className="text-lg font-bold">M</span>
                 </div>
-                <span className="font-semibold">Mavericks XI</span>
+                <span className="font-semibold">{linkInfo?.match?.teamName || 'Mavericks XI'}</span>
               </Link>
             </div>
           </div>
@@ -400,7 +401,7 @@ const MatchFeedbackPage: React.FC = () => {
                 <div className="w-10 h-10 bg-emerald-500/20 backdrop-blur rounded-xl flex items-center justify-center border border-emerald-500/30">
                   <span className="text-lg font-bold">M</span>
                 </div>
-                <span className="font-semibold">Mavericks XI</span>
+                <span className="font-semibold">{linkInfo?.match?.teamName || 'Mavericks XI'}</span>
               </Link>
             </div>
           </div>
@@ -422,7 +423,7 @@ const MatchFeedbackPage: React.FC = () => {
 
               <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
                 <div className="text-center mb-3">
-                  <span className="text-emerald-400 font-semibold">Mavericks XI</span>
+                  <span className="text-emerald-400 font-semibold">{linkInfo?.match?.teamName || 'Mavericks XI'}</span>
                   <span className="px-3 text-slate-500">vs</span>
                   <span className="text-rose-400 font-semibold">{linkInfo.match.opponent || 'TBD'}</span>
                 </div>
@@ -527,7 +528,7 @@ const MatchFeedbackPage: React.FC = () => {
 
           <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
             <div className="text-center mb-4">
-              <span className="text-lg font-bold text-emerald-400">Mavericks XI</span>
+              <span className="text-lg font-bold text-emerald-400">{linkInfo?.match?.teamName || 'Mavericks XI'}</span>
               <span className="px-3 text-slate-500">vs</span>
               <span className="text-lg font-bold text-rose-400">{match.opponent || 'TBD'}</span>
             </div>

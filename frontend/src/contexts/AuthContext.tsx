@@ -10,19 +10,25 @@ interface User {
   role: 'viewer' | 'editor' | 'admin';
   lastLogin?: string;
   createdAt?: string;
+  hasOrganizations?: boolean;
+  activeOrganizationId?: string;
+  needsOnboarding?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (token: string, user: User, needsOnboarding?: boolean) => void;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
   isAuthenticated: boolean;
   hasPermission: (permission: string) => boolean;
   canEdit: () => boolean;
   isAdmin: () => boolean;
   isViewer: () => boolean;
   loading: boolean;
+  needsOnboarding: boolean;
+  setNeedsOnboarding: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     // Check if auth is disabled for local development
@@ -53,9 +60,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: 'dev@localhost',
         name: 'Local Dev Admin',
         role: 'admin',
+        hasOrganizations: true,
+        needsOnboarding: false,
       };
       setUser(mockUser);
       setToken('local-dev-token');
+      setNeedsOnboarding(false);
       setLoading(false);
       return;
     }
@@ -69,6 +79,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
+        // Set needsOnboarding based on stored user data
+        setNeedsOnboarding(parsedUser.needsOnboarding ?? !parsedUser.hasOrganizations);
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('authToken');
@@ -78,11 +90,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: User, onboarding?: boolean) => {
     setToken(newToken);
     setUser(newUser);
+    // Use explicit needsOnboarding flag, or fallback to hasOrganizations check
+    const needsOnboard = onboarding ?? newUser.needsOnboarding ?? !newUser.hasOrganizations;
+    setNeedsOnboarding(needsOnboard);
     localStorage.setItem('authToken', newToken);
-    localStorage.setItem('authUser', JSON.stringify(newUser));
+    localStorage.setItem('authUser', JSON.stringify({ ...newUser, needsOnboarding: needsOnboard }));
   };
 
   const logout = () => {
@@ -91,6 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
     googleLogout();
+  };
+
+  const updateUser = (updates: Partial<User>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    localStorage.setItem('authUser', JSON.stringify(updatedUser));
   };
 
   const hasPermission = (permission: string): boolean => {
@@ -122,12 +144,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token,
     login,
     logout,
+    updateUser,
     isAuthenticated: !!user,
     hasPermission,
     canEdit,
     isAdmin,
     isViewer,
     loading,
+    needsOnboarding,
+    setNeedsOnboarding,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -7,11 +7,14 @@
  * @module index
  */
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
+
+// Load .env from backend directory so ALLOW_DEV_LOGIN etc. work when run from repo root
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const connectDB = require('./config/database');
 const feedbackRoutes = require('./routes/feedback');
@@ -31,6 +34,10 @@ const webhookProxyRoutes = require('./routes/webhookProxy');
 const developerRoutes = require('./routes/developer');
 const groundRoutes = require('./routes/grounds');
 const organizationRoutes = require('./routes/organizations');
+const tournamentRoutes = require('./routes/tournaments');
+const { trackHomepageView, trackPublicLinkView } = require('./middleware/viewTracker');
+const { resolveTenant } = require('./middleware/tenantResolver');
+const { auth } = require('./middleware/auth');
 const seoRoutes = require('./routes/seo');
 
 const app = express();
@@ -75,6 +82,9 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// View tracking middleware (before routes)
+app.use(trackHomepageView);
+
 // Routes
 app.use('/api/organizations', organizationRoutes);  // Multi-tenant org management
 app.use('/api/feedback', feedbackRoutes);
@@ -93,6 +103,122 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/webhook-proxy', webhookProxyRoutes);
 app.use('/api/developer', developerRoutes);
 app.use('/api/grounds', groundRoutes);
+app.use('/api/tournaments', tournamentRoutes);  // Tournament management
+
+/**
+ * GET /api/analytics/views
+ * Get view analytics for the organization (admin only)
+ * 
+ * @route GET /api/analytics/views
+ * @access Private (Admin only)
+ * @returns {Object} 200 - View analytics data
+ */
+app.get('/api/analytics/views', auth, resolveTenant, async (req, res) => {
+  try {
+    const organizationId = req.organization._id;
+    const ViewTracker = require('./models/ViewTracker');
+    
+    const analytics = await ViewTracker.getOrganizationAnalytics(organizationId);
+    
+    res.json({
+      success: true,
+      data: analytics
+    });
+
+  } catch (error) {
+    console.error('Error fetching view analytics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch view analytics'
+    });
+  }
+});
+
+/**
+ * POST /api/analytics/track
+ * Track a view (public endpoint - can be called from frontend)
+ * 
+ * @route POST /api/analytics/track
+ * @access Public
+ * @returns {Object} 200 - Success status
+ */
+app.post('/api/analytics/track', async (req, res) => {
+  try {
+    const { type, token, organizationId } = req.body;
+    
+    if (!type || !organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Type and organizationId are required'
+      });
+    }
+
+    const ViewTracker = require('./models/ViewTracker');
+    
+    let tracker;
+    if (type === 'homepage') {
+      tracker = await ViewTracker.findOrCreateTracker(organizationId, 'homepage');
+    } else if (type === 'public-link' && token) {
+      // For public links, we need to find the actual organization
+      const PublicLink = require('./models/PublicLink');
+      const publicLink = await PublicLink.findOne({ token });
+      
+      if (!publicLink) {
+        return res.status(404).json({
+          success: false,
+          error: 'Public link not found'
+        });
+      }
+      
+      tracker = await ViewTracker.findOrCreateTracker(
+        publicLink.organizationId,
+        'public-link',
+        {
+          resourceId: publicLink.resourceId,
+          resourceType: publicLink.resourceType,
+          token: token
+        }
+      );
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid type or missing token for public-link'
+      });
+    }
+
+    // Generate visitor fingerprint
+    const ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const visitorFingerprint = require('crypto')
+      .createHash('sha256')
+      .update(`${ip}:${userAgent}`)
+      .digest('hex');
+
+    // Extract metadata
+    const metadata = {
+      userAgent: req.headers['user-agent'],
+      referrer: req.headers['referer'] || req.headers['referrer'],
+      country: req.headers['x-country'] || null,
+      city: req.headers['x-city'] || null
+    };
+
+    await tracker.recordView(visitorFingerprint, metadata);
+    
+    console.log(`View tracked: ${type} for organization ${organizationId}`);
+
+    res.json({
+      success: true,
+      message: 'View tracked successfully'
+    });
+
+  } catch (error) {
+    console.error('Error tracking view:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to track view'
+    });
+  }
+});
 app.use('/api/seo', seoRoutes);  // SEO public endpoints (no auth) for cricsmart.in
 
 /**

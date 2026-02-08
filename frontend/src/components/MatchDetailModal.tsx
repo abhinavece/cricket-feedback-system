@@ -12,7 +12,9 @@ import SquadImageGenerator from './SquadImageGenerator';
 import WhatsAppImageShareModal from './WhatsAppImageShareModal';
 import ShareLinkModal from './ShareLinkModal';
 import MatchFeedbackDashboard from './MatchFeedbackDashboard';
+import AvailabilityEditModal from './AvailabilityEditModal';
 import { useSSE } from '../hooks/useSSE';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 interface Match {
   _id: string;
@@ -88,6 +90,7 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onSendAvailability,
   initialTab = 'overview'
 }) => {
+  const { currentOrg } = useOrganization();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [match, setMatch] = useState<Match>(initialMatch);
   const [availabilities, setAvailabilities] = useState<AvailabilityRecord[]>([]);
@@ -98,6 +101,7 @@ const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [sendingReminder, setSendingReminder] = useState(false);
   
   const [editingAvailabilityId, setEditingAvailabilityId] = useState<string | null>(null);
+  const [editingAvailabilityPlayer, setEditingAvailabilityPlayer] = useState<{id: string; name: string; response: 'yes' | 'no' | 'tentative' | 'pending'} | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [allPlayers, setAllPlayers] = useState<Array<{_id: string; name: string; phone: string}>>([]);
@@ -397,12 +401,13 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
     });
   };
 
-  const handleUpdateAvailabilityStatus = async (availabilityId: string, newStatus: 'yes' | 'no' | 'tentative') => {
+  const handleUpdateAvailabilityStatus = async (newStatus: 'yes' | 'no' | 'tentative') => {
+    if (!editingAvailabilityPlayer) return;
     try {
       setUpdatingStatus(true);
-      await updateAvailability(availabilityId, { response: newStatus });
+      await updateAvailability(editingAvailabilityPlayer.id, { response: newStatus });
       setActionMessage({ type: 'success', text: 'Status updated' });
-      setEditingAvailabilityId(null);
+      setEditingAvailabilityPlayer(null);
       loadMatchAndAvailability();
       setTimeout(() => setActionMessage(null), 2000);
     } catch (err: any) {
@@ -807,24 +812,13 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-1">
-                            {editingAvailabilityId === avail._id ? (
-                              <>
-                                <button onClick={() => handleUpdateAvailabilityStatus(avail._id, 'yes')} disabled={updatingStatus} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] rounded hover:bg-emerald-500/30">Y</button>
-                                <button onClick={() => handleUpdateAvailabilityStatus(avail._id, 'tentative')} disabled={updatingStatus} className="px-2 py-1 bg-amber-500/20 text-amber-400 text-[10px] rounded hover:bg-amber-500/30">?</button>
-                                <button onClick={() => handleUpdateAvailabilityStatus(avail._id, 'no')} disabled={updatingStatus} className="px-2 py-1 bg-rose-500/20 text-rose-400 text-[10px] rounded hover:bg-rose-500/30">N</button>
-                                <button onClick={() => setEditingAvailabilityId(null)} className="px-2 py-1 bg-slate-600 text-white text-[10px] rounded">✕</button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => setEditingAvailabilityId(avail._id)} className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded transition-all">
-                                  <Edit className="w-3 h-3" />
-                                </button>
-                                <button onClick={() => handleDeleteAvailability(avail._id, avail.playerName)} className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded transition-all">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setEditingAvailabilityPlayer({ id: avail._id, name: avail.playerName, response: avail.response as 'yes' | 'no' | 'tentative' | 'pending' })} className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDeleteAvailability(avail._id, avail.playerName)} className="p-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded-lg transition-all">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -871,7 +865,7 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
                       tentativeSquad={tentativeSquad}
                       unavailableSquad={unavailableSquad}
                       onShareWhatsApp={handleShareSquadImage}
-                      teamName="Mavericks XI"
+                      teamName={currentOrg?.name || 'Mavericks XI'}
                     />
                   </div>
                 </div>
@@ -1005,6 +999,15 @@ ${unavailableSquad.map((p, i) => `${i + 1}. ${p.playerName} - ${p.playerPhone}`)
         resourceType="match"
         resourceId={match._id}
         resourceTitle={`${match.opponent || 'Match'} @ ${match.ground} - ${new Date(match.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+      />
+
+      <AvailabilityEditModal
+        isOpen={editingAvailabilityPlayer !== null}
+        playerName={editingAvailabilityPlayer?.name || ''}
+        currentResponse={editingAvailabilityPlayer?.response || 'pending'}
+        onClose={() => setEditingAvailabilityPlayer(null)}
+        onUpdate={handleUpdateAvailabilityStatus}
+        isLoading={updatingStatus}
       />
 
       <style>{`

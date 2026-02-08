@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { matchEvents } from '../../utils/matchEvents';
 import MatchFeedbackDashboard from '../../components/MatchFeedbackDashboard';
+import AvailabilityEditModal from '../AvailabilityEditModal';
 
 interface Match {
   _id: string;
@@ -55,6 +56,7 @@ const MobileMatchesTab: React.FC = () => {
   
   const [availabilities, setAvailabilities] = useState<any[]>([]);
   const [editingAvailId, setEditingAvailId] = useState<string | null>(null);
+  const [editingAvailabilityPlayer, setEditingAvailabilityPlayer] = useState<{id: string; name: string; response: 'yes' | 'no' | 'tentative' | 'pending'} | null>(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [selectedPlayersToAdd, setSelectedPlayersToAdd] = useState<string[]>([]);
@@ -254,12 +256,13 @@ const MobileMatchesTab: React.FC = () => {
     }
   };
 
-  const handleUpdateAvailStatus = async (availId: string, newStatus: 'yes' | 'no' | 'tentative') => {
+  const handleUpdateAvailStatus = async (newStatus: 'yes' | 'no' | 'tentative') => {
+    if (!editingAvailabilityPlayer) return;
     setActionLoading(true);
     try {
-      await updateAvailability(availId, { response: newStatus });
+      await updateAvailability(editingAvailabilityPlayer.id, { response: newStatus });
       setSuccess('Status updated');
-      setEditingAvailId(null);
+      setEditingAvailabilityPlayer(null);
       if (selectedMatch) {
         const availResult = await getMatchAvailability(selectedMatch._id);
         setAvailabilities(availResult.data || []);
@@ -541,9 +544,9 @@ const MobileMatchesTab: React.FC = () => {
 
         {/* Detail Modal */}
         {selectedMatch && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedMatch(null)}>
+          <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedMatch(null)}>
             <div
-              className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up border-t border-white/10"
+              className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[calc(100vh-52px)] overflow-y-auto animate-slide-up border-t border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="sticky top-0 bg-slate-900/95 backdrop-blur-xl pt-3 pb-2 px-4 border-b border-white/5">
@@ -623,7 +626,11 @@ const MobileMatchesTab: React.FC = () => {
                   ) : (
                     <div className="divide-y divide-white/5">
                       {availabilities.map((avail: any) => (
-                        <div key={avail._id} className="flex items-center justify-between p-3">
+                        <div 
+                          key={avail._id} 
+                          className="flex items-center justify-between p-3 active:bg-slate-700/30 transition-colors"
+                          onClick={() => !isViewer() && setEditingAvailabilityPlayer({ id: avail._id, name: avail.playerName, response: avail.response as 'yes' | 'no' | 'tentative' | 'pending' })}
+                        >
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${
                               avail.response === 'yes' ? 'bg-emerald-400' :
@@ -632,19 +639,15 @@ const MobileMatchesTab: React.FC = () => {
                             }`} />
                             <span className="text-sm text-white">{avail.playerName}</span>
                           </div>
-                          {!isViewer() && editingAvailId === avail._id ? (
+                          {!isViewer() ? (
                             <div className="flex gap-1">
-                              <button onClick={() => handleUpdateAvailStatus(avail._id, 'yes')} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] rounded">Y</button>
-                              <button onClick={() => handleUpdateAvailStatus(avail._id, 'tentative')} className="px-2 py-1 bg-amber-500/20 text-amber-400 text-[10px] rounded">?</button>
-                              <button onClick={() => handleUpdateAvailStatus(avail._id, 'no')} className="px-2 py-1 bg-rose-500/20 text-rose-400 text-[10px] rounded">N</button>
-                              <button onClick={() => setEditingAvailId(null)} className="px-2 py-1 bg-slate-600 text-white text-[10px] rounded">✕</button>
-                            </div>
-                          ) : !isViewer() ? (
-                            <div className="flex gap-1">
-                              <button onClick={() => setEditingAvailId(avail._id)} className="p-1.5 bg-slate-700 text-white rounded">
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                              <button onClick={() => handleDeleteAvail(avail._id, avail.playerName)} className="p-1.5 bg-rose-500/20 text-rose-400 rounded">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteAvail(avail._id, avail.playerName);
+                                }} 
+                                className="p-1.5 bg-rose-500/20 text-rose-400 rounded"
+                              >
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
@@ -683,7 +686,7 @@ const MobileMatchesTab: React.FC = () => {
         )}
 
         {loadingDetail && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+          <div className="fixed inset-x-0 top-[52px] bottom-0 z-50 bg-black/60 flex items-center justify-center">
             <div className="relative">
               <div className="w-10 h-10 border-2 border-emerald-500/30 rounded-full" />
               <div className="absolute inset-0 w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -693,7 +696,7 @@ const MobileMatchesTab: React.FC = () => {
 
         {/* Create/Edit Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={resetForm}>
+          <div className="fixed inset-x-0 top-[52px] bottom-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={resetForm}>
             <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 w-full max-w-sm max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center">
@@ -853,6 +856,15 @@ const MobileMatchesTab: React.FC = () => {
             </div>
           </div>
         )}
+
+        <AvailabilityEditModal
+          isOpen={editingAvailabilityPlayer !== null}
+          playerName={editingAvailabilityPlayer?.name || ''}
+          currentResponse={editingAvailabilityPlayer?.response || 'pending'}
+          onClose={() => setEditingAvailabilityPlayer(null)}
+          onUpdate={handleUpdateAvailStatus}
+          isLoading={actionLoading}
+        />
       </div>
 
       <style>{`

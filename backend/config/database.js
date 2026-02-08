@@ -22,6 +22,10 @@ const runStartupMigrations = async () => {
   try {
     console.log('[Startup] Running migrations...');
     
+    // Run database migrations
+    const { runMigrations } = require('../migrations');
+    await runMigrations();
+    
     // Sync availability stats to fix any inconsistencies
     const { syncAvailabilityStats } = require('../scripts/sync-availability-stats');
     await syncAvailabilityStats();

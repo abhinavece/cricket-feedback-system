@@ -88,14 +88,26 @@ const createFallbackResponse = (errorCode, errorMessage, reviewReason = null) =>
  * @returns {Promise<Object>} - Parsed payment data with static schema
  */
 const parsePaymentScreenshot = async (imageBuffer, matchDate = null) => {
+  const startTime = Date.now();
+  const traceId = `ai_${startTime}_${Math.random().toString(36).substr(2, 9)}`;
+  
   try {
-    console.log('\n🤖 Calling AI Service for payment parsing...');
+    console.log('\n🤖 === AI SERVICE CALL START ===');
+    console.log(`🆔 Trace ID: ${traceId}`);
+    console.log(`⏰ Start Time: ${new Date(startTime).toISOString()}`);
+    console.log(`📏 Image Size: ${imageBuffer.length} bytes`);
+    console.log(`📅 Match Date: ${matchDate || 'Not provided'}`);
+    console.log(`🌐 AI Service URL: ${AI_SERVICE_URL}`);
+    console.log(`☁️ Running on Cloud Run: ${isCloudRun}`);
     
     // Prepare request
     const requestData = {
       image_base64: imageBuffer.toString('base64'),
       match_date: matchDate ? new Date(matchDate).toISOString() : null
     };
+    
+    console.log(`📤 Request Data Size: ${JSON.stringify(requestData).length} characters`);
+    console.log(`📤 Request Match Date: ${requestData.match_date}`);
     
     // Prepare headers
     const headers = {
@@ -108,10 +120,14 @@ const parsePaymentScreenshot = async (imageBuffer, matchDate = null) => {
       const idToken = await getIdToken(AI_SERVICE_URL);
       if (idToken) {
         headers['Authorization'] = `Bearer ${idToken}`;
+        console.log('✅ ID token obtained successfully');
       } else {
         console.warn('⚠️ Could not obtain ID token, request may fail');
       }
     }
+    
+    console.log(`📡 Calling AI Service: ${AI_SERVICE_URL}/parse-payment`);
+    console.log(`⏱️ Timeout Set: ${AI_REQUEST_TIMEOUT}ms`);
     
     // Call AI Service
     const response = await axios.post(
@@ -123,23 +139,63 @@ const parsePaymentScreenshot = async (imageBuffer, matchDate = null) => {
       }
     );
     
+    const endTime = Date.now();
+    const duration = endTime - startTime;
     const result = response.data;
     
-    // Log result
+    console.log(`📥 AI Service Response Received:`);
+    console.log(`⏰ End Time: ${new Date(endTime).toISOString()}`);
+    console.log(`⏱️ Total Duration: ${duration}ms`);
+    console.log(`📊 Response Status: ${response.status}`);
+    console.log(`📊 Response Size: ${JSON.stringify(result).length} characters`);
+    
+    // Log result details
     if (result.success) {
-      console.log(`✅ AI Service parsed payment: ₹${result.data.amount}`);
-      console.log(`   Confidence: ${(result.metadata.confidence * 100).toFixed(1)}%`);
-      console.log(`   Provider: ${result.metadata.provider}/${result.metadata.model}`);
+      console.log(`✅ AI Service Success:`);
+      console.log(`   💰 Amount: ₹${result.data.amount}`);
+      console.log(`   📊 Confidence: ${(result.metadata.confidence * 100).toFixed(1)}%`);
+      console.log(`   🤖 Provider: ${result.metadata.provider}/${result.metadata.model}`);
+      console.log(`   ⏱️ Processing Time: ${result.metadata.processing_time_ms}ms`);
+      console.log(`   💵 Model Cost Tier: ${result.metadata.model_cost_tier}`);
       if (result.metadata.requires_review) {
-        console.log(`   ⚠️ Requires review: ${result.metadata.review_reason}`);
+        console.log(`   ⚠️ Requires Review: ${result.metadata.review_reason}`);
       }
     } else {
-      console.log(`❌ AI Service error: ${result.error_code} - ${result.error_message}`);
+      console.log(`❌ AI Service Error:`);
+      console.log(`   📝 Error Code: ${result.error_code}`);
+      console.log(`   📝 Error Message: ${result.error_message}`);
+      console.log(`   📝 Review Reason: ${result.metadata.review_reason}`);
     }
+    
+    console.log(`🏁 === AI SERVICE CALL END ===\n`);
     
     return result;
     
   } catch (error) {
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.log(`❌ === AI SERVICE CALL FAILED ===`);
+    console.log(`🆔 Trace ID: ${traceId}`);
+    console.log(`⏰ Failure Time: ${new Date(endTime).toISOString()}`);
+    console.log(`⏱️ Duration Before Failure: ${duration}ms`);
+    console.log(`📝 Error Type: ${error.code || 'Unknown'}`);
+    console.log(`📝 Error Message: ${error.message}`);
+    
+    if (error.response) {
+      console.log(`📊 HTTP Status: ${error.response.status}`);
+      console.log(`📊 HTTP Status Text: ${error.response.statusText}`);
+      console.log(`📊 Response Data:`, error.response.data);
+    }
+    
+    if (error.request) {
+      console.log(`📡 Request was made but no response received`);
+      console.log(`🌐 Request URL: ${error.config?.url}`);
+      console.log(`🌐 Request Method: ${error.config?.method}`);
+    }
+    
+    console.log(`🏁 === AI SERVICE FAILURE END ===\n`);
+    
     // Handle specific error types
     if (error.code === 'ECONNREFUSED') {
       console.error('❌ AI Service not available (connection refused)');

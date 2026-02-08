@@ -147,6 +147,79 @@ const skipTenant = (req, res, next) => {
 };
 
 /**
+ * Detect if the request is from the Tournament Hub app (tournament.cricsmart.in or localhost:3001).
+ * Only when true do we auto-create "My Tournaments"; otherwise the main app flow (create/join team) applies.
+ */
+function isTournamentAppRequest(req) {
+  const origin = req.get('origin') || req.get('referer') || '';
+  return /tournament\.cricsmart\.in|localhost:3001/.test(origin);
+}
+
+/**
+ * Ensure user has an organization only when the request is from the Tournament Hub app.
+ * If from tournament.cricsmart.in (or localhost:3001) and user has no org, creates "My Tournaments".
+ * If from the main app (cricsmart.in, app.cricsmart.in, localhost:3000), does nothing – existing create/join team flow applies.
+ */
+const ensureTournamentOrg = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'Please login to access this resource',
+      });
+    }
+
+    // Only auto-create org when the request is from the Tournament Hub app
+    if (!isTournamentAppRequest(req)) {
+      return next();
+    }
+
+    const hasOrg = (req.user.organizations?.length > 0) ||
+      (req.user.activeOrganizationId && req.user.organizations?.some(
+        m => m.organizationId?.toString() === req.user.activeOrganizationId?.toString()
+      ));
+
+    if (hasOrg) {
+      return next();
+    }
+
+    // Create default "My Tournaments" organization for Tournament Hub users only
+    const Organization = require('../models/Organization');
+    const baseSlug = 'my-tournaments';
+    const uniqueSlug = `${baseSlug}-${req.user._id.toString().slice(-8)}`;
+    const existingSlug = await Organization.findOne({ slug: uniqueSlug });
+    const slug = existingSlug ? `${baseSlug}-${Date.now().toString(36)}` : uniqueSlug;
+
+    const organization = new Organization({
+      name: 'My Tournaments',
+      slug,
+      description: 'Your tournament hub – create and manage cricket tournaments.',
+      ownerId: req.user._id,
+    });
+
+    await organization.save();
+
+    req.user.addToOrganization(organization._id, 'owner');
+    req.user.activeOrganizationId = organization._id;
+    await req.user.save();
+
+    organization.stats = organization.stats || {};
+    organization.stats.memberCount = 1;
+    await organization.save();
+
+    console.log(`[Tenant] Auto-created Tournament Hub org for ${req.user.email}: ${organization.name} (${organization.slug})`);
+
+    next();
+  } catch (error) {
+    console.error('ensureTournamentOrg error:', error);
+    return res.status(500).json({
+      error: 'Failed to set up tournament organization',
+      message: 'Could not create your tournament workspace. Please try again.',
+    });
+  }
+};
+
+/**
  * Resolve tenant from webhook payload (for WhatsApp webhooks)
  * Routes based on WhatsApp phone_number_id
  * 
@@ -165,5 +238,6 @@ module.exports = {
   requireOrgOwner,
   requireOrgEditor,
   skipTenant,
+  ensureTournamentOrg,
   resolveWebhookTenant,
 };

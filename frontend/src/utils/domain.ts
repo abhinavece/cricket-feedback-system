@@ -95,3 +95,14 @@ export const getAuthCallbackUrl = (token: string, user: object): string => {
   
   return `https://app.cricsmart.in/auth-callback?${params.toString()}`;
 };
+
+/**
+ * Get the logout callback URL for cross-domain logout
+ * This clears auth state on the homepage domain
+ */
+export const getLogoutCallbackUrl = (): string => {
+  if (isLocalhost()) {
+    return `${window.location.origin}?logout=true`;
+  }
+  return 'https://cricsmart.in?logout=true';
+};

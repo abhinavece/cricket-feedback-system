@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { FeedbackForm, FeedbackSubmission, Player } from '../types';
+import { getHomepageUrl } from '../utils/domain';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
@@ -25,16 +26,35 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle 401 errors
+// Add response interceptor to handle auth errors consistently
+// Any auth error redirects to homepage (cricsmart.in)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Clear auth data and redirect to login
+    const status = error.response?.status;
+    const errorMessage = error.response?.data?.error || error.response?.data?.message || '';
+    
+    // Check for auth-related errors (401, 403, or specific error messages)
+    const isAuthError = 
+      status === 401 || 
+      status === 403 ||
+      errorMessage.toLowerCase().includes('invalid authentication') ||
+      errorMessage.toLowerCase().includes('user not found') ||
+      errorMessage.toLowerCase().includes('not authenticated') ||
+      errorMessage.toLowerCase().includes('token expired') ||
+      errorMessage.toLowerCase().includes('unauthorized');
+    
+    if (isAuthError) {
+      // Clear auth data
       localStorage.removeItem('authToken');
       localStorage.removeItem('authUser');
-      window.location.href = '/';
+      
+      // Redirect to homepage with logout flag
+      const homepageUrl = getHomepageUrl();
+      window.location.href = `${homepageUrl}?logout=true`;
+      return new Promise(() => {}); // Prevent further processing
     }
+    
     return Promise.reject(error);
   }
 );
@@ -1743,6 +1763,238 @@ export const updateOrganizationSettings = async (settings: {
   };
 }> => {
   const response = await api.patch('/organizations/settings', settings);
+  return response.data;
+};
+
+// ============================================================
+// Tournament Management
+// ============================================================
+
+export interface TournamentBranding {
+  tagline?: string;
+  logo?: string;
+  coverImage?: string;
+  primaryColor?: string;
+  theme?: 'default' | 'corporate' | 'classic';
+}
+
+export interface TournamentSettings {
+  isPublic?: boolean;
+  allowTeamRegistration?: boolean;
+  maxTeams?: number;
+  playerFields?: string[];
+  showPhone?: boolean;
+  showEmail?: boolean;
+}
+
+export interface TournamentStats {
+  entryCount: number;
+  teamCount: number;
+}
+
+export interface Tournament {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  status: 'draft' | 'published' | 'ongoing' | 'completed';
+  branding?: TournamentBranding;
+  settings?: TournamentSettings;
+  stats?: TournamentStats;
+  publicToken?: string;
+  createdBy?: { name: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TournamentEntry {
+  _id: string;
+  tournamentId: string;
+  entryData: {
+    name: string;
+    phone?: string;
+    email?: string;
+    dateOfBirth?: string;
+    cricHeroesId?: string;
+    role: string;
+    companyName?: string;
+    address?: string;
+    teamName?: string;
+    jerseyNumber?: number;
+  };
+  status: 'registered' | 'confirmed' | 'withdrawn';
+  registeredAt: string;
+  createdAt: string;
+}
+
+// List tournaments for current organization
+export const getTournaments = async (params?: { 
+  page?: number; 
+  limit?: number; 
+  status?: string;
+}): Promise<{
+  success: boolean;
+  data: Tournament[];
+  pagination: { current: number; pages: number; total: number; hasMore: boolean };
+}> => {
+  const response = await api.get('/tournaments', { params });
+  return response.data;
+};
+
+// Get single tournament
+export const getTournament = async (id: string): Promise<{
+  success: boolean;
+  data: Tournament & {
+    teamStats: { teamName: string; count: number }[];
+    roleStats: { role: string; count: number }[];
+  };
+}> => {
+  const response = await api.get(`/tournaments/${id}`);
+  return response.data;
+};
+
+// Create tournament
+export const createTournament = async (data: {
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  branding?: TournamentBranding;
+  settings?: TournamentSettings;
+}): Promise<{ success: boolean; data: Tournament }> => {
+  const response = await api.post('/tournaments', data);
+  return response.data;
+};
+
+// Update tournament
+export const updateTournament = async (id: string, data: {
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  branding?: TournamentBranding;
+  settings?: TournamentSettings;
+}): Promise<{ success: boolean; data: Tournament }> => {
+  const response = await api.put(`/tournaments/${id}`, data);
+  return response.data;
+};
+
+// Delete tournament
+export const deleteTournament = async (id: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/tournaments/${id}`);
+  return response.data;
+};
+
+// Regenerate public token
+export const regenerateTournamentToken = async (id: string): Promise<{
+  success: boolean;
+  data: { publicToken: string };
+}> => {
+  const response = await api.post(`/tournaments/${id}/regenerate-token`);
+  return response.data;
+};
+
+// Get tournament entries
+export const getTournamentEntries = async (tournamentId: string, params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  teamName?: string;
+}): Promise<{
+  success: boolean;
+  data: TournamentEntry[];
+  filters: { teams: string[]; roles: string[] };
+  pagination: { current: number; pages: number; total: number; hasMore: boolean };
+}> => {
+  const response = await api.get(`/tournaments/${tournamentId}/entries`, { params });
+  return response.data;
+};
+
+// Add single entry
+export const addTournamentEntry = async (tournamentId: string, entryData: {
+  name: string;
+  phone?: string;
+  email?: string;
+  dateOfBirth?: string;
+  cricHeroesId?: string;
+  role?: string;
+  companyName?: string;
+  address?: string;
+  teamName?: string;
+  jerseyNumber?: number;
+}): Promise<{ success: boolean; data: TournamentEntry }> => {
+  const response = await api.post(`/tournaments/${tournamentId}/entries`, { entryData });
+  return response.data;
+};
+
+// Bulk upload preview
+export const previewTournamentUpload = async (tournamentId: string, file: File): Promise<{
+  success: boolean;
+  data: {
+    filename: string;
+    headers: string[];
+    rowCount: number;
+    suggestedMapping: Record<string, string>;
+    preview: Record<string, any>[];
+  };
+}> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post(`/tournaments/${tournamentId}/entries/bulk/preview`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+// Bulk import entries
+export const importTournamentEntries = async (tournamentId: string, file: File, columnMapping?: Record<string, string>): Promise<{
+  success: boolean;
+  data: {
+    totalRows: number;
+    imported: number;
+    skipped: number;
+    invalid: number;
+    importBatchId: string;
+    details: {
+      duplicates: any[];
+      invalid: any[];
+    };
+  };
+}> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (columnMapping) {
+    formData.append('columnMapping', JSON.stringify(columnMapping));
+  }
+  const response = await api.post(`/tournaments/${tournamentId}/entries/bulk`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+// Update entry
+export const updateTournamentEntry = async (
+  tournamentId: string, 
+  entryId: string, 
+  data: { entryData?: Partial<TournamentEntry['entryData']>; status?: string }
+): Promise<{ success: boolean; data: TournamentEntry }> => {
+  const response = await api.put(`/tournaments/${tournamentId}/entries/${entryId}`, data);
+  return response.data;
+};
+
+// Delete entry
+export const deleteTournamentEntry = async (tournamentId: string, entryId: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  const response = await api.delete(`/tournaments/${tournamentId}/entries/${entryId}`);
   return response.data;
 };
 

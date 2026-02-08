@@ -10,7 +10,8 @@ import {
   MapPin,
   Brain,
   Sparkles,
-  History
+  History,
+  Trophy
 } from 'lucide-react';
 
 interface PageHeaderProps {
@@ -79,6 +80,18 @@ const tabConfig: Record<string, {
     description: 'Player payment records',
     icon: <History className="w-5 h-5" />,
     gradient: 'from-indigo-500 to-violet-500',
+  },
+  team: {
+    title: 'Team Settings',
+    description: 'Manage team and invites',
+    icon: <Users className="w-5 h-5" />,
+    gradient: 'from-sky-500 to-blue-500',
+  },
+  tournaments: {
+    title: 'Tournaments',
+    description: 'Create and manage tournaments',
+    icon: <Trophy className="w-5 h-5" />,
+    gradient: 'from-amber-500 to-orange-500',
   },
 };
 

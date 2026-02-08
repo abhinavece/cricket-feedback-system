@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { OrganizationProvider, useOrganization } from './contexts/OrganizationContext';
 import { submitFeedback } from './services/api';
 import { isMobileDevice } from './hooks/useDevice';
-import { getDomainType, getAppUrl } from './utils/domain';
+import { getDomainType, getAppUrl, getLogoutCallbackUrl } from './utils/domain';
 import { DEFAULT_ROUTE, getLegacyTabIdFromPath, getPathFromTabId, type LegacyTabId } from './config/routes';
 import type { FeedbackForm as FeedbackFormData } from './types';
 import { LogIn } from 'lucide-react';
@@ -15,6 +15,7 @@ import './theme.css';
 // Public pages (no auth required)
 const PublicMatchView = lazy(() => import('./pages/PublicMatchView'));
 const PublicPaymentView = lazy(() => import('./pages/PublicPaymentView'));
+const TournamentPublicView = lazy(() => import('./pages/TournamentPublicView'));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
 const MatchFeedbackPage = lazy(() => import('./pages/MatchFeedbackPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
@@ -29,7 +30,18 @@ const InvitePage = lazy(() => import('./pages/InvitePage'));
 // Device detection at module level for code splitting
 const getInitialDeviceMode = () => {
   const saved = localStorage.getItem('forceDeviceMode');
-  if (saved) return saved === 'mobile';
+  if (saved) {
+    // Clear saved mode if it doesn't match current device type
+    if (saved === 'mobile' && !isMobileDevice()) {
+      localStorage.removeItem('forceDeviceMode');
+      return false;
+    }
+    if (saved === 'desktop' && isMobileDevice()) {
+      localStorage.removeItem('forceDeviceMode');
+      return true;
+    }
+    return saved === 'mobile';
+  }
   return isMobileDevice();
 };
 
@@ -74,7 +86,23 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  * RequireOrganization component - shows onboarding if user has no organization
  */
 const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const { hasOrganization, loading } = useOrganization();
+  const location = useLocation();
+
+  // If not authenticated, redirect appropriately based on domain
+  if (!isAuthenticated) {
+    const domainType = getDomainType();
+    
+    if (domainType === 'app') {
+      // On app domain, redirect to homepage
+      window.location.href = 'https://cricsmart.in';
+      return <LoadingSpinner />;
+    }
+    
+    // On localhost/homepage, redirect to login page
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
 
   if (loading) {
     return <LoadingSpinner />;
@@ -119,10 +147,17 @@ function DashboardLayout() {
     localStorage.setItem('forceDeviceMode', newMode ? 'mobile' : 'desktop');
   };
 
-  // Auto-switch to admin view when authenticated
+  // Auto-switch to admin view when authenticated and correct device mode
   useEffect(() => {
     if (isAuthenticated) {
       setCurrentView('admin');
+      
+      // Correct device mode if it doesn't match actual device
+      const shouldBeMobile = isMobileDevice();
+      if (isMobile !== shouldBeMobile) {
+        setIsMobile(shouldBeMobile);
+        localStorage.setItem('forceDeviceMode', shouldBeMobile ? 'mobile' : 'desktop');
+      }
     }
   }, [isAuthenticated]);
 
@@ -155,22 +190,21 @@ function DashboardLayout() {
   const handleLogout = () => {
     const domainType = getDomainType();
     
-    // For app domain, clear storage and redirect to homepage immediately
-    // We do this before calling logout() to avoid React re-render race condition
+    // Clear local storage first
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    
+    // For app domain, redirect to homepage with logout flag to clear auth there too
     if (domainType === 'app') {
-      // Clear storage directly
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
-      // Full page redirect to homepage
-      window.location.href = 'https://cricsmart.in';
+      window.location.href = getLogoutCallbackUrl();
       return;
     }
     
     // For other domains (localhost, homepage), use normal logout flow
     logout();
     if (domainType === 'localhost') {
-      // Redirect to homepage in localhost
-      window.location.href = window.location.origin;
+      // Redirect to homepage in localhost with logout flag
+      window.location.href = window.location.origin + '?logout=true';
     } else {
       setCurrentView('form');
       navigate('/');
@@ -313,6 +347,7 @@ const HomepageRoutes: React.FC = () => (
     {/* Public share routes */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/tournament/:token" element={<TournamentPublicView />} />
     <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
     
     {/* Redirect /app to app domain */}
@@ -373,6 +408,7 @@ const AppRoutes: React.FC = () => (
     {/* Public share routes (accessible without login) */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/tournament/:token" element={<TournamentPublicView />} />
     <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
     
     {/* Static pages */}
@@ -424,6 +460,7 @@ const LocalhostRoutes: React.FC = () => (
     <Route path="/app/analytics" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/users" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/team" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
+    <Route path="/app/tournaments" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     <Route path="/app/settings" element={<RequireOrganization><DashboardLayout /></RequireOrganization>} />
     
     {/* Player profile */}
@@ -432,6 +469,7 @@ const LocalhostRoutes: React.FC = () => (
     {/* Public share routes */}
     <Route path="/share/match/:token" element={<PublicMatchView />} />
     <Route path="/share/payment/:token" element={<PublicPaymentView />} />
+    <Route path="/tournament/:token" element={<TournamentPublicView />} />
     <Route path="/feedback/:token" element={<MatchFeedbackPage />} />
     
     {/* Static pages */}

@@ -1,3 +1,21 @@
 # https://www.robotstxt.org/robotstxt.html
+# CricSmart - AI Cricket Platform
+# https://cricsmart.in
+
+# Allow all search engine crawlers
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /api/
+Disallow: /auth-callback
+Disallow: /onboarding
+
+# Google specific
+User-agent: Googlebot
+Allow: /
+
+# Bing specific
+User-agent: Bingbot
+Allow: /
+
+# Sitemap location
+Sitemap: https://cricsmart.in/sitemap.xml

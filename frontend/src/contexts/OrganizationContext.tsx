@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { getHomepageUrl } from '../utils/domain';
 
 // Organization interface
 export interface Organization {
@@ -101,7 +102,7 @@ interface OrganizationProviderProps {
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ children }) => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, updateUser } = useAuth();
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [userOrgs, setUserOrgs] = useState<OrganizationMembership[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +122,31 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || errorData.message || '';
+      
+      // Check for auth-related errors - redirect to homepage
+      const isAuthError = 
+        response.status === 401 || 
+        response.status === 403 ||
+        errorMessage.toLowerCase().includes('invalid authentication') ||
+        errorMessage.toLowerCase().includes('user not found') ||
+        errorMessage.toLowerCase().includes('not authenticated') ||
+        errorMessage.toLowerCase().includes('token expired') ||
+        errorMessage.toLowerCase().includes('unauthorized');
+      
+      if (isAuthError) {
+        // Clear auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        
+        // Redirect to homepage
+        const hostname = window.location.hostname.toLowerCase();
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+        const homepageUrl = isLocalhost ? window.location.origin : 'https://cricsmart.in';
+        window.location.href = `${homepageUrl}?logout=true`;
+        return new Promise(() => {}); // Prevent further processing
+      }
+      
       const error = new Error(errorData.message || `API error: ${response.status}`);
       (error as any).code = errorData.code;
       throw error;
@@ -133,10 +159,13 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
   const fetchOrganizations = useCallback(async () => {
     try {
       const data = await apiCall('/organizations');
-      setUserOrgs(data.organizations || []);
-      return data.organizations || [];
-    } catch (err) {
+      const orgs = data.organizations || [];
+      setUserOrgs(orgs);
+      console.log(`[OrganizationContext] Fetched ${orgs.length} organizations`);
+      return orgs;
+    } catch (err: any) {
       console.error('Error fetching organizations:', err);
+      // On error, set empty array to allow onboarding flow
       setUserOrgs([]);
       return [];
     }
@@ -151,6 +180,8 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
           ...data.organization,
           userRole: data.userRole,
         });
+      } else {
+        setCurrentOrg(null);
       }
       return data.organization;
     } catch (err: any) {
@@ -162,13 +193,19 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
         errorCode === 'NO_ORGANIZATION' ||
         errorMsg.includes('no organization') ||
         errorMsg.includes('no_organization') ||
-        errorMsg.includes('not a member of any organization');
+        errorMsg.includes('not a member of any organization') ||
+        errorMsg.includes('no active organization');
       
       if (isNoOrgError) {
+        console.log('[OrganizationContext] User has no organization - onboarding needed');
         setCurrentOrg(null);
+        setError(null); // Clear any previous errors
         return null;
       }
+      
+      // For other errors, log but don't block the UI
       console.error('Error fetching current organization:', err);
+      setCurrentOrg(null); // Ensure we don't get stuck
       setError(err.message);
       return null;
     }
@@ -178,30 +215,69 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
   useEffect(() => {
     const loadOrganizationData = async () => {
       if (!isAuthenticated) {
+        console.log('[OrganizationContext] User not authenticated, clearing data');
         setCurrentOrg(null);
         setUserOrgs([]);
         setLoading(false);
         return;
       }
 
+      console.log('[OrganizationContext] Loading organization data...');
       setLoading(true);
       setError(null);
 
       try {
         // Fetch both in parallel
-        await Promise.all([
+        const [orgs, currentOrg] = await Promise.all([
           fetchOrganizations(),
           fetchCurrentOrganization(),
         ]);
-      } catch (err) {
-        console.error('Error loading organization data:', err);
+        console.log('[OrganizationContext] Load complete:', { 
+          orgsCount: orgs?.length || 0, 
+          hasCurrentOrg: !!currentOrg 
+        });
+      } catch (err: any) {
+        console.error('[OrganizationContext] Error loading organization data:', err);
+        // Don't set error state here - let individual fetch functions handle it
+        // This prevents blocking the UI on network errors
       } finally {
         setLoading(false);
+        console.log('[OrganizationContext] Loading complete');
       }
     };
 
     loadOrganizationData();
   }, [isAuthenticated, fetchOrganizations, fetchCurrentOrganization]);
+
+  // Refresh role on window focus (catches role changes made by admin)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleFocus = async () => {
+      console.log('[OrganizationContext] Window focused - refreshing role data');
+      try {
+        // Only refresh current org (which includes userRole) - lightweight check
+        await fetchCurrentOrganization();
+      } catch (err) {
+        console.error('[OrganizationContext] Error refreshing on focus:', err);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    // Also refresh periodically every 5 minutes while tab is active
+    const intervalId = setInterval(() => {
+      if (document.hasFocus()) {
+        console.log('[OrganizationContext] Periodic role refresh');
+        fetchCurrentOrganization().catch(console.error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated, fetchCurrentOrganization]);
 
   // Switch organization
   const switchOrganization = async (orgId: string) => {
@@ -250,6 +326,14 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       const data = await apiCall('/organizations', {
         method: 'POST',
         body: JSON.stringify({ name, description }),
+      });
+
+      // Update user data in AuthContext - user now has organization and is owner/admin
+      updateUser({
+        hasOrganizations: true,
+        needsOnboarding: false,
+        role: 'admin', // Creator is owner/admin of the org
+        activeOrganizationId: data.organization._id,
       });
 
       // Refresh organization data

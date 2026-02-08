@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getDomainType, getAppUrl } from '../utils/domain';
+import { useViewTracking } from '../hooks/useViewTracking';
 import {
   HomeNavbar,
   HeroSection,
@@ -18,9 +19,28 @@ import Footer from '../components/Footer';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const domainType = getDomainType();
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Handle cross-domain logout - clear auth state when redirected with ?logout=true
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('logout') === 'true') {
+      // Clear auth state on this domain
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      logout();
+      // Remove the query parameter from URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [logout]);
+
+  // Track homepage views - only if user has valid organizationId
+  useViewTracking({
+    type: 'homepage',
+    organizationId: user?.activeOrganizationId
+  });
 
   // NOTE: We intentionally do NOT auto-redirect authenticated users from homepage.
   // Users should be able to visit the homepage even when logged in.
@@ -49,6 +69,13 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleSeeHowItWorks = () => {
+    const howItWorksSection = document.getElementById('how-it-works');
+    if (howItWorksSection) {
+      howItWorksSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleAddGround = () => {
     // Show login modal to access the grounds feature
     handleShowLogin();
@@ -71,14 +98,16 @@ const HomePage: React.FC = () => {
       {/* Hero Section - Get Started shows modal */}
       <HeroSection
         onGetStarted={handleShowLogin}
-        onExploreGrounds={handleExploreGrounds}
+        onExploreGrounds={handleSeeHowItWorks}
       />
 
       {/* Social Proof Stats */}
       <StatsBar />
 
-      {/* How It Works */}
-      <HowItWorks />
+      {/* How It Works - with id for scroll navigation */}
+      <div id="how-it-works">
+        <HowItWorks />
+      </div>
 
       {/* Key Features - with id for scroll navigation */}
       <div id="features">

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tournament Player List | CricSmart - AI Cricket Platform</title>
+  
+  <!-- Open Graph / WhatsApp / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://tournament.cricsmart.in/share/tournament/" />
+  <meta property="og:title" content="🏆 Tournament Player List | CricSmart" />
+  <meta property="og:description" content="View registered players, teams, and tournament details. Search by name, phone, CricHeroes ID or team. Powered by CricSmart - AI Cricket Platform." />
+  <meta property="og:image" content="https://cricsmart.in/og-tournament-preview.png" />
+  <meta property="og:image:secure_url" content="https://cricsmart.in/og-tournament-preview.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="CricSmart Tournament - AI Cricket Platform" />
+  <meta property="og:site_name" content="CricSmart - AI Cricket Platform" />
+  <meta property="og:locale" content="en_IN" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="🏆 Tournament Players | CricSmart" />
+  <meta name="twitter:description" content="View registered players, teams, and tournament details. Search by name, team, or role." />
+  <meta name="twitter:image" content="https://tournament.cricsmart.in/og-tournament.png" />
+  
+  <!-- Theme -->
+  <meta name="theme-color" content="#020617" />
+  
+  <!-- Redirect for real users (crawlers won't execute JS) -->
+  <script>
+    // This only runs for real users, not crawlers
+    window.location.replace(window.location.href.replace('/og/tournament.html', ''));
+  </script>
+  <noscript>
+    <meta http-equiv="refresh" content="0; url=/" />
+  </noscript>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.3) 0%, rgba(20, 184, 166, 0.1) 100%);
+      border: 2px solid rgba(20, 184, 166, 0.5);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #14b8a6 0%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .loading {
+      margin-top: 24px;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(20, 184, 166, 0.2);
+      border-top-color: #14b8a6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🏆</div>
+    <h1>CricSmart Tournaments</h1>
+    <p>Tournament Players & Teams</p>
+    <div class="loading"></div>
+    <p style="margin-top: 16px; font-size: 12px;">Loading tournament...</p>
+  </div>
+</body>
+</html>
