@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator } from 'lucide-react';
+import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle } from 'lucide-react';
 import { siteConfig } from '@/lib/api';
 
 interface HeaderProps {
@@ -52,6 +52,7 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
     { label: 'Grounds', href: '/grounds', icon: <Compass className="w-4 h-4" /> },
     { label: 'Tools', href: '/tools', icon: <Calculator className="w-4 h-4" /> },
     { label: 'Glossary', href: '/glossary', icon: <BookOpen className="w-4 h-4" /> },
+    { label: 'FAQ', href: '/faq', icon: <HelpCircle className="w-4 h-4" /> },
     { label: 'About', href: '/about', icon: <Info className="w-4 h-4" /> },
   ];
 
