@@ -1,1 +1,9 @@
-{}
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/faq/page": "app/faq/page.js",
+  "/grounds/page": "app/grounds/page.js",
+  "/tools/page": "app/tools/page.js",
+  "/grounds/[slug]/page": "app/grounds/[slug]/page.js",
+  "/faq/[category]/page": "app/faq/[category]/page.js",
+  "/page": "app/page.js"
+}

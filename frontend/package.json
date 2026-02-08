@@ -32,7 +32,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=3000 react-scripts start",
     "prebuild": "node scripts/generate-og-images.js || echo 'OG image generation skipped'",
     "build": "react-scripts build",
     "generate-og-images": "node scripts/generate-og-images.js",
