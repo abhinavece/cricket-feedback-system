@@ -4,6 +4,18 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.cricsmart.in';
 
+// Detect if running in development mode
+const isDevelopment = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+// App URL - use localhost:3000 in development, production URL otherwise
+const getAppUrl = () => {
+  if (isDevelopment) {
+    return 'http://localhost:3000';
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://app.cricsmart.in';
+};
+
 export interface Ground {
   _id: string;
   name: string;
@@ -158,8 +170,8 @@ export async function getAllBlogSlugs(): Promise<{ slugs: string[] }> {
 export const siteConfig = {
   name: 'CricSmart',
   description: 'AI-powered cricket team management platform. Smart match scheduling, player availability tracking, payment management, and cricket ground discovery.',
-  url: 'https://cricsmart.in',
-  appUrl: 'https://app.cricsmart.in',
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://cricsmart.in',
+  get appUrl() { return getAppUrl(); },
   apiUrl: API_BASE_URL,
   ogImage: 'https://cricsmart.in/og-image.jpg',
   twitterHandle: '@cricsmart',
