@@ -25,6 +25,16 @@ frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
 
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Next.js development
+.next/cache/
+.next/server/
+
 # Python
 __pycache__/
 *.py[cod]

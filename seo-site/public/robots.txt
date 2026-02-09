@@ -1,0 +1,13 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+
+# Host
+Host: https://cricsmart.in
+
+# Sitemaps
+Sitemap: https://cricsmart.in/sitemap.xml
+Sitemap: https://cricsmart.in/server-sitemap.xml
