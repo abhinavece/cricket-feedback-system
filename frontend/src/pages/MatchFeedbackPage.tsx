@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import { Calendar, Clock, MapPin, XCircle, CheckCircle, AlertTriangle, User, Shield, LogIn, ChevronRight, Star, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import RatingStars from '../components/RatingStars';
@@ -272,41 +273,64 @@ const MatchFeedbackPage: React.FC = () => {
   // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-6"></div>
-          <p className="text-slate-400 text-lg">Loading feedback form...</p>
+      <>
+        <Helmet>
+          <title>Loading Feedback Form | CricSmart</title>
+          <meta name="description" content="Loading match feedback form..." />
+          <meta property="og:image" content={`${window.location.origin}/og-feedback.png`} />
+        </Helmet>
+        
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-6"></div>
+            <p className="text-slate-400 text-lg">Loading feedback form...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Error State
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-10 max-w-md w-full text-center border border-white/10 shadow-2xl">
-          <div className="w-20 h-20 bg-gradient-to-br from-red-500/20 to-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30">
-            <XCircle className="w-10 h-10 text-red-400" />
+      <>
+        <Helmet>
+          <title>Feedback Link Not Available | CricSmart</title>
+          <meta name="description" content={error} />
+          <meta property="og:image" content={`${window.location.origin}/og-feedback.png`} />
+        </Helmet>
+        
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+          <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-10 max-w-md w-full text-center border border-white/10 shadow-2xl">
+            <div className="w-20 h-20 bg-gradient-to-br from-red-500/20 to-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30">
+              <XCircle className="w-10 h-10 text-red-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-3">Link Not Available</h1>
+            <p className="text-slate-400 mb-6">{error}</p>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors"
+            >
+              Go to Home
+              <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">Link Not Available</h1>
-          <p className="text-slate-400 mb-6">{error}</p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors"
-          >
-            Go to Home
-            <ChevronRight className="w-4 h-4" />
-          </Link>
         </div>
-      </div>
+      </>
     );
   }
 
   // Already Submitted State
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <>
+        <Helmet>
+          <title>Feedback Submitted | CricSmart</title>
+          <meta name="description" content={`Thank you for your feedback for the match vs ${linkInfo?.match?.opponent || 'Unknown'}`} />
+          <meta property="og:image" content={`${window.location.origin}/og-feedback.png`} />
+        </Helmet>
+        
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         {/* Elegant Header */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-emerald-600/20"></div>
@@ -381,13 +405,25 @@ const MatchFeedbackPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
+
+  if (!linkInfo) return null;
+
+  const { match } = linkInfo;
 
   // Login Required State
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <>
+        <Helmet>
+          <title>Sign In Required - Match Feedback | CricSmart</title>
+          <meta name="description" content={`Sign in to submit feedback for ${match.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatShortDate(match.date)}`} />
+          <meta property="og:image" content={`${window.location.origin}/og-feedback.png`} />
+        </Helmet>
+        
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         {/* Elegant Header */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-emerald-600/20"></div>
@@ -474,16 +510,34 @@ const MatchFeedbackPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
-  if (!linkInfo) return null;
-
-  const { match } = linkInfo;
-
   // Main Feedback Form (Authenticated User)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <>
+      <Helmet>
+        <title>Match Feedback - {linkInfo?.match?.teamName || 'Mavericks XI'} vs {match.opponent || 'TBD'} | CricSmart</title>
+        <meta name="description" content={`Submit feedback for ${linkInfo?.match?.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatShortDate(match.date)} at ${match.ground}`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={`Match Feedback - ${linkInfo?.match?.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} | CricSmart`} />
+        <meta property="og:description" content={`Submit feedback for ${linkInfo?.match?.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatShortDate(match.date)} at ${match.ground}`} />
+        <meta property="og:image" content={`${window.location.origin}/og-feedback.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="CricSmart Match Feedback" />
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={window.location.href} />
+        <meta property="twitter:title" content={`Match Feedback - ${linkInfo?.match?.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} | CricSmart`} />
+        <meta property="twitter:description" content={`Submit feedback for ${linkInfo?.match?.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatShortDate(match.date)} at ${match.ground}`} />
+        <meta property="twitter:image" content={`${window.location.origin}/og-feedback.png`} />
+        <meta property="og:site_name" content="CricSmart" />
+        <meta property="og:locale" content="en_IN" />
+      </Helmet>
+      
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Elegant Header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-emerald-600/20"></div>
@@ -743,6 +797,7 @@ const MatchFeedbackPage: React.FC = () => {
 
       <Footer minimal />
     </div>
+    </>
   );
 };
 

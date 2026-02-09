@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import { 
   Calendar, MapPin, CheckCircle, XCircle, AlertCircle, ExternalLink, 
   Sparkles, Share2, Zap, Wallet, TrendingUp, Users, IndianRupee, 
@@ -278,7 +279,34 @@ const PublicPaymentView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden">
+    <>
+      <Helmet>
+        <title>Payment: {payment.title || 'Match Payment'} | CricSmart</title>
+        <meta name="description" content={`Track payments for ${payment.title || 'match payment'} - ₹${payment.totalAmount} total, ₹${payment.totalCollected} collected`} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={`Payment: ${payment.title || 'Match Payment'} | CricSmart`} />
+        <meta property="og:description" content={`Track payments for ${payment.title || 'match payment'} - ₹${payment.totalAmount} total, ₹${payment.totalCollected} collected`} />
+        <meta property="og:image" content={`${window.location.origin}/og-payment.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="CricSmart Payment Tracker" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={window.location.href} />
+        <meta property="twitter:title" content={`Payment: ${payment.title || 'Match Payment'} | CricSmart`} />
+        <meta property="twitter:description" content={`Track payments for ${payment.title || 'match payment'} - ₹${payment.totalAmount} total, ₹${payment.totalCollected} collected`} />
+        <meta property="twitter:image" content={`${window.location.origin}/og-payment.png`} />
+        
+        {/* WhatsApp specific */}
+        <meta property="og:site_name" content="CricSmart" />
+        <meta property="og:locale" content="en_IN" />
+      </Helmet>
+      
+      <div className="min-h-screen bg-slate-950 relative overflow-hidden">
       {/* Neural Network Background */}
       <canvas
         ref={canvasRef}
@@ -558,6 +586,7 @@ const PublicPaymentView: React.FC = () => {
         </div>
       </footer>
     </div>
+    </>
   );
 };
 

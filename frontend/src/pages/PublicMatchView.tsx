@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import { 
   Calendar, Clock, MapPin, Users, CheckCircle, XCircle, AlertCircle, Circle, 
   ExternalLink, Trophy, Sparkles, Brain, Share2, Zap
@@ -268,7 +269,34 @@ const PublicMatchView: React.FC = () => {
   const matchTypeConfig = getMatchTypeConfig(match.matchType);
 
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden">
+    <>
+      <Helmet>
+        <title>{match.teamName || 'Mavericks XI'} vs {match.opponent || 'TBD'} | CricSmart</title>
+        <meta name="description" content={`Match availability: ${match.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatDate(matchDate)} at ${match.ground}. ${squad.available.length} available, ${squad.tentative.length} tentative, ${squad.unavailable.length} unavailable.`} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={`${match.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} | CricSmart`} />
+        <meta property="og:description" content={`Match availability: ${match.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatDate(matchDate)} at ${match.ground}. ${squad.available.length} available, ${squad.tentative.length} tentative, ${squad.unavailable.length} unavailable.`} />
+        <meta property="og:image" content={`${window.location.origin}/og-availability.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="CricSmart Match Availability" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={window.location.href} />
+        <meta property="twitter:title" content={`${match.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} | CricSmart`} />
+        <meta property="twitter:description" content={`Match availability: ${match.teamName || 'Mavericks XI'} vs ${match.opponent || 'TBD'} on ${formatDate(matchDate)} at ${match.ground}. ${squad.available.length} available, ${squad.tentative.length} tentative, ${squad.unavailable.length} unavailable.`} />
+        <meta property="twitter:image" content={`${window.location.origin}/og-availability.png`} />
+        
+        {/* WhatsApp specific */}
+        <meta property="og:site_name" content="CricSmart" />
+        <meta property="og:locale" content="en_IN" />
+      </Helmet>
+      
+      <div className="min-h-screen bg-slate-950 relative overflow-hidden">
       {/* Neural Network Background */}
       <canvas
         ref={canvasRef}
@@ -581,6 +609,7 @@ const PublicMatchView: React.FC = () => {
         </div>
       </footer>
     </div>
+    </>
   );
 };
 

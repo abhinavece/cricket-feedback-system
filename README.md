@@ -88,7 +88,7 @@ See [k8s/README.md](./k8s/README.md) for details.
 ### Communication
 
 - **WhatsApp Integration**: Availability requests, reminders, two-way messaging
-- **Shareable Links**: Public match/payment views via tokens
+- **Shareable Links**: Public match/payment views via tokens with rich WhatsApp previews
 - **Real-time Updates**: Server-Sent Events for live notifications
 
 ### Multi-Tenant
@@ -97,6 +97,23 @@ See [k8s/README.md](./k8s/README.md) for details.
 - **Role-Based Access**: Owner, Admin, Editor, Viewer roles
 - **Team Discovery**: Search and join other teams
 - **Feature Flags**: Gradual rollout of new features
+
+### WhatsApp Link Previews
+
+All public shared pages include rich Open Graph meta tags for optimal WhatsApp preview:
+
+- **Payment Pages**: `/share/payment/:token` → Shows payment summary with `og-payment.png`
+- **Availability Pages**: `/share/match/:token` → Shows match details with `og-availability.png`  
+- **Feedback Pages**: `/feedback/:token` → Shows feedback form with `og-feedback.png`
+
+Each preview includes:
+- Dynamic titles and descriptions based on content
+- 1200x630 OG images with branding
+- Proper Twitter Card and Open Graph tags
+- Indian locale optimization (`en_IN`)
+
+> **Implementation**: Uses `react-helmet` for dynamic meta tag management
+> **Documentation**: See [.claude/skills/whatsapp-link-preview.md](./.claude/skills/whatsapp-link-preview.md)
 
 ## Project Structure
 
