@@ -33,6 +33,31 @@ survey-project/
 4. **Feedback System** - Collect player performance feedback
 5. **Admin Dashboard** - System administration and analytics
 
+## ⚠️ MANDATORY Skills (Enforce on EVERY Task)
+
+### Multi-Tenant Design (`.claude/skills/multi-tenant-design.md`)
+- **EVERY** feature must be designed for multi-tenant from day one
+- Teams, tournaments, auctions — all support multiple independent organizations
+- Each entity supports **multiple admins** (not single-admin)
+- All data models MUST include `organizationId` (required, indexed)
+- All queries MUST filter by `organizationId` — no cross-tenant data leaks
+- Use `resolveTenant` middleware + `requireOrgAdmin`/`requireOrgEditor` for access control
+- Before ANY feature discussion, ask: "Is this tenant-scoped? Can multiple admins manage it?"
+
+### SEO Optimization (`.claude/skills/seo-optimization.md`)
+- **EVERY** public-facing page must be optimized for SEO
+- Prefer **path-based URLs** over subdomains (consolidates domain authority)
+- All public pages MUST have: title, meta description, canonical URL, OG tags, structured data (JSON-LD)
+- Use SSR/SSG for public pages (not client-side only SPA)
+- Target keywords per feature (auctions, tournaments, team management)
+- Core Web Vitals: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- Before ANY UI discussion, ask: "Will this be crawlable? What are the target keywords?"
+
+### Additional Skills (`.claude/skills/`)
+- **API Versioning** (`api-versioning.md`) — Backward compatibility across 4+ frontend consumers
+- **Security & Data Isolation** (`security-data-isolation.md`) — Tenant isolation, RBAC, input validation
+- **Real-Time Events** (`real-time-events.md`) — SSE, WebSocket, webhook patterns
+
 ## 🎨 UI/UX Guidelines
 
 ### Mobile-First Design
