@@ -67,8 +67,9 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
     if (onLogin) {
       onLogin();
     } else {
-      // Default: redirect to app
-      window.location.href = siteConfig.appUrl;
+      // Default: redirect to centralized auth page
+      const appUrl = encodeURIComponent(siteConfig.appUrl);
+      router.push(`/auth/login?redirect=${appUrl}&service=team`);
     }
   };
 

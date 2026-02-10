@@ -36,6 +36,8 @@ const nextConfig = {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://cricsmart.in',
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://api.cricsmart.in',
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://app.cricsmart.in',
+    NEXT_PUBLIC_TOURNAMENT_URL: process.env.NEXT_PUBLIC_TOURNAMENT_URL || 'https://tournament.cricsmart.in',
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
   },
   
   // Headers for SEO and security

@@ -360,7 +360,7 @@ const AboutPage: React.FC = () => {
                     </div>
 
                     <Link
-                      href={siteConfig.appUrl}
+                      href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=team`}
                       className="group inline-flex items-center justify-center gap-2 w-full px-6 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/25"
                     >
                       <Users className="w-5 h-5" />

@@ -1,6 +1,7 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { isLocalhost } from '../utils/domain';
 import { ArrowLeft } from 'lucide-react';
 
 const GoogleAuth = lazy(() => import('../components/GoogleAuth'));
@@ -13,10 +14,19 @@ const LoginPage: React.FC = () => {
   // Get the intended destination from state, or default to feedback
   const from = (location.state as { from?: string })?.from || '/feedback';
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated, or redirect to centralized auth in production
   useEffect(() => {
     if (isAuthenticated && user) {
       navigate(from, { replace: true });
+      return;
+    }
+
+    // In production, redirect to centralized auth portal on cricsmart.in
+    if (!isLocalhost()) {
+      const siteUrl = 'https://cricsmart.in';
+      const currentOrigin = window.location.origin;
+      window.location.href = `${siteUrl}/auth/login?redirect=${encodeURIComponent(currentOrigin)}&service=team`;
+      return;
     }
   }, [isAuthenticated, user, navigate, from]);
 

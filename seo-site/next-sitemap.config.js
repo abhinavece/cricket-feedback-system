@@ -5,7 +5,7 @@ module.exports = {
   generateIndexSitemap: true,
   
   // Exclude admin and API routes
-  exclude: ['/admin/*', '/api/*', '/_next/*', '/server-sitemap.xml'],
+  exclude: ['/admin/*', '/api/*', '/_next/*', '/server-sitemap.xml', '/auth/callback'],
   
   // Robots.txt configuration
   robotsTxtOptions: {
@@ -25,7 +25,7 @@ module.exports = {
   transform: async (config, path) => {
     // High priority for main pages
     const highPriorityPaths = ['/', '/glossary', '/tools', '/grounds', '/faq'];
-    const mediumPriorityPaths = ['/about', '/privacy', '/blog', '/learn'];
+    const mediumPriorityPaths = ['/about', '/privacy', '/blog', '/learn', '/auth/login'];
     
     let priority = 0.7;
     let changefreq = 'weekly';

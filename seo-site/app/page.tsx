@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   HeroSection,
   StatsBar,
@@ -10,16 +10,17 @@ import {
   ContributionSection,
   TrustSection,
   FinalCTA,
-  LoginModal,
 } from '@/components/home';
 import SchemaScript from '@/components/SchemaScript';
 import { generateWebSiteSchema } from '@/lib/schema';
+import { siteConfig } from '@/lib/api';
 
 export default function HomePage() {
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const router = useRouter();
 
   const handleShowLogin = () => {
-    setShowLoginModal(true);
+    const appUrl = encodeURIComponent(siteConfig.appUrl);
+    router.push(`/auth/login?redirect=${appUrl}&service=team`);
   };
 
   const handleExploreGrounds = () => {
@@ -68,11 +69,6 @@ export default function HomePage() {
         {/* Final CTA - Get Started shows modal */}
         <FinalCTA onGetStarted={handleShowLogin} />
 
-        {/* Login Modal */}
-        <LoginModal
-          isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
-        />
       </div>
     </>
   );

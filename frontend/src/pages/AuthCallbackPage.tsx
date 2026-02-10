@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getDomainType } from '../utils/domain';
 
 /**
  * AuthCallbackPage - Handles cross-domain authentication
@@ -19,9 +20,11 @@ const AuthCallbackPage: React.FC = () => {
     const token = searchParams.get('token');
     const userDataEncoded = searchParams.get('user');
 
+    const dashboardPath = getDomainType() === 'localhost' ? '/app/feedback' : '/feedback';
+
     // If already authenticated, just redirect to dashboard
     if (isAuthenticated) {
-      navigate('/feedback', { replace: true });
+      navigate(dashboardPath, { replace: true });
       return;
     }
 
@@ -34,7 +37,7 @@ const AuthCallbackPage: React.FC = () => {
         login(token, userData);
         
         // Clear URL params and redirect to dashboard
-        navigate('/feedback', { replace: true });
+        navigate(dashboardPath, { replace: true });
       } catch (err) {
         console.error('Error processing auth callback:', err);
         setError('Invalid authentication data. Please try logging in again.');

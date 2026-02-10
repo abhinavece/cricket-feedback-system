@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Brain, Sparkles, Shield, Zap, MessageCircle, CreditCard } from 'lucide-react';
 import { siteConfig } from '@/lib/api';
 
@@ -11,11 +12,12 @@ interface LoginModalProps {
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  // Handle Google login - redirect to app domain
+  // Navigate to centralized auth page
   const handleGoogleLogin = () => {
-    // Redirect to the app domain where Google OAuth is configured
-    window.location.href = siteConfig.appUrl;
+    const appUrl = encodeURIComponent(siteConfig.appUrl);
+    router.push(`/auth/login?redirect=${appUrl}&service=team`);
   };
 
   // Handle escape key

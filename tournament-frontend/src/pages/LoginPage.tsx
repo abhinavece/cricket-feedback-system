@@ -129,10 +129,20 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/', { replace: true });
+      return;
     }
+
+    // Always redirect to centralized auth portal (for testing)
+    const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:3002';
+    const currentOrigin = window.location.origin;
+    window.location.href = `${siteUrl}/auth/login?redirect=${encodeURIComponent(currentOrigin)}&service=tournament`;
+    return;
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
+    // Only load Google Sign-In in dev mode (production uses centralized auth)
+    if (!isDev) return;
+
     // Load Google Sign-In script
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';

@@ -115,6 +115,12 @@ const Footer: React.FC<FooterProps> = ({ minimal = false }) => {
                 </Link>
               </li>
               <li>
+                <Link href="/auth/login" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                  <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                  Login
+                </Link>
+              </li>
+              <li>
                 <Link href="/privacy" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
                   <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
                   Privacy Policy

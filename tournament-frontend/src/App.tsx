@@ -6,6 +6,7 @@ import LoadingScreen from './components/LoadingScreen';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const TournamentPage = lazy(() => import('./pages/TournamentPage'));
 const PublicTournamentView = lazy(() => import('./pages/PublicTournamentView'));
@@ -36,6 +37,7 @@ const App: React.FC = () => {
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth-callback" element={<AuthCallbackPage />} />
         
         {/* Public tournament view - no auth required */}
         <Route path="/share/tournament/:token" element={<PublicTournamentView />} />
