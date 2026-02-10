@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle } from 'lucide-react';
+import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle, Trophy, Gavel, Mail, Zap } from 'lucide-react';
 import { siteConfig } from '@/lib/api';
 
 interface HeaderProps {
@@ -54,13 +54,12 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
   };
 
   const navLinks = [
-    { label: 'Features', action: () => scrollToSection('features'), icon: <Sparkles className="w-4 h-4" /> },
-    { label: 'How It Works', action: () => scrollToSection('how-it-works'), icon: <Brain className="w-4 h-4" /> },
-    { label: 'Grounds', href: '/grounds', icon: <Compass className="w-4 h-4" /> },
+    { label: 'Features', href: '/features', icon: <Zap className="w-4 h-4" /> },
+    { label: 'Tournament', href: '/tournament', icon: <Trophy className="w-4 h-4" /> },
+    { label: 'Auction', href: '/auction', icon: <Gavel className="w-4 h-4" /> },
     { label: 'Tools', href: '/tools', icon: <Calculator className="w-4 h-4" /> },
-    { label: 'Glossary', href: '/glossary', icon: <BookOpen className="w-4 h-4" /> },
-    { label: 'FAQ', href: '/faq', icon: <HelpCircle className="w-4 h-4" /> },
-    { label: 'About', href: '/about', icon: <Info className="w-4 h-4" /> },
+    { label: 'Pricing', href: '/pricing', icon: <Sparkles className="w-4 h-4" /> },
+    { label: 'Contact', href: '/contact', icon: <Mail className="w-4 h-4" /> },
   ];
 
   const handleLoginClick = () => {
@@ -107,25 +106,15 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
 
             {/* Desktop navigation */}
             <div className="hidden md:flex items-center gap-6">
-              {navLinks.map((link) =>
-                link.href ? (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    className="text-slate-300 hover:text-white transition-colors font-medium text-sm"
-                  >
-                    {link.label}
-                  </Link>
-                ) : (
-                  <button
-                    key={link.label}
-                    onClick={link.action}
-                    className="text-slate-300 hover:text-white transition-colors font-medium text-sm"
-                  >
-                    {link.label}
-                  </button>
-                )
-              )}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="text-slate-300 hover:text-white transition-colors font-medium text-sm"
+                >
+                  {link.label}
+                </Link>
+              ))}
 
               <button
                 onClick={handleLoginClick}
@@ -185,31 +174,17 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
 
           {/* Drawer content */}
           <div className="p-4 space-y-2">
-            {navLinks.map((link) =>
-              link.href ? (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                >
-                  <span className="text-emerald-400">{link.icon}</span>
-                  {link.label}
-                </Link>
-              ) : (
-                <button
-                  key={link.label}
-                  onClick={() => {
-                    link.action?.();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 w-full p-3 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors text-left"
-                >
-                  <span className="text-emerald-400">{link.icon}</span>
-                  {link.label}
-                </button>
-              )
-            )}
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-3 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+              >
+                <span className="text-emerald-400">{link.icon}</span>
+                {link.label}
+              </Link>
+            ))}
 
             {/* Login button */}
             <div className="pt-4 mt-4 border-t border-white/10">

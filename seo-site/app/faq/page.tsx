@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { HelpCircle, ArrowRight } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
-import { generateFAQSchema } from '@/lib/schema';
+import { generateFAQSchema, generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
 import { faqCategories, faqs, getFAQsByCategory } from '@/lib/faq-data';
 
@@ -33,9 +33,16 @@ export default function FAQPage() {
   // Generate FAQ schema for all questions
   const allFAQSchema = generateFAQSchema(faqs);
 
+  const webPageSchema = generateWebPageSchema({
+    name: 'Cricket FAQ - Common Questions Answered',
+    description: 'Get answers to common cricket questions. Learn about cricket rules, scoring, formats, equipment, and more.',
+    url: `${siteConfig.url}/faq`,
+    breadcrumb: [{ name: 'FAQ', url: `${siteConfig.url}/faq` }],
+  });
+
   return (
     <>
-      <SchemaScript schema={allFAQSchema} />
+      <SchemaScript schema={[allFAQSchema, webPageSchema]} />
       
       <div className="pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

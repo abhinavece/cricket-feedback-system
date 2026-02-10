@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
-import { generateItemListSchema } from '@/lib/schema';
+import { generateItemListSchema, generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
 
 export const metadata: Metadata = {
@@ -110,12 +110,19 @@ export default function ToolsPage() {
     'Free Cricket Tools'
   );
 
+  const webPageSchema = generateWebPageSchema({
+    name: 'Free Cricket Tools - Calculators, Team Picker & More',
+    description: 'Free online cricket tools: Run rate calculator, DLS calculator, team picker, virtual toss, and more. No signup required.',
+    url: `${siteConfig.url}/tools`,
+    breadcrumb: [{ name: 'Tools', url: `${siteConfig.url}/tools` }],
+  });
+
   const popularTools = tools.filter((t) => t.popular);
   const otherTools = tools.filter((t) => !t.popular);
 
   return (
     <>
-      <SchemaScript schema={itemListSchema} />
+      <SchemaScript schema={[itemListSchema, webPageSchema]} />
       
       <div className="pt-20">
         {/* Header */}

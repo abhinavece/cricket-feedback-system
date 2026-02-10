@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MapPin, Star, Search, ArrowRight } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
-import { generateItemListSchema } from '@/lib/schema';
+import { generateItemListSchema, generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
 
 export const metadata: Metadata = {
@@ -120,9 +120,16 @@ export default function GroundsPage() {
     'Cricket Grounds Directory'
   );
 
+  const webPageSchema = generateWebPageSchema({
+    name: 'Cricket Grounds Directory - Find Grounds Near You',
+    description: 'Discover cricket grounds across India. Read reviews, check amenities, and find the perfect ground for your next match.',
+    url: `${siteConfig.url}/grounds`,
+    breadcrumb: [{ name: 'Grounds', url: `${siteConfig.url}/grounds` }],
+  });
+
   return (
     <>
-      <SchemaScript schema={itemListSchema} />
+      <SchemaScript schema={[itemListSchema, webPageSchema]} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Breadcrumbs items={[{ name: 'Grounds', href: '/grounds' }]} />

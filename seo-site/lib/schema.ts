@@ -13,25 +13,34 @@ export function generateOrganizationSchema() {
     '@type': ['Organization', 'SportsOrganization'],
     '@id': `${siteConfig.url}/#organization`,
     name: siteConfig.name,
+    alternateName: 'CricSmart - AI Cricket Platform',
     url: siteConfig.url,
     logo: {
       '@type': 'ImageObject',
-      url: `${siteConfig.url}/logo.png`,
+      url: `${siteConfig.url}/cricsmart-logo-512.png`,
       width: 512,
       height: 512,
     },
+    image: `${siteConfig.url}/cricsmart-logo-512.png`,
     sameAs: [
-      'https://twitter.com/cricsmart',
-      'https://instagram.com/cricsmart',
-      'https://facebook.com/cricsmart',
+      'https://www.instagram.com/_mavericks_xi/',
     ],
     sport: 'Cricket',
     description: siteConfig.description,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Noida',
+      addressRegion: 'Uttar Pradesh',
+      addressCountry: 'IN',
+    },
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      url: `${siteConfig.url}/contact`,
+      email: 'support@cricsmart.in',
+      url: `${siteConfig.url}/about`,
     },
+    foundingDate: '2024',
+    knowsAbout: ['Cricket', 'Cricket Team Management', 'Sports Technology'],
   };
 }
 
@@ -42,20 +51,75 @@ export function generateWebSiteSchema() {
     '@type': 'WebSite',
     '@id': `${siteConfig.url}/#website`,
     name: siteConfig.name,
+    alternateName: 'CricSmart',
     url: siteConfig.url,
+    description: siteConfig.description,
     publisher: { '@id': `${siteConfig.url}/#organization` },
-    potentialAction: [
-      {
-        '@type': 'SearchAction',
-        target: {
-          '@type': 'EntryPoint',
-          urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
-        },
-        'query-input': 'required name=search_term_string',
-      },
-    ],
     inLanguage: siteConfig.locale,
   };
+}
+
+// SiteNavigationElement Schema - Helps Google generate sitelinks
+export function generateSiteNavigationSchema() {
+  const navItems = [
+    { name: 'Team Management', url: `${siteConfig.url}/features`, description: 'AI-driven cricket team management. No hassle for team availability and payment tracking.' },
+    { name: 'Tournament', url: `${siteConfig.url}/tournament`, description: 'Manage your cricket tournament like a pro. No hassle for payment and balance tracking.' },
+    { name: 'Auction', url: `${siteConfig.url}/auction`, description: 'AI-powered cricket player auction management matching international standards.' },
+    { name: 'Pricing', url: `${siteConfig.url}/pricing`, description: 'Free for most cricket teams. Plans starting from ₹0 for teams up to 50 players.' },
+    { name: 'Features', url: `${siteConfig.url}/features`, description: 'AI payment processing, WhatsApp notifications, automatic team availability tracking.' },
+    { name: 'Free Cricket Tools', url: `${siteConfig.url}/tools`, description: 'Free online cricket calculators: run rate, DLS, team picker, virtual toss, and more.' },
+    { name: 'Contact Us', url: `${siteConfig.url}/contact`, description: 'Get in touch with the CricSmart team for support, feedback, or partnerships.' },
+  ];
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SiteNavigationElement',
+    '@id': `${siteConfig.url}/#navigation`,
+    name: 'Main Navigation',
+    hasPart: navItems.map((item) => ({
+      '@type': 'WebPage',
+      name: item.name,
+      url: item.url,
+      description: item.description,
+    })),
+  };
+}
+
+// WebPage Schema - For individual pages to strengthen sitelink signals
+export function generateWebPageSchema(page: {
+  name: string;
+  description: string;
+  url: string;
+  breadcrumb?: { name: string; url: string }[];
+}) {
+  const schema: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    '@id': page.url,
+    name: page.name,
+    description: page.description,
+    url: page.url,
+    isPartOf: { '@id': `${siteConfig.url}/#website` },
+    about: { '@id': `${siteConfig.url}/#organization` },
+    inLanguage: siteConfig.locale,
+  };
+
+  if (page.breadcrumb && page.breadcrumb.length > 0) {
+    schema.breadcrumb = {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: siteConfig.url },
+        ...page.breadcrumb.map((item, index) => ({
+          '@type': 'ListItem',
+          position: index + 2,
+          name: item.name,
+          item: item.url,
+        })),
+      ],
+    };
+  }
+
+  return schema;
 }
 
 // BreadcrumbList Schema

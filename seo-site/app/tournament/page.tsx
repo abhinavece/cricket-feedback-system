@@ -1,0 +1,224 @@
+import { Metadata } from 'next';
+import Link from 'next/link';
+import { 
+  Trophy, 
+  Users, 
+  BarChart3, 
+  Calendar, 
+  CreditCard, 
+  Eye, 
+  ArrowRight, 
+  CheckCircle2, 
+  Rocket,
+  Shield,
+  Zap
+} from 'lucide-react';
+import Breadcrumbs from '@/components/Breadcrumbs';
+import SchemaScript from '@/components/SchemaScript';
+import { generateWebPageSchema } from '@/lib/schema';
+import { siteConfig } from '@/lib/api';
+
+export const metadata: Metadata = {
+  title: 'Tournament Management - Manage Your Cricket Tournament Like a Pro',
+  description: 'Run professional cricket tournaments with CricSmart. Team registration, live scoring, leaderboards, brackets, payment tracking, and spectator view. Just ₹999 per tournament.',
+  keywords: [
+    'cricket tournament management',
+    'cricket tournament app',
+    'cricket tournament software',
+    'manage cricket tournament',
+    'cricket leaderboard',
+    'cricket scoring app',
+    'tournament bracket cricket',
+  ],
+  alternates: {
+    canonical: `${siteConfig.url}/tournament`,
+  },
+  openGraph: {
+    title: 'Tournament Management - Run Pro Cricket Tournaments | CricSmart',
+    description: 'Manage cricket tournaments like a pro. Team registration, live scoring, leaderboards, payment tracking. ₹999 per tournament.',
+    url: `${siteConfig.url}/tournament`,
+    type: 'website',
+    images: [{ url: siteConfig.ogImage, width: 1200, height: 630, alt: 'CricSmart Tournament Management' }],
+  },
+};
+
+const features = [
+  {
+    icon: Users,
+    title: 'Team Registration Portal',
+    description: 'Teams register online with player lists. No more spreadsheets or WhatsApp groups for coordination.',
+  },
+  {
+    icon: Calendar,
+    title: 'Match Scheduling',
+    description: 'Auto-generate round-robin or knockout schedules. Assign venues and time slots effortlessly.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Live Scoring & Leaderboards',
+    description: 'Real-time scoring updates. Points tables, net run rates, and standings updated automatically.',
+  },
+  {
+    icon: Trophy,
+    title: 'Tournament Brackets',
+    description: 'Visual knockout brackets that update as matches are completed. Share with all teams.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Payment & Balance Tracking',
+    description: 'Collect registration fees, track payments per team, and manage tournament finances.',
+  },
+  {
+    icon: Eye,
+    title: 'Spectator View',
+    description: 'Public-facing tournament page where fans can follow scores, standings, and schedules.',
+  },
+  {
+    icon: Shield,
+    title: 'Multi-Admin Support',
+    description: 'Add multiple organizers with different access levels. Delegate without losing control.',
+  },
+  {
+    icon: Zap,
+    title: 'Export & Reports',
+    description: 'Export match results, scorecards, and financial reports for record keeping.',
+  },
+];
+
+const steps = [
+  { step: '1', title: 'Create Tournament', description: 'Set up your tournament with format, rules, and entry fees.' },
+  { step: '2', title: 'Register Teams', description: 'Share the registration link. Teams sign up with player lists.' },
+  { step: '3', title: 'Generate Schedule', description: 'Auto-generate fixtures based on your chosen format.' },
+  { step: '4', title: 'Go Live', description: 'Start matches, update scores, and let the leaderboard do the rest.' },
+];
+
+export default function TournamentPage() {
+  const webPageSchema = generateWebPageSchema({
+    name: 'Tournament Management - Manage Your Cricket Tournament Like a Pro',
+    description: 'Run professional cricket tournaments with CricSmart. Team registration, live scoring, leaderboards, brackets, and payment tracking.',
+    url: `${siteConfig.url}/tournament`,
+    breadcrumb: [{ name: 'Tournament', url: `${siteConfig.url}/tournament` }],
+  });
+
+  return (
+    <>
+      <SchemaScript schema={webPageSchema} />
+
+      <div className="pt-20">
+        {/* Header */}
+        <section className="relative py-16">
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900" />
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] bg-violet-500/10 rounded-full blur-[100px]" />
+            <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[100px]" />
+          </div>
+
+          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+            <Breadcrumbs items={[{ name: 'Tournament', href: '/tournament' }]} />
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-full mb-6">
+                <Trophy className="w-4 h-4 text-violet-400" />
+                <span className="text-violet-400 text-sm font-medium">Tournament Management</span>
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
+                Manage Your Tournament{' '}
+                <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+                  Like a Pro
+                </span>
+              </h1>
+              <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-6">
+                No hassle for payment tracking, balance checks, or manual coordination. 
+                Everything automated, everything organized.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link
+                  href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=tournament`}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-500/25"
+                >
+                  <Rocket className="w-5 h-5" />
+                  Start a Tournament
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <div className="text-slate-400 text-sm">
+                  Just <span className="text-white font-bold text-lg">₹999</span> per tournament
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="py-16 relative">
+          <div className="absolute inset-0 bg-slate-900" />
+          <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6">
+            <h2 className="text-3xl font-black text-white mb-10 text-center">How It Works</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {steps.map((s) => (
+                <div key={s.step} className="text-center">
+                  <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-black text-xl">
+                    {s.step}
+                  </div>
+                  <h3 className="font-bold text-white mb-2">{s.title}</h3>
+                  <p className="text-sm text-slate-400">{s.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features Grid */}
+        <section className="py-16 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-slate-950" />
+          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+            <h2 className="text-3xl font-black text-white mb-10 text-center">
+              Everything You Need to Run a Tournament
+            </h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {features.map((feature) => (
+                <div
+                  key={feature.title}
+                  className="bg-slate-800/30 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-violet-500/30 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-violet-500/10 rounded-xl flex items-center justify-center mb-4 text-violet-400 group-hover:scale-110 transition-transform">
+                    <feature.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-white mb-2 group-hover:text-violet-400 transition-colors">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-slate-400">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing CTA */}
+        <section className="py-16 relative">
+          <div className="absolute inset-0 bg-slate-950" />
+          <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
+            <div className="bg-gradient-to-br from-violet-500/10 via-slate-800/50 to-purple-500/10 border border-violet-500/20 rounded-3xl p-8 lg:p-12">
+              <Trophy className="w-12 h-12 text-violet-400 mx-auto mb-4" />
+              <h2 className="text-3xl font-black text-white mb-2">₹999 per Tournament</h2>
+              <p className="text-slate-300 mb-6">One-time fee. No monthly charges. No hidden costs.</p>
+              <div className="space-y-2 mb-8 max-w-xs mx-auto">
+                {['Team registration portal', 'Live scoring & leaderboards', 'Payment & balance tracking', 'Multi-admin support', 'Spectator view'].map((item) => (
+                  <div key={item} className="flex items-center gap-2 text-sm text-slate-300">
+                    <CheckCircle2 className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <Link
+                href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=tournament`}
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-500/25"
+              >
+                Start Your Tournament
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}

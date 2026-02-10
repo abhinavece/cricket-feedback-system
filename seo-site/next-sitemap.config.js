@@ -24,7 +24,7 @@ module.exports = {
   // Transform function for custom priority and changefreq
   transform: async (config, path) => {
     // High priority for main pages
-    const highPriorityPaths = ['/', '/glossary', '/tools', '/grounds', '/faq'];
+    const highPriorityPaths = ['/', '/glossary', '/tools', '/grounds', '/faq', '/pricing', '/features', '/tournament', '/auction', '/contact'];
     const mediumPriorityPaths = ['/about', '/privacy', '/blog', '/learn', '/auth/login'];
     
     let priority = 0.7;

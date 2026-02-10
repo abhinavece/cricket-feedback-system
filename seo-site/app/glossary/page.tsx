@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { BookOpen, ArrowRight, Brain, Users } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
-import { generateItemListSchema } from '@/lib/schema';
+import { generateItemListSchema, generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
 import { glossaryTerms, getAllCategories, getCategoryDisplayName, getTermsByCategory } from '@/lib/glossary-data';
 
@@ -43,6 +43,13 @@ export default function GlossaryPage() {
     'Cricket Glossary - Cricket Terms A-Z'
   );
 
+  const webPageSchema = generateWebPageSchema({
+    name: 'Cricket Glossary - 100+ Cricket Terms Explained',
+    description: 'Comprehensive cricket glossary with 100+ terms explained. Learn what yorker, googly, LBW, powerplay, and other cricket terms mean.',
+    url: `${siteConfig.url}/glossary`,
+    breadcrumb: [{ name: 'Glossary', url: `${siteConfig.url}/glossary` }],
+  });
+
   // Group terms alphabetically
   const alphabeticalTerms = glossaryTerms.reduce((acc, term) => {
     const firstLetter = term.term[0].toUpperCase();
@@ -57,7 +64,7 @@ export default function GlossaryPage() {
 
   return (
     <>
-      <SchemaScript schema={itemListSchema} />
+      <SchemaScript schema={[itemListSchema, webPageSchema]} />
       
       <div className="pt-20">
         {/* Header */}

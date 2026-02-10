@@ -1,5 +1,7 @@
 import { Metadata } from 'next';
 import { siteConfig } from '@/lib/api';
+import SchemaScript from '@/components/SchemaScript';
+import { generateWebPageSchema } from '@/lib/schema';
 
 export const metadata: Metadata = {
   title: 'About CricSmart - AI-Powered Cricket Team Management',
@@ -42,5 +44,17 @@ export default function AboutLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  const webPageSchema = generateWebPageSchema({
+    name: 'About CricSmart - AI-Powered Cricket Team Management',
+    description: 'CricSmart is an AI-powered cricket team management platform. Built by cricket enthusiasts for cricket teams.',
+    url: `${siteConfig.url}/about`,
+    breadcrumb: [{ name: 'About', url: `${siteConfig.url}/about` }],
+  });
+
+  return (
+    <>
+      <SchemaScript schema={webPageSchema} />
+      {children}
+    </>
+  );
 }

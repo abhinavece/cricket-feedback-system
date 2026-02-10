@@ -4,7 +4,7 @@ import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SchemaScript from '@/components/SchemaScript';
-import { generateOrganizationSchema } from '@/lib/schema';
+import { generateOrganizationSchema, generateSiteNavigationSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -92,6 +92,8 @@ export default function RootLayout({
         
         {/* Organization Schema - Global */}
         <SchemaScript schema={generateOrganizationSchema()} />
+        {/* Site Navigation Schema - Helps Google generate sitelinks */}
+        <SchemaScript schema={generateSiteNavigationSchema()} />
       </head>
       <body className={`${inter.className} antialiased bg-slate-950 text-white min-h-screen flex flex-col`}>
         <Header />

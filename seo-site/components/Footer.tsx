@@ -80,20 +80,26 @@ const Footer: React.FC<FooterProps> = ({ minimal = false }) => {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Products */}
           <div>
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Quick Links</h4>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Products</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                <Link href="/features" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
                   <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
-                  Home
+                  Team Management
                 </Link>
               </li>
               <li>
-                <Link href="/grounds" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                <Link href="/tournament" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
                   <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
-                  Cricket Grounds
+                  Tournament
+                </Link>
+              </li>
+              <li>
+                <Link href="/auction" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                  <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                  Auction
                 </Link>
               </li>
               <li>
@@ -103,15 +109,46 @@ const Footer: React.FC<FooterProps> = ({ minimal = false }) => {
                 </Link>
               </li>
               <li>
+                <Link href="/grounds" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                  <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                  Cricket Grounds
+                </Link>
+              </li>
+              <li>
+                <Link href="/pricing" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                  <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                  Pricing
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Resources</h4>
+            <ul className="space-y-2">
+              <li>
                 <Link href="/glossary" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
                   <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
-                  Glossary
+                  Cricket Glossary
+                </Link>
+              </li>
+              <li>
+                <Link href="/faq" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                  <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                  FAQ
                 </Link>
               </li>
               <li>
                 <Link href="/about" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
                   <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
                   About Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-2">
+                  <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                  Contact Us
                 </Link>
               </li>
               <li>
@@ -125,33 +162,6 @@ const Footer: React.FC<FooterProps> = ({ minimal = false }) => {
                   <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
                   Privacy Policy
                 </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Features */}
-          <div>
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Features</h4>
-            <ul className="space-y-2">
-              <li className="text-sm text-slate-400 flex items-center gap-2">
-                <Brain className="w-3.5 h-3.5 text-violet-400" />
-                AI Payment Verification
-              </li>
-              <li className="text-sm text-slate-400 flex items-center gap-2">
-                <CalendarCheck className="w-3.5 h-3.5 text-emerald-500" />
-                Auto Availability Check
-              </li>
-              <li className="text-sm text-slate-400 flex items-center gap-2">
-                <UsersRound className="w-3.5 h-3.5 text-emerald-500" />
-                Smart Squad Builder
-              </li>
-              <li className="text-sm text-slate-400 flex items-center gap-2">
-                <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-                Payment Management
-              </li>
-              <li className="text-sm text-slate-400 flex items-center gap-2">
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
-                WhatsApp Integration
               </li>
             </ul>
           </div>

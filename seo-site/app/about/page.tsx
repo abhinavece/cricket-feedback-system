@@ -2,7 +2,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Metadata } from 'next';
 import { 
   ArrowLeft,
   Brain,
