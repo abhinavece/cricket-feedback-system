@@ -62,6 +62,7 @@ const plans = [
     gradient: 'from-slate-600 to-slate-700',
     shadowColor: 'shadow-slate-500/10',
     popular: false,
+    service: 'team' as const,
     features: [
       { text: 'up to 50 players', included: true },
       { text: 'Unlimited matches', included: true },
@@ -85,6 +86,7 @@ const plans = [
     gradient: 'from-emerald-500 to-cyan-500',
     shadowColor: 'shadow-emerald-500/25',
     popular: true,
+    service: 'team' as const,
     features: [
       { text: 'Unlimited players', included: true },
       { text: 'Unlimited matches', included: true },
@@ -108,6 +110,7 @@ const plans = [
     gradient: 'from-violet-500 to-purple-500',
     shadowColor: 'shadow-violet-500/25',
     popular: false,
+    service: 'tournament' as const,
     features: [
       { text: 'Everything in Pro', included: true },
       { text: 'Tournament management', included: true },
@@ -130,6 +133,7 @@ const plans = [
     gradient: 'from-amber-500 to-orange-500',
     shadowColor: 'shadow-amber-500/25',
     popular: false,
+    service: 'auction' as const,
     badge: 'Free for < 5 teams',
     features: [
       { text: 'Free for auctions under 5 teams', included: true },
@@ -303,7 +307,11 @@ export default function PricingPage() {
                   </div>
 
                   <Link
-                    href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=team`}
+                    href={`/auth/login?redirect=${encodeURIComponent(
+                      plan.service === 'auction' ? siteConfig.auctionUrl :
+                      plan.service === 'tournament' ? siteConfig.tournamentUrl :
+                      siteConfig.appUrl
+                    )}&service=${plan.service}`}
                     className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
                       plan.popular
                         ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-lg shadow-emerald-500/25'

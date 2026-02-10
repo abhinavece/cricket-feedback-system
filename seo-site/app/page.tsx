@@ -10,6 +10,7 @@ import {
   ContributionSection,
   TrustSection,
   FinalCTA,
+  ProductsSection,
 } from '@/components/home';
 import SchemaScript from '@/components/SchemaScript';
 import { generateWebSiteSchema } from '@/lib/schema';
@@ -40,6 +41,9 @@ export default function HomePage() {
           onGetStarted={handleShowLogin}
           onExploreGrounds={handleExploreGrounds}
         />
+
+        {/* Products - Manage Team, Tournament, Auction */}
+        <ProductsSection />
 
         {/* Social Proof Stats */}
         <StatsBar />

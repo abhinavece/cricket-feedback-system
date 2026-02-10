@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle, Trophy, Gavel, Mail, Zap } from 'lucide-react';
+import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle, Trophy, Gavel, Mail, Zap, Users } from 'lucide-react';
 import { siteConfig } from '@/lib/api';
 
 interface HeaderProps {
@@ -59,6 +59,7 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
     { label: 'Auction', href: '/auction', icon: <Gavel className="w-4 h-4" /> },
     { label: 'Tools', href: '/tools', icon: <Calculator className="w-4 h-4" /> },
     { label: 'Pricing', href: '/pricing', icon: <Sparkles className="w-4 h-4" /> },
+    { label: 'About', href: '/about', icon: <Users className="w-4 h-4" /> },
     { label: 'Contact', href: '/contact', icon: <Mail className="w-4 h-4" /> },
   ];
 

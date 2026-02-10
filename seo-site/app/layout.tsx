@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ContactWidget from '@/components/ContactWidget';
 import SchemaScript from '@/components/SchemaScript';
 import { generateOrganizationSchema, generateSiteNavigationSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
@@ -87,8 +88,10 @@ export default function RootLayout({
         
         {/* Favicons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" href="/cricsmart-logo.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/cricsmart-logo-192.png" />
+        <link rel="icon" href="/cricsmart-logo-192.png" sizes="192x192" />
+        <link rel="icon" href="/cricsmart-logo-512.png" sizes="512x512" />
         
         {/* Organization Schema - Global */}
         <SchemaScript schema={generateOrganizationSchema()} />
@@ -101,6 +104,7 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
+        <ContactWidget />
       </body>
     </html>
   );

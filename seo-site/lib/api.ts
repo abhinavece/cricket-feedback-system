@@ -172,8 +172,10 @@ export const siteConfig = {
   description: 'AI-powered cricket team management platform. Smart match scheduling, player availability tracking, payment management, and cricket ground discovery.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://cricsmart.in',
   get appUrl() { return getAppUrl(); },
+  tournamentUrl: process.env.NEXT_PUBLIC_TOURNAMENT_URL || 'https://tournament.cricsmart.in',
+  auctionUrl: process.env.NEXT_PUBLIC_AUCTION_URL || 'https://auction.cricsmart.in',
   apiUrl: API_BASE_URL,
-  ogImage: 'https://cricsmart.in/og-image.jpg',
+  ogImage: 'https://cricsmart.in/cricsmart-og-image.jpg',
   twitterHandle: '@cricsmart',
   locale: 'en_IN',
   keywords: [

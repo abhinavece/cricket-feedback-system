@@ -86,10 +86,11 @@ const features = [
 ];
 
 const steps = [
-  { step: '1', title: 'Create Tournament', description: 'Set up your tournament with format, rules, and entry fees.' },
-  { step: '2', title: 'Register Teams', description: 'Share the registration link. Teams sign up with player lists.' },
-  { step: '3', title: 'Generate Schedule', description: 'Auto-generate fixtures based on your chosen format.' },
-  { step: '4', title: 'Go Live', description: 'Start matches, update scores, and let the leaderboard do the rest.' },
+  { step: '1', title: 'Create Tournament', description: 'Set up your tournament with format, rules, entry fees, and schedule.' },
+  { step: '2', title: 'Register Teams', description: 'Share the registration link. Teams sign up with player lists online.' },
+  { step: '3', title: 'Track Payments', description: 'Collect entry fees, track who paid, and manage tournament finances.' },
+  { step: '4', title: 'Go Live', description: 'Start matches, update live scores, and auto-generate leaderboards.' },
+  { step: '5', title: 'Analyse Profits', description: 'View financial reports, profit/loss analysis, and export detailed summaries.' },
 ];
 
 export default function TournamentPage() {
@@ -132,7 +133,7 @@ export default function TournamentPage() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
-                  href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=tournament`}
+                  href={`/auth/login?redirect=${encodeURIComponent(siteConfig.tournamentUrl)}&service=tournament`}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-500/25"
                 >
                   <Rocket className="w-5 h-5" />
@@ -152,14 +153,17 @@ export default function TournamentPage() {
           <div className="absolute inset-0 bg-slate-900" />
           <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6">
             <h2 className="text-3xl font-black text-white mb-10 text-center">How It Works</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {steps.map((s) => (
-                <div key={s.step} className="text-center">
-                  <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-black text-xl">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+              {steps.map((s, i) => (
+                <div key={s.step} className="text-center relative">
+                  {i < steps.length - 1 && (
+                    <div className="hidden lg:block absolute top-7 left-[calc(50%+28px)] w-[calc(100%-56px)] h-0.5 bg-gradient-to-r from-violet-500/40 to-purple-500/20" />
+                  )}
+                  <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-black text-xl relative z-10">
                     {s.step}
                   </div>
-                  <h3 className="font-bold text-white mb-2">{s.title}</h3>
-                  <p className="text-sm text-slate-400">{s.description}</p>
+                  <h3 className="font-bold text-white mb-2 text-sm lg:text-base">{s.title}</h3>
+                  <p className="text-xs lg:text-sm text-slate-400">{s.description}</p>
                 </div>
               ))}
             </div>
@@ -209,7 +213,7 @@ export default function TournamentPage() {
                 ))}
               </div>
               <Link
-                href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=tournament`}
+                href={`/auth/login?redirect=${encodeURIComponent(siteConfig.tournamentUrl)}&service=tournament`}
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-500/25"
               >
                 Start Your Tournament

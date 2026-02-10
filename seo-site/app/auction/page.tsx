@@ -150,7 +150,7 @@ export default function AuctionPage() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
-                  href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=auction`}
+                  href={`/auth/login?redirect=${encodeURIComponent(siteConfig.auctionUrl)}&service=auction`}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25"
                 >
                   <Gavel className="w-5 h-5" />
@@ -262,7 +262,7 @@ export default function AuctionPage() {
                 ))}
               </div>
               <Link
-                href={`/auth/login?redirect=${encodeURIComponent(siteConfig.appUrl)}&service=auction`}
+                href={`/auth/login?redirect=${encodeURIComponent(siteConfig.auctionUrl)}&service=auction`}
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25"
               >
                 Start Free Auction

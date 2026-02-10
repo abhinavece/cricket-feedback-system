@@ -20,42 +20,52 @@ import {
 const SERVICE_CONFIG: Record<string, {
   title: string;
   subtitle: string;
+  description: string;
   icon: React.ElementType;
   gradient: string;
   iconGradient: string;
   features: string[];
+  destination: string;
 }> = {
   team: {
     title: 'Team Manager',
     subtitle: 'AI-powered cricket team management',
+    description: 'Manage your cricket team effortlessly. AI verifies payments from screenshots, WhatsApp sends availability requests, and smart tools build your best playing XI.',
     icon: Users,
     gradient: 'from-emerald-500 to-cyan-500',
     iconGradient: 'from-emerald-500 to-cyan-500',
-    features: ['Smart Squad Building', 'WhatsApp Automation', 'AI Payments', 'Match Analytics'],
+    features: ['AI Payment Verification', 'WhatsApp Automation', 'Smart Squad Builder', 'Match Analytics'],
+    destination: 'app.cricsmart.in',
   },
   tournament: {
     title: 'Tournament Hub',
-    subtitle: 'AI-powered tournament management & analytics',
+    subtitle: 'Professional tournament management',
+    description: 'Run cricket tournaments like a pro. Team registration, live scoring, leaderboards, payment tracking, and profit analysis — all in one place.',
     icon: Trophy,
-    gradient: 'from-amber-500 to-orange-500',
-    iconGradient: 'from-amber-500 to-orange-500',
-    features: ['Player Auctions', 'Live Scoring', 'Franchise System', 'Performance Stats'],
+    gradient: 'from-violet-500 to-purple-500',
+    iconGradient: 'from-violet-500 to-purple-500',
+    features: ['Team Registration', 'Live Scoring', 'Payment Tracking', 'Profit Analysis'],
+    destination: 'tournament.cricsmart.in',
   },
   auction: {
     title: 'Cricket Auction',
-    subtitle: 'Smart player auctions & bidding',
+    subtitle: 'IPL-style player auctions',
+    description: 'AI-powered auction management matching international standards. Live bidding room, smart player valuation, budget management, and real-time analytics.',
     icon: Gavel,
-    gradient: 'from-purple-500 to-pink-500',
-    iconGradient: 'from-purple-500 to-pink-500',
-    features: ['Live Bidding', 'Player Analytics', 'Budget Tracking', 'Team Building'],
+    gradient: 'from-amber-500 to-orange-500',
+    iconGradient: 'from-amber-500 to-orange-500',
+    features: ['AI Player Valuation', 'Live Bidding Room', 'Budget Management', 'Spectator Mode'],
+    destination: 'auction.cricsmart.in',
   },
   default: {
     title: 'CricSmart',
     subtitle: 'AI-powered cricket platform',
+    description: 'The intelligent platform for cricket teams, tournaments, and auctions. Everything you need to manage cricket, powered by AI.',
     icon: Brain,
     gradient: 'from-emerald-500 to-cyan-500',
     iconGradient: 'from-emerald-500 to-cyan-500',
     features: ['AI Payments', 'Smart Availability', 'Auto Reminders', 'Match Analytics'],
+    destination: 'app.cricsmart.in',
   },
 };
 
@@ -309,10 +319,12 @@ function LoginPageContent() {
         {/* Back to home */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-colors mb-8 text-sm"
+          className="group inline-flex items-center gap-3 px-4 py-3 bg-slate-800/50 backdrop-blur-sm border border-white/5 rounded-xl hover:bg-slate-800/70 hover:border-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-300 mb-8"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
+          <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
+          </div>
+          <span className="text-slate-300 font-medium group-hover:text-white transition-colors">Back to Home</span>
         </Link>
 
         {/* Login card */}
@@ -357,12 +369,17 @@ function LoginPageContent() {
               <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
                 Sign in to{' '}
                 <span className={`bg-gradient-to-r ${config.gradient} bg-clip-text text-transparent`}>
-                  CricSmart
+                  {config.title}
                 </span>
               </h1>
-              <p className="text-slate-400 text-sm">
-                {config.subtitle}
+              <p className="text-slate-400 text-sm mb-3">
+                {config.description}
               </p>
+              {serviceParam !== 'default' && (
+                <p className="text-xs text-slate-500">
+                  You&apos;ll be redirected to <span className={`font-medium bg-gradient-to-r ${config.gradient} bg-clip-text text-transparent`}>{config.destination}</span>
+                </p>
+              )}
             </div>
 
             {/* Feature pills */}
@@ -426,7 +443,7 @@ function LoginPageContent() {
             {[
               { label: 'Team Manager', service: 'team', href: `?redirect=${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL || 'https://app.cricsmart.in')}&service=team` },
               { label: 'Tournaments', service: 'tournament', href: `?redirect=${encodeURIComponent(process.env.NEXT_PUBLIC_TOURNAMENT_URL || 'https://tournament.cricsmart.in')}&service=tournament` },
-              { label: 'Auctions', service: 'auction', href: `?redirect=${encodeURIComponent((process.env.NEXT_PUBLIC_SITE_URL || 'https://cricsmart.in') + '/auctions')}&service=auction` },
+              { label: 'Auctions', service: 'auction', href: `?redirect=${encodeURIComponent(process.env.NEXT_PUBLIC_AUCTION_URL || 'https://auction.cricsmart.in')}&service=auction` },
             ].map((item) => (
               <Link
                 key={item.service}

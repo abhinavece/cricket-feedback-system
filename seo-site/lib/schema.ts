@@ -21,7 +21,7 @@ export function generateOrganizationSchema() {
       width: 512,
       height: 512,
     },
-    image: `${siteConfig.url}/cricsmart-logo-512.png`,
+    image: `${siteConfig.url}/cricsmart-og-image.jpg`,
     sameAs: [
       'https://www.instagram.com/_mavericks_xi/',
     ],
@@ -36,7 +36,7 @@ export function generateOrganizationSchema() {
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      email: 'support@cricsmart.in',
+      email: 'contact@cricsmart.in',
       url: `${siteConfig.url}/about`,
     },
     foundingDate: '2024',

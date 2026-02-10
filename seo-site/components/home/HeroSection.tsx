@@ -144,7 +144,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onExploreGround
           <span className="block">Smart Cricket</span>
           <span className="block mt-2">
             <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
-              Team Management
+              Management App
             </span>
           </span>
         </h1>
