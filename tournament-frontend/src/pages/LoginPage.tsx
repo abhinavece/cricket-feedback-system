@@ -132,8 +132,8 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    // Always redirect to centralized auth portal (for testing)
-    const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:3002';
+    // Redirect to centralized auth portal
+    const siteUrl = import.meta.env.VITE_SITE_URL || 'https://cricsmart.in';
     const currentOrigin = window.location.origin;
     window.location.href = `${siteUrl}/auth/login?redirect=${encodeURIComponent(currentOrigin)}&service=tournament`;
     return;

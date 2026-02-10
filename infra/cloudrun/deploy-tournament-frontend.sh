@@ -26,7 +26,8 @@ echo "Building Docker image..."
 cd "$(dirname "$0")/../../tournament-frontend"
 
 docker buildx build --platform linux/amd64 \
-  --build-arg VITE_API_URL=https://app.cricsmart.in/api \
+  --build-arg VITE_API_URL=https://tournament.cricsmart.in/api \
+  --build-arg VITE_SITE_URL=https://cricsmart.in \
   --build-arg VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID} \
   --build-arg VITE_APP_VERSION=${VERSION} \
   --build-arg VITE_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \

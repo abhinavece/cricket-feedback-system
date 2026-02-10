@@ -12,6 +12,7 @@ COPY . .
 
 # Build args for environment variables (Vite uses VITE_ prefix)
 ARG VITE_API_URL
+ARG VITE_SITE_URL=https://cricsmart.in
 ARG VITE_GOOGLE_CLIENT_ID
 ARG VITE_APP_VERSION
 ARG VITE_BUILD_DATE
