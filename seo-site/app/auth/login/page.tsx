@@ -195,7 +195,7 @@ function LoginPageContent() {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.cricsmart.in';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cricsmart.in';
       const res = await fetch(`${apiUrl}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

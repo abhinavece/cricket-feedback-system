@@ -14,7 +14,7 @@ COPY . .
 
 # Set build-time environment variables
 ARG NEXT_PUBLIC_SITE_URL=https://cricsmart.in
-ARG NEXT_PUBLIC_API_URL=https://api.cricsmart.in
+ARG NEXT_PUBLIC_API_URL=https://cricsmart.in
 ARG NEXT_PUBLIC_APP_URL=https://app.cricsmart.in
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 

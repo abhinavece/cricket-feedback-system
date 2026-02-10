@@ -2,7 +2,7 @@
  * API client for fetching data from the CricSmart backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.cricsmart.in';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://cricsmart.in';
 
 // Detect if running in development mode
 const isDevelopment = typeof window !== 'undefined' && 
