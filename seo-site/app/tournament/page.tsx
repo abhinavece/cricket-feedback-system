@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   Rocket,
   Shield,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
@@ -19,8 +20,8 @@ import { generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
 
 export const metadata: Metadata = {
-  title: 'Tournament Management - Manage Your Cricket Tournament Like a Pro',
-  description: 'Run professional cricket tournaments with CricSmart. Team registration, live scoring, leaderboards, brackets, payment tracking, and spectator view. Just ₹999 per tournament.',
+  title: 'Tournament Management - Hassle-Free Cricket Tournament Platform',
+  description: 'Run cricket tournaments effortlessly with CricSmart. Team registration, automated followups, payment management, and profit analysis. Just ₹999 per tournament.',
   keywords: [
     'cricket tournament management',
     'cricket tournament app',
@@ -54,9 +55,9 @@ const features = [
     description: 'Auto-generate round-robin or knockout schedules. Assign venues and time slots effortlessly.',
   },
   {
-    icon: BarChart3,
-    title: 'Live Scoring & Leaderboards',
-    description: 'Real-time scoring updates. Points tables, net run rates, and standings updated automatically.',
+    icon: MessageSquare,
+    title: 'Automated Team Followups',
+    description: 'Schedule confirmations, match reminders, and team coordination without manual WhatsApp messages.',
   },
   {
     icon: Trophy,
@@ -88,15 +89,15 @@ const features = [
 const steps = [
   { step: '1', title: 'Create Tournament', description: 'Set up your tournament with format, rules, entry fees, and schedule.' },
   { step: '2', title: 'Register Teams', description: 'Share the registration link. Teams sign up with player lists online.' },
-  { step: '3', title: 'Track Payments', description: 'Collect entry fees, track who paid, and manage tournament finances.' },
-  { step: '4', title: 'Go Live', description: 'Start matches, update live scores, and auto-generate leaderboards.' },
+  { step: '3', title: 'Hassle-Free Followups', description: 'Automated team discussions, schedule confirmations, and coordination without manual effort.' },
+  { step: '4', title: 'Payment Management', description: 'Collect entry fees, track who paid, send reminders, and manage tournament finances.' },
   { step: '5', title: 'Analyse Profits', description: 'View financial reports, profit/loss analysis, and export detailed summaries.' },
 ];
 
 export default function TournamentPage() {
   const webPageSchema = generateWebPageSchema({
-    name: 'Tournament Management - Manage Your Cricket Tournament Like a Pro',
-    description: 'Run professional cricket tournaments with CricSmart. Team registration, live scoring, leaderboards, brackets, and payment tracking.',
+    name: 'Tournament Management - Hassle-Free Cricket Tournament Organization',
+    description: 'Run cricket tournaments effortlessly with CricSmart. Team registration, automated followups, payment management, and profit analysis.',
     url: `${siteConfig.url}/tournament`,
     breadcrumb: [{ name: 'Tournament', url: `${siteConfig.url}/tournament` }],
   });
@@ -128,8 +129,8 @@ export default function TournamentPage() {
                 </span>
               </h1>
               <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-6">
-                No hassle for payment tracking, balance checks, or manual coordination. 
-                Everything automated, everything organized.
+                Focus on the game, not the coordination. Automated team followups, 
+                payment management, and hassle-free tournament organization.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
@@ -205,7 +206,7 @@ export default function TournamentPage() {
               <h2 className="text-3xl font-black text-white mb-2">₹999 per Tournament</h2>
               <p className="text-slate-300 mb-6">One-time fee. No monthly charges. No hidden costs.</p>
               <div className="space-y-2 mb-8 max-w-xs mx-auto">
-                {['Team registration portal', 'Live scoring & leaderboards', 'Payment & balance tracking', 'Multi-admin support', 'Spectator view'].map((item) => (
+                {['Team registration portal', 'Automated team followups', 'Payment & balance tracking', 'Multi-admin support', 'Tournament brackets'].map((item) => (
                   <div key={item} className="flex items-center gap-2 text-sm text-slate-300">
                     <CheckCircle2 className="w-4 h-4 text-violet-400 flex-shrink-0" />
                     {item}

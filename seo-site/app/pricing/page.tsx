@@ -19,8 +19,9 @@ import {
 } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
-import { generateWebPageSchema } from '@/lib/schema';
+import { generateWebPageSchema, generateFAQSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
+import AuctionCTAButton from '@/components/AuctionCTAButton';
 
 export const metadata: Metadata = {
   title: 'Pricing - Free Cricket Team Management Platform',
@@ -86,6 +87,7 @@ const plans = [
     gradient: 'from-emerald-500 to-cyan-500',
     shadowColor: 'shadow-emerald-500/25',
     popular: true,
+    badge: 'Most Popular',
     service: 'team' as const,
     features: [
       { text: 'Unlimited players', included: true },
@@ -279,16 +281,15 @@ export default function PricingPage() {
                       : 'border-white/10 hover:border-white/20'
                   }`}
                 >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="px-4 py-1 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-bold rounded-full uppercase tracking-wider">
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
                   {'badge' in plan && plan.badge && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="px-4 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full uppercase tracking-wider whitespace-nowrap">
+                      <span className={`inline-block px-3 py-1 text-white text-xs font-bold rounded-full uppercase tracking-wider whitespace-nowrap ${
+                        plan.gradient === 'from-amber-500 to-orange-500' 
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                          : plan.gradient === 'from-violet-500 to-purple-500'
+                          ? 'bg-gradient-to-r from-violet-500 to-purple-500'
+                          : 'bg-gradient-to-r from-emerald-500 to-cyan-500'
+                      }`}>
                         {plan.badge}
                       </span>
                     </div>
@@ -306,21 +307,33 @@ export default function PricingPage() {
                     <span className="text-slate-400 text-sm">{plan.period}</span>
                   </div>
 
-                  <Link
-                    href={`/auth/login?redirect=${encodeURIComponent(
-                      plan.service === 'auction' ? siteConfig.auctionUrl :
-                      plan.service === 'tournament' ? siteConfig.tournamentUrl :
-                      siteConfig.appUrl
-                    )}&service=${plan.service}`}
-                    className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-lg shadow-emerald-500/25'
-                        : 'bg-slate-700/50 hover:bg-slate-700 text-white border border-white/10'
-                    }`}
-                  >
-                    Get Started
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
+                  {plan.service === 'auction' ? (
+                    <AuctionCTAButton
+                      className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
+                        plan.popular
+                          ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-lg shadow-emerald-500/25'
+                          : 'bg-slate-700/50 hover:bg-slate-700 text-white border border-white/10'
+                      }`}
+                    >
+                      Get Started
+                      <ArrowRight className="w-4 h-4" />
+                    </AuctionCTAButton>
+                  ) : (
+                    <Link
+                      href={`/auth/login?redirect=${encodeURIComponent(
+                        plan.service === 'tournament' ? siteConfig.tournamentUrl :
+                        siteConfig.appUrl
+                      )}&service=${plan.service}`}
+                      className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold transition-all ${
+                        plan.popular
+                          ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-lg shadow-emerald-500/25'
+                          : 'bg-slate-700/50 hover:bg-slate-700 text-white border border-white/10'
+                      }`}
+                    >
+                      Get Started
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  )}
 
                   <div className="mt-6 pt-6 border-t border-white/10 space-y-3">
                     {plan.features.map((feature) => (

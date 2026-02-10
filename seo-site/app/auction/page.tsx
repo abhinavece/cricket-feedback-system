@@ -1,4 +1,6 @@
-import { Metadata } from 'next';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Gavel, 
@@ -19,30 +21,7 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
 import { generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
-
-export const metadata: Metadata = {
-  title: 'Cricket Player Auction - AI-Powered Auction Management',
-  description: 'AI-powered cricket player auction management matching international standards. Live bidding, player valuation, budget management, and real-time analytics. Free for under 5 teams, ₹1,999 for 5+ teams.',
-  keywords: [
-    'cricket player auction',
-    'cricket auction app',
-    'IPL style auction',
-    'cricket auction software',
-    'player auction management',
-    'cricket auction online',
-    'AI cricket auction',
-  ],
-  alternates: {
-    canonical: `${siteConfig.url}/auction`,
-  },
-  openGraph: {
-    title: 'Cricket Player Auction - AI-Powered Management | CricSmart',
-    description: 'AI-powered player auctions matching international standards. Live bidding, player valuation, budget management. Free for under 5 teams.',
-    url: `${siteConfig.url}/auction`,
-    type: 'website',
-    images: [{ url: siteConfig.ogImage, width: 1200, height: 630, alt: 'CricSmart Cricket Auction' }],
-  },
-};
+import AuctionComingSoonModal from '@/components/AuctionComingSoonModal';
 
 const features = [
   {
@@ -111,6 +90,8 @@ const steps = [
 ];
 
 export default function AuctionPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const webPageSchema = generateWebPageSchema({
     name: 'Cricket Player Auction - AI-Powered Auction Management',
     description: 'AI-powered cricket player auction management matching international standards. Live bidding, player valuation, budget management.',
@@ -149,14 +130,14 @@ export default function AuctionPage() {
                 Live bidding, smart player valuation, and real-time analytics.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link
-                  href={`/auth/login?redirect=${encodeURIComponent(siteConfig.auctionUrl)}&service=auction`}
+                <button
+                  onClick={() => setIsModalOpen(true)}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25"
                 >
                   <Gavel className="w-5 h-5" />
                   Start an Auction
                   <ArrowRight className="w-5 h-5" />
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -261,17 +242,23 @@ export default function AuctionPage() {
                   </div>
                 ))}
               </div>
-              <Link
-                href={`/auth/login?redirect=${encodeURIComponent(siteConfig.auctionUrl)}&service=auction`}
+              <button
+                onClick={() => setIsModalOpen(true)}
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25"
               >
                 Start Free Auction
                 <ArrowRight className="w-5 h-5" />
-              </Link>
+              </button>
             </div>
           </div>
         </section>
       </div>
+
+      {/* Auction Coming Soon Modal */}
+      <AuctionComingSoonModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </>
   );
 }

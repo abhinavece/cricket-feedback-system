@@ -39,12 +39,12 @@ const SERVICE_CONFIG: Record<string, {
   },
   tournament: {
     title: 'Tournament Hub',
-    subtitle: 'Professional tournament management',
-    description: 'Run cricket tournaments like a pro. Team registration, live scoring, leaderboards, payment tracking, and profit analysis — all in one place.',
+    subtitle: 'Hassle-free tournament organization',
+    description: 'Run cricket tournaments effortlessly. Team registration, automated followups, payment management, and profit analysis — all in one place.',
     icon: Trophy,
     gradient: 'from-violet-500 to-purple-500',
     iconGradient: 'from-violet-500 to-purple-500',
-    features: ['Team Registration', 'Live Scoring', 'Payment Tracking', 'Profit Analysis'],
+    features: ['Team Registration', 'Automated Followups', 'Payment Management', 'Profit Analysis'],
     destination: 'tournament.cricsmart.in',
   },
   auction: {
