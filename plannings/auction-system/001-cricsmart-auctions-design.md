@@ -619,17 +619,21 @@ displayConfig: {
 
 ## 14. Multi-Tenant & Extensibility
 
-### V1: Standalone
-- Auction has its own admin system (creator + invited admins)
-- `organizationId` and `tournamentId` are optional fields — not enforced in V1
+### V1: Fully Standalone (Confirmed)
+- **No organization required** — `organizationId` stays `null` in V1
+- Auction has its own admin system (creator + invited admins via `auction.admins[]`)
 - Auth via Google OAuth for admins, access codes for teams
+- **Product isolation**: logging into auction does NOT grant team management or tournament access (and vice versa)
 - One active (LIVE) auction per creator at a time
+- Hosted on **auction.cricsmart.in** (Next.js, SSR for SEO)
 
 ### Future: Org & Tournament Linkage
 - Set `organizationId` to link auction to an org → org admins auto-inherit auction admin role
 - Set `tournamentId` to link auction to a tournament → tournament teams/players can be imported
 - Uses existing `resolveTenant` middleware when org linkage is active
 - Structure designed to support this without schema changes
+
+> See `003-implementation-architecture.md` for full auth isolation design, URL structure, and deployment details.
 
 ---
 
@@ -689,16 +693,22 @@ POST   /api/v1/auctions/team-login                 - Team auth (access code → 
 
 ---
 
-## 16. Tech Stack Additions
+## 16. Tech Stack
 
 | Component | Technology |
-|-----------|-----------|
-| WebSocket | Socket.IO (already pattern in project) |
-| Excel parsing | `xlsx` (SheetJS) npm package |
-| Animations | Framer Motion + CSS animations |
-| Timer sync | Server-authoritative with NTP-style offset |
-| YouTube API | `googleapis` npm (optional Phase 2) |
-| PDF export | `puppeteer` or `pdfkit` for analytics report |
+|-----------|------------|
+| **Auction Frontend** | Next.js 14 (App Router, SSR/SSG) — `auction-frontend/` |
+| **Hosting** | auction.cricsmart.in (Cloud Run) |
+| **Styling** | Tailwind CSS (dark slate, amber/orange accents) |
+| **Icons** | Lucide React |
+| **WebSocket** | Socket.IO on existing backend (Cloud Run session affinity) |
+| **Excel parsing** | `xlsx` (SheetJS) npm package |
+| **Animations** | Framer Motion + CSS animations |
+| **Timer sync** | Server-authoritative with NTP-style offset |
+| **Charts** | recharts (analytics) |
+| **Sitemap** | next-sitemap |
+| **YouTube API** | `googleapis` npm (optional Phase 2) |
+| **PDF export** | `puppeteer` or `pdfkit` for analytics report |
 
 ---
 
@@ -811,6 +821,10 @@ POST   /api/v1/auctions/team-login                 - Team auth (access code → 
 ## Plan of Action (Next Steps)
 
 1. ✅ Design finalized — all 24 questions answered
-2. **Create** — `plannings/auction-system/` with this finalized design doc
-3. **Implement** — Phase 1: Backend models + CRUD
-4. **Iterate** — Phase by phase, with tests at each stage
+2. ✅ Planning docs created — `plannings/auction-system/`
+3. ✅ Implementation architecture confirmed — auth isolation, Next.js, SEO, infra
+4. **Implement** — Phase 1: Backend models + CRUD + public SEO endpoints
+5. **Scaffold** — `auction-frontend/` Next.js app
+6. **Iterate** — Phase by phase, with tests at each stage
+
+> Full implementation details in `003-implementation-architecture.md`

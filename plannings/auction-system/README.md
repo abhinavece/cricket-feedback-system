@@ -5,6 +5,8 @@ This folder contains all planning documents for the CricSmart Auction system.
 ## Documents
 
 - `001-cricsmart-auctions-design.md` — Complete system design specification with all finalized decisions
+- `002-future-enhancements.md` — Future features roadmap (RTM, chat, YouTube API, etc.)
+- `003-implementation-architecture.md` — Auth isolation, SEO strategy, Next.js frontend, infra & deployment
 
 ## Overview
 
