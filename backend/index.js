@@ -35,6 +35,10 @@ const developerRoutes = require('./routes/developer');
 const groundRoutes = require('./routes/grounds');
 const organizationRoutes = require('./routes/organizations');
 const tournamentRoutes = require('./routes/tournaments');
+const auctionRoutes = require('./routes/auction');
+const auctionTeamRoutes = require('./routes/auctionTeam');
+const auctionPlayerRoutes = require('./routes/auctionPlayer');
+const auctionPublicRoutes = require('./routes/auctionPublic');
 const { trackHomepageView, trackPublicLinkView } = require('./middleware/viewTracker');
 const { resolveTenant } = require('./middleware/tenantResolver');
 const { auth } = require('./middleware/auth');
@@ -103,6 +107,12 @@ app.use('/api/webhook-proxy', webhookProxyRoutes);
 app.use('/api/developer', developerRoutes);
 app.use('/api/grounds', groundRoutes);
 app.use('/api/tournaments', tournamentRoutes);  // Tournament management
+
+// Auction system (standalone, resource-level auth)
+app.use('/api/v1/auctions', auctionRoutes);                          // Auction CRUD & lifecycle
+app.use('/api/v1/auctions/:auctionId/teams', auctionTeamRoutes);     // Team management
+app.use('/api/v1/auctions/:auctionId/players', auctionPlayerRoutes); // Player pool management
+app.use('/api/seo/auctions', auctionPublicRoutes);                   // Public SEO endpoints
 
 /**
  * GET /api/analytics/views
