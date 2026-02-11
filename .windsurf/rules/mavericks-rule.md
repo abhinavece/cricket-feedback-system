@@ -35,6 +35,14 @@ survey-project/
 
 ## ⚠️ MANDATORY Skills (Enforce on EVERY Task)
 
+### Planning (`.claude/skills/planning.md`)
+- **ALL** new features MUST have comprehensive planning documents before implementation
+- Planning files MUST be saved under `/plannings/` directory with appropriate subfolders
+- Use numbered prefixes for ordering (e.g., `001-design.md`, `002-api-spec.md`)
+- Every planning document must include: requirements, architecture, data models, API design, implementation phases, testing strategy
+- Planning documents are version-controlled and MUST be checked into git
+- Before writing ANY code, ask: "Is the planning complete and approved?"
+
 ### Multi-Tenant Design (`.claude/skills/multi-tenant-design.md`)
 - **EVERY** feature must be designed for multi-tenant from day one
 - Teams, tournaments, auctions — all support multiple independent organizations
