@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { emailService } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,16 +84,14 @@ Sent from CricSmart Website
       `,
     };
 
-    // Here you would integrate with your email service
-    // For now, we'll just log it and return success
-    console.log('Auction waitlist submission:', emailData);
+    // Send email to support@cricsmart.in
+    const emailSent = await emailService.sendEmail(emailData);
     
-    // TODO: Integrate with email service like Resend, SendGrid, or Nodemailer
-    // Example with Resend (if you have it configured):
-    // const { data, error } = await resend.emails.send(emailData);
-    
-    // For development, you could also save to a database or file
-    // await saveWaitlistEntry(body);
+    // If email fails, log it for debugging
+    if (!emailSent) {
+      console.log('Email failed, logging instead:');
+      await emailService.logEmail(emailData);
+    }
 
     return NextResponse.json(
       { 

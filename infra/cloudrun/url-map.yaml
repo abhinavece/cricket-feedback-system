@@ -24,7 +24,16 @@ pathMatchers:
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 2
   - name: homepage-paths
-    defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
+    defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-seo-site
+    routeRules:
+      - matchRules:
+          - prefixMatch: /api/
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-seo-site
+        priority: 1
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-seo-site
+        priority: 2
   - name: tournament-paths
     # Tournament frontend for static files, SAME backend API for /api/*
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-tournament-frontend
