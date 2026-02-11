@@ -28,11 +28,11 @@ pathMatchers:
     routeRules:
       - matchRules:
           - prefixMatch: /api/
-        service: projects/cricsmart/global/backendServices/cricsmart-backend-seo-site
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 1
       - matchRules:
           - prefixMatch: /api
-        service: projects/cricsmart/global/backendServices/cricsmart-backend-seo-site
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 2
   - name: tournament-paths
     # Tournament frontend for static files, SAME backend API for /api/*
