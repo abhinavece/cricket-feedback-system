@@ -119,6 +119,51 @@ export async function goLiveAuction(auctionId: string) {
   });
 }
 
+export async function pauseAuction(auctionId: string, reason?: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/pause`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+    auth: true,
+  });
+}
+
+export async function resumeAuction(auctionId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/resume`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+export async function completeAuction(auctionId: string, reason?: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+    auth: true,
+  });
+}
+
+export async function deleteAuction(auctionId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+export async function addAuctionAdmin(auctionId: string, email: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/admins`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    auth: true,
+  });
+}
+
+export async function removeAuctionAdmin(auctionId: string, userId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/admins/${userId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
 export async function getBidIncrementPresets() {
   return fetchApi('/api/v1/auctions/presets/bid-increments');
 }
@@ -140,6 +185,28 @@ export async function addTeam(auctionId: string, data: {
   return fetchApi(`/api/v1/auctions/${auctionId}/teams`, {
     method: 'POST',
     body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function updateTeam(auctionId: string, teamId: string, data: Record<string, any>) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/teams/${teamId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function deleteTeam(auctionId: string, teamId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/teams/${teamId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+export async function regenerateTeamAccess(auctionId: string, teamId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/teams/${teamId}/regenerate-access`, {
+    method: 'POST',
     auth: true,
   });
 }
