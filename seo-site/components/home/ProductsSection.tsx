@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { Users, Trophy, Gavel, ArrowRight, CheckCircle2 } from 'lucide-react';
-import AuctionComingSoonModal from '@/components/AuctionComingSoonModal';
 
 const products = [
   {
@@ -48,14 +47,12 @@ const products = [
     iconColor: 'text-amber-400',
     href: '/auction',
     loginHref: '/auth/login?redirect=https%3A%2F%2Fauction.cricsmart.in&service=auction',
-    isComingSoon: true,
     cta: 'Start Auction',
     highlights: ['AI Player Valuation', 'Live Bidding Room', 'Budget Management', 'Spectator Mode'],
   },
 ];
 
 const ProductsSection: React.FC = () => {
-  const [isAuctionModalOpen, setIsAuctionModalOpen] = useState(false);
 
   return (
     <section className="relative py-20 overflow-hidden">
@@ -114,23 +111,13 @@ const ProductsSection: React.FC = () => {
 
               {/* CTA Buttons */}
               <div className="flex flex-col gap-2 mt-auto">
-                {product.isComingSoon ? (
-                  <button
-                    onClick={() => setIsAuctionModalOpen(true)}
-                    className={`flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r ${product.gradient} text-white font-semibold rounded-xl transition-all hover:shadow-lg ${product.shadowColor} hover:scale-[1.01]`}
-                  >
-                    {product.cta}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <Link
-                    href={product.loginHref}
-                    className={`flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r ${product.gradient} text-white font-semibold rounded-xl transition-all hover:shadow-lg ${product.shadowColor} hover:scale-[1.01]`}
-                  >
-                    {product.cta}
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                )}
+                <Link
+                  href={product.loginHref}
+                  className={`flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r ${product.gradient} text-white font-semibold rounded-xl transition-all hover:shadow-lg ${product.shadowColor} hover:scale-[1.01]`}
+                >
+                  {product.cta}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
                 <Link
                   href={product.href}
                   className="flex items-center justify-center gap-1 w-full py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
@@ -144,11 +131,6 @@ const ProductsSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Auction Coming Soon Modal */}
-      <AuctionComingSoonModal
-        isOpen={isAuctionModalOpen}
-        onClose={() => setIsAuctionModalOpen(false)}
-      />
     </section>
   );
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { 
   Gavel, 
@@ -21,7 +21,6 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import SchemaScript from '@/components/SchemaScript';
 import { generateWebPageSchema } from '@/lib/schema';
 import { siteConfig } from '@/lib/api';
-import AuctionComingSoonModal from '@/components/AuctionComingSoonModal';
 
 const features = [
   {
@@ -89,8 +88,9 @@ const steps = [
   { step: '4', title: 'Review & Export', description: 'View analytics, finalize squads, and export results.' },
 ];
 
+const AUCTION_LOGIN_URL = '/auth/login?redirect=https%3A%2F%2Fauction.cricsmart.in&service=auction';
+
 export default function AuctionPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const webPageSchema = generateWebPageSchema({
     name: 'Cricket Player Auction - AI-Powered Auction Management',
@@ -130,14 +130,14 @@ export default function AuctionPage() {
                 Live bidding, smart player valuation, and real-time analytics.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button
-                  onClick={() => setIsModalOpen(true)}
+                <Link
+                  href={AUCTION_LOGIN_URL}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25"
                 >
                   <Gavel className="w-5 h-5" />
                   Start an Auction
                   <ArrowRight className="w-5 h-5" />
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -242,23 +242,18 @@ export default function AuctionPage() {
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
+              <Link
+                href={AUCTION_LOGIN_URL}
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25"
               >
                 Start Free Auction
                 <ArrowRight className="w-5 h-5" />
-              </button>
+              </Link>
             </div>
           </div>
         </section>
       </div>
 
-      {/* Auction Coming Soon Modal */}
-      <AuctionComingSoonModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
     </>
   );
 }

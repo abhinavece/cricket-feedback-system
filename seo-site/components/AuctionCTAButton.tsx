@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ArrowRight } from 'lucide-react';
-import AuctionComingSoonModal from './AuctionComingSoonModal';
+import React from 'react';
+import Link from 'next/link';
 
 interface AuctionCTAButtonProps {
   className?: string;
@@ -10,22 +9,13 @@ interface AuctionCTAButtonProps {
 }
 
 const AuctionCTAButton: React.FC<AuctionCTAButtonProps> = ({ className, children }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
   return (
-    <>
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className={className}
-      >
-        {children}
-      </button>
-      
-      <AuctionComingSoonModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
-    </>
+    <Link
+      href="/auth/login?redirect=https%3A%2F%2Fauction.cricsmart.in&service=auction"
+      className={className}
+    >
+      {children}
+    </Link>
   );
 };
 

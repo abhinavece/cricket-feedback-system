@@ -3,7 +3,7 @@
  * These use fetch() directly (not the client-side api.ts) so they work in Server Components.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://auction.cricsmart.in/api';
 
 async function serverFetch<T = any>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

@@ -11,6 +11,9 @@ hostRules:
   - hosts:
       - 'tournament.cricsmart.in'
     pathMatcher: tournament-paths
+  - hosts:
+      - 'auction.cricsmart.in'
+    pathMatcher: auction-paths
 pathMatchers:
   - name: app-paths
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
@@ -37,6 +40,18 @@ pathMatchers:
   - name: tournament-paths
     # Tournament frontend for static files, SAME backend API for /api/*
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-tournament-frontend
+    routeRules:
+      - matchRules:
+          - prefixMatch: /api/
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 1
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 2
+  - name: auction-paths
+    # Auction frontend for static files, SAME backend API for /api/*
+    defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-auction-frontend
     routeRules:
       - matchRules:
           - prefixMatch: /api/
