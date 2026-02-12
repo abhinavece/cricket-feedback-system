@@ -146,9 +146,18 @@ export function AuctionSocketProvider({ children, auctionId, token, teamToken, r
     sock.on('disconnect', () => setConnectionStatus('disconnected'));
     sock.on('connect_error', () => setConnectionStatus('error'));
 
-    // Full state sync on connect
+    // Full state sync on connect (or after resume broadcast)
     sock.on('auction:state', (data: AuctionState) => {
-      setState(data);
+      setState(prev => {
+        if (!prev) return data;
+        // Preserve team-private / admin-private fields if not included in broadcast
+        return {
+          ...data,
+          myTeam: data.myTeam || prev.myTeam,
+          isAdmin: data.isAdmin ?? prev.isAdmin,
+          remainingPlayerCount: data.remainingPlayerCount ?? prev.remainingPlayerCount,
+        };
+      });
     });
 
     // Status changes

@@ -490,6 +490,15 @@ async function playerSold(auction, playerId, teamId, amount, io) {
     amount,
     round: auction.currentRound,
   });
+
+  // Send team:update to the winning team so their purse/maxBid/canBid refreshes
+  const teamMaxBid = calculateMaxBid(team, auction.config);
+  ns.to(`team:${teamId}`).emit('team:update', {
+    purseRemaining: team.purseRemaining,
+    maxBid: teamMaxBid,
+    squadSize: (team.players?.length || 0) + (team.retainedPlayers?.length || 0),
+    canBid: team.purseRemaining >= auction.config.basePrice,
+  });
 }
 
 /**

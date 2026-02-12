@@ -12,7 +12,7 @@ import { siteConfig } from '@/lib/constants';
 import {
   Wifi, WifiOff, IndianRupee, Users, UserCheck, Clock,
   Gavel, AlertTriangle, Trophy, Radio, ShieldCheck, Wallet,
-  TrendingUp, CircleDot, Pause, CheckCircle2,
+  TrendingUp, CircleDot, Pause, CheckCircle2, BarChart3,
 } from 'lucide-react';
 
 function formatCurrency(amount: number) {
@@ -279,7 +279,7 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-1">
+      <div className="max-w-6xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-1">
         {/* ─── Announcements ─── */}
         <AnimatePresence>
           {announcements.length > 0 && (
@@ -335,135 +335,166 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
 
         {/* ─── Live Bidding View ─── */}
         {isLive && bidding && (
-          <div className="space-y-4 sm:space-y-5">
-            {/* Player + Timer */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <div className="flex-1 w-full">
-                <PlayerCard
-                  player={bidding.player}
-                  currentBid={bidding.currentBid}
-                  basePrice={state.config.basePrice}
-                  status={bidding.status}
-                  soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor } : null}
-                  compact
-                  playerFields={state.playerFields}
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+            {/* Left column — player card + bid button */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Player + Timer */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <div className="flex-1 w-full">
+                  <PlayerCard
+                    player={bidding.player}
+                    currentBid={bidding.currentBid}
+                    basePrice={state.config.basePrice}
+                    status={bidding.status}
+                    soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor } : null}
+                    playerFields={state.playerFields}
+                  />
+                </div>
+                {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (
+                  <div className="flex-shrink-0 self-center sm:self-start">
+                    <Timer expiresAt={bidding.timerExpiresAt} phase={bidding.status} />
+                  </div>
+                )}
               </div>
+
+              {/* ─── BID BUTTON — the hero ─── */}
               {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (
-                <div className="flex-shrink-0 self-center sm:self-start">
-                  <Timer expiresAt={bidding.timerExpiresAt} phase={bidding.status} />
+                <div className="space-y-2.5">
+                  <AnimatePresence mode="wait">
+                    {isHighestBidder ? (
+                      <motion.div
+                        key="highest"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="glass-card p-5 text-center border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-emerald-500/10"
+                      >
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                          <span className="text-base font-bold text-emerald-400">You are the highest bidder</span>
+                        </div>
+                        <p className="text-sm text-slate-400 tabular-nums">Current bid: {formatCurrency(bidding.currentBid)}</p>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="bid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <button
+                          onClick={handleBid}
+                          disabled={!canBid || bidLoading}
+                          className={`w-full rounded-2xl text-center transition-all ${
+                            canBid && !bidLoading
+                              ? 'btn-bid'
+                              : 'py-5 bg-slate-800/60 text-slate-500 cursor-not-allowed border border-white/5 rounded-2xl'
+                          }`}
+                        >
+                          {bidLoading ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                              Placing bid...
+                            </span>
+                          ) : canBid ? (
+                            <span className="flex items-center justify-center gap-3">
+                              <Gavel className="w-6 h-6" />
+                              BID {formatCurrency(nextBidAmount)}
+                            </span>
+                          ) : !myTeam?.canBid ? (
+                            <span className="flex items-center justify-center gap-2 text-sm">
+                              <Wallet className="w-4 h-4" /> Insufficient Purse
+                            </span>
+                          ) : (
+                            'Waiting...'
+                          )}
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {bidError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center"
+                      >
+                        {bidError}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
+
+              {/* Teams overview */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">All Teams</h3>
+                </div>
+                <TeamPanel teams={state.teams} currentBidTeamId={bidding.currentBidTeamId} compact />
+              </div>
             </div>
 
-            {/* ─── BID BUTTON — the hero ─── */}
-            {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (
-              <div className="space-y-2.5">
-                <AnimatePresence mode="wait">
-                  {isHighestBidder ? (
-                    <motion.div
-                      key="highest"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="glass-card p-5 text-center border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-emerald-500/10"
-                    >
-                      <div className="flex items-center justify-center gap-2 mb-1">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                        <span className="text-base font-bold text-emerald-400">You are the highest bidder</span>
-                      </div>
-                      <p className="text-sm text-slate-400 tabular-nums">Current bid: {formatCurrency(bidding.currentBid)}</p>
-                    </motion.div>
-                  ) : (
-                    <motion.div key="bid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <button
-                        onClick={handleBid}
-                        disabled={!canBid || bidLoading}
-                        className={`w-full rounded-2xl text-center transition-all ${
-                          canBid && !bidLoading
-                            ? 'btn-bid'
-                            : 'py-5 bg-slate-800/60 text-slate-500 cursor-not-allowed border border-white/5 rounded-2xl'
-                        }`}
-                      >
-                        {bidLoading ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                            Placing bid...
-                          </span>
-                        ) : canBid ? (
-                          <span className="flex items-center justify-center gap-3">
-                            <Gavel className="w-6 h-6" />
-                            BID {formatCurrency(nextBidAmount)}
-                          </span>
-                        ) : !myTeam?.canBid ? (
-                          <span className="flex items-center justify-center gap-2 text-sm">
-                            <Wallet className="w-4 h-4" /> Insufficient Purse
-                          </span>
-                        ) : (
-                          'Waiting...'
-                        )}
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            {/* Right column — team info + bid history */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* My team info */}
+              {myTeam && (
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Wallet className="w-3.5 h-3.5 text-slate-500" />
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Your Team</h3>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
+                      <div className="text-lg font-extrabold text-white tabular-nums">{formatCurrency(myTeam.purseRemaining)}</div>
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Purse Left</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
+                      <div className="text-lg font-extrabold text-amber-400 tabular-nums">{formatCurrency(myTeam.maxBid)}</div>
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Max Bid</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
+                      <div className="text-lg font-extrabold text-white tabular-nums">{myTeam.squadSize}</div>
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Squad</div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                <AnimatePresence>
-                  {bidError && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center"
-                    >
-                      {bidError}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
+              {/* Bid history */}
+              {bidding.bidHistory.length > 0 && (
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Bid History</h3>
+                  </div>
+                  <BidTicker bidHistory={bidding.bidHistory} teams={state.teams} maxItems={8} />
+                </div>
+              )}
 
-            {/* Bid history */}
-            {bidding.bidHistory.length > 0 && (
+              {/* Auction stats */}
               <div className="glass-card p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Bid History</h3>
+                  <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Auction Stats</h3>
                 </div>
-                <BidTicker bidHistory={bidding.bidHistory} teams={state.teams} maxItems={5} />
-              </div>
-            )}
-
-            {/* My team info */}
-            {myTeam && (
-              <div className="glass-card p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Wallet className="w-3.5 h-3.5 text-slate-500" />
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Your Team</h3>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
-                    <div className="text-lg font-extrabold text-white tabular-nums">{formatCurrency(myTeam.purseRemaining)}</div>
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Purse Left</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2.5 rounded-xl bg-slate-800/30 border border-white/5">
+                    <div className="flex items-center gap-1.5 text-cyan-400 mb-1"><Clock className="w-3 h-3" /><span className="text-[10px] font-medium uppercase">Round</span></div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{state.currentRound}</div>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
-                    <div className="text-lg font-extrabold text-amber-400 tabular-nums">{formatCurrency(myTeam.maxBid)}</div>
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Max Bid</div>
+                  <div className="p-2.5 rounded-xl bg-slate-800/30 border border-white/5">
+                    <div className="flex items-center gap-1.5 text-blue-400 mb-1"><Users className="w-3 h-3" /><span className="text-[10px] font-medium uppercase">In Pool</span></div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{state.stats.inPool}</div>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
-                    <div className="text-lg font-extrabold text-white tabular-nums">{myTeam.squadSize}</div>
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Squad</div>
+                  <div className="p-2.5 rounded-xl bg-slate-800/30 border border-white/5">
+                    <div className="flex items-center gap-1.5 text-emerald-400 mb-1"><UserCheck className="w-3 h-3" /><span className="text-[10px] font-medium uppercase">Sold</span></div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{state.stats.sold}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-800/30 border border-white/5">
+                    <div className="flex items-center gap-1.5 text-orange-400 mb-1"><span className="text-[10px]">↩️</span><span className="text-[10px] font-medium uppercase">Unsold</span></div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{state.stats.unsold}</div>
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Teams overview */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">All Teams</h3>
-              </div>
-              <TeamPanel teams={state.teams} currentBidTeamId={bidding.currentBidTeamId} compact />
             </div>
           </div>
         )}

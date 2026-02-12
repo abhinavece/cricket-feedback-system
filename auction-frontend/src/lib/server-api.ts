@@ -37,6 +37,16 @@ export async function fetchAuctionAnalytics(slug: string) {
   return serverFetch(`/api/seo/auctions/${slug}/analytics`);
 }
 
+export async function fetchAuctionPlayers(slug: string, params?: { status?: string; role?: string; page?: number; limit?: number }) {
+  const qp = new URLSearchParams();
+  if (params?.status) qp.set('status', params.status);
+  if (params?.role) qp.set('role', params.role);
+  if (params?.page) qp.set('page', String(params.page));
+  if (params?.limit) qp.set('limit', String(params.limit));
+  const qs = qp.toString();
+  return serverFetch(`/api/seo/auctions/${slug}/players${qs ? `?${qs}` : ''}`);
+}
+
 export async function fetchSitemapAuctions() {
   return serverFetch('/api/seo/sitemap/auctions');
 }

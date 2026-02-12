@@ -123,6 +123,7 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                 label="Teams"
                 gradient="from-blue-500/20 to-cyan-500/20"
                 border="border-blue-500/20"
+                href={`/${params.slug}/teams`}
               />
               <StatCard
                 icon={<UserCheck className="w-5 h-5 text-emerald-400" />}
@@ -131,6 +132,7 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                 sub={soldCount > 0 ? `${soldCount} sold` : undefined}
                 gradient="from-emerald-500/20 to-teal-500/20"
                 border="border-emerald-500/20"
+                href={`/${params.slug}/players`}
               />
               <StatCard
                 icon={<IndianRupee className="w-5 h-5 text-amber-400" />}
@@ -366,6 +368,13 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
               description={`View all ${teamCount} team compositions, retained players, and purse details`}
               gradient="from-blue-500/10 to-cyan-500/10"
             />
+            <QuickLinkCard
+              href={`/${params.slug}/players`}
+              icon={<UserCheck className="w-6 h-6 text-emerald-400" />}
+              title="All Players"
+              description={`Browse ${totalPlayers} players — filter by sold, unsold, or in pool. Sort and view details.`}
+              gradient="from-emerald-500/10 to-teal-500/10"
+            />
             {isCompleted && (
               <QuickLinkCard
                 href={`/${params.slug}/analytics`}
@@ -392,22 +401,38 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
   );
 }
 
-function StatCard({ icon, value, label, sub, gradient, border }: {
+function StatCard({ icon, value, label, sub, gradient, border, href }: {
   icon: React.ReactNode;
   value: string;
   label: string;
   sub?: string;
   gradient: string;
   border: string;
+  href?: string;
 }) {
-  return (
-    <div className={`glass-card p-4 sm:p-5 border ${border} bg-gradient-to-br ${gradient}`}>
+  const content = (
+    <>
       <div className="flex items-center gap-2 mb-2">
         {icon}
         <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">{label}</span>
+        {href && <ArrowRight className="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />}
       </div>
       <div className="text-2xl sm:text-3xl font-bold text-white">{value}</div>
       {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={`glass-card p-4 sm:p-5 border ${border} bg-gradient-to-br ${gradient} group hover:border-white/20 transition-all cursor-pointer`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={`glass-card p-4 sm:p-5 border ${border} bg-gradient-to-br ${gradient}`}>
+      {content}
     </div>
   );
 }
