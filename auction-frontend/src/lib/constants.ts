@@ -3,7 +3,7 @@ export const siteConfig = {
   shortName: 'Auctions',
   description: 'IPL-style cricket player auctions powered by AI. Real-time bidding, smart player valuation, budget management, and spectator mode.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://auction.cricsmart.in',
-  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002',
   appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://app.cricsmart.in',
   seoUrl: process.env.NEXT_PUBLIC_SEO_URL || 'https://cricsmart.in',
   ogImage: '/og/auction-default.jpg',

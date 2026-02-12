@@ -17,7 +17,7 @@ module.exports = {
   additionalPaths: async (config) => {
     const result = [];
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002';
       const res = await fetch(`${apiUrl}/api/seo/sitemap/auctions`);
       const data = await res.json();
       if (data.slugs) {
