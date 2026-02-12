@@ -1,6 +1,20 @@
+/**
+ * JSON-LD Structured Data generators for SEO pages.
+ * Uses Schema.org Event type for auction pages.
+ */
+
 import { siteConfig } from './constants';
 
-export function generateAuctionEventSchema(auction: {
+export function SchemaScript({ schema }: { schema: Record<string, any> }) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
+interface AuctionData {
   name: string;
   slug: string;
   description?: string;
@@ -8,23 +22,35 @@ export function generateAuctionEventSchema(auction: {
   scheduledStartTime?: string;
   startedAt?: string;
   completedAt?: string;
-  teamCount?: number;
-  playerCount?: number;
-}) {
-  return {
+  teams?: { name: string }[];
+  playerStats?: Record<string, number>;
+  config?: { purseValue?: number; basePrice?: number };
+}
+
+export function generateAuctionJsonLd(auction: AuctionData) {
+  const url = `${siteConfig.url}/${auction.slug}`;
+  const totalPlayers = auction.playerStats
+    ? Object.values(auction.playerStats).reduce((sum, n) => sum + n, 0)
+    : 0;
+  const teamCount = auction.teams?.length || 0;
+
+  const statusMap: Record<string, string> = {
+    configured: 'https://schema.org/EventScheduled',
+    live: 'https://schema.org/EventScheduled',
+    paused: 'https://schema.org/EventPostponed',
+    completed: 'https://schema.org/EventCompleted',
+    trade_window: 'https://schema.org/EventCompleted',
+    finalized: 'https://schema.org/EventCompleted',
+  };
+
+  const jsonLd: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': 'Event',
     name: `${auction.name} — Player Auction`,
-    description: auction.description || `Live cricket player auction: ${auction.name}`,
-    url: `${siteConfig.url}/${auction.slug}`,
-    eventStatus: auction.status === 'completed' || auction.status === 'finalized'
-      ? 'https://schema.org/EventCompleted'
-      : auction.status === 'live'
-        ? 'https://schema.org/EventMovedOnline'
-        : 'https://schema.org/EventScheduled',
+    description: auction.description || `Live cricket player auction: ${teamCount} teams, ${totalPlayers} players.`,
+    url,
+    eventStatus: statusMap[auction.status] || 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-    startDate: auction.scheduledStartTime || auction.startedAt,
-    endDate: auction.completedAt,
     organizer: {
       '@type': 'Organization',
       name: 'CricSmart',
@@ -32,7 +58,7 @@ export function generateAuctionEventSchema(auction: {
     },
     location: {
       '@type': 'VirtualLocation',
-      url: `${siteConfig.url}/${auction.slug}/live`,
+      url: `${url}/live`,
     },
     offers: {
       '@type': 'Offer',
@@ -40,10 +66,35 @@ export function generateAuctionEventSchema(auction: {
       priceCurrency: 'INR',
       availability: 'https://schema.org/InStock',
     },
+    image: `${siteConfig.url}/og/auction-default.jpg`,
+  };
+
+  if (auction.scheduledStartTime || auction.startedAt) {
+    jsonLd.startDate = auction.startedAt || auction.scheduledStartTime;
+  }
+  if (auction.completedAt) {
+    jsonLd.endDate = auction.completedAt;
+  }
+
+  return jsonLd;
+}
+
+export function generateBreadcrumbJsonLd(items: { name: string; url: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      item: item.url,
+    })),
   };
 }
 
-export function generateWebsiteSchema() {
+export const generateWebsiteSchema = generateWebsiteJsonLd;
+
+export function generateWebsiteJsonLd() {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -54,15 +105,10 @@ export function generateWebsiteSchema() {
       '@type': 'Organization',
       name: 'CricSmart',
       url: siteConfig.seoUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteConfig.url}/cricsmart-logo-512.png`,
+      },
     },
   };
-}
-
-export function SchemaScript({ schema }: { schema: Record<string, any> }) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
 }
