@@ -162,18 +162,42 @@ const currentBiddingStateSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
+const playerFieldSchema = new mongoose.Schema({
+  key: {
+    type: String,
+    required: true,
+  },
+  label: {
+    type: String,
+    required: true,
+  },
+  type: {
+    type: String,
+    enum: ['text', 'number', 'url', 'date'],
+    default: 'text',
+  },
+  showOnCard: {
+    type: Boolean,
+    default: true,
+  },
+  showInList: {
+    type: Boolean,
+    default: true,
+  },
+  sortable: {
+    type: Boolean,
+    default: false,
+  },
+  order: {
+    type: Number,
+    default: 0,
+  },
+}, { _id: false });
+
 const displayConfigSchema = new mongoose.Schema({
-  visibleColumns: {
-    type: [String],
-    default: ['name', 'role'],
-  },
-  sortableColumns: {
-    type: [String],
-    default: ['name', 'role'],
-  },
-  filterableColumns: {
-    type: [String],
-    default: ['role'],
+  playerFields: {
+    type: [playerFieldSchema],
+    default: [],
   },
 }, { _id: false });
 

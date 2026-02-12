@@ -2,13 +2,14 @@
 
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCheck, Settings, ArrowLeft, Radio } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, Settings, ArrowLeft, Radio, ListChecks } from 'lucide-react';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, href: '' },
   { id: 'live', label: 'Live Control', icon: Radio, href: '/live' },
   { id: 'teams', label: 'Teams', icon: Users, href: '/teams' },
   { id: 'players', label: 'Players', icon: UserCheck, href: '/players' },
+  { id: 'fields', label: 'Player Fields', icon: ListChecks, href: '/fields' },
   { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 

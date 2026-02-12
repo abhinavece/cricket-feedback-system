@@ -247,6 +247,76 @@ router.patch('/:auctionId/config', auth, resolveAuctionAdmin, async (req, res) =
 });
 
 // ============================================================
+// DISPLAY CONFIG: Player field configuration
+// ============================================================
+
+/**
+ * GET /api/v1/auctions/:auctionId/display-config
+ * Get the current player field display configuration.
+ */
+router.get('/:auctionId/display-config', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        playerFields: req.auction.displayConfig?.playerFields || [],
+      },
+    });
+  } catch (error) {
+    console.error('Get display config error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/v1/auctions/:auctionId/display-config
+ * Update player field display configuration (reorder, rename, toggle visibility).
+ * Allowed in any status — this is display-only config, not auction logic.
+ */
+router.patch('/:auctionId/display-config', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const { playerFields } = req.body;
+
+    if (!Array.isArray(playerFields)) {
+      return res.status(400).json({
+        success: false,
+        error: 'playerFields must be an array',
+      });
+    }
+
+    // Validate each field entry
+    const validTypes = ['text', 'number', 'url', 'date'];
+    for (const field of playerFields) {
+      if (!field.key || !field.label) {
+        return res.status(400).json({
+          success: false,
+          error: 'Each field must have a key and label',
+        });
+      }
+      if (field.type && !validTypes.includes(field.type)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid type "${field.type}". Must be one of: ${validTypes.join(', ')}`,
+        });
+      }
+    }
+
+    req.auction.displayConfig = { playerFields };
+    await req.auction.save();
+
+    res.json({
+      success: true,
+      data: {
+        playerFields: req.auction.displayConfig.playerFields,
+      },
+    });
+  } catch (error) {
+    console.error('Update display config error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // LIFECYCLE: CONFIGURE (Lock config)
 // ============================================================
 

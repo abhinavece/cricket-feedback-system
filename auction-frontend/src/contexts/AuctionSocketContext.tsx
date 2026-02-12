@@ -70,6 +70,16 @@ export interface AuctionConfig {
   playerRevealDelay: number;
 }
 
+export interface PlayerFieldConfig {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'url' | 'date';
+  showOnCard: boolean;
+  showInList: boolean;
+  sortable: boolean;
+  order: number;
+}
+
 export interface AuctionState {
   auctionId: string;
   name: string;
@@ -80,6 +90,7 @@ export interface AuctionState {
   bidding: BiddingState | null;
   teams: TeamInfo[];
   stats: { totalPlayers: number; inPool: number; sold: number; unsold: number };
+  playerFields?: PlayerFieldConfig[];
   myTeam?: MyTeamInfo;
   isAdmin?: boolean;
   remainingPlayerCount?: number;

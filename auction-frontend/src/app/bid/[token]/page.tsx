@@ -346,6 +346,7 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
                   status={bidding.status}
                   soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor } : null}
                   compact
+                  playerFields={state.playerFields}
                 />
               </div>
               {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (

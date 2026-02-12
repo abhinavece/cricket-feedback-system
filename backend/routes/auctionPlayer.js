@@ -111,6 +111,11 @@ router.post('/import', auth, resolveAuctionAdmin, upload.single('file'), async (
       'wk': 'wicket-keeper', 'keeper': 'wicket-keeper', 'wicketkeeper': 'wicket-keeper', 'wicket-keeper': 'wicket-keeper',
     };
 
+    // Parse skipped columns (sent from frontend as comma-separated string)
+    const skipColumnsRaw = columnMapping._skipColumns || '';
+    const skipColumns = new Set(skipColumnsRaw ? skipColumnsRaw.split(',').map(s => s.trim()) : []);
+    delete columnMapping._skipColumns;
+
     let nextNumber = await AuctionPlayer.getNextPlayerNumber(req.auction._id);
     const players = [];
     const errors = [];
@@ -130,11 +135,11 @@ router.post('/import', auth, resolveAuctionAdmin, upload.single('file'), async (
         continue;
       }
 
-      // Build custom fields from unmapped columns
+      // Build custom fields from unmapped and non-skipped columns
       const customFields = {};
       for (const [header, value] of Object.entries(row)) {
         const isMapped = Object.values(columnMapping).includes(header);
-        if (!isMapped && value !== '') {
+        if (!isMapped && !skipColumns.has(header) && value !== '') {
           customFields[header] = value;
         }
       }
@@ -174,6 +179,35 @@ router.post('/import', auth, resolveAuctionAdmin, upload.single('file'), async (
     await Auction.findByIdAndUpdate(req.auction._id, {
       remainingPlayerIds: allPoolIds.map(p => p._id),
     });
+
+    // Auto-populate displayConfig.playerFields from custom field keys
+    const auctionDoc = await Auction.findById(req.auction._id);
+    const existingFields = auctionDoc.displayConfig?.playerFields || [];
+    const existingKeys = new Set(existingFields.map(f => f.key));
+    let order = existingFields.length;
+
+    const allCustomKeys = new Set();
+    players.forEach(p => {
+      Object.keys(p.customFields || {}).forEach(k => allCustomKeys.add(k));
+    });
+
+    for (const key of allCustomKeys) {
+      if (!existingKeys.has(key)) {
+        const fieldType = inferFieldType(players, key);
+        existingFields.push({
+          key,
+          label: key, // Use Excel column name directly as label
+          type: fieldType,
+          showOnCard: true,
+          showInList: true,
+          sortable: fieldType === 'number',
+          order: order++,
+        });
+      }
+    }
+
+    auctionDoc.displayConfig = { playerFields: existingFields };
+    await auctionDoc.save();
 
     res.status(201).json({
       success: true,
@@ -262,11 +296,10 @@ router.get('/', auth, resolveAuctionAdmin, async (req, res) => {
     }
 
     const sortObj = {};
-    if (sort.startsWith('-')) {
-      sortObj[sort.substring(1)] = -1;
-    } else {
-      sortObj[sort] = 1;
-    }
+    const sortField = sort.startsWith('-') ? sort.substring(1) : sort;
+    const sortDir = sort.startsWith('-') ? -1 : 1;
+    // Support sorting by custom fields: sort=customFields.batting_avg or sort=-customFields.age
+    sortObj[sortField] = sortDir;
 
     const [players, total] = await Promise.all([
       AuctionPlayer.find(filter)
@@ -500,6 +533,28 @@ router.post('/validate/:token/flag', async (req, res) => {
 // ============================================================
 // HELPERS
 // ============================================================
+
+/**
+ * Infer field type by scanning sample values from imported players.
+ * Returns 'number', 'url', 'date', or 'text'.
+ */
+function inferFieldType(players, key) {
+  const samples = players
+    .map(p => (p.customFields || {})[key])
+    .filter(v => v !== undefined && v !== null && v !== '');
+
+  if (samples.length === 0) return 'text';
+
+  // Check if >80% are numeric
+  const numericCount = samples.filter(v => !isNaN(Number(v))).length;
+  if (numericCount / samples.length >= 0.8) return 'number';
+
+  // Check if looks like URLs
+  const urlCount = samples.filter(v => /^https?:\/\//i.test(String(v))).length;
+  if (urlCount / samples.length >= 0.8) return 'url';
+
+  return 'text';
+}
 
 /**
  * Suggest column mapping based on header names

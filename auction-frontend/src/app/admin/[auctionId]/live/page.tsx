@@ -420,6 +420,7 @@ function AdminLiveContent({ auctionId }: { auctionId: string }) {
                   basePrice={state.config.basePrice}
                   status={bidding.status}
                   soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor } : null}
+                  playerFields={state.playerFields}
                 />
               </div>
               {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (

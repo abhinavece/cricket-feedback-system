@@ -252,6 +252,22 @@ export async function importPlayersPreview(auctionId: string, file: File) {
   return res.json();
 }
 
+// ============================================================
+// Display Config Endpoints
+// ============================================================
+
+export async function getDisplayConfig(auctionId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/display-config`, { auth: true });
+}
+
+export async function updateDisplayConfig(auctionId: string, playerFields: any[]) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/display-config`, {
+    method: 'PATCH',
+    body: JSON.stringify({ playerFields }),
+    auth: true,
+  });
+}
+
 export async function importPlayersConfirm(auctionId: string, file: File, columnMapping: Record<string, string>) {
   const formData = new FormData();
   formData.append('file', file);

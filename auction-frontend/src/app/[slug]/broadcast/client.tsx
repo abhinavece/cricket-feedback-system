@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { AuctionSocketProvider, useAuctionSocket } from '@/contexts/AuctionSocketContext';
+import { AuctionSocketProvider, useAuctionSocket, PlayerFieldConfig } from '@/contexts/AuctionSocketContext';
 import { PLAYER_ROLES } from '@/lib/constants';
 import { Gavel, RotateCcw, Users, UserCheck, Clock } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
@@ -155,6 +155,7 @@ function BroadcastContent({ auctionName }: { auctionName: string }) {
                       soldTeam={currentTeam}
                       bidHistory={bidding.bidHistory}
                       teams={state.teams}
+                      playerFields={state.playerFields}
                     />
                   ) : (
                     <motion.div
@@ -242,6 +243,7 @@ function BroadcastPlayerCard({
   soldTeam,
   bidHistory,
   teams,
+  playerFields,
 }: {
   player: any;
   currentBid: number;
@@ -250,6 +252,7 @@ function BroadcastPlayerCard({
   soldTeam: any;
   bidHistory: any[];
   teams: any[];
+  playerFields?: PlayerFieldConfig[];
 }) {
   const roleConfig = PLAYER_ROLES[player.role as keyof typeof PLAYER_ROLES] || { label: player.role, icon: '🏏', color: 'text-slate-400' };
   const isSold = status === 'sold';
@@ -257,6 +260,7 @@ function BroadcastPlayerCard({
   const isRevealed = status === 'revealed';
   const hasBids = currentBid > basePrice || (currentBid === basePrice && status !== 'revealed');
   const multiplier = basePrice > 0 ? (currentBid || basePrice) / basePrice : 0;
+  const cardFields = (playerFields || []).filter(f => f.showOnCard).sort((a, b) => a.order - b.order);
 
   return (
     <motion.div
@@ -342,10 +346,31 @@ function BroadcastPlayerCard({
               initial={isRevealed ? { x: -15, opacity: 0 } : false}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl font-extrabold text-white mt-2 mb-3 truncate"
+              className="text-4xl font-extrabold text-white mt-2 mb-2 truncate"
             >
               {player.name}
             </motion.h2>
+
+            {/* Custom fields grid */}
+            {cardFields.length > 0 && (
+              <motion.div
+                initial={isRevealed ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.22 }}
+                className="grid grid-cols-3 gap-x-5 gap-y-1 mb-3 max-h-24 overflow-y-auto"
+              >
+                {cardFields.map(f => {
+                  const val = player.customFields?.[f.key];
+                  if (val === undefined || val === null || val === '') return null;
+                  return (
+                    <div key={f.key} className="text-xs truncate">
+                      <span className="text-slate-500">{f.label}: </span>
+                      <span className="text-slate-200 font-semibold">{String(val)}</span>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            )}
 
             {/* Bid amount */}
             {!isRevealed && (

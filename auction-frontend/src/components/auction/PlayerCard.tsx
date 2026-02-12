@@ -1,9 +1,9 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { BiddingPlayer } from '@/contexts/AuctionSocketContext';
+import { BiddingPlayer, PlayerFieldConfig } from '@/contexts/AuctionSocketContext';
 import { PLAYER_ROLES } from '@/lib/constants';
-import { Gavel, RotateCcw } from 'lucide-react';
+import { Gavel, RotateCcw, ExternalLink } from 'lucide-react';
 
 interface PlayerCardProps {
   player: BiddingPlayer | null;
@@ -12,6 +12,7 @@ interface PlayerCardProps {
   status: string;
   soldTeam?: { name: string; shortName: string; primaryColor: string } | null;
   compact?: boolean;
+  playerFields?: PlayerFieldConfig[];
 }
 
 function formatCurrency(amount: number) {
@@ -20,7 +21,23 @@ function formatCurrency(amount: number) {
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-export default function PlayerCard({ player, currentBid, basePrice, status, soldTeam, compact }: PlayerCardProps) {
+function CardFieldValue({ value, type }: { value: any; type: string }) {
+  if (value === undefined || value === null || value === '') return <span className="text-slate-600">—</span>;
+  if (type === 'url') {
+    return (
+      <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-0.5">
+        <ExternalLink className="w-2.5 h-2.5" /> Link
+      </a>
+    );
+  }
+  if (type === 'number') {
+    const num = Number(value);
+    if (!isNaN(num)) return <span>{Number.isInteger(num) ? num : num.toFixed(2)}</span>;
+  }
+  return <span>{String(value)}</span>;
+}
+
+export default function PlayerCard({ player, currentBid, basePrice, status, soldTeam, compact, playerFields }: PlayerCardProps) {
   if (!player) {
     return (
       <motion.div
@@ -57,6 +74,7 @@ export default function PlayerCard({ player, currentBid, basePrice, status, sold
   const isGoingTwice = status === 'going_twice';
   const hasBids = currentBid > basePrice || (currentBid === basePrice && status !== 'revealed');
   const multiplier = basePrice > 0 ? (currentBid || basePrice) / basePrice : 0;
+  const cardFields = (playerFields || []).filter(f => f.showOnCard).sort((a, b) => a.order - b.order);
 
   return (
     <AnimatePresence mode="wait">
@@ -171,6 +189,29 @@ export default function PlayerCard({ player, currentBid, basePrice, status, sold
               >
                 {player.name}
               </motion.h2>
+
+              {/* Custom fields grid */}
+              {cardFields.length > 0 && (
+                <motion.div
+                  initial={isRevealed ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.25 }}
+                  className={`grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1 ${compact ? 'max-h-16' : 'max-h-32'} overflow-y-auto`}
+                >
+                  {cardFields.map(f => {
+                    const val = player.customFields?.[f.key];
+                    if (val === undefined || val === null || val === '') return null;
+                    return (
+                      <div key={f.key} className="text-[11px] truncate">
+                        <span className="text-slate-500">{f.label}: </span>
+                        <span className="text-slate-300 font-medium">
+                          <CardFieldValue value={val} type={f.type} />
+                        </span>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              )}
 
               {/* Bid amount */}
               {!isRevealed && (

@@ -127,6 +127,15 @@ async function buildAuctionState(auction) {
       sold: totalSold,
       unsold: totalUnsold,
     },
+    playerFields: (auction.displayConfig?.playerFields || []).map(f => ({
+      key: f.key,
+      label: f.label,
+      type: f.type,
+      showOnCard: f.showOnCard,
+      showInList: f.showInList,
+      sortable: f.sortable,
+      order: f.order,
+    })),
   };
 }
 
