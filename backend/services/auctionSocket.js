@@ -233,6 +233,33 @@ function initAuctionSocket(io) {
       }
     });
 
+    socket.on('admin:undo', async (callback) => {
+      if (role !== 'admin') {
+        return typeof callback === 'function' && callback({ success: false, error: 'Admin only' });
+      }
+      try {
+        const result = await engine.undoLastAction(auctionId, socket.userId, io);
+        if (typeof callback === 'function') callback(result);
+      } catch (err) {
+        if (typeof callback === 'function') callback({ success: false, error: err.message });
+      }
+    });
+
+    socket.on('admin:disqualify', async (data, callback) => {
+      if (role !== 'admin') {
+        return typeof callback === 'function' && callback({ success: false, error: 'Admin only' });
+      }
+      if (!data?.playerId) {
+        return typeof callback === 'function' && callback({ success: false, error: 'playerId required' });
+      }
+      try {
+        const result = await engine.disqualifyPlayer(auctionId, data.playerId, data.reason, socket.userId, io);
+        if (typeof callback === 'function') callback(result);
+      } catch (err) {
+        if (typeof callback === 'function') callback({ success: false, error: err.message });
+      }
+    });
+
     socket.on('admin:complete', async (data, callback) => {
       if (role !== 'admin') {
         return typeof callback === 'function' && callback({ success: false, error: 'Admin only' });

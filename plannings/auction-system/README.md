@@ -29,8 +29,9 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - ✅ **Phase 3**: Admin auction detail pages — COMPLETED
 - ✅ **Phase 4**: Public auction pages (SSR, JSON-LD, sitemap) — COMPLETED
 - ✅ **Phase 5**: Real-time bidding engine (Socket.IO) — COMPLETED
-- ⏳ **Phase 6**: Admin power tools (undo, disqualify, overrides)
-- ⏳ **Phase 7**: Animations & broadcast view
+- ✅ **Phase 5.5**: UI overhaul — Framer Motion animations, premium design — COMPLETED
+- ✅ **Phase 6**: Admin power tools (undo, disqualify) — COMPLETED
+- ✅ **Phase 7**: Broadcast view + sold/unsold animations — COMPLETED
 - ⏳ **Phase 8**: Post-auction features (trading, finalize)
 - ⏳ **Phase 9**: Analytics & export
 - ⏳ **Phase 10**: Testing & edge cases
@@ -104,6 +105,49 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
   - Connection status indicators and reconnection logic
 
 **Dependencies added**: socket.io (backend), socket.io-client (frontend)
+
+### Phase 5.5 Deliverables (Completed)
+
+**UI Overhaul — Premium Auction Experience**
+- **globals.css** — Added sold/unsold glow effects, timer urgency pulse, shimmer gradients, count-up & hammer-slam keyframes, btn-bid class, ambient body gradient
+- **PlayerCard** — Framer Motion reveal animation (scale+fade), going-once/twice phase banners with pulse, sold glow with team color ambient, unsold orange glow, Gavel icon for sold, multiplier badge (color-coded 3×/5×+), animated bid progress bar
+- **Timer** — Circular SVG ring progress with phase-colored stroke + glow ring, smooth countdown with spring animation on urgent ticks, phase label transitions
+- **BidTicker** — AnimatePresence slide-in for new bids, team color badges with #1 indicator, scrollable max-height, gradient-text-gold for highest bid
+- **TeamPanel** — Team color ambient glow for highest bidder, animated purse bar with team gradient, Gavel icon animation, subtle scale pulse on bid
+- **Spectator Live View** — Glass-card status bar with live/paused/completed/waiting indicators, auction progress bar (% complete), 12-col grid layout, section headers with amber accent bars, rich stat cards with icons
+- **Team Bidding Page** — Sticky header with purse progress bar, btn-bid with shimmer animation, CheckCircle2 highest-bidder state, AnimatePresence for bid errors, Wallet icon for insufficient purse
+- **Admin Live Page** — Undo toast notification (fixed top center), progress bar, compact stats sidebar, redesigned control bar layout
+
+**Dependencies added**: framer-motion
+
+### Phase 6 Deliverables (Completed)
+
+**Admin Power Tools** — Undo stack + player disqualification
+- **Backend Engine** (`services/auctionEngine.js`):
+  - `undoLastAction()` — LIFO undo for PLAYER_SOLD (return to pool + purse refund + squad removal), PLAYER_UNSOLD (return to pool), PLAYER_DISQUALIFIED (reinstate). Max 3 consecutive undos. Broadcasts `admin:undo` event + full state rebuild
+  - `disqualifyPlayer()` — Remove player from auction. If sold, refunds team purse and removes from squad. Logs ActionEvent with reversalPayload for undo support. Broadcasts `player:disqualified` + state rebuild
+- **Socket.IO Handlers** (`services/auctionSocket.js`):
+  - `admin:undo` — Calls `undoLastAction` with admin userId, returns result with undone action details
+  - `admin:disqualify` — Calls `disqualifyPlayer` with playerId + reason
+- **Admin Live UI** (`admin/[auctionId]/live/page.tsx`):
+  - Undo button in control bar (visible when live or paused)
+  - Animated toast notification showing undone action details (3s auto-dismiss)
+
+### Phase 7 Deliverables (Completed)
+
+**Broadcast View** — `/[slug]/broadcast` OBS-ready streaming overlay
+- **Server page** (`[slug]/broadcast/page.tsx`) — SSR with `fetchAuctionBySlug`, passes auction data to client
+- **Client component** (`[slug]/broadcast/client.tsx`) — Full-screen immersive layout:
+  - Ambient background glows (amber top, team-color bottom for current bidder)
+  - Top bar: auction name, live/paused badge, round/pool/sold stats
+  - Main area: 12-col grid with 7-col player card + 5-col timer & team strip
+  - `BroadcastPlayerCard` — Large 4xl name, 5xl bid amount, role icon + avatar, multiplier badge, sold team badge with team color glow, going-once/twice pulsing banners, bid history strip (last 6 bids with team color chips)
+  - `BroadcastTimer` — 136px circular SVG ring with phase-colored stroke + blur glow, 5xl countdown digits, phase label with tracking
+  - Team strip: compact cards with purse bar, team color badge, gavel indicator for highest bidder
+  - Waiting/paused/completed overlay states
+  - Announcement overlay (slides down from top, auto-animated)
+  - Fixed bottom bar with CricSmart branding
+- Clean dark background (slate-950) optimized for OBS chroma key and streaming
 
 ### Phase 1 Deliverables (Completed)
 

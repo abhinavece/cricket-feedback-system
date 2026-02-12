@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuctionSocketProvider, useAuctionSocket } from '@/contexts/AuctionSocketContext';
 import PlayerCard from '@/components/auction/PlayerCard';
 import Timer from '@/components/auction/Timer';
@@ -10,7 +11,8 @@ import TeamPanel from '@/components/auction/TeamPanel';
 import { siteConfig } from '@/lib/constants';
 import {
   Wifi, WifiOff, IndianRupee, Users, UserCheck, Clock,
-  Gavel, AlertTriangle, Trophy, Radio, ShieldCheck,
+  Gavel, AlertTriangle, Trophy, Radio, ShieldCheck, Wallet,
+  TrendingUp, CircleDot, Pause, CheckCircle2,
 } from 'lucide-react';
 
 function formatCurrency(amount: number) {
@@ -30,12 +32,10 @@ export default function TeamBidPage() {
   const [accessCode, setAccessCode] = useState('');
   const [needsCode, setNeedsCode] = useState(false);
 
-  // Step 1: Validate access token and login
   useEffect(() => {
     async function validateToken() {
       try {
         const apiUrl = siteConfig.apiUrl;
-        // First, try to get team info from access token
         const res = await fetch(`${apiUrl}/api/v1/auctions/team-login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -49,7 +49,6 @@ export default function TeamBidPage() {
           setTeamName(data.teamName || 'Your Team');
           setLoading(false);
         } else {
-          // May need access code
           setNeedsCode(true);
           setLoading(false);
         }
@@ -61,7 +60,6 @@ export default function TeamBidPage() {
     validateToken();
   }, [accessToken]);
 
-  // Step 2: Login with access code
   const handleCodeLogin = async () => {
     if (!accessCode.trim()) return;
     setLoading(true);
@@ -93,10 +91,15 @@ export default function TeamBidPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card p-12 text-center">
-          <div className="w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Verifying access...</p>
-        </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-14 text-center">
+          <div className="relative w-14 h-14 mx-auto mb-5">
+            <div className="absolute inset-0 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+            <div className="absolute inset-2 rounded-full bg-slate-800/50 flex items-center justify-center">
+              <Gavel className="w-4 h-4 text-amber-400" />
+            </div>
+          </div>
+          <p className="text-slate-400 text-sm">Verifying access...</p>
+        </motion.div>
       </div>
     );
   }
@@ -104,11 +107,13 @@ export default function TeamBidPage() {
   if (error && !needsCode) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="glass-card p-8 text-center max-w-md">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 text-center max-w-md">
+          <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-400" />
+          </div>
           <h2 className="text-xl font-bold text-white mb-2">Access Error</h2>
-          <p className="text-slate-400">{error}</p>
-        </div>
+          <p className="text-slate-400 text-sm">{error}</p>
+        </motion.div>
       </div>
     );
   }
@@ -116,14 +121,16 @@ export default function TeamBidPage() {
   if (needsCode) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="glass-card p-8 max-w-md w-full">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 max-w-md w-full">
           <div className="text-center mb-6">
-            <ShieldCheck className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+            <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck className="w-6 h-6 text-amber-400" />
+            </div>
             <h2 className="text-xl font-bold text-white mb-1">Team Login</h2>
-            <p className="text-sm text-slate-400">Enter your 6-character access code to join the auction</p>
+            <p className="text-sm text-slate-400">Enter your 6-character access code to join</p>
           </div>
           {error && (
-            <div className="mb-4 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            <div className="mb-4 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center">
               {error}
             </div>
           )}
@@ -131,9 +138,9 @@ export default function TeamBidPage() {
             type="text"
             value={accessCode}
             onChange={e => setAccessCode(e.target.value.toUpperCase())}
-            placeholder="Access Code"
+            placeholder="------"
             maxLength={6}
-            className="input-field text-center text-2xl font-mono tracking-[0.3em] mb-4"
+            className="input-field text-center text-2xl font-mono tracking-[0.4em] mb-4 py-4"
             onKeyDown={e => e.key === 'Enter' && handleCodeLogin()}
             autoFocus
           />
@@ -144,7 +151,7 @@ export default function TeamBidPage() {
           >
             {loading ? 'Verifying...' : 'Join Auction'}
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -153,9 +160,11 @@ export default function TeamBidPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="glass-card p-8 text-center">
-          <AlertTriangle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
+          <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-6 h-6 text-orange-400" />
+          </div>
           <h2 className="text-xl font-bold text-white mb-2">Invalid Link</h2>
-          <p className="text-slate-400">This bidding link is invalid or has expired.</p>
+          <p className="text-slate-400 text-sm">This bidding link is invalid or has expired.</p>
         </div>
       </div>
     );
@@ -188,12 +197,14 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
   if (!state) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card p-12 text-center">
-          <div className="w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">
-            {connectionStatus === 'error' ? 'Connection failed. Retrying...' : 'Connecting to auction...'}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-14 text-center">
+          <div className="relative w-14 h-14 mx-auto mb-5">
+            <div className="absolute inset-0 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+          </div>
+          <p className="text-slate-400 text-sm">
+            {connectionStatus === 'error' ? 'Connection lost. Retrying...' : 'Connecting to auction...'}
           </p>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -214,84 +225,120 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
 
   const isHighestBidder = bidding?.currentBidTeamId === myTeam?._id;
 
-  // Calculate next bid amount
   const nextBidAmount = bidding
     ? bidding.bidHistory.length === 0
       ? state.config.basePrice
       : bidding.currentBid + getIncrement(bidding.currentBid, state.config)
     : 0;
 
+  const pursePct = myTeam && state.config.purseValue > 0
+    ? ((state.config.purseValue - myTeam.purseRemaining) / state.config.purseValue) * 100
+    : 0;
+
   return (
-    <div className="min-h-screen">
-      {/* Team header */}
-      <div className="border-b border-white/5 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+    <div className="min-h-screen flex flex-col">
+      {/* ─── Sticky Team Header ─── */}
+      <div className="border-b border-white/5 bg-slate-950/90 backdrop-blur-2xl sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Gavel className="w-5 h-5 text-amber-400" />
-              <span className="text-sm font-bold text-white">{teamName}</span>
-              {connectionStatus === 'connected' ? (
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <WifiOff className="w-3.5 h-3.5 text-orange-400 animate-pulse" />
-              )}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <Gavel className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <span className="text-sm font-bold text-white block leading-tight">{teamName}</span>
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-orange-500 animate-pulse'}`} />
+                  <span className="text-[10px] text-slate-500">{connectionStatus === 'connected' ? 'Connected' : 'Reconnecting'}</span>
+                </div>
+              </div>
             </div>
             {myTeam && (
-              <div className="flex items-center gap-4 text-xs">
-                <span className="text-slate-400">
-                  Purse: <span className="font-bold text-white">{formatCurrency(myTeam.purseRemaining)}</span>
-                </span>
-                <span className="text-slate-400">
-                  Max Bid: <span className="font-bold text-amber-400">{formatCurrency(myTeam.maxBid)}</span>
-                </span>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Purse</div>
+                  <div className="text-sm font-bold text-white tabular-nums">{formatCurrency(myTeam.purseRemaining)}</div>
+                </div>
+                <div className="w-px h-8 bg-white/5" />
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Max Bid</div>
+                  <div className="text-sm font-bold text-amber-400 tabular-nums">{formatCurrency(myTeam.maxBid)}</div>
+                </div>
               </div>
             )}
           </div>
+          {/* Purse progress bar in header */}
+          {myTeam && (
+            <div className="mt-2 h-1 bg-slate-800/60 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
+                style={{ width: `${100 - pursePct}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-        {/* Announcements */}
-        {announcements.length > 0 && (
-          <div className="mb-4 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <p className="text-sm text-amber-300">{announcements[0].message}</p>
-            </div>
-          </div>
-        )}
+      <div className="max-w-4xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-1">
+        {/* ─── Announcements ─── */}
+        <AnimatePresence>
+          {announcements.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4"
+            >
+              <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/15">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 animate-pulse" />
+                  <p className="text-sm text-amber-200/90">{announcements[0].message}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Not live states */}
+        {/* ─── Non-live States ─── */}
         {isPaused && (
-          <div className="glass-card p-8 text-center mb-6">
-            <div className="text-3xl mb-3">⏸️</div>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 text-center mb-6 border-amber-500/10">
+            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }} className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+              <Pause className="w-6 h-6 text-amber-400" />
+            </motion.div>
             <h2 className="text-xl font-bold text-white mb-1">Auction Paused</h2>
             <p className="text-sm text-slate-400">Bidding will resume shortly</p>
-          </div>
+          </motion.div>
         )}
 
         {isCompleted && (
-          <div className="glass-card p-8 text-center mb-6">
-            <div className="text-3xl mb-3">🏆</div>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 text-center mb-6 border-emerald-500/10">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+              <Trophy className="w-6 h-6 text-emerald-400" />
+            </div>
             <h2 className="text-xl font-bold text-white mb-1">Auction Completed</h2>
             <p className="text-sm text-slate-400">{state.stats.sold} players sold</p>
-          </div>
+          </motion.div>
         )}
 
         {!isLive && !isPaused && !isCompleted && (
-          <div className="glass-card p-8 text-center mb-6">
-            <div className="text-3xl mb-3">⏳</div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-8 text-center mb-6">
+            <div className="relative w-16 h-16 mx-auto mb-5">
+              <div className="absolute inset-0 rounded-full border-2 border-dashed border-slate-700 animate-spin" style={{ animationDuration: '10s' }} />
+              <div className="absolute inset-2 rounded-full bg-slate-800/50 flex items-center justify-center">
+                <CircleDot className="w-5 h-5 text-slate-500" />
+              </div>
+            </div>
             <h2 className="text-xl font-bold text-white mb-1">Waiting to Start</h2>
             <p className="text-sm text-slate-400">The auction hasn&apos;t started yet</p>
-          </div>
+          </motion.div>
         )}
 
-        {/* Live bidding view */}
+        {/* ─── Live Bidding View ─── */}
         {isLive && bidding && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-5">
             {/* Player + Timer */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <div className="flex-1 w-full">
                 <PlayerCard
                   player={bidding.player}
                   currentBid={bidding.currentBid}
@@ -302,58 +349,85 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
                 />
               </div>
               {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (
-                <Timer expiresAt={bidding.timerExpiresAt} phase={bidding.status} />
+                <div className="flex-shrink-0 self-center sm:self-start">
+                  <Timer expiresAt={bidding.timerExpiresAt} phase={bidding.status} />
+                </div>
               )}
             </div>
 
-            {/* BID BUTTON — the hero */}
+            {/* ─── BID BUTTON — the hero ─── */}
             {!['sold', 'unsold', 'waiting'].includes(bidding.status) && (
-              <div className="space-y-3">
-                {isHighestBidder ? (
-                  <div className="glass-card p-5 text-center border-emerald-500/20 bg-emerald-500/5">
-                    <div className="text-lg font-bold text-emerald-400 mb-1">✅ You are the highest bidder</div>
-                    <p className="text-sm text-slate-400">Current bid: {formatCurrency(bidding.currentBid)}</p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleBid}
-                    disabled={!canBid || bidLoading}
-                    className={`w-full py-5 sm:py-6 rounded-2xl text-center transition-all ${
-                      canBid && !bidLoading
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xl shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] active:scale-[0.98]'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {bidLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Bidding...
-                      </span>
-                    ) : canBid ? (
-                      <span className="flex items-center justify-center gap-3">
-                        <Gavel className="w-6 h-6" />
-                        BID {formatCurrency(nextBidAmount)}
-                      </span>
-                    ) : !myTeam?.canBid ? (
-                      'Insufficient Purse'
-                    ) : (
-                      'Waiting...'
-                    )}
-                  </button>
-                )}
+              <div className="space-y-2.5">
+                <AnimatePresence mode="wait">
+                  {isHighestBidder ? (
+                    <motion.div
+                      key="highest"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="glass-card p-5 text-center border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-emerald-500/10"
+                    >
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <span className="text-base font-bold text-emerald-400">You are the highest bidder</span>
+                      </div>
+                      <p className="text-sm text-slate-400 tabular-nums">Current bid: {formatCurrency(bidding.currentBid)}</p>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="bid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <button
+                        onClick={handleBid}
+                        disabled={!canBid || bidLoading}
+                        className={`w-full rounded-2xl text-center transition-all ${
+                          canBid && !bidLoading
+                            ? 'btn-bid'
+                            : 'py-5 bg-slate-800/60 text-slate-500 cursor-not-allowed border border-white/5 rounded-2xl'
+                        }`}
+                      >
+                        {bidLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                            Placing bid...
+                          </span>
+                        ) : canBid ? (
+                          <span className="flex items-center justify-center gap-3">
+                            <Gavel className="w-6 h-6" />
+                            BID {formatCurrency(nextBidAmount)}
+                          </span>
+                        ) : !myTeam?.canBid ? (
+                          <span className="flex items-center justify-center gap-2 text-sm">
+                            <Wallet className="w-4 h-4" /> Insufficient Purse
+                          </span>
+                        ) : (
+                          'Waiting...'
+                        )}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                {bidError && (
-                  <div className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center">
-                    {bidError}
-                  </div>
-                )}
+                <AnimatePresence>
+                  {bidError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center"
+                    >
+                      {bidError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
             {/* Bid history */}
             {bidding.bidHistory.length > 0 && (
               <div className="glass-card p-4">
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Bid History</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Bid History</h3>
+                </div>
                 <BidTicker bidHistory={bidding.bidHistory} teams={state.teams} maxItems={5} />
               </div>
             )}
@@ -361,27 +435,33 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
             {/* My team info */}
             {myTeam && (
               <div className="glass-card p-4">
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Your Team</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-white">{formatCurrency(myTeam.purseRemaining)}</div>
-                    <div className="text-[10px] text-slate-500">Purse Left</div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Wallet className="w-3.5 h-3.5 text-slate-500" />
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Your Team</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
+                    <div className="text-lg font-extrabold text-white tabular-nums">{formatCurrency(myTeam.purseRemaining)}</div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Purse Left</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-amber-400">{formatCurrency(myTeam.maxBid)}</div>
-                    <div className="text-[10px] text-slate-500">Max Bid</div>
+                  <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
+                    <div className="text-lg font-extrabold text-amber-400 tabular-nums">{formatCurrency(myTeam.maxBid)}</div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Max Bid</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-white">{myTeam.squadSize}</div>
-                    <div className="text-[10px] text-slate-500">Squad Size</div>
+                  <div className="p-3 rounded-xl bg-slate-800/30 border border-white/5 text-center">
+                    <div className="text-lg font-extrabold text-white tabular-nums">{myTeam.squadSize}</div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Squad</div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Teams overview (compact) */}
+            {/* Teams overview */}
             <div>
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">All Teams</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">All Teams</h3>
+              </div>
               <TeamPanel teams={state.teams} currentBidTeamId={bidding.currentBidTeamId} compact />
             </div>
           </div>
@@ -391,9 +471,7 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
   );
 }
 
-// Helper to calculate bid increment on the client side (mirrors server logic)
 function getIncrement(currentBid: number, config: any): number {
-  // Simple approximation — server is authoritative
   if (currentBid < 100000) return 10000;
   if (currentBid < 500000) return 25000;
   return 50000;

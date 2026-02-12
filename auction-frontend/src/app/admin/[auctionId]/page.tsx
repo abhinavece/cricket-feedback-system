@@ -10,7 +10,9 @@ import { AUCTION_STATUSES, PLAYER_ROLES } from '@/lib/constants';
 import {
   Loader2, Gavel, Users, UserCheck, IndianRupee, Clock,
   Play, Pause, Square, CheckCircle, AlertTriangle, Copy, ExternalLink,
+  Radio, ChevronRight,
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface AuctionDetail {
   _id: string;
@@ -75,6 +77,11 @@ export default function AuctionOverviewPage() {
         case 'complete': res = await completeAuction(auctionId); break;
         default: return;
       }
+      // After going live or resuming, redirect to the live control panel
+      if (action === 'go-live' || action === 'resume') {
+        router.push(`/admin/${auctionId}/live`);
+        return;
+      }
       await loadAuction();
     } catch (err: any) {
       alert(err.message);
@@ -118,8 +125,49 @@ export default function AuctionOverviewPage() {
   const totalPlayers = Object.values(auction.playerStats).reduce((sum, n) => sum + n, 0);
   const teamCount = auction.teams.length;
 
+  const isAuctionLive = auction.status === 'live';
+  const isAuctionPaused = auction.status === 'paused';
+
   return (
     <div className="space-y-6">
+      {/* Live Control Panel Banner */}
+      {(isAuctionLive || isAuctionPaused) && (
+        <Link
+          href={`/admin/${auctionId}/live`}
+          className={`block p-4 sm:p-5 rounded-2xl border transition-all hover:scale-[1.005] ${
+            isAuctionLive
+              ? 'bg-red-500/10 border-red-500/20 hover:bg-red-500/15'
+              : 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                isAuctionLive ? 'bg-red-500/20' : 'bg-amber-500/20'
+              }`}>
+                <Radio className={`w-5 h-5 ${isAuctionLive ? 'text-red-400' : 'text-amber-400'}`} />
+              </div>
+              <div>
+                <p className={`text-sm font-bold ${isAuctionLive ? 'text-red-400' : 'text-amber-400'}`}>
+                  {isAuctionLive ? 'Auction is LIVE' : 'Auction is PAUSED'}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {isAuctionLive
+                    ? 'Open Live Control Panel to manage bidding, next player, undo, and more'
+                    : 'Open Live Control Panel to resume and manage the auction'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-1 text-sm font-semibold ${
+              isAuctionLive ? 'text-red-400' : 'text-amber-400'
+            }`}>
+              Open Live Panel <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Auction header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -209,6 +257,7 @@ export default function AuctionOverviewPage() {
           playerCount={totalPlayers}
           loading={actionLoading}
           onAction={handleLifecycleAction}
+          auctionId={auctionId}
         />
       </div>
 
@@ -265,12 +314,13 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
   );
 }
 
-function LifecycleControls({ status, teamCount, playerCount, loading, onAction }: {
+function LifecycleControls({ status, teamCount, playerCount, loading, onAction, auctionId }: {
   status: string;
   teamCount: number;
   playerCount: number;
   loading: string | null;
   onAction: (action: string) => void;
+  auctionId: string;
 }) {
   const FLOW: Record<string, { label: string; action: string; icon: any; color: string; confirm?: string; disabled?: boolean; disabledReason?: string }[]> = {
     draft: [{
@@ -333,7 +383,7 @@ function LifecycleControls({ status, teamCount, playerCount, loading, onAction }
   }
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-3 items-center">
       {actions.map(act => {
         const Icon = act.icon;
         const isLoading = loading === act.action;
@@ -360,6 +410,18 @@ function LifecycleControls({ status, teamCount, playerCount, loading, onAction }
           </div>
         );
       })}
+
+      {/* Live Panel link for live/paused states */}
+      {(status === 'live' || status === 'paused') && (
+        <Link
+          href={`/admin/${auctionId}/live`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-xl hover:scale-[1.02]"
+        >
+          <Radio className="w-4 h-4" />
+          Open Live Panel
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      )}
     </div>
   );
 }

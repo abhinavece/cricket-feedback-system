@@ -1,6 +1,8 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { TeamInfo } from '@/contexts/AuctionSocketContext';
+import { Gavel, Users } from 'lucide-react';
 
 interface TeamPanelProps {
   teams: TeamInfo[];
@@ -10,63 +12,85 @@ interface TeamPanelProps {
 
 function formatCurrency(amount: number) {
   if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
-  if (amount >= 100000) return `₹${(amount / 100000).toFixed(0)}L`;
+  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export default function TeamPanel({ teams, currentBidTeamId, compact }: TeamPanelProps) {
   return (
-    <div className={`grid ${compact ? 'grid-cols-2 gap-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3'}`}>
+    <div className={`grid ${compact ? 'grid-cols-2 gap-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3'}`}>
       {teams.map(team => {
         const isHighestBidder = team._id === currentBidTeamId;
         const spentPct = team.purseValue > 0 ? ((team.purseValue - team.purseRemaining) / team.purseValue) * 100 : 0;
+        const remainPct = 100 - spentPct;
 
         return (
-          <div
+          <motion.div
             key={team._id}
-            className={`rounded-xl border transition-all ${
+            layout
+            animate={isHighestBidder ? { scale: [1, 1.02, 1] } : {}}
+            transition={{ duration: 0.3 }}
+            className={`rounded-xl border transition-all relative overflow-hidden ${
               isHighestBidder
-                ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
-                : 'bg-slate-800/30 border-white/5'
+                ? 'border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-slate-800/50 to-orange-500/5'
+                : 'bg-slate-800/30 border-white/5 hover:border-white/10'
             } ${compact ? 'p-2.5' : 'p-3'}`}
           >
-            <div className="flex items-center gap-2 mb-2">
+            {/* Ambient team color glow for highest bidder */}
+            {isHighestBidder && (
               <div
-                className={`${compact ? 'w-7 h-7 text-[8px]' : 'w-8 h-8 text-[9px]'} rounded-lg flex items-center justify-center font-bold text-white flex-shrink-0 ${isHighestBidder ? 'ring-2 ring-amber-400/50' : ''}`}
+                className="absolute inset-0 opacity-[0.07] blur-2xl"
                 style={{ background: team.primaryColor }}
+              />
+            )}
+
+            <div className="relative flex items-center gap-2 mb-2.5">
+              <div
+                className={`${compact ? 'w-8 h-8 text-[8px]' : 'w-9 h-9 text-[9px]'} rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0 shadow-lg`}
+                style={{
+                  background: team.primaryColor,
+                  boxShadow: isHighestBidder ? `0 4px 12px ${team.primaryColor}50` : `0 2px 8px ${team.primaryColor}30`,
+                }}
               >
                 {team.shortName}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className={`${compact ? 'text-[11px]' : 'text-xs'} font-semibold text-white truncate`}>
                   {team.name}
                 </div>
-                <div className="text-[10px] text-slate-500">
-                  {team.squadSize} player{team.squadSize !== 1 ? 's' : ''}
+                <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                  <Users className="w-2.5 h-2.5" />
+                  <span>{team.squadSize}</span>
                 </div>
               </div>
               {isHighestBidder && (
-                <span className="ml-auto text-amber-400 text-lg flex-shrink-0">🔨</span>
+                <motion.div
+                  initial={{ scale: 0, rotate: -20 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  className="flex-shrink-0"
+                >
+                  <Gavel className="w-4 h-4 text-amber-400" />
+                </motion.div>
               )}
             </div>
 
             {/* Purse bar */}
-            <div>
-              <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${100 - spentPct}%`,
-                    background: team.primaryColor,
-                  }}
+            <div className="relative">
+              <div className="h-1.5 bg-slate-900/60 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${remainPct}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  style={{ background: `linear-gradient(90deg, ${team.primaryColor}, ${team.primaryColor}80)` }}
                 />
               </div>
-              <div className={`flex justify-between ${compact ? 'text-[9px]' : 'text-[10px]'} text-slate-500 mt-1`}>
-                <span>{formatCurrency(team.purseRemaining)}</span>
-                <span>{Math.round(spentPct)}% used</span>
+              <div className={`flex justify-between ${compact ? 'text-[9px]' : 'text-[10px]'} mt-1`}>
+                <span className="text-slate-400 font-medium tabular-nums">{formatCurrency(team.purseRemaining)}</span>
+                <span className="text-slate-600 tabular-nums">{Math.round(spentPct)}%</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         );
       })}
     </div>

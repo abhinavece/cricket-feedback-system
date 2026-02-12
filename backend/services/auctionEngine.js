@@ -195,8 +195,9 @@ async function startAuction(auctionId, io) {
   const ns = io.of('/auction');
   ns.to(`auction:${auctionId}`).emit('auction:status_change', { status: 'live' });
 
-  // Auto-pick first player
-  await pickNextPlayer(auctionId, io);
+  // Broadcast full state — admin must click "Next Player" to begin
+  const fullState = await buildAuctionState(auction);
+  ns.to(`auction:${auctionId}`).emit('auction:state', fullState);
 }
 
 /**
@@ -401,10 +402,16 @@ async function finalizePlayer(auctionId, io) {
     await playerUnsold(auction, playerId, io);
   }
 
-  // Small delay before picking next player
-  setTimeout(async () => {
-    await pickNextPlayer(auctionId, io);
-  }, 2000);
+  // After sold/unsold, broadcast full state rebuild so admin sees updated stats
+  // Admin must manually trigger "Next Player" — no auto-advance
+  const updatedAuction = await Auction.findById(auctionId);
+  if (updatedAuction) {
+    const fullState = await buildAuctionState(updatedAuction);
+    fullState.isAdmin = true;
+    fullState.remainingPlayerCount = updatedAuction.remainingPlayerIds?.length || 0;
+    const ns = io.of('/auction');
+    ns.to(`admin:${auctionId}`).emit('auction:state', fullState);
+  }
 }
 
 /**
@@ -760,11 +767,37 @@ async function resumeAuction(auctionId, adminUserId, io) {
     publicMessage: 'Auction resumed',
   });
 
+  // Broadcast full state rebuild so all clients get current auction data
+  const fullState = await buildAuctionState(auction);
   const ns = io.of('/auction');
   ns.to(`auction:${auctionId}`).emit('auction:status_change', { status: 'live' });
+  ns.to(`auction:${auctionId}`).emit('auction:state', fullState);
 
-  // Pick next player
-  await pickNextPlayer(auctionId, io);
+  // If there was an active bidding phase when paused, restart its timer
+  const bs = auction.currentBiddingState;
+  if (bs && bs.playerId && ['open', 'going_once', 'going_twice'].includes(bs.status)) {
+    const remaining = bs.timerExpiresAt ? Math.max(1, Math.ceil((new Date(bs.timerExpiresAt).getTime() - Date.now()) / 1000)) : 10;
+    const newExpiry = new Date(Date.now() + remaining * 1000);
+    auction.currentBiddingState.timerExpiresAt = newExpiry;
+    auction.currentBiddingState.timerStartedAt = new Date();
+    await auction.save();
+
+    ns.to(`auction:${auctionId}`).emit('timer:phase', {
+      phase: bs.status,
+      timerExpiresAt: newExpiry,
+      duration: remaining,
+      currentBid: bs.currentBid,
+      currentBidTeamId: bs.currentBidTeamId?.toString(),
+    });
+
+    const timerCallback = bs.status === 'open'
+      ? () => goingOnce(auctionId, io)
+      : bs.status === 'going_once'
+        ? () => goingTwice(auctionId, io)
+        : () => finalizePlayer(auctionId, io);
+    setAuctionTimer(auctionId, bs.status, remaining * 1000, timerCallback);
+  }
+  // Otherwise admin must click "Next Player" to continue
 }
 
 /**
@@ -821,7 +854,12 @@ async function skipPlayer(auctionId, adminUserId, io) {
   auction.currentBiddingState = { status: 'waiting' };
   await auction.save();
 
-  await pickNextPlayer(auctionId, io);
+  // Broadcast state rebuild — admin must click "Next Player" to continue
+  const fullState = await buildAuctionState(auction);
+  fullState.isAdmin = true;
+  fullState.remainingPlayerCount = auction.remainingPlayerIds?.length || 0;
+  const ns2 = io.of('/auction');
+  ns2.to(`admin:${auctionId}`).emit('auction:state', fullState);
 }
 
 /**
@@ -862,6 +900,269 @@ async function completeAuction(auctionId, io, reason) {
 }
 
 /**
+ * Undo the last player-level action (SOLD → return to pool + refund purse, UNSOLD → return to pool)
+ * LIFO stack, max 3 consecutive undos.
+ * @returns {{ success: boolean, error?: string, undoneAction?: object }}
+ */
+async function undoLastAction(auctionId, adminUserId, io) {
+  const auction = await Auction.findById(auctionId);
+  if (!auction || !['live', 'paused'].includes(auction.status)) {
+    return { success: false, error: 'Auction must be live or paused to undo' };
+  }
+
+  // Check undo limit
+  const consecutiveUndos = await ActionEvent.getConsecutiveUndoCount(auctionId);
+  if (consecutiveUndos >= 3) {
+    return { success: false, error: 'Maximum 3 consecutive undos reached' };
+  }
+
+  // Get the most recent undoable action
+  const undoable = await ActionEvent.getUndoableActions(auctionId, 1);
+  if (!undoable || undoable.length === 0) {
+    return { success: false, error: 'No undoable actions available' };
+  }
+
+  const action = undoable[0];
+  const reversal = action.reversalPayload;
+
+  console.log(`[Undo] Reversing action #${action.sequenceNumber} type=${action.type} for auction ${auctionId}`);
+
+  try {
+    if (action.type === 'PLAYER_SOLD') {
+      // Reverse SOLD: put player back in pool, refund purse to team, remove from squad
+      const { playerId, teamId, amount } = action.payload;
+
+      // Restore player to pool
+      await AuctionPlayer.findByIdAndUpdate(playerId, {
+        status: 'pool',
+        soldTo: null,
+        soldAmount: null,
+        soldInRound: null,
+        $pop: { roundHistory: 1 },
+      });
+
+      // Refund team purse + remove player from squad
+      const team = await AuctionTeam.findById(teamId);
+      if (team) {
+        team.purseRemaining += amount;
+        team.players = team.players.filter(
+          p => p.playerId.toString() !== playerId.toString()
+        );
+        await team.save();
+      }
+
+      // Put player back in remaining pool
+      if (!auction.remainingPlayerIds.map(id => id.toString()).includes(playerId.toString())) {
+        auction.remainingPlayerIds.push(playerId);
+      }
+
+    } else if (action.type === 'PLAYER_UNSOLD') {
+      // Reverse UNSOLD: put player back in pool
+      const { playerId } = action.payload;
+
+      await AuctionPlayer.findByIdAndUpdate(playerId, {
+        status: 'pool',
+        $pop: { roundHistory: 1 },
+      });
+
+      // Put player back in remaining pool
+      if (!auction.remainingPlayerIds.map(id => id.toString()).includes(playerId.toString())) {
+        auction.remainingPlayerIds.push(playerId);
+      }
+
+    } else if (action.type === 'PLAYER_DISQUALIFIED') {
+      // Reverse DISQUALIFIED: reinstate player
+      const { playerId, teamId, refundAmount } = action.payload;
+
+      await AuctionPlayer.findByIdAndUpdate(playerId, {
+        status: reversal.previousStatus || 'pool',
+        soldTo: reversal.previousSoldTo || null,
+        soldAmount: reversal.previousSoldAmount || null,
+        isDisqualified: false,
+        disqualifiedReason: null,
+      });
+
+      // If player was sold before disqualification, re-deduct from team
+      if (reversal.previousStatus === 'sold' && teamId && refundAmount) {
+        const team = await AuctionTeam.findById(teamId);
+        if (team) {
+          team.purseRemaining -= refundAmount;
+          team.players.push({
+            playerId,
+            boughtAt: reversal.previousSoldAmount,
+            round: reversal.previousRound || auction.currentRound,
+            boughtTimestamp: new Date(),
+          });
+          await team.save();
+        }
+      } else {
+        // Return to pool
+        if (!auction.remainingPlayerIds.map(id => id.toString()).includes(playerId.toString())) {
+          auction.remainingPlayerIds.push(playerId);
+        }
+      }
+    }
+
+    // Mark action as undone
+    await ActionEvent.findByIdAndUpdate(action._id, {
+      isUndone: true,
+      undoneAt: new Date(),
+      undoneBy: adminUserId,
+    });
+
+    await auction.save();
+
+    // Get player details for broadcast
+    const player = await AuctionPlayer.findById(action.payload.playerId)
+      .select('name role playerNumber').lean();
+
+    // Broadcast undo event to all clients
+    const ns = io.of('/auction');
+    ns.to(`auction:${auctionId}`).emit('admin:undo', {
+      actionType: action.type,
+      playerName: player?.name || 'Unknown',
+      message: `Undo: ${action.publicMessage || action.type}`,
+    });
+
+    // Rebuild and broadcast updated state
+    const newState = await buildAuctionState(auction);
+    ns.to(`auction:${auctionId}`).emit('auction:state', newState);
+
+    // Also update individual team states if a team was affected
+    if (action.payload.teamId) {
+      const team = await AuctionTeam.findById(action.payload.teamId);
+      if (team) {
+        const teamMaxBid = calculateMaxBid(team, auction.config);
+        ns.to(`team:${action.payload.teamId}`).emit('team:update', {
+          purseRemaining: team.purseRemaining,
+          maxBid: teamMaxBid,
+          squadSize: (team.players?.length || 0) + (team.retainedPlayers?.length || 0),
+          canBid: teamMaxBid >= auction.config.basePrice,
+        });
+      }
+    }
+
+    console.log(`[Undo] Successfully reversed action #${action.sequenceNumber}`);
+    return {
+      success: true,
+      undoneAction: {
+        type: action.type,
+        playerName: player?.name,
+        publicMessage: action.publicMessage,
+      },
+    };
+  } catch (err) {
+    console.error('[Undo] Error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Disqualify a player — remove from team (if sold) with purse refund
+ * @returns {{ success: boolean, error?: string }}
+ */
+async function disqualifyPlayer(auctionId, playerId, reason, adminUserId, io) {
+  const auction = await Auction.findById(auctionId);
+  if (!auction || !['live', 'paused'].includes(auction.status)) {
+    return { success: false, error: 'Auction must be live or paused' };
+  }
+
+  const player = await AuctionPlayer.findById(playerId);
+  if (!player || player.auctionId.toString() !== auctionId.toString()) {
+    return { success: false, error: 'Player not found in this auction' };
+  }
+
+  if (player.isDisqualified) {
+    return { success: false, error: 'Player is already disqualified' };
+  }
+
+  const previousStatus = player.status;
+  const previousSoldTo = player.soldTo;
+  const previousSoldAmount = player.soldAmount;
+  let refundAmount = 0;
+
+  // If player was sold, refund the team
+  if (previousStatus === 'sold' && player.soldTo) {
+    const team = await AuctionTeam.findById(player.soldTo);
+    if (team) {
+      refundAmount = player.soldAmount || 0;
+      team.purseRemaining += refundAmount;
+      team.players = team.players.filter(
+        p => p.playerId.toString() !== playerId.toString()
+      );
+      await team.save();
+
+      // Broadcast team update
+      const ns = io.of('/auction');
+      const teamMaxBid = calculateMaxBid(team, auction.config);
+      ns.to(`team:${team._id}`).emit('team:update', {
+        purseRemaining: team.purseRemaining,
+        maxBid: teamMaxBid,
+        squadSize: (team.players?.length || 0) + (team.retainedPlayers?.length || 0),
+        canBid: teamMaxBid >= auction.config.basePrice,
+      });
+    }
+  }
+
+  // If player was in pool, remove from remaining
+  if (previousStatus === 'pool') {
+    auction.remainingPlayerIds = auction.remainingPlayerIds.filter(
+      id => id.toString() !== playerId.toString()
+    );
+    await auction.save();
+  }
+
+  // Update player
+  await AuctionPlayer.findByIdAndUpdate(playerId, {
+    status: 'disqualified',
+    isDisqualified: true,
+    disqualifiedReason: reason || 'Disqualified by admin',
+    soldTo: null,
+    soldAmount: null,
+  });
+
+  // Log action event
+  const seq = await ActionEvent.getNextSequence(auction._id);
+  await ActionEvent.create({
+    auctionId: auction._id,
+    sequenceNumber: seq,
+    type: 'PLAYER_DISQUALIFIED',
+    payload: {
+      playerId,
+      teamId: previousSoldTo,
+      refundAmount,
+      reason,
+    },
+    reversalPayload: {
+      playerId,
+      previousStatus,
+      previousSoldTo,
+      previousSoldAmount,
+      previousRound: player.soldInRound,
+    },
+    performedBy: adminUserId,
+    isPublic: true,
+    publicMessage: `${player.name} disqualified${reason ? ': ' + reason : ''}`,
+  });
+
+  // Broadcast
+  const ns = io.of('/auction');
+  ns.to(`auction:${auctionId}`).emit('player:disqualified', {
+    playerId,
+    playerName: player.name,
+    reason,
+    refundAmount,
+    teamId: previousSoldTo,
+  });
+
+  // Rebuild state
+  const newState = await buildAuctionState(auction);
+  ns.to(`auction:${auctionId}`).emit('auction:state', newState);
+
+  return { success: true };
+}
+
+/**
  * Send admin announcement to all viewers
  */
 async function sendAnnouncement(auctionId, message, io) {
@@ -885,4 +1186,6 @@ module.exports = {
   clearAuctionTimer,
   getBidIncrement,
   calculateMaxBid,
+  undoLastAction,
+  disqualifyPlayer,
 };

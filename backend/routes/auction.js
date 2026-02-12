@@ -560,24 +560,6 @@ router.post('/:auctionId/pause', auth, resolveAuctionAdmin, async (req, res) => 
 });
 
 /**
- * POST /api/v1/auctions/:auctionId/resume
- * Resume the auction
- */
-router.post('/:auctionId/resume', auth, resolveAuctionAdmin, async (req, res) => {
-  try {
-    const engine = require('../services/auctionEngine');
-    const io = req.app.get('io');
-    
-    await engine.resumeAuction(req.params.auctionId, req.user._id, io);
-    
-    res.json({ success: true, message: 'Auction resumed' });
-  } catch (error) {
-    console.error('Resume auction error:', error);
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
-/**
  * POST /api/v1/auctions/:auctionId/complete
  * Complete the auction
  */

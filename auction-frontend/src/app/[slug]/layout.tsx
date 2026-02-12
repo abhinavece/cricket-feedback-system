@@ -35,6 +35,7 @@ export default async function AuctionPublicLayout({
     { label: 'Teams', href: `/${params.slug}/teams` },
     ...(isCompleted ? [{ label: 'Analytics', href: `/${params.slug}/analytics` }] : []),
     ...(isLive ? [{ label: 'Watch Live', href: `/${params.slug}/live`, live: true }] : []),
+    ...(isLive ? [{ label: 'Broadcast', href: `/${params.slug}/broadcast`, external: true }] : []),
   ];
 
   return (
@@ -54,22 +55,41 @@ export default async function AuctionPublicLayout({
 
           {/* Sub-navigation */}
           <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-none">
-            {navItems.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                  'live' in item && item.live
-                    ? 'border-red-500 text-red-400 animate-pulse'
-                    : 'border-transparent text-slate-400 hover:text-white hover:border-white/20'
-                }`}
-              >
-                {'live' in item && item.live && (
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" />
-                )}
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map(item => {
+              const isExternal = 'external' in item && item.external;
+              const isLiveTab = 'live' in item && item.live;
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-300 hover:border-white/10 whitespace-nowrap transition-all"
+                  >
+                    {item.label} ↗
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                    isLiveTab
+                      ? 'border-red-500 text-red-400 animate-pulse'
+                      : 'border-transparent text-slate-400 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  {isLiveTab && (
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" />
+                  )}
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </div>
