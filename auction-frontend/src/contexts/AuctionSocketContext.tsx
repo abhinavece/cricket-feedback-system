@@ -278,7 +278,14 @@ export function AuctionSocketProvider({ children, auctionId, token, teamToken, r
 
   const emit = useCallback((event: string, data?: any, callback?: (res: any) => void) => {
     if (socketRef.current?.connected) {
-      socketRef.current.emit(event, data, callback);
+      // Only send data arg if it's defined, otherwise Socket.IO misaligns the callback
+      if (data !== undefined && data !== null) {
+        socketRef.current.emit(event, data, callback);
+      } else if (callback) {
+        socketRef.current.emit(event, callback);
+      } else {
+        socketRef.current.emit(event);
+      }
     }
   }, []);
 

@@ -14,16 +14,11 @@ import {
   Zap, Send,
 } from 'lucide-react';
 
-const AUTH_STORAGE_KEY = 'cricsmart_auth';
-
 function getStoredToken(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.token;
-    }
+    // AUTH_STORAGE_KEY = 'auction_auth_token' — stored as plain string by AuthContext
+    return localStorage.getItem('auction_auth_token') || undefined;
   } catch {}
   return undefined;
 }
@@ -151,6 +146,18 @@ function AdminLiveContent({ auctionId }: { auctionId: string }) {
             >
               <Play className="w-4 h-4" />
               {loading === 'admin:resume' ? 'Resuming...' : 'Resume'}
+            </button>
+          )}
+
+          {/* Next Player (when stuck in waiting or no active bidding) */}
+          {isLive && (!bidding || bidding.status === 'waiting') && (
+            <button
+              onClick={() => handleAction('admin:next_player')}
+              disabled={!!loading}
+              className="btn-primary text-sm"
+            >
+              <SkipForward className="w-4 h-4" />
+              {loading === 'admin:next_player' ? 'Picking...' : 'Next Player'}
             </button>
           )}
 

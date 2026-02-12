@@ -221,6 +221,18 @@ function initAuctionSocket(io) {
       }
     });
 
+    socket.on('admin:next_player', async (callback) => {
+      if (role !== 'admin') {
+        return typeof callback === 'function' && callback({ success: false, error: 'Admin only' });
+      }
+      try {
+        await engine.pickNextPlayer(auctionId, io);
+        if (typeof callback === 'function') callback({ success: true });
+      } catch (err) {
+        if (typeof callback === 'function') callback({ success: false, error: err.message });
+      }
+    });
+
     socket.on('admin:complete', async (data, callback) => {
       if (role !== 'admin') {
         return typeof callback === 'function' && callback({ success: false, error: 'Admin only' });

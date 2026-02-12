@@ -203,8 +203,14 @@ async function startAuction(auctionId, io) {
  * Pick the next random player from the remaining pool
  */
 async function pickNextPlayer(auctionId, io) {
+  console.log(`[AuctionEngine] pickNextPlayer called for auction ${auctionId}`);
   const auction = await Auction.findById(auctionId);
-  if (!auction || auction.status !== 'live') return;
+  if (!auction || auction.status !== 'live') {
+    console.log(`[AuctionEngine] Auction not live or not found. Status: ${auction?.status}`);
+    return;
+  }
+
+  console.log(`[AuctionEngine] Remaining players in pool: ${auction.remainingPlayerIds?.length || 0}`);
 
   // Check if there are remaining players
   if (!auction.remainingPlayerIds || auction.remainingPlayerIds.length === 0) {
@@ -241,12 +247,14 @@ async function pickNextPlayer(auctionId, io) {
   // Pick random player
   const randomIndex = Math.floor(Math.random() * auction.remainingPlayerIds.length);
   const playerId = auction.remainingPlayerIds[randomIndex];
+  console.log(`[AuctionEngine] Picked player index ${randomIndex}, ID: ${playerId}`);
 
   // Remove from remaining
   auction.remainingPlayerIds.splice(randomIndex, 1);
 
   // Update player status
   await AuctionPlayer.findByIdAndUpdate(playerId, { status: 'in_auction' });
+  console.log(`[AuctionEngine] Updated player status to in_auction`);
 
   // Set bidding state to revealed
   auction.currentBiddingState = {
@@ -266,6 +274,7 @@ async function pickNextPlayer(auctionId, io) {
     .lean();
 
   const ns = io.of('/auction');
+  console.log(`[AuctionEngine] Broadcasting player:revealed for ${player.name} to auction:${auctionId}`);
   ns.to(`auction:${auctionId}`).emit('player:revealed', {
     player,
     revealDuration: auction.config.playerRevealDelay,

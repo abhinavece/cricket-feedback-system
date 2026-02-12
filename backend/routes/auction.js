@@ -301,6 +301,7 @@ router.post('/:auctionId/configure', auth, resolveAuctionAdmin, async (req, res)
 /**
  * POST /api/v1/auctions/:auctionId/go-live
  * Start the auction. Moves from configured → live.
+ * Calls the auction engine to populate pool, pick the first player, and broadcast via Socket.IO.
  */
 router.post('/:auctionId/go-live', auth, resolveAuctionAdmin, async (req, res) => {
   try {
@@ -311,33 +312,14 @@ router.post('/:auctionId/go-live', auth, resolveAuctionAdmin, async (req, res) =
       });
     }
 
-    // Build remaining player pool
-    const poolPlayers = await AuctionPlayer.find({
-      auctionId: req.auction._id,
-      status: 'pool',
-      isDisqualified: false,
-    }).select('_id').lean();
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
 
-    req.auction.status = 'live';
-    req.auction.startedAt = new Date();
-    req.auction.currentRound = 1;
-    req.auction.remainingPlayerIds = poolPlayers.map(p => p._id);
-    req.auction.currentBiddingState = { status: 'waiting' };
+    await engine.startAuction(req.params.auctionId, io);
 
-    await req.auction.save();
-
-    // Log action event
-    await ActionEvent.create({
-      auctionId: req.auction._id,
-      sequenceNumber: await ActionEvent.getNextSequence(req.auction._id),
-      type: 'AUCTION_STARTED',
-      payload: { round: 1, playerCount: poolPlayers.length },
-      performedBy: req.user._id,
-      isPublic: true,
-      publicMessage: `Auction "${req.auction.name}" is now LIVE!`,
-    });
-
-    res.json({ success: true, data: req.auction });
+    // Re-fetch updated auction
+    const updated = await Auction.findById(req.params.auctionId);
+    res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Go live error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -350,7 +332,7 @@ router.post('/:auctionId/go-live', auth, resolveAuctionAdmin, async (req, res) =
 
 /**
  * POST /api/v1/auctions/:auctionId/pause
- * Pause the auction. If mid-bidding, current player's bids are voided.
+ * Pause the auction. Delegates to engine for timer cleanup and Socket.IO broadcast.
  */
 router.post('/:auctionId/pause', auth, resolveAuctionAdmin, async (req, res) => {
   try {
@@ -361,60 +343,13 @@ router.post('/:auctionId/pause', auth, resolveAuctionAdmin, async (req, res) => 
       });
     }
 
-    const biddingState = req.auction.currentBiddingState;
-    let voidedPlayer = null;
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
 
-    // If mid-bidding, void current player's bids and return to pool
-    if (biddingState && biddingState.playerId &&
-        ['revealed', 'open', 'going_once', 'going_twice'].includes(biddingState.status)) {
-      voidedPlayer = biddingState.playerId;
+    await engine.pauseAuction(req.params.auctionId, req.user._id, req.body?.reason, io);
 
-      // Return player to pool
-      await AuctionPlayer.findByIdAndUpdate(biddingState.playerId, {
-        status: 'pool',
-        $push: {
-          roundHistory: {
-            round: req.auction.currentRound,
-            result: 'voided',
-            highestBid: biddingState.currentBid || 0,
-            highestBidTeam: biddingState.currentBidTeamId || null,
-          },
-        },
-      });
-
-      // Add player back to remaining pool
-      if (!req.auction.remainingPlayerIds.some(id => id.equals(biddingState.playerId))) {
-        req.auction.remainingPlayerIds.push(biddingState.playerId);
-      }
-
-      // Reset bidding state
-      req.auction.currentBiddingState = { status: 'waiting' };
-    }
-
-    req.auction.status = 'paused';
-    await req.auction.save();
-
-    // Log action
-    await ActionEvent.create({
-      auctionId: req.auction._id,
-      sequenceNumber: await ActionEvent.getNextSequence(req.auction._id),
-      type: 'AUCTION_PAUSED',
-      payload: {
-        voidedPlayerId: voidedPlayer,
-        reason: req.body.reason || 'Admin paused the auction',
-      },
-      performedBy: req.user._id,
-      isPublic: true,
-      publicMessage: voidedPlayer
-        ? 'Auction paused. Current bidding voided — player returns to pool.'
-        : 'Auction paused.',
-    });
-
-    res.json({
-      success: true,
-      data: req.auction,
-      voidedPlayerId: voidedPlayer,
-    });
+    const updated = await Auction.findById(req.params.auctionId);
+    res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Pause auction error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -427,7 +362,7 @@ router.post('/:auctionId/pause', auth, resolveAuctionAdmin, async (req, res) => 
 
 /**
  * POST /api/v1/auctions/:auctionId/resume
- * Resume a paused auction. Fresh random player will be picked.
+ * Resume a paused auction. Picks next player via engine.
  */
 router.post('/:auctionId/resume', auth, resolveAuctionAdmin, async (req, res) => {
   try {
@@ -438,21 +373,13 @@ router.post('/:auctionId/resume', auth, resolveAuctionAdmin, async (req, res) =>
       });
     }
 
-    req.auction.status = 'live';
-    req.auction.currentBiddingState = { status: 'waiting' };
-    await req.auction.save();
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
 
-    await ActionEvent.create({
-      auctionId: req.auction._id,
-      sequenceNumber: await ActionEvent.getNextSequence(req.auction._id),
-      type: 'AUCTION_RESUMED',
-      payload: {},
-      performedBy: req.user._id,
-      isPublic: true,
-      publicMessage: 'Auction resumed!',
-    });
+    await engine.resumeAuction(req.params.auctionId, req.user._id, io);
 
-    res.json({ success: true, data: req.auction });
+    const updated = await Auction.findById(req.params.auctionId);
+    res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Resume auction error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -465,7 +392,7 @@ router.post('/:auctionId/resume', auth, resolveAuctionAdmin, async (req, res) =>
 
 /**
  * POST /api/v1/auctions/:auctionId/complete
- * End the auction. Moves to trade_window (48h).
+ * End the auction. Delegates to engine for timer cleanup and Socket.IO broadcast.
  */
 router.post('/:auctionId/complete', auth, resolveAuctionAdmin, async (req, res) => {
   try {
@@ -476,26 +403,13 @@ router.post('/:auctionId/complete', auth, resolveAuctionAdmin, async (req, res) 
       });
     }
 
-    const now = new Date();
-    const tradeWindowMs = req.auction.config.tradeWindowHours * 60 * 60 * 1000;
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
 
-    req.auction.status = 'completed';
-    req.auction.completedAt = now;
-    req.auction.tradeWindowEndsAt = new Date(now.getTime() + tradeWindowMs);
-    req.auction.currentBiddingState = { status: 'waiting' };
-    await req.auction.save();
+    await engine.completeAuction(req.params.auctionId, io, req.body?.reason || 'Ended by admin');
 
-    await ActionEvent.create({
-      auctionId: req.auction._id,
-      sequenceNumber: await ActionEvent.getNextSequence(req.auction._id),
-      type: 'AUCTION_COMPLETED',
-      payload: { reason: req.body.reason || 'Admin completed the auction' },
-      performedBy: req.user._id,
-      isPublic: true,
-      publicMessage: `Auction "${req.auction.name}" has been completed!`,
-    });
-
-    res.json({ success: true, data: req.auction });
+    const updated = await Auction.findById(req.params.auctionId);
+    res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Complete auction error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -602,6 +516,82 @@ router.delete('/:auctionId', auth, resolveAuctionAdmin, requireAuctionOwner, asy
   } catch (error) {
     console.error('Delete auction error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// AUCTION LIFECYCLE ENDPOINTS
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/start
+ * Start the auction (configured → live)
+ */
+router.post('/:auctionId/start', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
+    
+    await engine.startAuction(req.params.auctionId, io);
+    
+    res.json({ success: true, message: 'Auction started' });
+  } catch (error) {
+    console.error('Start auction error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/auctions/:auctionId/pause
+ * Pause the auction
+ */
+router.post('/:auctionId/pause', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
+    
+    await engine.pauseAuction(req.params.auctionId, req.user._id, req.body?.reason, io);
+    
+    res.json({ success: true, message: 'Auction paused' });
+  } catch (error) {
+    console.error('Pause auction error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/auctions/:auctionId/resume
+ * Resume the auction
+ */
+router.post('/:auctionId/resume', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
+    
+    await engine.resumeAuction(req.params.auctionId, req.user._id, io);
+    
+    res.json({ success: true, message: 'Auction resumed' });
+  } catch (error) {
+    console.error('Resume auction error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/auctions/:auctionId/complete
+ * Complete the auction
+ */
+router.post('/:auctionId/complete', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const engine = require('../services/auctionEngine');
+    const io = req.app.get('io');
+    
+    await engine.completeAuction(req.params.auctionId, io, req.body?.reason || 'Ended by admin');
+    
+    res.json({ success: true, message: 'Auction completed' });
+  } catch (error) {
+    console.error('Complete auction error:', error);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 
