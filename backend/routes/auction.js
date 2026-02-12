@@ -621,6 +621,73 @@ router.get('/presets/bid-increments', (req, res) => {
 });
 
 // ============================================================
+// TEAM LOGIN (standalone — no auctionId needed for magic links)
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/team-login
+ * Authenticate a team using magic link accessToken or accessCode+auctionId.
+ * Returns a team-scoped JWT for WebSocket auth.
+ */
+router.post('/team-login', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const jwt = require('jsonwebtoken');
+    const { accessToken, accessCode, auctionId } = req.body;
+
+    let team;
+
+    if (accessToken) {
+      // Magic link login — find team by accessToken
+      team = await AuctionTeam.findOne({ accessToken, isActive: true })
+        .select('+accessCode');
+    } else if (accessCode && auctionId) {
+      // Access code login: find all teams in auction, compare codes
+      const teams = await AuctionTeam.find({ auctionId, isActive: true })
+        .select('+accessCode');
+      for (const t of teams) {
+        const match = await bcrypt.compare(accessCode, t.accessCode);
+        if (match) { team = t; break; }
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide either accessToken or accessCode+auctionId',
+      });
+    }
+
+    if (!team) {
+      return res.status(401).json({ success: false, error: 'Invalid access credentials' });
+    }
+
+    // Generate team-scoped JWT
+    const token = jwt.sign(
+      { teamId: team._id, auctionId: team.auctionId.toString(), teamName: team.name, type: 'team' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      auctionId: team.auctionId.toString(),
+      teamName: team.name,
+      team: {
+        _id: team._id,
+        name: team.name,
+        shortName: team.shortName,
+        logo: team.logo,
+        primaryColor: team.primaryColor,
+        auctionId: team.auctionId,
+      },
+    });
+  } catch (error) {
+    console.error('Team login error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // HELPERS
 // ============================================================
 

@@ -28,7 +28,7 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - ✅ **Phase 2**: Auction frontend scaffold (Next.js 14) — COMPLETED
 - ✅ **Phase 3**: Admin auction detail pages — COMPLETED
 - ✅ **Phase 4**: Public auction pages (SSR, JSON-LD, sitemap) — COMPLETED
-- ⏳ **Phase 5**: Real-time bidding engine (Socket.IO)
+- ✅ **Phase 5**: Real-time bidding engine (Socket.IO) — COMPLETED
 - ⏳ **Phase 6**: Admin power tools (undo, disqualify, overrides)
 - ⏳ **Phase 7**: Animations & broadcast view
 - ⏳ **Phase 8**: Post-auction features (trading, finalize)
@@ -72,6 +72,38 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - Per-page `generateMetadata` with OG tags, Twitter cards, canonical URLs
 
 **Dependencies added**: recharts
+
+### Phase 5 Deliverables (Completed)
+
+**Real-time Bidding Engine (Socket.IO)** — Full WebSocket auction system
+- **Backend Services**:
+  - `services/auctionEngine.js` — Server-authoritative state machine with per-player bidding flow: WAITING → REVEALED → OPEN → [BID ⇄ TIMER_RESET] → GOING_ONCE → GOING_TWICE → SOLD/UNSOLD
+  - `services/auctionSocket.js` — Socket.IO event handlers with role-based auth (admin JWT, team JWT, public), room management (auction:{id}, team:{id}, admin:{id}), and real-time broadcasting
+  - Socket.IO integration in `index.js` with `/auction` namespace and CORS for all frontend origins
+  - Bid validation: purse check, maxBid calculation, bid increment tiers, 200ms bid lock
+  - Timer management with configurable durations (reveal, bidding, going-once/twice)
+  - ActionEvent logging for sold/unsold (undo stack), BidAuditLog for all bid attempts
+  - Team login endpoint at `/api/v1/auctions/team-login` (magic link + access code)
+
+- **Frontend Infrastructure**:
+  - `lib/socket.ts` — Socket.IO client setup with connection management
+  - `contexts/AuctionSocketContext.tsx` — Combined WebSocket + auction state context with role-based data filtering
+  - Shared components: Timer (phase-aware countdown), PlayerCard (status-aware), BidTicker (live history), TeamPanel (purse bars + highest bidder indicator)
+
+- **Live Pages**:
+  - `/[slug]/live` — Spectator public live view with real-time player reveals, bidding, team panels, bid history, and auction stats
+  - `/admin/[auctionId]/live` — Admin control panel with start/pause/resume/skip/end controls, announcement broadcast, and live auction state
+  - `/bid/[token]` — Team bidding interface with magic link login, access code fallback, prominent bid button, and private team data (purse, max bid, squad size)
+
+- **Features**:
+  - Automatic player selection from pool with random ordering
+  - Round management with unsold player return
+  - Real-time bid validation and rejection feedback
+  - Team access token JWT for WebSocket auth
+  - Admin announcements broadcast to all viewers
+  - Connection status indicators and reconnection logic
+
+**Dependencies added**: socket.io (backend), socket.io-client (frontend)
 
 ### Phase 1 Deliverables (Completed)
 

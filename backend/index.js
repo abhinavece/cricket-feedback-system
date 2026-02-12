@@ -8,10 +8,13 @@
  */
 
 const path = require('path');
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const { Server: SocketServer } = require('socket.io');
+const { initAuctionSocket } = require('./services/auctionSocket');
 
 // Load .env from backend directory so ALLOW_DEV_LOGIN etc. work when run from repo root
 require('dotenv').config({ path: path.join(__dirname, '.env') });
@@ -44,7 +47,33 @@ const { resolveTenant } = require('./middleware/tenantResolver');
 const { auth } = require('./middleware/auth');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Socket.IO setup with CORS for auction frontend
+const io = new SocketServer(server, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3003',
+      'https://app.cricsmart.in',
+      'https://cricsmart.in',
+      'https://auction.cricsmart.in',
+      'https://tournament.cricsmart.in',
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
+});
+
+// Initialize auction WebSocket namespace
+initAuctionSocket(io);
+
+// Make io accessible to routes if needed
+app.set('io', io);
 
 // Connect to database
 connectDB();
@@ -325,7 +354,8 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`WebSocket: /auction namespace ready`);
 });
