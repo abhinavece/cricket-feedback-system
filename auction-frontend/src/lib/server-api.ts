@@ -47,6 +47,10 @@ export async function fetchAuctionPlayers(slug: string, params?: { status?: stri
   return serverFetch(`/api/seo/auctions/${slug}/players${qs ? `?${qs}` : ''}`);
 }
 
+export async function fetchAuctionTrades(slug: string) {
+  return serverFetch(`/api/seo/auctions/${slug}/trades`);
+}
+
 export async function fetchSitemapAuctions() {
   return serverFetch('/api/seo/sitemap/auctions');
 }

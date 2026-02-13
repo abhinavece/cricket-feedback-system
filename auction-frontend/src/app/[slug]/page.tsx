@@ -1,11 +1,11 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { fetchAuctionBySlug } from '@/lib/server-api';
+import { fetchAuctionBySlug, fetchAuctionTrades } from '@/lib/server-api';
 import { generateAuctionJsonLd, generateBreadcrumbJsonLd } from '@/lib/schema';
 import { siteConfig, AUCTION_STATUSES, PLAYER_ROLES } from '@/lib/constants';
 import {
   Users, UserCheck, IndianRupee, Calendar, Trophy, Gavel,
-  ArrowRight, Clock, BarChart3, Eye, Target,
+  ArrowRight, Clock, BarChart3, Eye, Target, ArrowLeftRight,
 } from 'lucide-react';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
@@ -62,6 +62,15 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
   }
 
   if (!auction) return null;
+
+  // Fetch executed trades for completed auctions
+  let trades: any[] = [];
+  if (['completed', 'trade_window', 'finalized'].includes(auction.status)) {
+    try {
+      const tradesRes = await fetchAuctionTrades(params.slug);
+      trades = tradesRes.data || [];
+    } catch {}
+  }
 
   const statusConfig = AUCTION_STATUSES[auction.status as keyof typeof AUCTION_STATUSES] || AUCTION_STATUSES.draft;
   const teamCount = auction.teams?.length || 0;
@@ -354,6 +363,76 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* Executed Trades */}
+        {trades.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-5">
+              <ArrowLeftRight className="w-5 h-5 text-purple-400" /> Post-Auction Trades
+            </h2>
+            <div className="space-y-3">
+              {trades.map((trade: any) => (
+                <div key={trade._id} className="glass-card p-4 sm:p-5 border border-purple-500/10">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* From team */}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
+                        style={{ backgroundColor: trade.fromTeam?.primaryColor || '#6366f1' }}
+                      >
+                        {trade.fromTeam?.shortName?.slice(0, 2)}
+                      </div>
+                      <span className="text-sm font-semibold text-white">{trade.fromTeam?.name}</span>
+                    </div>
+
+                    <ArrowLeftRight className="w-4 h-4 text-purple-400 shrink-0" />
+
+                    {/* To team */}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
+                        style={{ backgroundColor: trade.toTeam?.primaryColor || '#6366f1' }}
+                      >
+                        {trade.toTeam?.shortName?.slice(0, 2)}
+                      </div>
+                      <span className="text-sm font-semibold text-white">{trade.toTeam?.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase">Sent</span>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {trade.fromPlayers?.map((p: any) => (
+                          <span key={p.playerId} className="px-2 py-0.5 rounded bg-red-500/10 text-red-300 text-xs">
+                            {p.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase">Received</span>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {trade.toPlayers?.map((p: any) => (
+                          <span key={p.playerId} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-xs">
+                            {p.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {trade.publicAnnouncement && (
+                    <p className="text-xs text-slate-400 mt-2 flex items-start gap-1.5">
+                      <Gavel className="w-3 h-3 mt-0.5 shrink-0 text-emerald-400" />
+                      {trade.publicAnnouncement}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
         )}

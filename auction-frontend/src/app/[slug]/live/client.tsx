@@ -8,7 +8,7 @@ import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
 import {
   Wifi, WifiOff, Radio, Users, UserCheck, Trophy, Clock,
-  CircleDot, TrendingUp, BarChart3, Pause,
+  CircleDot, TrendingUp, BarChart3, Pause, ArrowLeftRight, Lock,
 } from 'lucide-react';
 
 export function SpectatorLiveView({ auctionId, slug }: { auctionId: string; slug: string }) {
@@ -72,6 +72,16 @@ function SpectatorContent({ slug }: { slug: string }) {
             <div className="flex items-center gap-2">
               <Pause className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-xs font-bold uppercase tracking-[0.15em] text-amber-400">Paused</span>
+            </div>
+          ) : state.status === 'trade_window' ? (
+            <div className="flex items-center gap-2">
+              <ArrowLeftRight className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-xs font-bold uppercase tracking-[0.15em] text-purple-400">Trading</span>
+            </div>
+          ) : state.status === 'finalized' ? (
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-slate-300" />
+              <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-300">Finalized</span>
             </div>
           ) : isCompleted ? (
             <div className="flex items-center gap-2">
@@ -152,19 +162,39 @@ function SpectatorContent({ slug }: { slug: string }) {
         </motion.div>
       )}
 
-      {/* ─── Completed State ─── */}
+      {/* ─── Completed / Trade Window / Finalized State ─── */}
       {isCompleted && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-card p-8 sm:p-14 text-center mb-6 border-emerald-500/10"
+          className={`glass-card p-8 sm:p-14 text-center mb-6 ${
+            state.status === 'trade_window' ? 'border-purple-500/10' :
+            state.status === 'finalized' ? 'border-slate-500/10' :
+            'border-emerald-500/10'
+          }`}
         >
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-5">
-            <Trophy className="w-7 h-7 text-emerald-400" />
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
+            state.status === 'trade_window' ? 'bg-purple-500/10' :
+            state.status === 'finalized' ? 'bg-slate-500/10' :
+            'bg-emerald-500/10'
+          }`}>
+            {state.status === 'trade_window' ? (
+              <ArrowLeftRight className="w-7 h-7 text-purple-400" />
+            ) : state.status === 'finalized' ? (
+              <Lock className="w-7 h-7 text-slate-300" />
+            ) : (
+              <Trophy className="w-7 h-7 text-emerald-400" />
+            )}
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Auction Completed</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            {state.status === 'trade_window' ? 'Trade Window Open' :
+             state.status === 'finalized' ? 'Auction Finalized' :
+             'Auction Completed'}
+          </h2>
           <p className="text-slate-400 text-sm mb-6">
             {state.stats.sold} players sold · {state.stats.unsold} unsold
+            {state.status === 'trade_window' && ' · Teams are proposing trades'}
+            {state.status === 'finalized' && ' · Results are permanent'}
           </p>
           <a href={`/${slug}/analytics`} className="btn-primary">
             <BarChart3 className="w-4 h-4" /> View Analytics

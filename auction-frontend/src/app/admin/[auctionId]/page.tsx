@@ -5,12 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   getAuctionAdmin, configureAuction, goLiveAuction,
   pauseAuction, resumeAuction, completeAuction,
+  openTradeWindow, finalizeAuction,
 } from '@/lib/api';
 import { AUCTION_STATUSES, PLAYER_ROLES } from '@/lib/constants';
 import {
   Loader2, Gavel, Users, UserCheck, IndianRupee, Clock,
   Play, Pause, Square, CheckCircle, AlertTriangle, Copy, ExternalLink,
-  Radio, ChevronRight,
+  Radio, ChevronRight, ArrowLeftRight, Lock, Timer,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -75,6 +76,8 @@ export default function AuctionOverviewPage() {
         case 'pause': res = await pauseAuction(auctionId); break;
         case 'resume': res = await resumeAuction(auctionId); break;
         case 'complete': res = await completeAuction(auctionId); break;
+        case 'open-trade-window': res = await openTradeWindow(auctionId); break;
+        case 'finalize': res = await finalizeAuction(auctionId); break;
         default: return;
       }
       // After going live or resuming, redirect to the live control panel
@@ -82,10 +85,10 @@ export default function AuctionOverviewPage() {
         router.push(`/admin/${auctionId}/live`);
         return;
       }
-      await loadAuction();
     } catch (err: any) {
       alert(err.message);
     } finally {
+      await loadAuction();
       setActionLoading(null);
     }
   };
@@ -370,14 +373,37 @@ function LifecycleControls({ status, teamCount, playerCount, loading, onAction, 
         confirm: 'End the auction now? This cannot be undone.',
       },
     ],
+    completed: [
+      {
+        label: 'Open Trade Window',
+        action: 'open-trade-window',
+        icon: ArrowLeftRight,
+        color: 'from-purple-500 to-violet-500',
+        confirm: 'Open the trade window? Teams will be able to propose player swaps.',
+      },
+      {
+        label: 'Finalize (Skip Trades)',
+        action: 'finalize',
+        icon: Lock,
+        color: 'from-slate-500 to-slate-600',
+        confirm: 'Finalize the auction without a trade window? Results become permanent.',
+      },
+    ],
+    trade_window: [
+      {
+        label: 'Finalize Auction',
+        action: 'finalize',
+        icon: Lock,
+        color: 'from-amber-500 to-orange-500',
+        confirm: 'Finalize the auction? Any pending trades will be auto-rejected. Results become permanent.',
+      },
+    ],
   };
 
   const actions = FLOW[status] || [];
 
   if (actions.length === 0) {
-    const message = status === 'completed' ? 'Auction completed. Trade window is active.'
-      : status === 'trade_window' ? 'Trade window is open.'
-      : status === 'finalized' ? 'Auction is finalized. No further actions.'
+    const message = status === 'finalized' ? 'Auction is finalized. Results are permanent.'
       : 'No actions available.';
     return <p className="text-sm text-slate-400">{message}</p>;
   }

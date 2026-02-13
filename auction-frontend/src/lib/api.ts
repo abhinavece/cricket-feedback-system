@@ -268,6 +268,94 @@ export async function updateDisplayConfig(auctionId: string, playerFields: any[]
   });
 }
 
+// ============================================================
+// Lifecycle Endpoints
+// ============================================================
+
+export async function openTradeWindow(auctionId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/open-trade-window`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+export async function finalizeAuction(auctionId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/finalize`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+// ============================================================
+// Trade Endpoints (Admin)
+// ============================================================
+
+export async function getTrades(auctionId: string, status?: string) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades?${params}`, { auth: true });
+}
+
+export async function approveTrade(auctionId: string, tradeId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/approve`, {
+    method: 'PATCH',
+    auth: true,
+  });
+}
+
+export async function rejectTrade(auctionId: string, tradeId: string, reason?: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason }),
+    auth: true,
+  });
+}
+
+export async function executeTrade(auctionId: string, tradeId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/execute`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+// ============================================================
+// Trade Endpoints (Team)
+// ============================================================
+
+export async function proposeTrade(
+  auctionId: string,
+  teamToken: string,
+  data: { toTeamId: string; fromPlayerIds: string[]; toPlayerIds: string[]; message?: string }
+) {
+  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Team-Token': teamToken,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `Trade proposal failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getMyTrades(auctionId: string, teamToken: string) {
+  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/my-trades`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Team-Token': teamToken,
+    },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `Failed to fetch trades: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function importPlayersConfirm(auctionId: string, file: File, columnMapping: Record<string, string>) {
   const formData = new FormData();
   formData.append('file', file);

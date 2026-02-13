@@ -8,6 +8,7 @@ import PlayerCard from '@/components/auction/PlayerCard';
 import Timer from '@/components/auction/Timer';
 import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
+import TradeProposalPanel from '@/components/auction/TradeProposalPanel';
 import { siteConfig } from '@/lib/constants';
 import {
   Wifi, WifiOff, IndianRupee, Users, UserCheck, Clock,
@@ -172,15 +173,16 @@ export default function TeamBidPage() {
 
   return (
     <AuctionSocketProvider auctionId={auctionId} teamToken={teamToken} role="team">
-      <TeamBiddingContent teamName={teamName} />
+      <TeamBiddingContent teamName={teamName} teamToken={teamToken} auctionId={auctionId} />
     </AuctionSocketProvider>
   );
 }
 
-function TeamBiddingContent({ teamName }: { teamName: string }) {
+function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: string; teamToken: string; auctionId: string }) {
   const { state, connectionStatus, emit, announcements } = useAuctionSocket();
   const [bidLoading, setBidLoading] = useState(false);
   const [bidError, setBidError] = useState('');
+  const [myPlayers, setMyPlayers] = useState<{ _id: string; name: string; role?: string; soldAmount?: number }[]>([]);
 
   const handleBid = useCallback(() => {
     setBidLoading(true);
@@ -311,13 +313,14 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
         )}
 
         {isCompleted && (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 text-center mb-6 border-emerald-500/10">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-              <Trophy className="w-6 h-6 text-emerald-400" />
-            </div>
-            <h2 className="text-xl font-bold text-white mb-1">Auction Completed</h2>
-            <p className="text-sm text-slate-400">{state.stats.sold} players sold</p>
-          </motion.div>
+          <PostAuctionView
+            state={state}
+            teamName={teamName}
+            teamToken={teamToken}
+            auctionId={auctionId}
+            myPlayers={myPlayers}
+            setMyPlayers={setMyPlayers}
+          />
         )}
 
         {!isLive && !isPaused && !isCompleted && (
@@ -500,6 +503,82 @@ function TeamBiddingContent({ teamName }: { teamName: string }) {
         )}
       </div>
     </div>
+  );
+}
+
+function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, setMyPlayers }: {
+  state: any;
+  teamName: string;
+  teamToken: string;
+  auctionId: string;
+  myPlayers: { _id: string; name: string; role?: string; soldAmount?: number }[];
+  setMyPlayers: (p: any[]) => void;
+}) {
+  const [loadingPlayers, setLoadingPlayers] = useState(true);
+  const myTeam = state.myTeam;
+
+  useEffect(() => {
+    if (!myTeam?._id) return;
+    const apiUrl = siteConfig.apiUrl;
+    fetch(`${apiUrl}/api/v1/auctions/${auctionId}/trades/team-players/${myTeam._id}`, {
+      headers: { 'X-Team-Token': teamToken },
+    })
+      .then(res => res.json())
+      .then(data => setMyPlayers((data.data || []).map((p: any) => ({
+        _id: p._id, name: p.name, role: p.role, soldAmount: p.soldAmount,
+      }))))
+      .catch(() => {})
+      .finally(() => setLoadingPlayers(false));
+  }, [auctionId, teamToken, myTeam?._id, setMyPlayers]);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 mb-6">
+      {/* Header */}
+      <div className="glass-card p-5 text-center border-emerald-500/10">
+        <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+          <Trophy className="w-6 h-6 text-emerald-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-1">Auction Completed</h2>
+        <p className="text-sm text-slate-400">{state.stats.sold} players sold · Your squad: {myPlayers.length} players</p>
+      </div>
+
+      {/* Your Squad */}
+      {myPlayers.length > 0 && (
+        <div className="glass-card p-4">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+            Your Squad ({myPlayers.length})
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {myPlayers.map(p => (
+              <div key={p._id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/30 border border-white/5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-sm text-white flex-1 truncate">{p.name}</span>
+                {p.role && <span className="text-[10px] text-slate-500">{p.role}</span>}
+                {p.soldAmount && <span className="text-[10px] text-amber-400 tabular-nums">{formatCurrency(p.soldAmount)}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trade Proposal Panel */}
+      {myTeam && (
+        <TradeProposalPanel
+          auctionId={auctionId}
+          teamToken={teamToken}
+          myTeamId={myTeam._id}
+          myTeamName={myTeam.name}
+          myTeamShortName={myTeam.shortName}
+          myTeamColor={undefined}
+          teams={state.teams}
+          auctionStatus={state.status}
+          tradeWindowEndsAt={undefined}
+          maxTradesPerTeam={state.config?.maxTradesPerTeam || 2}
+          myPlayers={myPlayers}
+        />
+      )}
+    </motion.div>
   );
 }
 

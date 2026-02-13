@@ -487,6 +487,139 @@ router.post('/:auctionId/complete', auth, resolveAuctionAdmin, async (req, res) 
 });
 
 // ============================================================
+// LIFECYCLE: OPEN TRADE WINDOW
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/open-trade-window
+ * Open the trade window after auction completes. Moves from completed → trade_window.
+ */
+router.post('/:auctionId/open-trade-window', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    if (req.auction.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot open trade window from '${req.auction.status}' status. Must be 'completed'.`,
+      });
+    }
+
+    const tradeWindowHours = req.auction.config.tradeWindowHours || 48;
+    req.auction.status = 'trade_window';
+    req.auction.tradeWindowEndsAt = new Date(Date.now() + tradeWindowHours * 60 * 60 * 1000);
+    await req.auction.save();
+
+    // Log action event
+    const lastEvent = await ActionEvent.findOne({ auctionId: req.auction._id })
+      .sort({ sequenceNumber: -1 });
+    const seq = (lastEvent?.sequenceNumber || 0) + 1;
+
+    await ActionEvent.create({
+      auctionId: req.auction._id,
+      sequenceNumber: seq,
+      type: 'TRADE_WINDOW_OPENED',
+      payload: { tradeWindowEndsAt: req.auction.tradeWindowEndsAt, openedBy: req.user._id },
+      reversalPayload: {},
+      performedBy: req.user._id,
+      isPublic: true,
+      publicMessage: `Trade window opened for ${tradeWindowHours} hours`,
+    });
+
+    // Broadcast via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      const ns = io.of('/auction');
+      ns.to(`auction:${req.params.auctionId}`).emit('auction:status_change', {
+        status: 'trade_window',
+        tradeWindowEndsAt: req.auction.tradeWindowEndsAt,
+      });
+    }
+
+    res.json({ success: true, data: req.auction });
+  } catch (error) {
+    console.error('Open trade window error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// LIFECYCLE: FINALIZE
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/finalize
+ * Finalize the auction. No more changes allowed.
+ * Moves from completed or trade_window → finalized.
+ * Rejects any pending trades before finalizing.
+ */
+router.post('/:auctionId/finalize', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    if (!['completed', 'trade_window'].includes(req.auction.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot finalize from '${req.auction.status}' status. Must be 'completed' or 'trade_window'.`,
+      });
+    }
+
+    // Auto-reject any pending/approved (non-executed) trades
+    const AuctionTrade = require('../models/AuctionTrade');
+    const pendingTrades = await AuctionTrade.updateMany(
+      {
+        auctionId: req.auction._id,
+        status: { $in: ['proposed', 'approved'] },
+      },
+      {
+        $set: {
+          status: 'rejected',
+          rejectedBy: req.user._id,
+          rejectionReason: 'Auction finalized — all pending trades auto-rejected',
+        },
+      }
+    );
+
+    req.auction.status = 'finalized';
+    req.auction.finalizedAt = new Date();
+    await req.auction.save();
+
+    // Log action event
+    const lastEvent = await ActionEvent.findOne({ auctionId: req.auction._id })
+      .sort({ sequenceNumber: -1 });
+    const seq = (lastEvent?.sequenceNumber || 0) + 1;
+
+    await ActionEvent.create({
+      auctionId: req.auction._id,
+      sequenceNumber: seq,
+      type: 'AUCTION_FINALIZED',
+      payload: {
+        finalizedBy: req.user._id,
+        pendingTradesRejected: pendingTrades.modifiedCount,
+      },
+      reversalPayload: {},
+      performedBy: req.user._id,
+      isPublic: true,
+      publicMessage: 'Auction finalized — results are now permanent',
+    });
+
+    // Broadcast
+    const io = req.app.get('io');
+    if (io) {
+      const ns = io.of('/auction');
+      ns.to(`auction:${req.params.auctionId}`).emit('auction:status_change', {
+        status: 'finalized',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: req.auction,
+      message: `Auction finalized. ${pendingTrades.modifiedCount} pending trade(s) auto-rejected.`,
+    });
+  } catch (error) {
+    console.error('Finalize auction error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // ADMIN MANAGEMENT
 // ============================================================
 

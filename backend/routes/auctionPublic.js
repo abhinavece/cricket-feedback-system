@@ -383,4 +383,43 @@ router.get('/:slug/players', loadPublicAuction, async (req, res) => {
   }
 });
 
+// ============================================================
+// PUBLIC TRADES (executed trades only — for public auction page)
+// ============================================================
+
+/**
+ * GET /api/seo/auctions/:slug/trades
+ * Get executed trades for a public auction page.
+ */
+router.get('/:slug/trades', loadPublicAuction, async (req, res) => {
+  try {
+    const AuctionTrade = require('../models/AuctionTrade');
+    const trades = await AuctionTrade.find({
+      auctionId: req.auction._id,
+      status: 'executed',
+    })
+      .sort({ executedAt: -1 })
+      .lean();
+
+    // Enrich with team names
+    const teamIds = [...new Set(trades.flatMap(t => [t.fromTeamId.toString(), t.toTeamId.toString()]))];
+    const teams = await AuctionTeam.find({ _id: { $in: teamIds } })
+      .select('name shortName primaryColor')
+      .lean();
+    const teamMap = {};
+    teams.forEach(t => { teamMap[t._id.toString()] = t; });
+
+    const enriched = trades.map(t => ({
+      ...t,
+      fromTeam: teamMap[t.fromTeamId.toString()] || { name: 'Unknown' },
+      toTeam: teamMap[t.toTeamId.toString()] || { name: 'Unknown' },
+    }));
+
+    res.json({ success: true, data: enriched });
+  } catch (error) {
+    console.error('Get public trades error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
