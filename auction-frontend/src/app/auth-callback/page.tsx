@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { AUTH_STORAGE_KEY, AUTH_USER_KEY } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 function LoadingSpinner() {
   return (
@@ -26,6 +26,7 @@ export default function AuthCallbackPage() {
 function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { setAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,8 +37,7 @@ function AuthCallbackContent() {
     if (token && userDataEncoded) {
       try {
         const userData = JSON.parse(atob(userDataEncoded));
-        localStorage.setItem(AUTH_STORAGE_KEY, token);
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+        setAuth(token, userData);
         router.replace(nextPath);
       } catch (err) {
         console.error('Error processing auth callback:', err);
@@ -46,7 +46,7 @@ function AuthCallbackContent() {
     } else {
       setError('Missing authentication data. Please try logging in again.');
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, setAuth]);
 
   if (error) {
     return (

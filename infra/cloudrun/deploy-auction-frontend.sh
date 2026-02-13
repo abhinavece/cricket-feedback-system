@@ -26,7 +26,7 @@ echo "Building Docker image..."
 cd "$(dirname "$0")/../../auction-frontend"
 
 docker buildx build --platform linux/amd64 \
-  --build-arg NEXT_PUBLIC_API_URL=https://auction.cricsmart.in/api \
+  --build-arg NEXT_PUBLIC_API_URL=https://auction.cricsmart.in \
   --build-arg NEXT_PUBLIC_SITE_URL=https://auction.cricsmart.in \
   --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID} \
   -t ${REGISTRY}/auction-frontend:${VERSION} \
