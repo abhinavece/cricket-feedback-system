@@ -7,6 +7,7 @@ import {
   Users, UserCheck, IndianRupee, Calendar, Trophy, Gavel,
   ArrowRight, Clock, BarChart3, Eye, Target, ArrowLeftRight,
 } from 'lucide-react';
+import TeamLogo from '@/components/auction/TeamLogo';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   try {
@@ -101,13 +102,23 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
         <div className="relative mb-10">
           {/* Cover image banner */}
           {auction.coverImage && (
-            <div className="relative -mx-4 sm:-mx-6 -mt-8 sm:-mt-12 mb-8 h-48 sm:h-64 overflow-hidden">
+            <div className="relative -mx-4 sm:-mx-6 -mt-8 sm:-mt-12 mb-8 h-56 sm:h-72 lg:h-80 overflow-hidden rounded-b-3xl">
               <img
                 src={auction.coverImage}
                 alt={auction.name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
+              {/* Multi-layer gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/20" />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-transparent to-slate-950/40" />
+              
+              {/* Status badge */}
+              <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+                <div className={`px-4 py-2 rounded-full backdrop-blur-xl border border-white/10 flex items-center gap-2 text-sm font-semibold ${statusConfig.bg} ${statusConfig.color}`}>
+                  {isLive && <span className={`w-2 h-2 rounded-full ${statusConfig.dot}`} />}
+                  {statusConfig.label}
+                </div>
+              </div>
             </div>
           )}
 
@@ -222,41 +233,53 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                 <Link
                   key={team._id}
                   href={`/${params.slug}/teams`}
-                  className="glass-card-hover group overflow-hidden"
+                  className="group relative overflow-hidden rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/5 hover:border-white/15 transition-all duration-300 hover:shadow-xl hover:shadow-black/20"
                 >
-                  <div className="h-1" style={{ background: team.primaryColor }} />
-                  <div className="p-4 sm:p-5">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg flex-shrink-0"
-                        style={{ background: team.primaryColor }}
-                      >
-                        {team.shortName}
-                      </div>
-                      <div className="min-w-0">
+                  {/* Gradient top bar */}
+                  <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${team.primaryColor}, ${team.primaryColor}88)` }} />
+                  
+                  {/* Subtle glow effect */}
+                  <div 
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-16 opacity-20 blur-2xl pointer-events-none"
+                    style={{ background: team.primaryColor }}
+                  />
+                  
+                  <div className="relative p-5">
+                    <div className="flex items-center gap-4 mb-4">
+                      <TeamLogo
+                        logo={team.logo}
+                        name={team.name}
+                        primaryColor={team.primaryColor}
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
                         <h3 className="text-sm font-bold text-white truncate group-hover:text-amber-400 transition-colors">
                           {team.name}
                         </h3>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-400 mt-0.5">
                           {team.squadSize || 0} player{(team.squadSize || 0) !== 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
 
-                    {/* Purse bar */}
-                    <div>
-                      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    {/* Purse section */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-base font-bold text-white">{formatCurrency(team.purseRemaining)}</span>
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">remaining</span>
+                      </div>
+                      <div className="h-2 bg-slate-800/80 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
                           style={{
                             width: `${team.purseValue > 0 ? (team.purseRemaining / team.purseValue) * 100 : 100}%`,
-                            background: team.primaryColor,
+                            background: `linear-gradient(90deg, ${team.primaryColor}, ${team.primaryColor}cc)`,
                           }}
                         />
                       </div>
-                      <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                        <span>{formatCurrency(team.purseRemaining)} left</span>
-                        <span>{formatCurrency(team.purseValue)}</span>
+                      <div className="flex justify-between text-[10px] text-slate-600">
+                        <span>{Math.round(team.purseValue > 0 ? (team.purseRemaining / team.purseValue) * 100 : 100)}% left</span>
+                        <span>of {formatCurrency(team.purseValue)}</span>
                       </div>
                     </div>
                   </div>
@@ -356,12 +379,12 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                     {/* Sold to */}
                     {player.soldTo && (
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white"
-                          style={{ background: player.soldTo.primaryColor }}
-                        >
-                          {player.soldTo.shortName?.charAt(0)}
-                        </div>
+                        <TeamLogo
+                          logo={player.soldTo.logo}
+                          name={player.soldTo.name}
+                          primaryColor={player.soldTo.primaryColor}
+                          size="xs"
+                        />
                         <span className="text-xs text-slate-400 hidden sm:inline">{player.soldTo.name}</span>
                       </div>
                     )}
@@ -391,12 +414,12 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                   <div className="flex items-center gap-3 flex-wrap">
                     {/* Initiator team */}
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{ backgroundColor: trade.initiatorTeam?.primaryColor || '#6366f1' }}
-                      >
-                        {trade.initiatorTeam?.shortName?.slice(0, 2)}
-                      </div>
+                      <TeamLogo
+                        logo={trade.initiatorTeam?.logo}
+                        name={trade.initiatorTeam?.name || 'Team'}
+                        primaryColor={trade.initiatorTeam?.primaryColor || '#6366f1'}
+                        size="sm"
+                      />
                       <span className="text-sm font-semibold text-white">{trade.initiatorTeam?.name}</span>
                     </div>
 
@@ -404,19 +427,19 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
 
                     {/* Counterparty team */}
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{ backgroundColor: trade.counterpartyTeam?.primaryColor || '#6366f1' }}
-                      >
-                        {trade.counterpartyTeam?.shortName?.slice(0, 2)}
-                      </div>
+                      <TeamLogo
+                        logo={trade.counterpartyTeam?.logo}
+                        name={trade.counterpartyTeam?.name || 'Team'}
+                        primaryColor={trade.counterpartyTeam?.primaryColor || '#6366f1'}
+                        size="sm"
+                      />
                       <span className="text-sm font-semibold text-white">{trade.counterpartyTeam?.name}</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase">{trade.initiatorTeam?.shortName} Sends</span>
+                      <span className="text-[10px] text-slate-500 uppercase">Sends</span>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {trade.initiatorPlayers?.map((p: any) => (
                           <span key={p.playerId} className="px-2 py-0.5 rounded bg-red-500/10 text-red-300 text-xs">
@@ -426,7 +449,7 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                       </div>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase">{trade.counterpartyTeam?.shortName} Sends</span>
+                      <span className="text-[10px] text-slate-500 uppercase">Receives</span>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {trade.counterpartyPlayers?.map((p: any) => (
                           <span key={p.playerId} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-xs">

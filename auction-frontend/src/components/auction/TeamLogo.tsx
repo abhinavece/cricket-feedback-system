@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { Shield } from 'lucide-react';
 
 const SIZE_MAP = {
-  xs: { px: 24, text: 'text-[7px]', rounded: 'rounded-md' },
-  sm: { px: 32, text: 'text-[9px]', rounded: 'rounded-lg' },
-  md: { px: 40, text: 'text-[10px]', rounded: 'rounded-xl' },
-  lg: { px: 56, text: 'text-sm', rounded: 'rounded-xl' },
-  xl: { px: 72, text: 'text-base', rounded: 'rounded-2xl' },
+  xs: { px: 24, icon: 12, rounded: 'rounded-md' },
+  sm: { px: 32, icon: 14, rounded: 'rounded-lg' },
+  md: { px: 40, icon: 18, rounded: 'rounded-xl' },
+  lg: { px: 56, icon: 24, rounded: 'rounded-xl' },
+  xl: { px: 72, icon: 32, rounded: 'rounded-2xl' },
 } as const;
 
 interface TeamLogoProps {
   logo?: string;
   name: string;
-  shortName: string;
+  shortName?: string; // Now optional - not displayed anymore
   primaryColor: string;
   size?: keyof typeof SIZE_MAP;
   className?: string;
@@ -22,7 +23,6 @@ interface TeamLogoProps {
 export default function TeamLogo({
   logo,
   name,
-  shortName,
   primaryColor,
   size = 'sm',
   className = '',
@@ -40,6 +40,7 @@ export default function TeamLogo({
     <div
       className={`relative flex-shrink-0 overflow-hidden ${config.rounded} ${className}`}
       style={{ width: config.px, height: config.px }}
+      title={name}
     >
       {hasValidLogo ? (
         <>
@@ -58,16 +59,16 @@ export default function TeamLogo({
               className="absolute inset-0 flex items-center justify-center"
               style={{ background: primaryColor }}
             >
-              <span className={`${config.text} font-bold text-white`}>{shortName}</span>
+              <Shield style={{ width: config.icon, height: config.icon }} className="text-white/80" />
             </div>
           )}
         </>
       ) : (
         <div
           className="w-full h-full flex items-center justify-center shadow-lg"
-          style={{ background: primaryColor }}
+          style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)` }}
         >
-          <span className={`${config.text} font-bold text-white`}>{shortName}</span>
+          <Shield style={{ width: config.icon, height: config.icon }} className="text-white/90" />
         </div>
       )}
     </div>
