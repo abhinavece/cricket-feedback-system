@@ -172,14 +172,25 @@ router.get('/:auctionId', auth, resolveAuctionAdmin, async (req, res) => {
     const stats = {};
     playerStats.forEach(s => { stats[s._id] = s.count; });
 
-    res.json({
-      success: true,
-      data: {
-        ...req.auction.toObject(),
-        teams,
-        playerStats: stats,
-      },
-    });
+    const responseData = {
+      ...req.auction.toObject(),
+      teams,
+      playerStats: stats,
+    };
+
+    // Include trade stats for post-auction states
+    if (['completed', 'trade_window', 'finalized'].includes(req.auction.status)) {
+      const AuctionTrade = require('../models/AuctionTrade');
+      const tradeCounts = await AuctionTrade.aggregate([
+        { $match: { auctionId: req.auction._id, initiatorTeamId: { $exists: true } } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]);
+      const tradeStats = {};
+      tradeCounts.forEach(s => { tradeStats[s._id] = s.count; });
+      responseData.tradeStats = tradeStats;
+    }
+
+    res.json({ success: true, data: responseData });
   } catch (error) {
     console.error('Get auction error:', error);
     res.status(500).json({ success: false, error: error.message });

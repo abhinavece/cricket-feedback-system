@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   Loader2, Save, Trash2, AlertTriangle, UserPlus, X, Shield, ArrowLeftRight,
 } from 'lucide-react';
+import ConfirmModal from '@/components/auction/ConfirmModal';
 
 interface AuctionConfig {
   basePrice: number;
@@ -118,9 +119,10 @@ export default function SettingsPage() {
     }
   };
 
+  const [confirmState, setConfirmState] = useState<{ open: boolean; type: 'delete-auction' | 'remove-admin' | ''; adminUserId?: string }>({ open: false, type: '' });
+
   const handleDeleteAuction = async () => {
-    if (!window.confirm('Delete this auction? This cannot be undone.')) return;
-    if (!window.confirm('Are you absolutely sure? All teams and players will be lost.')) return;
+    setConfirmState({ open: false, type: '' });
     try {
       await deleteAuction(auctionId);
       router.push('/admin');
@@ -145,7 +147,7 @@ export default function SettingsPage() {
   };
 
   const handleRemoveAdmin = async (userId: string) => {
-    if (!window.confirm('Remove this admin?')) return;
+    setConfirmState({ open: false, type: '' });
     try {
       await removeAuctionAdmin(auctionId, userId);
       await loadAuction();
@@ -421,7 +423,7 @@ export default function SettingsPage() {
               </div>
               {isOwner && admin.role !== 'owner' && (
                 <button
-                  onClick={() => handleRemoveAdmin(admin.userId)}
+                  onClick={() => setConfirmState({ open: true, type: 'remove-admin', adminUserId: admin.userId })}
                   className="btn-ghost p-1.5 text-red-400 hover:bg-red-500/10"
                 >
                   <X className="w-4 h-4" />
@@ -455,11 +457,26 @@ export default function SettingsPage() {
           <p className="text-sm text-slate-400 mb-4">
             Permanently delete this auction and all associated teams and players. This cannot be undone.
           </p>
-          <button onClick={handleDeleteAuction} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-all">
+          <button onClick={() => setConfirmState({ open: true, type: 'delete-auction' })} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-all">
             <Trash2 className="w-4 h-4" /> Delete Auction
           </button>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.type === 'delete-auction' ? 'Delete Auction' : 'Remove Admin'}
+        message={confirmState.type === 'delete-auction'
+          ? 'Permanently delete this auction and all associated teams and players? This cannot be undone.'
+          : 'Remove this admin from the auction?'}
+        variant="danger"
+        confirmLabel={confirmState.type === 'delete-auction' ? 'Delete Auction' : 'Remove'}
+        onConfirm={() => {
+          if (confirmState.type === 'delete-auction') handleDeleteAuction();
+          else if (confirmState.type === 'remove-admin' && confirmState.adminUserId) handleRemoveAdmin(confirmState.adminUserId);
+        }}
+        onCancel={() => setConfirmState({ open: false, type: '' })}
+      />
     </div>
   );
 }

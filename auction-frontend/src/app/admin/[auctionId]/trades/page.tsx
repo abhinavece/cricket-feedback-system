@@ -10,6 +10,7 @@ import {
   Clock, CheckCircle2, XCircle, MessageSquare, Ban,
   RefreshCw, Gavel, Shield, IndianRupee,
 } from 'lucide-react';
+import ConfirmModal from '@/components/auction/ConfirmModal';
 
 interface TradePlayer {
   playerId: string;
@@ -72,6 +73,7 @@ export default function AdminTradesPage() {
   const [filter, setFilter] = useState<string>('all');
   const [rejectingTradeId, setRejectingTradeId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [approveTradeId, setApproveTradeId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -92,7 +94,7 @@ export default function AdminTradesPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleApproveExecute = async (tradeId: string) => {
-    if (!window.confirm('Approve & execute this trade? Players will be swapped between teams.')) return;
+    setApproveTradeId(null);
     setActionLoading(`approve-${tradeId}`);
     try {
       const res = await adminApproveTrade(auctionId, tradeId);
@@ -232,7 +234,7 @@ export default function AdminTradesPage() {
                 rejectingTradeId={rejectingTradeId}
                 rejectReason={rejectReason}
                 isTradeWindowActive={isTradeWindowActive}
-                onApproveExecute={handleApproveExecute}
+                onApproveExecute={(id) => setApproveTradeId(id)}
                 onReject={handleReject}
                 onStartReject={(id) => { setRejectingTradeId(id); setRejectReason(''); }}
                 onCancelReject={() => { setRejectingTradeId(null); setRejectReason(''); }}
@@ -242,6 +244,16 @@ export default function AdminTradesPage() {
           </div>
         );
       })()}
+      <ConfirmModal
+        open={!!approveTradeId}
+        title="Approve & Execute Trade"
+        message="Approve & execute this trade? Players will be swapped between teams and purse adjustments applied."
+        variant="warning"
+        confirmLabel="Approve & Execute"
+        loading={!!actionLoading}
+        onConfirm={() => { if (approveTradeId) handleApproveExecute(approveTradeId); }}
+        onCancel={() => setApproveTradeId(null)}
+      />
     </div>
   );
 }

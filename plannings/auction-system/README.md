@@ -33,7 +33,7 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - ✅ **Phase 6**: Admin power tools (undo, disqualify) — COMPLETED
 - ✅ **Phase 7**: Broadcast view + sold/unsold animations — COMPLETED
 - ✅ **Phase 7.5**: Admin should have functinality to do any change in player, team, auction like marking any player ineligible, removing already sold player to some other team at specific amount and purse value should be updated accordingly from to and from team.
-- ⏳ **Phase 8**: Post-auction features (trading, finalize)
+- ✅ **Phase 8**: Post-auction features (trading, finalize) — COMPLETED
 - ⏳ **Phase 9**: Analytics & export
 - ⏳ **Phase 10**: Testing & edge cases
 - ⏳ **Phase 11**: User can ask admin to pause and resume the auction.
@@ -151,6 +151,45 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
   - Announcement overlay (slides down from top, auto-animated)
   - Fixed bottom bar with CricSmart branding
 - Clean dark background (slate-950) optimized for OBS chroma key and streaming
+
+### Phase 8 Deliverables (Completed)
+
+**Post-Auction Trading & Finalization** — Full bilateral trade system frontend integration
+
+- **8A: Backend → Frontend state propagation**
+  - `buildAuctionState` now includes `tradeWindowEndsAt` and `tradeConfig` (maxTradesPerTeam, tradeSettlementEnabled, tradeWindowHours)
+  - `AuctionSocketContext` updated with `tradeWindowEndsAt` and `tradeConfig` fields
+  - `auction:status_change` handler captures `tradeWindowEndsAt` on trade window open
+
+- **8B: Real-time trade events on bid page**
+  - Socket listeners for all trade events: `trade:proposed`, `trade:accepted`, `trade:rejected`, `trade:withdrawn`, `trade:cancelled`, `trade:executed`, `trade:admin_rejected`
+  - Toast notifications for each trade event type
+  - Auto-refresh squad list on `trade:executed`
+
+- **8C: Bid page state differentiation**
+  - Distinct banners for `completed` (green), `trade_window` (purple with countdown), `finalized` (slate/locked)
+  - `TradeWindowCountdown` component with live countdown timer
+  - Trade proposal panel hidden when finalized
+  - Passes real `tradeWindowEndsAt` and `tradeConfig` to `TradeProposalPanel`
+
+- **8D: Admin overview enhancements**
+  - `TradeWindowBanner` component with countdown timer + trade stats (pending/executed/rejected)
+  - Trade stats aggregated from backend (`tradeStats` added to admin auction detail endpoint)
+  - "View Trades" quick link to admin trades tab
+  - Finalized banner with executed trade count summary
+
+- **8E: Spectator live view trade window**
+  - `SpectatorTradeWindowView` component with countdown timer header
+  - Real-time trade activity feed via `trade:executed` socket events
+  - Team standings panel + auction summary stats
+  - Differentiated views for completed, trade_window, and finalized states
+
+- **8F: Public trades page**
+  - New route: `/[slug]/trades` — SSR page with SEO metadata
+  - Expandable trade cards showing both sides (players, values, settlement)
+  - Financial settlement details (purse adjustments, who pays)
+  - Trade window countdown for active windows
+  - "Trades" nav item added to public auction layout for post-auction states
 
 ### Phase 1 Deliverables (Completed)
 

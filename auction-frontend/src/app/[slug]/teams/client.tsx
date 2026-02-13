@@ -227,7 +227,7 @@ function TeamDetailModal({ team, config, onClose, onPlayerClick, fieldLabelMap, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 sm:pt-16 bg-black/60 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-start justify-center p-4 pt-8 sm:pt-16 bg-black/60 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
       <motion.div

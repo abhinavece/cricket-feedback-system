@@ -9,6 +9,7 @@ import {
   Loader2, Plus, Users, Copy, Link2, Trash2, RefreshCw, X,
   ChevronDown, ChevronUp, AlertTriangle, Check,
 } from 'lucide-react';
+import ConfirmModal from '@/components/auction/ConfirmModal';
 
 interface Team {
   _id: string;
@@ -36,6 +37,7 @@ export default function TeamsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{ open: boolean; type: string; teamId: string }>({ open: false, type: '', teamId: '' });
 
   const loadData = useCallback(async () => {
     try {
@@ -68,7 +70,6 @@ export default function TeamsPage() {
   };
 
   const handleDeleteTeam = async (teamId: string) => {
-    if (!window.confirm('Remove this team? This cannot be undone.')) return;
     try {
       await deleteTeam(auctionId, teamId);
       setTeams(prev => prev.filter(t => t._id !== teamId));
@@ -78,7 +79,6 @@ export default function TeamsPage() {
   };
 
   const handleRegenAccess = async (teamId: string) => {
-    if (!window.confirm('Regenerate access credentials? Old magic link will stop working.')) return;
     try {
       const res = await regenerateTeamAccess(auctionId, teamId);
       await loadData();
@@ -86,6 +86,12 @@ export default function TeamsPage() {
     } catch (err: any) {
       alert(err.message);
     }
+  };
+
+  const handleConfirmAction = () => {
+    setConfirmState(prev => ({ ...prev, open: false }));
+    if (confirmState.type === 'delete') handleDeleteTeam(confirmState.teamId);
+    else if (confirmState.type === 'regen') handleRegenAccess(confirmState.teamId);
   };
 
   const canAddTeams = ['draft', 'configured'].includes(auctionStatus);
@@ -209,7 +215,7 @@ export default function TeamsPage() {
                       )}
                     </button>
                     <button
-                      onClick={() => handleRegenAccess(team._id)}
+                      onClick={() => setConfirmState({ open: true, type: 'regen', teamId: team._id })}
                       className="btn-ghost text-xs p-2 border border-white/10 rounded-lg"
                       title="Regenerate credentials"
                     >
@@ -217,7 +223,7 @@ export default function TeamsPage() {
                     </button>
                     {canDeleteTeams && (
                       <button
-                        onClick={() => handleDeleteTeam(team._id)}
+                        onClick={() => setConfirmState({ open: true, type: 'delete', teamId: team._id })}
                         className="btn-ghost text-xs p-2 border border-red-500/20 rounded-lg text-red-400 hover:bg-red-500/10"
                         title="Remove team"
                       >
@@ -276,6 +282,18 @@ export default function TeamsPage() {
           }}
         />
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.type === 'delete' ? 'Remove Team' : 'Regenerate Credentials'}
+        message={confirmState.type === 'delete'
+          ? 'Remove this team? This cannot be undone.'
+          : 'Regenerate access credentials? The old magic link will stop working.'}
+        variant={confirmState.type === 'delete' ? 'danger' : 'warning'}
+        confirmLabel={confirmState.type === 'delete' ? 'Remove' : 'Regenerate'}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }
@@ -323,7 +341,7 @@ function AddTeamModal({ auctionId, onClose, onAdded }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-white/5">
           <h3 className="text-lg font-bold text-white">

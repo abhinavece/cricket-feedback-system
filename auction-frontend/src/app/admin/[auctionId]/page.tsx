@@ -14,6 +14,7 @@ import {
   Radio, ChevronRight, ArrowLeftRight, Lock, Timer,
 } from 'lucide-react';
 import Link from 'next/link';
+import ConfirmModal from '@/components/auction/ConfirmModal';
 
 interface AuctionDetail {
   _id: string;
@@ -34,6 +35,8 @@ interface AuctionDetail {
   admins: { userId: string; role: string; email: string }[];
   teams: any[];
   playerStats: Record<string, number>;
+  tradeStats?: Record<string, number>;
+  tradeWindowEndsAt?: string;
   scheduledStartTime?: string;
   startedAt?: string;
   completedAt?: string;
@@ -169,6 +172,39 @@ export default function AuctionOverviewPage() {
             </div>
           </div>
         </Link>
+      )}
+
+      {/* Trade Window Banner */}
+      {auction.status === 'trade_window' && (
+        <TradeWindowBanner
+          auctionId={auctionId}
+          tradeWindowEndsAt={auction.tradeWindowEndsAt}
+          tradeStats={auction.tradeStats}
+        />
+      )}
+
+      {/* Finalized Banner */}
+      {auction.status === 'finalized' && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-500/10 border border-slate-500/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-500/20 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-slate-300" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-300">Auction Finalized</p>
+              <p className="text-xs text-slate-400">Results are permanent. No further changes possible.</p>
+            </div>
+          </div>
+          {auction.tradeStats && Object.keys(auction.tradeStats).length > 0 && (
+            <div className="flex items-center gap-4 mt-3 ml-13">
+              {auction.tradeStats.executed ? (
+                <span className="text-xs text-emerald-400">{auction.tradeStats.executed} trade(s) executed</span>
+              ) : (
+                <span className="text-xs text-slate-500">No trades were executed</span>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Auction header */}
@@ -325,6 +361,20 @@ function LifecycleControls({ status, teamCount, playerCount, loading, onAction, 
   onAction: (action: string) => void;
   auctionId: string;
 }) {
+  const [confirmState, setConfirmState] = useState<{ open: boolean; action: string; title: string; message: string; variant: 'danger' | 'warning' | 'info' }>(
+    { open: false, action: '', title: '', message: '', variant: 'warning' }
+  );
+
+  const VARIANT_MAP: Record<string, 'danger' | 'warning' | 'info'> = {
+    configure: 'info',
+    'go-live': 'warning',
+    pause: 'warning',
+    resume: 'info',
+    complete: 'danger',
+    'open-trade-window': 'info',
+    finalize: 'danger',
+  };
+
   const FLOW: Record<string, { label: string; action: string; icon: any; color: string; confirm?: string; disabled?: boolean; disabledReason?: string }[]> = {
     draft: [{
       label: 'Lock Configuration',
@@ -418,8 +468,17 @@ function LifecycleControls({ status, teamCount, playerCount, loading, onAction, 
           <div key={act.action} className="flex flex-col items-start">
             <button
               onClick={() => {
-                if (act.confirm && !window.confirm(act.confirm)) return;
-                onAction(act.action);
+                if (act.confirm) {
+                  setConfirmState({
+                    open: true,
+                    action: act.action,
+                    title: act.label,
+                    message: act.confirm,
+                    variant: VARIANT_MAP[act.action] || 'warning',
+                  });
+                } else {
+                  onAction(act.action);
+                }
               }}
               disabled={isDisabled}
               className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg
@@ -448,6 +507,98 @@ function LifecycleControls({ status, teamCount, playerCount, loading, onAction, 
           <ChevronRight className="w-4 h-4" />
         </Link>
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.action === 'complete' || confirmState.action === 'finalize' ? 'Yes, proceed' : 'Confirm'}
+        loading={!!loading}
+        onConfirm={() => {
+          onAction(confirmState.action);
+          setConfirmState(prev => ({ ...prev, open: false }));
+        }}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
+    </div>
+  );
+}
+
+function TradeWindowBanner({ auctionId, tradeWindowEndsAt, tradeStats }: {
+  auctionId: string;
+  tradeWindowEndsAt?: string;
+  tradeStats?: Record<string, number>;
+}) {
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!tradeWindowEndsAt) return;
+    const update = () => {
+      const diff = new Date(tradeWindowEndsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        setIsExpired(true);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [tradeWindowEndsAt]);
+
+  const pending = (tradeStats?.pending_counterparty || 0) + (tradeStats?.both_agreed || 0);
+  const executed = tradeStats?.executed || 0;
+  const rejected = (tradeStats?.rejected || 0) + (tradeStats?.cancelled || 0) + (tradeStats?.expired || 0);
+
+  return (
+    <div className="p-4 sm:p-5 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+            <ArrowLeftRight className="w-5 h-5 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-purple-400">Trade Window Active</p>
+            <p className="text-xs text-slate-400">
+              {tradeWindowEndsAt ? (
+                isExpired ? (
+                  <span className="text-red-400">Expired — finalize to close</span>
+                ) : (
+                  <>Closes in <span className="font-mono font-bold text-purple-300">{timeLeft}</span></>
+                )
+              ) : 'No timer set'}
+            </p>
+          </div>
+        </div>
+        <Link
+          href={`/admin/${auctionId}/trades`}
+          className="flex items-center gap-1 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors"
+        >
+          View Trades <ChevronRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Trade Stats */}
+      <div className="flex items-center gap-4 mt-3 ml-13">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-amber-400" />
+          <span className="text-xs text-slate-400">{pending} pending</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="text-xs text-slate-400">{executed} executed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-red-400" />
+          <span className="text-xs text-slate-400">{rejected} rejected</span>
+        </div>
+      </div>
     </div>
   );
 }

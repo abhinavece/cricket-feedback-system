@@ -136,6 +136,12 @@ async function buildAuctionState(auction) {
       sortable: f.sortable,
       order: f.order,
     })),
+    tradeWindowEndsAt: auction.tradeWindowEndsAt || null,
+    tradeConfig: {
+      maxTradesPerTeam: auction.config.maxTradesPerTeam || 2,
+      tradeSettlementEnabled: auction.config.tradeSettlementEnabled !== false,
+      tradeWindowHours: auction.config.tradeWindowHours || 48,
+    },
   };
 }
 

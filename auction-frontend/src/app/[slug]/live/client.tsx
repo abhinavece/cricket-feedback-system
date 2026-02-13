@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuctionSocketProvider, useAuctionSocket } from '@/contexts/AuctionSocketContext';
 import PlayerCard from '@/components/auction/PlayerCard';
@@ -8,7 +9,7 @@ import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
 import {
   Wifi, WifiOff, Radio, Users, UserCheck, Trophy, Clock,
-  CircleDot, TrendingUp, BarChart3, Pause, ArrowLeftRight, Lock,
+  CircleDot, TrendingUp, BarChart3, Pause, ArrowLeftRight, Lock, CheckCircle2,
 } from 'lucide-react';
 
 export function SpectatorLiveView({ auctionId, slug }: { auctionId: string; slug: string }) {
@@ -162,43 +163,58 @@ function SpectatorContent({ slug }: { slug: string }) {
         </motion.div>
       )}
 
-      {/* ─── Completed / Trade Window / Finalized State ─── */}
-      {isCompleted && (
+      {/* ─── Trade Window State ─── */}
+      {state.status === 'trade_window' && (
+        <SpectatorTradeWindowView state={state} slug={slug} />
+      )}
+
+      {/* ─── Completed State (waiting for trade window) ─── */}
+      {state.status === 'completed' && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`glass-card p-8 sm:p-14 text-center mb-6 ${
-            state.status === 'trade_window' ? 'border-purple-500/10' :
-            state.status === 'finalized' ? 'border-slate-500/10' :
-            'border-emerald-500/10'
-          }`}
+          className="glass-card p-8 sm:p-14 text-center mb-6 border-emerald-500/10"
         >
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
-            state.status === 'trade_window' ? 'bg-purple-500/10' :
-            state.status === 'finalized' ? 'bg-slate-500/10' :
-            'bg-emerald-500/10'
-          }`}>
-            {state.status === 'trade_window' ? (
-              <ArrowLeftRight className="w-7 h-7 text-purple-400" />
-            ) : state.status === 'finalized' ? (
-              <Lock className="w-7 h-7 text-slate-300" />
-            ) : (
-              <Trophy className="w-7 h-7 text-emerald-400" />
-            )}
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-5">
+            <Trophy className="w-7 h-7 text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            {state.status === 'trade_window' ? 'Trade Window Open' :
-             state.status === 'finalized' ? 'Auction Finalized' :
-             'Auction Completed'}
-          </h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Auction Completed</h2>
           <p className="text-slate-400 text-sm mb-6">
             {state.stats.sold} players sold · {state.stats.unsold} unsold
-            {state.status === 'trade_window' && ' · Teams are proposing trades'}
-            {state.status === 'finalized' && ' · Results are permanent'}
           </p>
-          <a href={`/${slug}/analytics`} className="btn-primary">
-            <BarChart3 className="w-4 h-4" /> View Analytics
-          </a>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a href={`/${slug}/analytics`} className="btn-primary">
+              <BarChart3 className="w-4 h-4" /> View Analytics
+            </a>
+            <a href={`/${slug}/teams`} className="btn-secondary text-sm">
+              <Users className="w-4 h-4" /> View Teams
+            </a>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─── Finalized State ─── */}
+      {state.status === 'finalized' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="glass-card p-8 sm:p-14 text-center mb-6 border-slate-500/10"
+        >
+          <div className="w-16 h-16 rounded-full bg-slate-500/10 flex items-center justify-center mx-auto mb-5">
+            <Lock className="w-7 h-7 text-slate-300" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Auction Finalized</h2>
+          <p className="text-slate-400 text-sm mb-6">
+            {state.stats.sold} players sold · {state.stats.unsold} unsold · Results are permanent
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a href={`/${slug}/analytics`} className="btn-primary">
+              <BarChart3 className="w-4 h-4" /> View Analytics
+            </a>
+            <a href={`/${slug}/teams`} className="btn-secondary text-sm">
+              <Users className="w-4 h-4" /> View Teams
+            </a>
+          </div>
         </motion.div>
       )}
 
@@ -306,6 +322,150 @@ function SpectatorContent({ slug }: { slug: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+function SpectatorTradeWindowView({ state, slug }: { state: any; slug: string }) {
+  const { socket } = useAuctionSocket();
+  const [tradeAnnouncements, setTradeAnnouncements] = useState<{ id: number; message: string; timestamp: string }[]>([]);
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  // Countdown
+  useEffect(() => {
+    const endsAt = state.tradeWindowEndsAt;
+    if (!endsAt) return;
+    const update = () => {
+      const diff = new Date(endsAt).getTime() - Date.now();
+      if (diff <= 0) { setTimeLeft('Expired'); setIsExpired(true); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [state.tradeWindowEndsAt]);
+
+  // Listen for executed trades (broadcast to all spectators)
+  useEffect(() => {
+    if (!socket) return;
+    const onExecuted = (data: any) => {
+      setTradeAnnouncements(prev => [{
+        id: Date.now(),
+        message: data.announcement || 'A trade was executed',
+        timestamp: new Date().toISOString(),
+      }, ...prev].slice(0, 10));
+    };
+    socket.on('trade:executed', onExecuted);
+    return () => { socket.off('trade:executed', onExecuted); };
+  }, [socket]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-4 sm:space-y-6 mb-6"
+    >
+      {/* Trade Window Header */}
+      <div className="glass-card p-6 sm:p-8 text-center border-purple-500/10 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5">
+        <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
+          <ArrowLeftRight className="w-7 h-7 text-purple-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Trade Window Open</h2>
+        <p className="text-slate-400 text-sm mb-4">
+          {state.stats.sold} players sold · {state.stats.unsold} unsold · Teams are proposing trades
+        </p>
+        {state.tradeWindowEndsAt && (
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/15">
+            <Clock className="w-4 h-4 text-purple-400" />
+            <span className="text-xs text-purple-400/80">Closes in</span>
+            <span className={`font-mono text-sm font-bold tabular-nums ${isExpired ? 'text-red-400' : 'text-purple-300'}`}>
+              {timeLeft}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        {/* Trade Activity Feed */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-4 rounded-full bg-gradient-to-b from-purple-500 to-violet-500" />
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Trade Activity</h3>
+              {tradeAnnouncements.length > 0 && (
+                <span className="ml-auto text-[10px] text-slate-600 tabular-nums">{tradeAnnouncements.length} trades</span>
+              )}
+            </div>
+            {tradeAnnouncements.length === 0 ? (
+              <div className="py-8 text-center">
+                <ArrowLeftRight className="w-8 h-8 text-slate-700 mx-auto mb-3" />
+                <p className="text-sm text-slate-500">No trades executed yet</p>
+                <p className="text-xs text-slate-600 mt-1">Executed trades will appear here in real-time</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                <AnimatePresence>
+                  {tradeAnnouncements.map(t => (
+                    <motion.div
+                      key={t.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-800/30 border border-white/5"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white/90">{t.message}</p>
+                        <p className="text-[10px] text-slate-600 mt-1">
+                          {new Date(t.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+
+          {/* Quick links */}
+          <div className="flex flex-wrap gap-3">
+            <a href={`/${slug}/analytics`} className="btn-primary text-sm">
+              <BarChart3 className="w-4 h-4" /> Analytics
+            </a>
+            <a href={`/${slug}/teams`} className="btn-secondary text-sm">
+              <Users className="w-4 h-4" /> Teams
+            </a>
+          </div>
+        </div>
+
+        {/* Team Standings */}
+        <div className="lg:col-span-5">
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Team Standings</h3>
+            </div>
+            <TeamPanel teams={state.teams} currentBidTeamId={null} />
+          </div>
+
+          {/* Auction Summary Stats */}
+          <div className="glass-card p-4 mt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">Summary</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <StatCard label="Round" value={String(state.currentRound)} icon={<Clock className="w-3.5 h-3.5" />} color="text-cyan-400" />
+              <StatCard label="Sold" value={String(state.stats.sold)} icon={<UserCheck className="w-3.5 h-3.5" />} color="text-emerald-400" />
+              <StatCard label="Unsold" value={String(state.stats.unsold)} icon={<span className="text-[10px]">↩️</span>} color="text-orange-400" />
+              <StatCard label="Teams" value={String(state.teams.length)} icon={<Users className="w-3.5 h-3.5" />} color="text-blue-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 

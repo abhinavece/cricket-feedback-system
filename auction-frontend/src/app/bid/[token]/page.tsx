@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuctionSocketProvider, useAuctionSocket } from '@/contexts/AuctionSocketContext';
 import PlayerCard from '@/components/auction/PlayerCard';
@@ -16,6 +16,7 @@ import {
   Wifi, WifiOff, IndianRupee, Users, UserCheck, Clock,
   Gavel, AlertTriangle, Trophy, Radio, ShieldCheck, Wallet,
   TrendingUp, CircleDot, Pause, CheckCircle2, BarChart3,
+  ArrowLeftRight, Lock, Bell,
 } from 'lucide-react';
 
 function formatCurrency(amount: number) {
@@ -215,7 +216,10 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
 
   const isLive = state.status === 'live';
   const isPaused = state.status === 'paused';
-  const isCompleted = ['completed', 'trade_window', 'finalized'].includes(state.status);
+  const isAuctionCompleted = state.status === 'completed';
+  const isTradeWindow = state.status === 'trade_window';
+  const isFinalized = state.status === 'finalized';
+  const isPostAuction = isAuctionCompleted || isTradeWindow || isFinalized;
   const bidding = state.bidding;
   const myTeam = state.myTeam;
   const canBid = isLive && bidding &&
@@ -314,7 +318,7 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
           </motion.div>
         )}
 
-        {isCompleted && (
+        {isPostAuction && (
           <PostAuctionView
             state={state}
             teamName={teamName}
@@ -325,7 +329,7 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
           />
         )}
 
-        {!isLive && !isPaused && !isCompleted && (
+        {!isLive && !isPaused && !isPostAuction && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-8 text-center mb-6">
             <div className="relative w-16 h-16 mx-auto mb-5">
               <div className="absolute inset-0 rounded-full border-2 border-dashed border-slate-700 animate-spin" style={{ animationDuration: '10s' }} />
@@ -508,6 +512,55 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
   );
 }
 
+function TradeWindowCountdown({ endsAt }: { endsAt: string }) {
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(endsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        setIsExpired(true);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [endsAt]);
+
+  return (
+    <span className={`tabular-nums font-mono text-sm font-bold ${isExpired ? 'text-red-400' : 'text-purple-300'}`}>
+      {timeLeft}
+    </span>
+  );
+}
+
+function TradeToast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 5000);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      className="px-4 py-2.5 rounded-xl bg-purple-500/15 border border-purple-500/20 text-sm text-purple-300 flex items-center gap-2"
+    >
+      <Bell className="w-3.5 h-3.5 flex-shrink-0" />
+      <span className="flex-1">{message}</span>
+      <button onClick={onDismiss} className="text-purple-400 hover:text-white text-xs ml-2">✕</button>
+    </motion.div>
+  );
+}
+
 function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, setMyPlayers }: {
   state: any;
   teamName: string;
@@ -516,9 +569,17 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
   myPlayers: { _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean; customFields?: Record<string, any>; imageUrl?: string }[];
   setMyPlayers: (p: any[]) => void;
 }) {
+  const { socket } = useAuctionSocket();
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  const [tradeToasts, setTradeToasts] = useState<{ id: number; message: string }[]>([]);
+  const [tradeRefreshKey, setTradeRefreshKey] = useState(0);
+  const toastIdRef = useRef(0);
   const myTeam = state.myTeam;
+
+  const isTradeWindow = state.status === 'trade_window';
+  const isFinalized = state.status === 'finalized';
+  const isCompleted = state.status === 'completed';
 
   const playerFields = state.playerFields || [];
   const fieldLabelMap: Record<string, string> = {};
@@ -527,27 +588,145 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
     ? [...playerFields].sort((a: any, b: any) => a.order - b.order).map((f: any) => f.key)
     : undefined;
 
-  useEffect(() => {
+  const addToast = useCallback((message: string) => {
+    const id = ++toastIdRef.current;
+    setTradeToasts(prev => [...prev.slice(-2), { id, message }]);
+  }, []);
+
+  const refreshSquad = useCallback(() => {
     if (!myTeam?._id) return;
     getTeamPlayers(auctionId, teamToken, myTeam._id)
       .then(data => setMyPlayers((data.data || []).map((p: any) => ({
         _id: p._id, name: p.name, role: p.role, soldAmount: p.soldAmount,
         isLocked: p.isLocked, customFields: p.customFields, imageUrl: p.imageUrl,
       }))))
-      .catch(() => {})
-      .finally(() => setLoadingPlayers(false));
+      .catch(() => {});
   }, [auctionId, teamToken, myTeam?._id, setMyPlayers]);
+
+  // Initial squad fetch
+  useEffect(() => {
+    if (!myTeam?._id) return;
+    refreshSquad();
+    setLoadingPlayers(false);
+  }, [myTeam?._id, refreshSquad]);
+
+  // Listen for trade socket events
+  useEffect(() => {
+    if (!socket || !myTeam?._id) return;
+
+    const myId = myTeam._id;
+
+    const onProposed = (data: any) => {
+      addToast(`New trade proposal from ${data.initiatorTeam?.shortName || 'a team'}`);
+      setTradeRefreshKey(k => k + 1);
+    };
+
+    const onAccepted = (data: any) => {
+      addToast('Your trade proposal was accepted!');
+      setTradeRefreshKey(k => k + 1);
+    };
+
+    const onRejected = (data: any) => {
+      addToast(`Trade rejected${data.reason ? ': ' + data.reason : ''}`);
+      setTradeRefreshKey(k => k + 1);
+    };
+
+    const onWithdrawn = (data: any) => {
+      addToast('A trade proposal was withdrawn');
+      setTradeRefreshKey(k => k + 1);
+    };
+
+    const onCancelled = (data: any) => {
+      addToast(`Trade auto-cancelled: ${data.reason || 'player conflict'}`);
+      setTradeRefreshKey(k => k + 1);
+    };
+
+    const onExecuted = (data: any) => {
+      addToast(`Trade executed: ${data.announcement || 'Players swapped'}`);
+      setTradeRefreshKey(k => k + 1);
+      // Re-fetch squad since players may have changed
+      setTimeout(refreshSquad, 500);
+    };
+
+    const onAdminRejected = (data: any) => {
+      addToast(`Trade rejected by admin${data.reason ? ': ' + data.reason : ''}`);
+      setTradeRefreshKey(k => k + 1);
+    };
+
+    socket.on('trade:proposed', onProposed);
+    socket.on('trade:accepted', onAccepted);
+    socket.on('trade:rejected', onRejected);
+    socket.on('trade:withdrawn', onWithdrawn);
+    socket.on('trade:cancelled', onCancelled);
+    socket.on('trade:executed', onExecuted);
+    socket.on('trade:admin_rejected', onAdminRejected);
+
+    return () => {
+      socket.off('trade:proposed', onProposed);
+      socket.off('trade:accepted', onAccepted);
+      socket.off('trade:rejected', onRejected);
+      socket.off('trade:withdrawn', onWithdrawn);
+      socket.off('trade:cancelled', onCancelled);
+      socket.off('trade:executed', onExecuted);
+      socket.off('trade:admin_rejected', onAdminRejected);
+    };
+  }, [socket, myTeam?._id, addToast, refreshSquad]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 mb-6">
-      {/* Header */}
-      <div className="glass-card p-5 text-center border-emerald-500/10">
-        <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
-          <Trophy className="w-6 h-6 text-emerald-400" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-1">Auction Completed</h2>
-        <p className="text-sm text-slate-400">{state.stats.sold} players sold · Your squad: {myPlayers.length} players</p>
+      {/* Trade Toasts */}
+      <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 space-y-2">
+        <AnimatePresence>
+          {tradeToasts.map(t => (
+            <TradeToast
+              key={t.id}
+              message={t.message}
+              onDismiss={() => setTradeToasts(prev => prev.filter(x => x.id !== t.id))}
+            />
+          ))}
+        </AnimatePresence>
       </div>
+
+      {/* Status Banner — differentiated by state */}
+      {isTradeWindow ? (
+        <div className="glass-card p-5 text-center border-purple-500/15 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5">
+          <div className="w-14 h-14 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-3">
+            <ArrowLeftRight className="w-6 h-6 text-purple-400" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-1">Trade Window Open</h2>
+          <p className="text-sm text-slate-400 mb-3">
+            {state.stats.sold} players sold · Your squad: {myPlayers.length} players
+          </p>
+          {state.tradeWindowEndsAt && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/15">
+              <Clock className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-xs text-purple-400/80">Closes in</span>
+              <TradeWindowCountdown endsAt={state.tradeWindowEndsAt} />
+            </div>
+          )}
+        </div>
+      ) : isFinalized ? (
+        <div className="glass-card p-5 text-center border-slate-500/10">
+          <div className="w-14 h-14 rounded-full bg-slate-500/10 flex items-center justify-center mx-auto mb-3">
+            <Lock className="w-6 h-6 text-slate-300" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-1">Auction Finalized</h2>
+          <p className="text-sm text-slate-400">
+            Results are permanent · Your squad: {myPlayers.length} players
+          </p>
+        </div>
+      ) : (
+        <div className="glass-card p-5 text-center border-emerald-500/10">
+          <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+            <Trophy className="w-6 h-6 text-emerald-400" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-1">Auction Completed</h2>
+          <p className="text-sm text-slate-400">
+            {state.stats.sold} players sold · Your squad: {myPlayers.length} players
+          </p>
+          <p className="text-xs text-slate-500 mt-2">Waiting for admin to open the trade window</p>
+        </div>
+      )}
 
       {/* Your Squad */}
       {myPlayers.length > 0 && (
@@ -599,19 +778,20 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
         />
       )}
 
-      {/* Trade Proposal Panel */}
-      {myTeam && (
+      {/* Trade Proposal Panel — visible during trade_window, hidden when finalized */}
+      {myTeam && !isFinalized && (
         <TradeProposalPanel
+          key={tradeRefreshKey}
           auctionId={auctionId}
           teamToken={teamToken}
           myTeamId={myTeam._id}
           myTeamName={myTeam.name}
           myTeamShortName={myTeam.shortName}
-          myTeamColor={undefined}
+          myTeamColor={myTeam.primaryColor}
           teams={state.teams}
           auctionStatus={state.status}
-          tradeWindowEndsAt={undefined}
-          maxTradesPerTeam={state.config?.maxTradesPerTeam || 2}
+          tradeWindowEndsAt={state.tradeWindowEndsAt || undefined}
+          maxTradesPerTeam={state.tradeConfig?.maxTradesPerTeam || 2}
           myPlayers={myPlayers}
         />
       )}

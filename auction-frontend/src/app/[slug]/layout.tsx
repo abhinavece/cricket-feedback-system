@@ -33,6 +33,7 @@ export default async function AuctionPublicLayout({
   const navItems = [
     { label: 'Overview', href: `/${params.slug}` },
     { label: 'Teams', href: `/${params.slug}/teams` },
+    ...(isCompleted ? [{ label: 'Trades', href: `/${params.slug}/trades` }] : []),
     ...(isCompleted ? [{ label: 'Analytics', href: `/${params.slug}/analytics` }] : []),
     ...(isLive ? [{ label: 'Watch Live', href: `/${params.slug}/live`, live: true }] : []),
     ...(isLive ? [{ label: 'Broadcast', href: `/${params.slug}/broadcast`, external: true }] : []),

@@ -80,6 +80,12 @@ export interface PlayerFieldConfig {
   order: number;
 }
 
+export interface TradeConfig {
+  maxTradesPerTeam: number;
+  tradeSettlementEnabled: boolean;
+  tradeWindowHours: number;
+}
+
 export interface AuctionState {
   auctionId: string;
   name: string;
@@ -91,6 +97,8 @@ export interface AuctionState {
   teams: TeamInfo[];
   stats: { totalPlayers: number; inPool: number; sold: number; unsold: number };
   playerFields?: PlayerFieldConfig[];
+  tradeWindowEndsAt?: string | null;
+  tradeConfig?: TradeConfig;
   myTeam?: MyTeamInfo;
   isAdmin?: boolean;
   remainingPlayerCount?: number;
@@ -160,9 +168,13 @@ export function AuctionSocketProvider({ children, auctionId, token, teamToken, r
       });
     });
 
-    // Status changes
-    sock.on('auction:status_change', (data: { status: string; reason?: string }) => {
-      setState(prev => prev ? { ...prev, status: data.status } : prev);
+    // Status changes (may include tradeWindowEndsAt when trade window opens)
+    sock.on('auction:status_change', (data: { status: string; reason?: string; tradeWindowEndsAt?: string }) => {
+      setState(prev => prev ? {
+        ...prev,
+        status: data.status,
+        ...(data.tradeWindowEndsAt ? { tradeWindowEndsAt: data.tradeWindowEndsAt } : {}),
+      } : prev);
     });
 
     // Player revealed
