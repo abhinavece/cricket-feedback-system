@@ -377,36 +377,36 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
               {trades.map((trade: any) => (
                 <div key={trade._id} className="glass-card p-4 sm:p-5 border border-purple-500/10">
                   <div className="flex items-center gap-3 flex-wrap">
-                    {/* From team */}
+                    {/* Initiator team */}
                     <div className="flex items-center gap-2">
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{ backgroundColor: trade.fromTeam?.primaryColor || '#6366f1' }}
+                        style={{ backgroundColor: trade.initiatorTeam?.primaryColor || '#6366f1' }}
                       >
-                        {trade.fromTeam?.shortName?.slice(0, 2)}
+                        {trade.initiatorTeam?.shortName?.slice(0, 2)}
                       </div>
-                      <span className="text-sm font-semibold text-white">{trade.fromTeam?.name}</span>
+                      <span className="text-sm font-semibold text-white">{trade.initiatorTeam?.name}</span>
                     </div>
 
                     <ArrowLeftRight className="w-4 h-4 text-purple-400 shrink-0" />
 
-                    {/* To team */}
+                    {/* Counterparty team */}
                     <div className="flex items-center gap-2">
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{ backgroundColor: trade.toTeam?.primaryColor || '#6366f1' }}
+                        style={{ backgroundColor: trade.counterpartyTeam?.primaryColor || '#6366f1' }}
                       >
-                        {trade.toTeam?.shortName?.slice(0, 2)}
+                        {trade.counterpartyTeam?.shortName?.slice(0, 2)}
                       </div>
-                      <span className="text-sm font-semibold text-white">{trade.toTeam?.name}</span>
+                      <span className="text-sm font-semibold text-white">{trade.counterpartyTeam?.name}</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase">Sent</span>
+                      <span className="text-[10px] text-slate-500 uppercase">{trade.initiatorTeam?.shortName} Sends</span>
                       <div className="flex flex-wrap gap-1 mt-0.5">
-                        {trade.fromPlayers?.map((p: any) => (
+                        {trade.initiatorPlayers?.map((p: any) => (
                           <span key={p.playerId} className="px-2 py-0.5 rounded bg-red-500/10 text-red-300 text-xs">
                             {p.name}
                           </span>
@@ -414,9 +414,9 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                       </div>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase">Received</span>
+                      <span className="text-[10px] text-slate-500 uppercase">{trade.counterpartyTeam?.shortName} Sends</span>
                       <div className="flex flex-wrap gap-1 mt-0.5">
-                        {trade.toPlayers?.map((p: any) => (
+                        {trade.counterpartyPlayers?.map((p: any) => (
                           <span key={p.playerId} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-xs">
                             {p.name}
                           </span>

@@ -3,37 +3,62 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  getTrades, approveTrade, rejectTrade, executeTrade,
-  getAuctionAdmin,
+  getTrades, adminApproveTrade, adminRejectTrade, getAuctionAdmin,
 } from '@/lib/api';
 import {
   Loader2, ArrowLeftRight, Check, X, Play, AlertTriangle,
-  Clock, CheckCircle2, XCircle, ArrowRight, MessageSquare,
-  Users, RefreshCw, Gavel, Shield,
+  Clock, CheckCircle2, XCircle, MessageSquare, Ban,
+  RefreshCw, Gavel, Shield, IndianRupee,
 } from 'lucide-react';
+
+interface TradePlayer {
+  playerId: string;
+  name: string;
+  role?: string;
+  soldAmount?: number;
+}
 
 interface Trade {
   _id: string;
   auctionId: string;
-  fromTeamId: string;
-  toTeamId: string;
-  fromPlayers: { playerId: string; name: string }[];
-  toPlayers: { playerId: string; name: string }[];
-  fromTeam: { _id: string; name: string; shortName: string; primaryColor?: string };
-  toTeam: { _id: string; name: string; shortName: string; primaryColor?: string };
-  status: 'proposed' | 'approved' | 'rejected' | 'executed';
+  initiatorTeamId: string;
+  counterpartyTeamId: string;
+  initiatorPlayers: TradePlayer[];
+  counterpartyPlayers: TradePlayer[];
+  initiatorTeam: { _id: string; name: string; shortName: string; primaryColor?: string; purseRemaining?: number };
+  counterpartyTeam: { _id: string; name: string; shortName: string; primaryColor?: string; purseRemaining?: number };
+  status: 'pending_counterparty' | 'both_agreed' | 'executed' | 'rejected' | 'withdrawn' | 'cancelled' | 'expired';
+  initiatorTotalValue?: number;
+  counterpartyTotalValue?: number;
+  settlementAmount?: number;
+  settlementDirection?: string;
+  purseSettlementEnabled?: boolean;
+  initiatorMessage?: string;
+  counterpartyMessage?: string;
+  adminNote?: string;
+  rejectedBy?: string;
   rejectionReason?: string;
+  cancellationReason?: string;
   publicAnnouncement?: string;
   executedAt?: string;
   createdAt: string;
 }
 
-const STATUS_CONFIG = {
-  proposed: { label: 'Proposed', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  approved: { label: 'Approved', icon: CheckCircle2, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  rejected: { label: 'Rejected', icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string; border: string }> = {
+  pending_counterparty: { label: 'Pending Team', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  both_agreed: { label: 'Both Agreed', icon: CheckCircle2, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
   executed: { label: 'Executed', icon: Gavel, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  rejected: { label: 'Rejected', icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+  withdrawn: { label: 'Withdrawn', icon: Ban, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
+  cancelled: { label: 'Cancelled', icon: XCircle, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  expired: { label: 'Expired', icon: Clock, color: 'text-slate-500', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
 };
+
+function formatCurrency(amount: number) {
+  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
+  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
+  return `₹${amount.toLocaleString('en-IN')}`;
+}
 
 export default function AdminTradesPage() {
   const params = useParams();
@@ -66,10 +91,14 @@ export default function AdminTradesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleApprove = async (tradeId: string) => {
+  const handleApproveExecute = async (tradeId: string) => {
+    if (!window.confirm('Approve & execute this trade? Players will be swapped between teams.')) return;
     setActionLoading(`approve-${tradeId}`);
     try {
-      await approveTrade(auctionId, tradeId);
+      const res = await adminApproveTrade(auctionId, tradeId);
+      if (res.warnings?.length) {
+        alert('Trade executed with warnings:\n' + res.warnings.join('\n'));
+      }
       await loadData();
     } catch (err: any) {
       alert(err.message);
@@ -81,22 +110,9 @@ export default function AdminTradesPage() {
   const handleReject = async (tradeId: string) => {
     setActionLoading(`reject-${tradeId}`);
     try {
-      await rejectTrade(auctionId, tradeId, rejectReason);
+      await adminRejectTrade(auctionId, tradeId, rejectReason);
       setRejectingTradeId(null);
       setRejectReason('');
-      await loadData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleExecute = async (tradeId: string) => {
-    if (!window.confirm('Execute this trade? Players will be swapped between teams. This action is logged.')) return;
-    setActionLoading(`execute-${tradeId}`);
-    try {
-      await executeTrade(auctionId, tradeId);
       await loadData();
     } catch (err: any) {
       alert(err.message);
@@ -109,10 +125,10 @@ export default function AdminTradesPage() {
 
   const tradeStats = {
     total: trades.length,
-    proposed: trades.filter(t => t.status === 'proposed').length,
-    approved: trades.filter(t => t.status === 'approved').length,
+    pending: trades.filter(t => t.status === 'pending_counterparty').length,
+    agreed: trades.filter(t => t.status === 'both_agreed').length,
     executed: trades.filter(t => t.status === 'executed').length,
-    rejected: trades.filter(t => t.status === 'rejected').length,
+    other: trades.filter(t => ['rejected', 'withdrawn', 'cancelled', 'expired'].includes(t.status)).length,
   };
 
   const isTradeWindowActive = auction?.status === 'trade_window';
@@ -147,7 +163,7 @@ export default function AdminTradesPage() {
             Post-Auction Trades
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Review and manage player swap proposals between teams
+            Bilateral trade negotiation — teams agree, you approve & execute
           </p>
         </div>
         <button onClick={loadData} className="btn-ghost text-sm gap-2">
@@ -167,19 +183,17 @@ export default function AdminTradesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { key: 'total', label: 'Total', value: tradeStats.total, color: 'text-white', bg: 'bg-slate-800/50' },
-          { key: 'proposed', label: 'Pending', value: tradeStats.proposed, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-          { key: 'approved', label: 'Approved', value: tradeStats.approved, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { key: 'executed', label: 'Executed', value: tradeStats.executed, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-          { key: 'rejected', label: 'Rejected', value: tradeStats.rejected, color: 'text-red-400', bg: 'bg-red-500/10' },
+          { key: 'total', filterKey: 'all', label: 'Total', value: tradeStats.total, color: 'text-white', bg: 'bg-slate-800/50' },
+          { key: 'pending', filterKey: 'pending_counterparty', label: 'Pending', value: tradeStats.pending, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+          { key: 'agreed', filterKey: 'both_agreed', label: 'Agreed', value: tradeStats.agreed, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+          { key: 'executed', filterKey: 'executed', label: 'Executed', value: tradeStats.executed, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { key: 'other', filterKey: 'other', label: 'Other', value: tradeStats.other, color: 'text-slate-400', bg: 'bg-slate-500/10' },
         ].map(stat => (
           <button
             key={stat.key}
-            onClick={() => setFilter(stat.key === 'total' ? 'all' : stat.key)}
+            onClick={() => setFilter(stat.filterKey)}
             className={`p-3 rounded-xl text-center transition-all ${stat.bg} border ${
-              (filter === stat.key || (filter === 'all' && stat.key === 'total'))
-                ? 'border-white/20 ring-1 ring-white/10'
-                : 'border-transparent hover:border-white/10'
+              filter === stat.filterKey ? 'border-white/20 ring-1 ring-white/10' : 'border-transparent hover:border-white/10'
             }`}
           >
             <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
@@ -189,41 +203,45 @@ export default function AdminTradesPage() {
       </div>
 
       {/* Trade List */}
-      {filteredTrades.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-4">
-            <ArrowLeftRight className="w-8 h-8 text-slate-600" />
+      {(() => {
+        const displayed = filter === 'other'
+          ? trades.filter(t => ['rejected', 'withdrawn', 'cancelled', 'expired'].includes(t.status))
+          : filteredTrades;
+
+        return displayed.length === 0 ? (
+          <div className="glass-card p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-4">
+              <ArrowLeftRight className="w-8 h-8 text-slate-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              {trades.length === 0 ? 'No Trades Yet' : 'No Matching Trades'}
+            </h3>
+            <p className="text-sm text-slate-400 max-w-md mx-auto">
+              {trades.length === 0
+                ? 'Trade proposals from teams will appear here once the trade window is open.'
+                : 'No trades match the selected filter.'}
+            </p>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">
-            {trades.length === 0 ? 'No Trades Yet' : 'No Matching Trades'}
-          </h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
-            {trades.length === 0
-              ? 'Trade proposals from teams will appear here once the trade window is open.'
-              : `No trades with status "${filter}" found.`
-            }
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredTrades.map(trade => (
-            <TradeCard
-              key={trade._id}
-              trade={trade}
-              actionLoading={actionLoading}
-              rejectingTradeId={rejectingTradeId}
-              rejectReason={rejectReason}
-              isTradeWindowActive={isTradeWindowActive}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              onExecute={handleExecute}
-              onStartReject={(id) => { setRejectingTradeId(id); setRejectReason(''); }}
-              onCancelReject={() => { setRejectingTradeId(null); setRejectReason(''); }}
-              onRejectReasonChange={setRejectReason}
-            />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="space-y-4">
+            {displayed.map(trade => (
+              <AdminTradeCard
+                key={trade._id}
+                trade={trade}
+                actionLoading={actionLoading}
+                rejectingTradeId={rejectingTradeId}
+                rejectReason={rejectReason}
+                isTradeWindowActive={isTradeWindowActive}
+                onApproveExecute={handleApproveExecute}
+                onReject={handleReject}
+                onStartReject={(id) => { setRejectingTradeId(id); setRejectReason(''); }}
+                onCancelReject={() => { setRejectingTradeId(null); setRejectReason(''); }}
+                onRejectReasonChange={setRejectReason}
+              />
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -237,18 +255,13 @@ function TradeWindowBanner({ status, tradeWindowEndsAt, maxTradesPerTeam }: {
 
   useEffect(() => {
     if (!tradeWindowEndsAt || status !== 'trade_window') return;
-
     const update = () => {
       const remaining = new Date(tradeWindowEndsAt).getTime() - Date.now();
-      if (remaining <= 0) {
-        setTimeLeft('Expired');
-        return;
-      }
+      if (remaining <= 0) { setTimeLeft('Expired'); return; }
       const hours = Math.floor(remaining / (1000 * 60 * 60));
       const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
       setTimeLeft(`${hours}h ${minutes}m remaining`);
     };
-
     update();
     const interval = setInterval(update, 60000);
     return () => clearInterval(interval);
@@ -264,7 +277,7 @@ function TradeWindowBanner({ status, tradeWindowEndsAt, maxTradesPerTeam }: {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-purple-400">Trade Window Active</p>
             <p className="text-xs text-slate-400">
-              Teams can propose player-for-player swaps (max {maxTradesPerTeam} per team) · {timeLeft}
+              Bilateral trades: team proposes → counterparty accepts → you approve & execute (max {maxTradesPerTeam} per team) · {timeLeft}
             </p>
           </div>
           <div className="text-right shrink-0">
@@ -284,9 +297,7 @@ function TradeWindowBanner({ status, tradeWindowEndsAt, maxTradesPerTeam }: {
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Trade Window Not Open</p>
-            <p className="text-xs text-slate-400">
-              Open the trade window from the Overview tab to allow teams to propose swaps.
-            </p>
+            <p className="text-xs text-slate-400">Open the trade window from the Overview tab.</p>
           </div>
         </div>
       </div>
@@ -302,9 +313,7 @@ function TradeWindowBanner({ status, tradeWindowEndsAt, maxTradesPerTeam }: {
           </div>
           <div>
             <p className="text-sm font-semibold text-emerald-400">Auction Finalized</p>
-            <p className="text-xs text-slate-400">
-              Results are permanent. No further trades can be proposed or executed.
-            </p>
+            <p className="text-xs text-slate-400">Results are permanent. No further trades.</p>
           </div>
         </div>
       </div>
@@ -314,24 +323,33 @@ function TradeWindowBanner({ status, tradeWindowEndsAt, maxTradesPerTeam }: {
   return null;
 }
 
-function TradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, isTradeWindowActive, onApprove, onReject, onExecute, onStartReject, onCancelReject, onRejectReasonChange }: {
+function AdminTradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, isTradeWindowActive, onApproveExecute, onReject, onStartReject, onCancelReject, onRejectReasonChange }: {
   trade: Trade;
   actionLoading: string | null;
   rejectingTradeId: string | null;
   rejectReason: string;
   isTradeWindowActive: boolean;
-  onApprove: (id: string) => void;
+  onApproveExecute: (id: string) => void;
   onReject: (id: string) => void;
-  onExecute: (id: string) => void;
   onStartReject: (id: string) => void;
   onCancelReject: () => void;
   onRejectReasonChange: (reason: string) => void;
 }) {
-  const statusCfg = STATUS_CONFIG[trade.status];
+  const statusCfg = STATUS_CONFIG[trade.status] || STATUS_CONFIG.pending_counterparty;
   const StatusIcon = statusCfg.icon;
   const isRejecting = rejectingTradeId === trade._id;
-
   const teamColor = (color?: string) => color || '#6366f1';
+
+  // Settlement warning
+  const hasSettlementWarning = trade.purseSettlementEnabled && trade.settlementAmount && trade.settlementAmount > 0 && (() => {
+    if (trade.settlementDirection === 'initiator_pays') {
+      return (trade.initiatorTeam?.purseRemaining ?? Infinity) < trade.settlementAmount;
+    }
+    if (trade.settlementDirection === 'counterparty_pays') {
+      return (trade.counterpartyTeam?.purseRemaining ?? Infinity) < trade.settlementAmount;
+    }
+    return false;
+  })();
 
   return (
     <div className={`glass-card overflow-hidden border ${statusCfg.border}`}>
@@ -339,10 +357,10 @@ function TradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, isTra
       <div className="p-4 sm:p-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-9 h-9 rounded-lg ${statusCfg.bg} flex items-center justify-center`}>
-            <StatusIcon className={`w-4.5 h-4.5 ${statusCfg.color}`} />
+            <StatusIcon className={`w-4 h-4 ${statusCfg.color}`} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.color}`}>
                 {statusCfg.label}
               </span>
@@ -357,28 +375,32 @@ function TradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, isTra
       {/* Trade Visual */}
       <div className="px-4 sm:px-5 pb-4">
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 sm:gap-4 items-center">
-          {/* From Team */}
+          {/* Initiator Team */}
           <div className="p-3 sm:p-4 rounded-xl bg-slate-800/50 border border-white/5">
             <div className="flex items-center gap-2 mb-2.5">
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                style={{ backgroundColor: teamColor(trade.fromTeam.primaryColor) }}
-              >
-                {trade.fromTeam.shortName?.slice(0, 2)}
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
+                style={{ backgroundColor: teamColor(trade.initiatorTeam?.primaryColor) }}>
+                {trade.initiatorTeam?.shortName?.slice(0, 2)}
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{trade.fromTeam.name}</p>
-                <p className="text-[10px] text-slate-500">Sends</p>
+                <p className="text-sm font-semibold text-white">{trade.initiatorTeam?.name}</p>
+                <p className="text-[10px] text-slate-500">Initiator · Sends</p>
               </div>
             </div>
             <div className="space-y-1.5">
-              {trade.fromPlayers.map(p => (
-                <div key={p.playerId} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/10">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                  <span className="text-sm text-red-300 font-medium">{p.name}</span>
+              {trade.initiatorPlayers.map(p => (
+                <div key={p.playerId} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                    <span className="text-sm text-red-300 font-medium">{p.name}</span>
+                  </div>
+                  {p.soldAmount ? <span className="text-[10px] text-red-400/60">{formatCurrency(p.soldAmount)}</span> : null}
                 </div>
               ))}
             </div>
+            {trade.initiatorTotalValue !== undefined && (
+              <p className="text-[10px] text-slate-500 mt-2 text-right">Total: {formatCurrency(trade.initiatorTotalValue)}</p>
+            )}
           </div>
 
           {/* Arrow */}
@@ -388,43 +410,95 @@ function TradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, isTra
             </div>
           </div>
 
-          {/* To Team */}
+          {/* Counterparty Team */}
           <div className="p-3 sm:p-4 rounded-xl bg-slate-800/50 border border-white/5">
             <div className="flex items-center gap-2 mb-2.5">
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                style={{ backgroundColor: teamColor(trade.toTeam.primaryColor) }}
-              >
-                {trade.toTeam.shortName?.slice(0, 2)}
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
+                style={{ backgroundColor: teamColor(trade.counterpartyTeam?.primaryColor) }}>
+                {trade.counterpartyTeam?.shortName?.slice(0, 2)}
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{trade.toTeam.name}</p>
-                <p className="text-[10px] text-slate-500">Sends</p>
+                <p className="text-sm font-semibold text-white">{trade.counterpartyTeam?.name}</p>
+                <p className="text-[10px] text-slate-500">Counterparty · Sends</p>
               </div>
             </div>
             <div className="space-y-1.5">
-              {trade.toPlayers.map(p => (
-                <div key={p.playerId} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/10">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-sm text-emerald-300 font-medium">{p.name}</span>
+              {trade.counterpartyPlayers.map(p => (
+                <div key={p.playerId} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-sm text-emerald-300 font-medium">{p.name}</span>
+                  </div>
+                  {p.soldAmount ? <span className="text-[10px] text-emerald-400/60">{formatCurrency(p.soldAmount)}</span> : null}
                 </div>
               ))}
             </div>
+            {trade.counterpartyTotalValue !== undefined && (
+              <p className="text-[10px] text-slate-500 mt-2 text-right">Total: {formatCurrency(trade.counterpartyTotalValue)}</p>
+            )}
           </div>
         </div>
+
+        {/* Settlement Info */}
+        {trade.settlementAmount !== undefined && trade.settlementAmount > 0 && (
+          <div className={`mt-3 p-3 rounded-xl flex items-center justify-between ${
+            hasSettlementWarning ? 'bg-red-500/10 border border-red-500/20' : 'bg-slate-800/50 border border-white/5'
+          }`}>
+            <div className="flex items-center gap-2">
+              <IndianRupee className={`w-4 h-4 ${hasSettlementWarning ? 'text-red-400' : 'text-slate-400'}`} />
+              <span className="text-xs text-slate-300">
+                Settlement: <span className="font-semibold">{formatCurrency(trade.settlementAmount)}</span>
+                {trade.settlementDirection === 'initiator_pays'
+                  ? ` (${trade.initiatorTeam?.shortName} pays → ${trade.counterpartyTeam?.shortName})`
+                  : ` (${trade.counterpartyTeam?.shortName} pays → ${trade.initiatorTeam?.shortName})`}
+              </span>
+            </div>
+            {hasSettlementWarning && (
+              <span className="text-[10px] text-red-400 font-semibold flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Insufficient purse
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Rejection Reason */}
-      {trade.status === 'rejected' && trade.rejectionReason && (
-        <div className="mx-4 sm:mx-5 mb-4 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
-          <div className="flex items-start gap-2">
-            <MessageSquare className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-            <p className="text-sm text-red-300/80">{trade.rejectionReason}</p>
-          </div>
+      {/* Messages */}
+      {trade.initiatorMessage && (
+        <div className="mx-4 sm:mx-5 mb-2 p-2.5 rounded-xl bg-slate-800/30 border border-white/5">
+          <p className="text-xs text-slate-400 flex items-start gap-1.5">
+            <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 text-purple-400" />
+            <span><span className="text-purple-400 font-medium">Initiator:</span> {trade.initiatorMessage}</span>
+          </p>
+        </div>
+      )}
+      {trade.counterpartyMessage && (
+        <div className="mx-4 sm:mx-5 mb-2 p-2.5 rounded-xl bg-slate-800/30 border border-white/5">
+          <p className="text-xs text-slate-400 flex items-start gap-1.5">
+            <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 text-cyan-400" />
+            <span><span className="text-cyan-400 font-medium">Counterparty:</span> {trade.counterpartyMessage}</span>
+          </p>
         </div>
       )}
 
-      {/* Executed Announcement */}
+      {/* Rejection / Cancellation */}
+      {trade.status === 'rejected' && trade.rejectionReason && (
+        <div className="mx-4 sm:mx-5 mb-4 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+          <div className="flex items-start gap-2">
+            <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-red-300/80">
+              {trade.rejectedBy === 'admin' ? '(Admin) ' : '(Team) '}{trade.rejectionReason}
+            </p>
+          </div>
+        </div>
+      )}
+      {trade.status === 'cancelled' && trade.cancellationReason && (
+        <div className="mx-4 sm:mx-5 mb-4 p-3 rounded-xl bg-orange-500/5 border border-orange-500/10">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-orange-300/80">{trade.cancellationReason}</p>
+          </div>
+        </div>
+      )}
       {trade.status === 'executed' && trade.publicAnnouncement && (
         <div className="mx-4 sm:mx-5 mb-4 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
           <div className="flex items-start gap-2">
@@ -438,76 +512,35 @@ function TradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, isTra
       {isRejecting && (
         <div className="mx-4 sm:mx-5 mb-4 p-3 rounded-xl bg-slate-800/50 border border-white/5">
           <label className="text-xs text-slate-400 mb-1.5 block">Rejection Reason (optional)</label>
-          <input
-            type="text"
-            value={rejectReason}
-            onChange={(e) => onRejectReasonChange(e.target.value)}
+          <input type="text" value={rejectReason} onChange={(e) => onRejectReasonChange(e.target.value)}
             placeholder="Why is this trade being rejected?"
             className="w-full px-3 py-2 rounded-lg bg-slate-900/50 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
-            autoFocus
-          />
+            autoFocus />
           <div className="flex gap-2 mt-2.5">
-            <button
-              onClick={() => onReject(trade._id)}
-              disabled={actionLoading === `reject-${trade._id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
-            >
+            <button onClick={() => onReject(trade._id)} disabled={actionLoading === `reject-${trade._id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">
               {actionLoading === `reject-${trade._id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
               Confirm Reject
             </button>
-            <button
-              onClick={onCancelReject}
-              className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
-            >
-              Cancel
-            </button>
+            <button onClick={onCancelReject} className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all">Cancel</button>
           </div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      {(trade.status === 'proposed' || trade.status === 'approved') && !isRejecting && (
+      {/* Action Buttons — only for both_agreed (admin approve+execute) and pending/agreed (admin reject) */}
+      {['pending_counterparty', 'both_agreed'].includes(trade.status) && !isRejecting && (
         <div className="px-4 sm:px-5 pb-4 flex flex-wrap gap-2">
-          {trade.status === 'proposed' && (
-            <>
-              <button
-                onClick={() => onApprove(trade._id)}
-                disabled={!!actionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40"
-              >
-                {actionLoading === `approve-${trade._id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                Approve
-              </button>
-              <button
-                onClick={() => onStartReject(trade._id)}
-                disabled={!!actionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-40"
-              >
-                <X className="w-3.5 h-3.5" />
-                Reject
-              </button>
-            </>
+          {trade.status === 'both_agreed' && isTradeWindowActive && (
+            <button onClick={() => onApproveExecute(trade._id)} disabled={!!actionLoading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40">
+              {actionLoading === `approve-${trade._id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+              Approve & Execute
+            </button>
           )}
-          {trade.status === 'approved' && isTradeWindowActive && (
-            <>
-              <button
-                onClick={() => onExecute(trade._id)}
-                disabled={!!actionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40"
-              >
-                {actionLoading === `execute-${trade._id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                Execute Trade
-              </button>
-              <button
-                onClick={() => onStartReject(trade._id)}
-                disabled={!!actionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-40"
-              >
-                <X className="w-3.5 h-3.5" />
-                Reject
-              </button>
-            </>
-          )}
+          <button onClick={() => onStartReject(trade._id)} disabled={!!actionLoading}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-40">
+            <X className="w-3.5 h-3.5" /> Reject
+          </button>
         </div>
       )}
     </div>

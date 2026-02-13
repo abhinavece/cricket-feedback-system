@@ -119,6 +119,10 @@ const auctionConfigSchema = new mongoose.Schema({
     default: 48,
     min: 1,
   },
+  tradeSettlementEnabled: {
+    type: Boolean,
+    default: true,
+  },
   maxUndoActions: {
     type: Number,
     default: 3,

@@ -59,6 +59,7 @@ export default async function PlayersPublicPage({ params }: { params: { slug: st
         auctionName={auction.name}
         slug={params.slug}
         config={auction.config}
+        playerFields={auction.playerFields || []}
       />
     </>
   );

@@ -7,7 +7,7 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Loader2, Save, Trash2, AlertTriangle, UserPlus, X, Shield,
+  Loader2, Save, Trash2, AlertTriangle, UserPlus, X, Shield, ArrowLeftRight,
 } from 'lucide-react';
 
 interface AuctionConfig {
@@ -19,6 +19,8 @@ interface AuctionConfig {
   retentionEnabled: boolean;
   maxRetentions: number;
   tradeWindowHours: number;
+  maxTradesPerTeam: number;
+  tradeSettlementEnabled: boolean;
 }
 
 export default function SettingsPage() {
@@ -44,6 +46,9 @@ export default function SettingsPage() {
     retentionEnabled: true,
     maxRetentions: 3,
     scheduledStartTime: '',
+    tradeWindowHours: 24,
+    maxTradesPerTeam: 2,
+    tradeSettlementEnabled: false,
   });
 
   const [adminEmail, setAdminEmail] = useState('');
@@ -65,6 +70,9 @@ export default function SettingsPage() {
         retentionEnabled: a.config.retentionEnabled ?? true,
         maxRetentions: a.config.maxRetentions || 3,
         scheduledStartTime: a.scheduledStartTime ? new Date(a.scheduledStartTime).toISOString().slice(0, 16) : '',
+        tradeWindowHours: a.config.tradeWindowHours || 24,
+        maxTradesPerTeam: a.config.maxTradesPerTeam || 2,
+        tradeSettlementEnabled: a.config.tradeSettlementEnabled ?? false,
       });
     } catch (err: any) {
       setError(err.message);
@@ -94,6 +102,9 @@ export default function SettingsPage() {
           bidIncrementPreset: form.bidIncrementPreset,
           retentionEnabled: form.retentionEnabled,
           maxRetentions: form.maxRetentions,
+          tradeWindowHours: form.tradeWindowHours,
+          maxTradesPerTeam: form.maxTradesPerTeam,
+          tradeSettlementEnabled: form.tradeSettlementEnabled,
         },
         scheduledStartTime: form.scheduledStartTime || undefined,
       });
@@ -325,20 +336,74 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Save button */}
-      {isDraft && (
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary"
-          >
-            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Changes</>}
-          </button>
-          {success && <span className="text-sm text-emerald-400">{success}</span>}
-          {error && <span className="text-sm text-red-400">{error}</span>}
+      {/* Trade Settings — editable even after draft */}
+      <div className="glass-card p-5 sm:p-6">
+        <h3 className="text-base font-semibold text-white mb-5 flex items-center gap-2">
+          <ArrowLeftRight className="w-4 h-4 text-purple-400" /> Trade Settings
+        </h3>
+        <p className="text-xs text-slate-400 mb-4">These settings apply when the trade window is opened after the auction completes.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Trade Window Duration (hours)</label>
+            <input
+              type="number"
+              value={form.tradeWindowHours}
+              onChange={e => setForm(prev => ({ ...prev, tradeWindowHours: parseInt(e.target.value) || 1 }))}
+              className="input-field"
+              min={1}
+              max={168}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Max Trades Per Team</label>
+            <input
+              type="number"
+              value={form.maxTradesPerTeam}
+              onChange={e => setForm(prev => ({ ...prev, maxTradesPerTeam: parseInt(e.target.value) || 1 }))}
+              className="input-field"
+              min={1}
+              max={10}
+            />
+            <p className="text-xs text-slate-500 mt-1">Only executed trades count toward this limit</p>
+          </div>
         </div>
-      )}
+
+        <div className="mt-5 flex items-center justify-between p-4 rounded-xl bg-slate-800/30 border border-white/5">
+          <div>
+            <div className="text-sm font-medium text-white">Purse Settlement</div>
+            <div className="text-xs text-slate-400 mt-0.5">Adjust team purses based on player value difference in trades</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setForm(prev => ({ ...prev, tradeSettlementEnabled: !prev.tradeSettlementEnabled }))}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              form.tradeSettlementEnabled ? 'bg-purple-500' : 'bg-slate-700'
+            }`}
+          >
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${
+              form.tradeSettlementEnabled ? 'translate-x-5' : ''
+            }`} />
+          </button>
+        </div>
+        {form.tradeSettlementEnabled && (
+          <p className="text-xs text-purple-300/70 mt-2 ml-1">
+            When enabled, the admin can settle purse differences when executing trades (e.g., if Team A sends a ₹5L player for a ₹3L player, ₹2L may be transferred).
+          </p>
+        )}
+      </div>
+
+      {/* Save button */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary"
+        >
+          {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Changes</>}
+        </button>
+        {success && <span className="text-sm text-emerald-400">{success}</span>}
+        {error && <span className="text-sm text-red-400">{error}</span>}
+      </div>
 
       {/* Admin management */}
       <div className="glass-card p-5 sm:p-6">

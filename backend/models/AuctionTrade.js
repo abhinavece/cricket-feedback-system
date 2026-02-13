@@ -1,9 +1,9 @@
 /**
  * @fileoverview AuctionTrade Model
  * 
- * Post-auction player-for-player swap trades.
- * Team-initiated, admin-approved. Max 2 per team, 48-hour window.
- * Player-for-player swap only (no money).
+ * Bilateral post-auction player trades with smart player locking.
+ * Initiator proposes → counterparty accepts/rejects → admin approves+executes.
+ * Configurable purse settlement based on player purchase prices.
  * 
  * @module models/AuctionTrade
  */
@@ -20,6 +20,14 @@ const tradePlayerSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  role: {
+    type: String,
+    default: '',
+  },
+  soldAmount: {
+    type: Number,
+    default: 0,
+  },
 }, { _id: false });
 
 const auctionTradeSchema = new mongoose.Schema({
@@ -30,57 +38,100 @@ const auctionTradeSchema = new mongoose.Schema({
     index: true,
   },
 
-  fromTeamId: {
+  // Teams (initiator = proposer, counterparty = must accept/reject)
+  initiatorTeamId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AuctionTeam',
     required: true,
   },
-  toTeamId: {
+  counterpartyTeamId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AuctionTeam',
     required: true,
   },
 
-  // Player-for-player swap only (no money)
-  fromPlayers: {
+  // Players with financial info
+  initiatorPlayers: {
     type: [tradePlayerSchema],
     required: true,
-    validate: [arr => arr.length > 0, 'At least one player required from proposing team'],
+    validate: [arr => arr.length > 0, 'At least one player required from initiator team'],
   },
-  toPlayers: {
+  counterpartyPlayers: {
     type: [tradePlayerSchema],
     required: true,
-    validate: [arr => arr.length > 0, 'At least one player required from receiving team'],
+    validate: [arr => arr.length > 0, 'At least one player required from counterparty team'],
   },
 
-  proposedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
+  // Financial summary (auto-calculated on creation)
+  initiatorTotalValue: {
+    type: Number,
+    default: 0,
+  },
+  counterpartyTotalValue: {
+    type: Number,
+    default: 0,
+  },
+  settlementAmount: {
+    type: Number,
+    default: 0,
+  },
+  settlementDirection: {
+    type: String,
+    enum: ['initiator_pays', 'counterparty_pays', 'even'],
+    default: 'even',
+  },
+  purseSettlementEnabled: {
+    type: Boolean,
+    default: true,
   },
 
+  // Status — bilateral flow
   status: {
     type: String,
-    enum: ['proposed', 'approved', 'rejected', 'executed'],
-    default: 'proposed',
+    enum: ['pending_counterparty', 'both_agreed', 'executed', 'rejected', 'withdrawn', 'cancelled', 'expired'],
+    default: 'pending_counterparty',
     index: true,
   },
 
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
+  // Messages
+  initiatorMessage: {
+    type: String,
+    default: '',
   },
+  counterpartyMessage: {
+    type: String,
+    default: '',
+  },
+  adminNote: {
+    type: String,
+    default: '',
+  },
+
+  // Rejection / cancellation tracking
   rejectedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
+    enum: ['counterparty', 'admin', null],
     default: null,
   },
   rejectionReason: {
     type: String,
     default: '',
   },
+  cancellationReason: {
+    type: String,
+    default: '',
+  },
 
+  // Timestamps / admin tracking
+  counterpartyAcceptedAt: {
+    type: Date,
+    default: null,
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
   executedAt: {
     type: Date,
     default: null,
@@ -97,7 +148,10 @@ const auctionTradeSchema = new mongoose.Schema({
 // --- Indexes ---
 
 auctionTradeSchema.index({ auctionId: 1, status: 1 });
-auctionTradeSchema.index({ auctionId: 1, fromTeamId: 1 });
-auctionTradeSchema.index({ auctionId: 1, toTeamId: 1 });
+auctionTradeSchema.index({ auctionId: 1, initiatorTeamId: 1 });
+auctionTradeSchema.index({ auctionId: 1, counterpartyTeamId: 1 });
+// For player lock queries: find active trades involving specific players
+auctionTradeSchema.index({ auctionId: 1, 'initiatorPlayers.playerId': 1, status: 1 });
+auctionTradeSchema.index({ auctionId: 1, 'counterpartyPlayers.playerId': 1, status: 1 });
 
 module.exports = mongoose.model('AuctionTrade', auctionTradeSchema);

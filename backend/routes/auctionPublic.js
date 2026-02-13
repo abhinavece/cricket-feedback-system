@@ -141,6 +141,7 @@ router.get('/:slug', loadPublicAuction, async (req, res) => {
           maxSquadSize: auction.config.maxSquadSize,
           maxRounds: auction.config.maxRounds,
         },
+        playerFields: auction.displayConfig?.playerFields || [],
         currentRound: auction.currentRound,
         scheduledStartTime: auction.scheduledStartTime,
         startedAt: auction.startedAt,
@@ -401,18 +402,21 @@ router.get('/:slug/trades', loadPublicAuction, async (req, res) => {
       .sort({ executedAt: -1 })
       .lean();
 
+    // Filter out legacy trades that lack bilateral fields
+    const validTrades = trades.filter(t => t.initiatorTeamId && t.counterpartyTeamId);
+
     // Enrich with team names
-    const teamIds = [...new Set(trades.flatMap(t => [t.fromTeamId.toString(), t.toTeamId.toString()]))];
+    const teamIds = [...new Set(validTrades.flatMap(t => [t.initiatorTeamId.toString(), t.counterpartyTeamId.toString()]))];
     const teams = await AuctionTeam.find({ _id: { $in: teamIds } })
       .select('name shortName primaryColor')
       .lean();
     const teamMap = {};
     teams.forEach(t => { teamMap[t._id.toString()] = t; });
 
-    const enriched = trades.map(t => ({
+    const enriched = validTrades.map(t => ({
       ...t,
-      fromTeam: teamMap[t.fromTeamId.toString()] || { name: 'Unknown' },
-      toTeam: teamMap[t.toTeamId.toString()] || { name: 'Unknown' },
+      initiatorTeam: teamMap[t.initiatorTeamId.toString()] || { name: 'Unknown' },
+      counterpartyTeam: teamMap[t.counterpartyTeamId.toString()] || { name: 'Unknown' },
     }));
 
     res.json({ success: true, data: enriched });

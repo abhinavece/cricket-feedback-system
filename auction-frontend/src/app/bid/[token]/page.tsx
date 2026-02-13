@@ -9,6 +9,7 @@ import Timer from '@/components/auction/Timer';
 import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
 import TradeProposalPanel from '@/components/auction/TradeProposalPanel';
+import { getTeamPlayers } from '@/lib/api';
 import { siteConfig } from '@/lib/constants';
 import {
   Wifi, WifiOff, IndianRupee, Users, UserCheck, Clock,
@@ -182,7 +183,7 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
   const { state, connectionStatus, emit, announcements } = useAuctionSocket();
   const [bidLoading, setBidLoading] = useState(false);
   const [bidError, setBidError] = useState('');
-  const [myPlayers, setMyPlayers] = useState<{ _id: string; name: string; role?: string; soldAmount?: number }[]>([]);
+  const [myPlayers, setMyPlayers] = useState<{ _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean }[]>([]);
 
   const handleBid = useCallback(() => {
     setBidLoading(true);
@@ -511,7 +512,7 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
   teamName: string;
   teamToken: string;
   auctionId: string;
-  myPlayers: { _id: string; name: string; role?: string; soldAmount?: number }[];
+  myPlayers: { _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean }[];
   setMyPlayers: (p: any[]) => void;
 }) {
   const [loadingPlayers, setLoadingPlayers] = useState(true);
@@ -519,13 +520,10 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
 
   useEffect(() => {
     if (!myTeam?._id) return;
-    const apiUrl = siteConfig.apiUrl;
-    fetch(`${apiUrl}/api/v1/auctions/${auctionId}/trades/team-players/${myTeam._id}`, {
-      headers: { 'X-Team-Token': teamToken },
-    })
-      .then(res => res.json())
+    getTeamPlayers(auctionId, teamToken, myTeam._id)
       .then(data => setMyPlayers((data.data || []).map((p: any) => ({
         _id: p._id, name: p.name, role: p.role, soldAmount: p.soldAmount,
+        isLocked: p.isLocked, customFields: p.customFields, imageUrl: p.imageUrl,
       }))))
       .catch(() => {})
       .finally(() => setLoadingPlayers(false));

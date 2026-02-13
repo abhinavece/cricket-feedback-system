@@ -296,24 +296,18 @@ export async function getTrades(auctionId: string, status?: string) {
   return fetchApi(`/api/v1/auctions/${auctionId}/trades?${params}`, { auth: true });
 }
 
-export async function approveTrade(auctionId: string, tradeId: string) {
-  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/approve`, {
+export async function adminApproveTrade(auctionId: string, tradeId: string, note?: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/admin-approve`, {
     method: 'PATCH',
+    body: JSON.stringify({ note }),
     auth: true,
   });
 }
 
-export async function rejectTrade(auctionId: string, tradeId: string, reason?: string) {
-  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/reject`, {
+export async function adminRejectTrade(auctionId: string, tradeId: string, reason?: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/admin-reject`, {
     method: 'PATCH',
     body: JSON.stringify({ reason }),
-    auth: true,
-  });
-}
-
-export async function executeTrade(auctionId: string, tradeId: string) {
-  return fetchApi(`/api/v1/auctions/${auctionId}/trades/${tradeId}/execute`, {
-    method: 'POST',
     auth: true,
   });
 }
@@ -322,38 +316,63 @@ export async function executeTrade(auctionId: string, tradeId: string) {
 // Trade Endpoints (Team)
 // ============================================================
 
-export async function proposeTrade(
-  auctionId: string,
-  teamToken: string,
-  data: { toTeamId: string; fromPlayerIds: string[]; toPlayerIds: string[]; message?: string }
-) {
-  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades`, {
-    method: 'POST',
+async function teamFetch(url: string, teamToken: string, options: RequestInit = {}) {
+  const res = await fetch(url, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
       'X-Team-Token': teamToken,
+      ...(options.headers || {}),
     },
-    body: JSON.stringify(data),
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(error.error || `Trade proposal failed: ${res.status}`);
+    throw new Error(error.error || `Request failed: ${res.status}`);
   }
   return res.json();
 }
 
-export async function getMyTrades(auctionId: string, teamToken: string) {
-  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/my-trades`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Team-Token': teamToken,
-    },
+export async function proposeTrade(
+  auctionId: string,
+  teamToken: string,
+  data: { counterpartyTeamId: string; initiatorPlayerIds: string[]; counterpartyPlayerIds: string[]; message?: string }
+) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades`, teamToken, {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(error.error || `Failed to fetch trades: ${res.status}`);
-  }
-  return res.json();
+}
+
+export async function getMyTrades(auctionId: string, teamToken: string) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/my-trades`, teamToken);
+}
+
+export async function getAllTrades(auctionId: string, teamToken: string) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/all-trades`, teamToken);
+}
+
+export async function acceptTrade(auctionId: string, teamToken: string, tradeId: string, message?: string) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/${tradeId}/accept`, teamToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ message }),
+  });
+}
+
+export async function rejectTrade(auctionId: string, teamToken: string, tradeId: string, reason?: string) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/${tradeId}/reject`, teamToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function withdrawTrade(auctionId: string, teamToken: string, tradeId: string) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/${tradeId}/withdraw`, teamToken, {
+    method: 'PATCH',
+  });
+}
+
+export async function getTeamPlayers(auctionId: string, teamToken: string, teamId: string) {
+  return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/team-players/${teamId}`, teamToken);
 }
 
 export async function importPlayersConfirm(auctionId: string, file: File, columnMapping: Record<string, string>) {

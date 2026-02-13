@@ -560,18 +560,17 @@ router.post('/:auctionId/finalize', auth, resolveAuctionAdmin, async (req, res) 
       });
     }
 
-    // Auto-reject any pending/approved (non-executed) trades
+    // Auto-expire any non-executed trades
     const AuctionTrade = require('../models/AuctionTrade');
     const pendingTrades = await AuctionTrade.updateMany(
       {
         auctionId: req.auction._id,
-        status: { $in: ['proposed', 'approved'] },
+        status: { $in: ['pending_counterparty', 'both_agreed'] },
       },
       {
         $set: {
-          status: 'rejected',
-          rejectedBy: req.user._id,
-          rejectionReason: 'Auction finalized — all pending trades auto-rejected',
+          status: 'expired',
+          cancellationReason: 'Auction finalized — all pending trades expired',
         },
       }
     );
@@ -611,7 +610,7 @@ router.post('/:auctionId/finalize', auth, resolveAuctionAdmin, async (req, res) 
     res.json({
       success: true,
       data: req.auction,
-      message: `Auction finalized. ${pendingTrades.modifiedCount} pending trade(s) auto-rejected.`,
+      message: `Auction finalized. ${pendingTrades.modifiedCount} pending trade(s) expired.`,
     });
   } catch (error) {
     console.error('Finalize auction error:', error);

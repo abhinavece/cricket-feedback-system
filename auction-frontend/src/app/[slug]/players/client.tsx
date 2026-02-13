@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PLAYER_ROLES } from '@/lib/constants';
+import PlayerDetailModal from '@/components/auction/PlayerDetailModal';
 import {
   UserCheck, Users, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
   ExternalLink, Filter, ChevronDown,
@@ -34,11 +35,22 @@ const STATUS_FILTERS = [
   { key: 'unsold', label: 'Unsold', color: 'text-orange-400', bg: 'bg-orange-500/15' },
 ];
 
-export function PlayersClient({ players, auctionName, slug, config }: {
+interface PlayerField {
+  key: string;
+  label: string;
+  type: string;
+  showOnCard: boolean;
+  showInList: boolean;
+  sortable: boolean;
+  order: number;
+}
+
+export function PlayersClient({ players, auctionName, slug, config, playerFields = [] }: {
   players: Player[];
   auctionName: string;
   slug: string;
   config: { basePrice: number; purseValue: number };
+  playerFields?: PlayerField[];
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -91,13 +103,28 @@ export function PlayersClient({ players, auctionName, slug, config }: {
     return counts;
   }, [players]);
 
-  const customFieldKeys = useMemo(() => {
+  // Use configured playerFields if available, otherwise fallback to scanning player data
+  const configuredFields = useMemo(() => {
+    if (playerFields.length > 0) {
+      return [...playerFields].sort((a, b) => a.order - b.order);
+    }
+    // Fallback: derive from player data
     const keys = new Set<string>();
     players.forEach(p => {
       if (p.customFields) Object.keys(p.customFields).forEach(k => keys.add(k));
     });
-    return Array.from(keys).slice(0, 6);
-  }, [players]);
+    return Array.from(keys).slice(0, 10).map((k, i) => ({
+      key: k, label: k, type: 'text', showOnCard: i < 3, showInList: true, sortable: true, order: i,
+    }));
+  }, [players, playerFields]);
+
+  const customFieldKeys = useMemo(() => configuredFields.map(f => f.key), [configuredFields]);
+  const fieldLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    configuredFields.forEach(f => { map[f.key] = f.label; });
+    return map;
+  }, [configuredFields]);
+  const cardFieldKeys = useMemo(() => configuredFields.filter(f => f.showOnCard).map(f => f.key), [configuredFields]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -195,7 +222,6 @@ export function PlayersClient({ players, auctionName, slug, config }: {
             const rc = PLAYER_ROLES[player.role as keyof typeof PLAYER_ROLES] || { label: player.role, icon: '🏏', color: 'text-slate-400' };
             const isSold = player.status === 'sold';
             const isUnsold = player.status === 'unsold';
-            const topFields = customFieldKeys.slice(0, 3);
 
             return (
               <motion.div
@@ -256,14 +282,14 @@ export function PlayersClient({ players, auctionName, slug, config }: {
                   </div>
 
                   {/* Custom fields preview */}
-                  {topFields.length > 0 && player.customFields && (
+                  {cardFieldKeys.length > 0 && player.customFields && (
                     <div className="mt-2.5 pt-2.5 border-t border-white/5 grid grid-cols-3 gap-1.5">
-                      {topFields.map(k => {
+                      {cardFieldKeys.map(k => {
                         const val = player.customFields?.[k];
                         if (val === undefined || val === null || val === '') return <div key={k} />;
                         return (
                           <div key={k} className="text-[10px] truncate">
-                            <span className="text-slate-600">{k}: </span>
+                            <span className="text-slate-600">{fieldLabelMap[k] || k}: </span>
                             <span className="text-slate-400 font-medium">{String(val)}</span>
                           </div>
                         );
@@ -278,119 +304,16 @@ export function PlayersClient({ players, auctionName, slug, config }: {
       )}
 
       {/* Player Detail Modal */}
-      <AnimatePresence>
-        {selectedPlayer && (
-          <PlayerModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} customFieldKeys={customFieldKeys} config={config} />
-        )}
-      </AnimatePresence>
+      {selectedPlayer && (
+        <PlayerDetailModal
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          customFieldKeys={customFieldKeys}
+          fieldLabelMap={fieldLabelMap}
+          basePrice={config.basePrice}
+        />
+      )}
     </div>
   );
 }
 
-function PlayerModal({ player, onClose, customFieldKeys, config }: {
-  player: Player;
-  onClose: () => void;
-  customFieldKeys: string[];
-  config: { basePrice: number };
-}) {
-  const rc = PLAYER_ROLES[player.role as keyof typeof PLAYER_ROLES] || { label: player.role, icon: '🏏', color: 'text-slate-400' };
-  const isSold = player.status === 'sold';
-  const multiplier = isSold && player.soldAmount && config.basePrice > 0
-    ? (player.soldAmount / config.basePrice).toFixed(1)
-    : null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0, y: 20 }}
-        onClick={e => e.stopPropagation()}
-        className="glass-card w-full max-w-md max-h-[85vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="flex items-start gap-4 p-5 border-b border-white/5">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 overflow-hidden flex-shrink-0">
-            {player.imageUrl ? (
-              <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-3xl">{rc.icon}</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-slate-500 font-mono">#{player.playerNumber}</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${
-                isSold ? 'bg-emerald-500/15 text-emerald-400' :
-                player.status === 'unsold' ? 'bg-orange-500/15 text-orange-400' :
-                'bg-blue-500/15 text-blue-400'
-              }`}>
-                {player.status}
-              </span>
-            </div>
-            <h3 className="text-xl font-bold text-white truncate">{player.name}</h3>
-            <span className={`text-xs font-medium ${rc.color}`}>{rc.icon} {rc.label}</span>
-          </div>
-          <button onClick={onClose} className="btn-ghost p-1.5 flex-shrink-0">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Sold info */}
-        {isSold && player.soldTo && (
-          <div className="px-5 py-3 bg-emerald-500/5 border-b border-white/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white"
-                  style={{ background: player.soldTo.primaryColor }}
-                >
-                  {player.soldTo.shortName?.charAt(0)}
-                </span>
-                <div>
-                  <span className="text-sm text-white font-medium">{player.soldTo.name}</span>
-                  {player.soldInRound && (
-                    <span className="text-[10px] text-slate-500 ml-2">Round {player.soldInRound}</span>
-                  )}
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-bold text-emerald-400">{formatCurrency(player.soldAmount!)}</span>
-                {multiplier && Number(multiplier) > 1 && (
-                  <span className="text-[10px] text-slate-500 ml-1">({multiplier}×)</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Custom fields */}
-        <div className="p-5">
-          {customFieldKeys.length > 0 && player.customFields ? (
-            <div className="space-y-0">
-              {customFieldKeys.map(k => {
-                const val = player.customFields?.[k];
-                return (
-                  <div key={k} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
-                    <span className="text-sm text-slate-400 capitalize">{k.replace(/_/g, ' ')}</span>
-                    <span className="text-sm font-medium text-white">
-                      {val !== undefined && val !== null && val !== '' ? String(val) : '—'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500 text-center py-4">No additional details</p>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}

@@ -54,7 +54,7 @@ export default async function TeamsPublicPage({ params }: { params: { slug: stri
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <TeamsClient teams={teams} auctionName={auction.name} config={auction.config} />
+      <TeamsClient teams={teams} auctionName={auction.name} config={auction.config} playerFields={auction.playerFields || []} />
     </>
   );
 }
