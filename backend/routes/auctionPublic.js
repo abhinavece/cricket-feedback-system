@@ -133,6 +133,7 @@ router.get('/:slug', loadPublicAuction, async (req, res) => {
         name: auction.name,
         slug: auction.slug,
         description: auction.description,
+        coverImage: auction.coverImage || '',
         status: auction.status,
         config: {
           basePrice: auction.config.basePrice,

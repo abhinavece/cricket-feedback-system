@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         url: `${siteConfig.url}/${params.slug}`,
         siteName: siteConfig.name,
         type: 'website',
-        images: [{ url: `${siteConfig.url}/og/auction-default.jpg`, width: 1200, height: 630 }],
+        images: [{ url: auction.coverImage || `${siteConfig.url}/og/auction-default.jpg`, width: 1200, height: 630 }],
       },
       twitter: {
         card: 'summary_large_image',
@@ -99,6 +99,18 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Hero section */}
         <div className="relative mb-10">
+          {/* Cover image banner */}
+          {auction.coverImage && (
+            <div className="relative -mx-4 sm:-mx-6 -mt-8 sm:-mt-12 mb-8 h-48 sm:h-64 overflow-hidden">
+              <img
+                src={auction.coverImage}
+                alt={auction.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
+            </div>
+          )}
+
           {/* Background glow for live auctions */}
           {isLive && (
             <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-500/10 rounded-full blur-[100px] pointer-events-none" />

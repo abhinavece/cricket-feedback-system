@@ -6,8 +6,11 @@ import {
   getAuctionPlayersAdmin, getAuctionAdmin, getAuctionTeamsAdmin, addPlayer, updatePlayer,
   assignPlayer, reassignPlayer, returnPlayerToPool, deletePlayer, reinstatePlayer, markPlayerIneligible,
   bulkPlayerAction, importPlayersPreview, importPlayersConfirm, getDisplayConfig,
+  uploadPlayerImage,
 } from '@/lib/api';
 import { PLAYER_ROLES } from '@/lib/constants';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
+import ImageUploader from '@/components/auction/ImageUploader';
 import {
   Loader2, Plus, Search, Upload, X, UserCheck, Filter,
   FileSpreadsheet, ArrowRight, Check, AlertTriangle,
@@ -770,13 +773,13 @@ function PlayerProfileModal({ player, playerFields, onClose, onEdit, formatCurre
       <div className="glass-card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-start gap-4 p-5 border-b border-white/5">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 overflow-hidden flex-shrink-0">
-            {player.imageUrl ? (
-              <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-3xl">{rc.icon}</span>
-            )}
-          </div>
+          <PlayerAvatar
+            imageUrl={player.imageUrl}
+            name={player.name}
+            role={player.role}
+            size="lg"
+            cropPosition={(player as any).imageCropPosition}
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs text-slate-500 font-mono">#{player.playerNumber}</span>
@@ -974,6 +977,7 @@ function EditPlayerModal({ auctionId, player, playerFields, onClose, onSaved, on
   const [name, setName] = useState(player.name);
   const [role, setRole] = useState(player.role);
   const [imageUrl, setImageUrl] = useState(player.imageUrl || '');
+  const [imageCropPosition, setImageCropPosition] = useState((player as any).imageCropPosition || 'center top');
   const [customFields, setCustomFields] = useState<Record<string, any>>(() => {
     const cf: Record<string, any> = {};
     for (const f of playerFields) {
@@ -1004,6 +1008,7 @@ function EditPlayerModal({ auctionId, player, playerFields, onClose, onSaved, on
       if (name.trim() !== player.name) payload.name = name.trim();
       if (role !== player.role) payload.role = role;
       if (imageUrl.trim() !== (player.imageUrl || '')) payload.imageUrl = imageUrl.trim();
+      if (imageCropPosition !== ((player as any).imageCropPosition || 'center top')) payload.imageCropPosition = imageCropPosition;
       if (Object.keys(updatedCustomFields).length > 0) {
         // Merge with existing customFields
         payload.customFields = { ...(player.customFields || {}), ...updatedCustomFields };
@@ -1058,17 +1063,20 @@ function EditPlayerModal({ auctionId, player, playerFields, onClose, onSaved, on
             </select>
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Image URL</label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="input-field"
-            />
-          </div>
+          {/* Image Upload + Crop */}
+          <ImageUploader
+            currentImageUrl={imageUrl}
+            cropPosition={imageCropPosition}
+            onUpload={async (file) => {
+              const result = await uploadPlayerImage(auctionId, player._id, file);
+              setImageUrl(result.data.imageUrl);
+              return result.data;
+            }}
+            onCropPositionChange={setImageCropPosition}
+            onUrlChange={setImageUrl}
+            showCropPicker={!!imageUrl}
+            label="Player Photo"
+          />
 
           {/* Custom Fields */}
           {allFields.length > 0 && (

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { getPoolOrder, reorderPool } from '@/lib/api';
 import { PLAYER_ROLES } from '@/lib/constants';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
 import {
   Loader2, GripVertical, ArrowUp, ArrowDown, Save, RotateCcw,
   AlertTriangle, Shuffle, ArrowUpToLine, ArrowDownToLine,
@@ -179,7 +180,13 @@ export default function PoolOrderPage() {
                 {/* Grip icon */}
                 <GripVertical className="w-4 h-4 text-slate-600 flex-shrink-0" />
 
-                {/* Player info */}
+                {/* Player avatar + info */}
+                <PlayerAvatar
+                  imageUrl={player.imageUrl}
+                  name={player.name}
+                  role={player.role}
+                  size="xs"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-500 font-mono">#{player.playerNumber}</span>

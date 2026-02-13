@@ -261,7 +261,7 @@ function SpectatorContent({ slug }: { slug: string }) {
                   currentBid={bidding.currentBid}
                   basePrice={state.config.basePrice}
                   status={bidding.status}
-                  soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor } : null}
+                  soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor, logo: currentTeam.logo } : null}
                   playerFields={state.playerFields}
                 />
               </div>

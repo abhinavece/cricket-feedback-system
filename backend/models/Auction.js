@@ -259,6 +259,10 @@ const auctionSchema = new mongoose.Schema({
     trim: true,
     default: '',
   },
+  coverImage: {
+    type: String,
+    default: '',
+  },
 
   status: {
     type: String,

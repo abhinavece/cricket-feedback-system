@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { PLAYER_ROLES } from '@/lib/constants';
 import { X, ExternalLink } from 'lucide-react';
+import PlayerAvatar from './PlayerAvatar';
 
 export interface PlayerDetailData {
   _id: string;
@@ -74,13 +75,13 @@ export default function PlayerDetailModal({ player, onClose, customFieldKeys, fi
         >
           {/* Header */}
           <div className="flex items-start gap-4 p-5 border-b border-white/5">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 overflow-hidden flex-shrink-0">
-              {player.imageUrl ? (
-                <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-3xl">{rc.icon}</span>
-              )}
-            </div>
+            <PlayerAvatar
+              imageUrl={player.imageUrl}
+              name={player.name}
+              role={player.role}
+              size="lg"
+              cropPosition={(player as any).imageCropPosition}
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 {player.playerNumber && (

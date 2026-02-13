@@ -83,6 +83,10 @@ const auctionTeamSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  logoThumbnail: {
+    type: String,
+    default: '',
+  },
   primaryColor: {
     type: String,
     default: '#14b8a6',

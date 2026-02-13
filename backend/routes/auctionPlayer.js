@@ -21,7 +21,7 @@ const AuctionTeam = require('../models/AuctionTeam');
 const Auction = require('../models/Auction');
 const ActionEvent = require('../models/ActionEvent');
 
-// Multer config for file uploads (memory storage, 5MB limit)
+// Multer config for spreadsheet imports (memory storage, 5MB limit)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -39,6 +39,16 @@ const upload = multer({
     } else {
       cb(new Error('Only XLSX and CSV files are supported'));
     }
+  },
+});
+
+// Multer config for image uploads (memory storage, 2MB limit)
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
   },
 });
 
@@ -348,7 +358,7 @@ router.patch('/:playerId', auth, resolveAuctionAdmin, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Player not found' });
     }
 
-    const allowedFields = ['name', 'role', 'imageUrl', 'customFields'];
+    const allowedFields = ['name', 'role', 'imageUrl', 'imageThumbnailUrl', 'imageCropPosition', 'customFields'];
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         player[field] = req.body[field];
@@ -371,6 +381,51 @@ router.patch('/:playerId', auth, resolveAuctionAdmin, async (req, res) => {
   } catch (error) {
     console.error('Update player error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// UPLOAD PLAYER IMAGE
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/players/:playerId/upload-image
+ * Upload a player photo to GCS. Auto-resizes to 800x800 max, converts to WebP, generates thumbnail.
+ */
+router.post('/:playerId/upload-image', auth, resolveAuctionAdmin, imageUpload.single('image'), async (req, res) => {
+  try {
+    const player = await AuctionPlayer.findOne({
+      _id: req.params.playerId,
+      auctionId: req.auction._id,
+    });
+
+    if (!player) {
+      return res.status(404).json({ success: false, error: 'Player not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No image file provided' });
+    }
+
+    const { uploadImage } = require('../services/imageUpload');
+    const gcsPath = `auctions/${req.auction._id}/players/${player._id}`;
+    const { imageUrl, thumbnailUrl } = await uploadImage(
+      req.file.buffer,
+      req.file.mimetype,
+      gcsPath,
+      player.imageUrl || undefined,
+    );
+
+    player.imageUrl = imageUrl;
+    player.imageThumbnailUrl = thumbnailUrl;
+    await player.save();
+
+    res.json({ success: true, data: { imageUrl, thumbnailUrl } });
+  } catch (error) {
+    console.error('Upload player image error:', error);
+    res.status(error.message.includes('Invalid') || error.message.includes('too small') || error.message.includes('exceeds')
+      ? 400 : 500
+    ).json({ success: false, error: error.message });
   }
 });
 

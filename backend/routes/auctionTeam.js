@@ -13,9 +13,19 @@ const express = require('express');
 const router = express.Router({ mergeParams: true });
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const { auth } = require('../middleware/auth');
 const { resolveAuctionAdmin } = require('../middleware/auctionAuth');
 const AuctionTeam = require('../models/AuctionTeam');
+
+const logoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 // ============================================================
 // ADD TEAM
@@ -148,6 +158,52 @@ router.patch('/:teamId', auth, resolveAuctionAdmin, async (req, res) => {
       return res.status(409).json({ success: false, error: 'A team with this short name already exists' });
     }
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// UPLOAD TEAM LOGO
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/teams/:teamId/upload-logo
+ * Upload a team logo to GCS. Auto-resizes to 800x800 max, converts to WebP, generates thumbnail.
+ */
+router.post('/:teamId/upload-logo', auth, resolveAuctionAdmin, logoUpload.single('image'), async (req, res) => {
+  try {
+    const team = await AuctionTeam.findOne({
+      _id: req.params.teamId,
+      auctionId: req.auction._id,
+      isActive: true,
+    });
+
+    if (!team) {
+      return res.status(404).json({ success: false, error: 'Team not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No image file provided' });
+    }
+
+    const { uploadImage } = require('../services/imageUpload');
+    const gcsPath = `auctions/${req.auction._id}/teams/${team._id}`;
+    const { imageUrl, thumbnailUrl } = await uploadImage(
+      req.file.buffer,
+      req.file.mimetype,
+      gcsPath,
+      team.logo || undefined,
+    );
+
+    team.logo = imageUrl;
+    team.logoThumbnail = thumbnailUrl;
+    await team.save();
+
+    res.json({ success: true, data: { logo: imageUrl, logoThumbnail: thumbnailUrl } });
+  } catch (error) {
+    console.error('Upload team logo error:', error);
+    res.status(error.message.includes('Invalid') || error.message.includes('too small') || error.message.includes('exceeds')
+      ? 400 : 500
+    ).json({ success: false, error: error.message });
   }
 });
 

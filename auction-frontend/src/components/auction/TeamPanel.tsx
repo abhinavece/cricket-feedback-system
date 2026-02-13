@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { TeamInfo } from '@/contexts/AuctionSocketContext';
 import { Gavel, Users } from 'lucide-react';
+import TeamLogo from './TeamLogo';
 
 interface TeamPanelProps {
   teams: TeamInfo[];
@@ -45,15 +46,13 @@ export default function TeamPanel({ teams, currentBidTeamId, compact }: TeamPane
             )}
 
             <div className="relative flex items-center gap-2 mb-2.5">
-              <div
-                className={`${compact ? 'w-8 h-8 text-[8px]' : 'w-9 h-9 text-[9px]'} rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0 shadow-lg`}
-                style={{
-                  background: team.primaryColor,
-                  boxShadow: isHighestBidder ? `0 4px 12px ${team.primaryColor}50` : `0 2px 8px ${team.primaryColor}30`,
-                }}
-              >
-                {team.shortName}
-              </div>
+              <TeamLogo
+                logo={team.logo}
+                name={team.name}
+                shortName={team.shortName}
+                primaryColor={team.primaryColor}
+                size={compact ? 'xs' : 'sm'}
+              />
               <div className="min-w-0 flex-1">
                 <div className={`${compact ? 'text-[11px]' : 'text-xs'} font-semibold text-white truncate`}>
                   {team.name}

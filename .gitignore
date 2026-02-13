@@ -117,3 +117,6 @@ Thumbs.db
 # Local configuration files
 local-config/
 config.local.*
+
+# Local image uploads (dev mode — IMAGE_STORAGE=local)
+backend/uploads/

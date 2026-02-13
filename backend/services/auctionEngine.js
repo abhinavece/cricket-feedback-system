@@ -62,13 +62,13 @@ function calculateMaxBid(team, auctionConfig) {
  */
 async function buildAuctionState(auction) {
   const teams = await AuctionTeam.find({ auctionId: auction._id, isActive: true })
-    .select('name shortName primaryColor secondaryColor purseValue purseRemaining players retainedPlayers logo')
+    .select('name shortName primaryColor secondaryColor purseValue purseRemaining players retainedPlayers')
     .lean();
 
   let currentPlayer = null;
   if (auction.currentBiddingState && auction.currentBiddingState.playerId) {
     currentPlayer = await AuctionPlayer.findById(auction.currentBiddingState.playerId)
-      .select('name role playerNumber imageUrl customFields')
+      .select('name role playerNumber imageUrl imageCropPosition customFields')
       .lean();
   }
 
@@ -84,7 +84,6 @@ async function buildAuctionState(auction) {
     shortName: t.shortName,
     primaryColor: t.primaryColor,
     secondaryColor: t.secondaryColor,
-    logo: t.logo,
     purseValue: t.purseValue,
     purseRemaining: t.purseRemaining,
     squadSize: (t.players ? t.players.length : 0) + (t.retainedPlayers ? t.retainedPlayers.length : 0),

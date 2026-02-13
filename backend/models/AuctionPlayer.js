@@ -73,6 +73,14 @@ const auctionPlayerSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  imageThumbnailUrl: {
+    type: String,
+    default: '',
+  },
+  imageCropPosition: {
+    type: String,
+    default: 'center top',
+  },
   role: {
     type: String,
     enum: ['batsman', 'bowler', 'all-rounder', 'wicket-keeper'],

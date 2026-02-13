@@ -6,7 +6,9 @@ import {
   getAuctionAdmin, configureAuction, goLiveAuction,
   pauseAuction, resumeAuction, completeAuction,
   openTradeWindow, finalizeAuction, exportAuctionResults, cloneAuction,
+  uploadAuctionCover,
 } from '@/lib/api';
+import ImageUploader from '@/components/auction/ImageUploader';
 import { AUCTION_STATUSES, PLAYER_ROLES } from '@/lib/constants';
 import {
   Loader2, Gavel, Users, UserCheck, IndianRupee, Clock,
@@ -22,6 +24,7 @@ interface AuctionDetail {
   slug: string;
   status: string;
   description?: string;
+  coverImage?: string;
   config: {
     basePrice: number;
     purseValue: number;
@@ -207,6 +210,14 @@ export default function AuctionOverviewPage() {
         </div>
       )}
 
+      {/* Cover image */}
+      {auction.coverImage && (
+        <div className="relative -mx-4 sm:-mx-6 mb-6 h-32 sm:h-48 overflow-hidden rounded-xl sm:rounded-none">
+          <img src={auction.coverImage} alt={auction.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+        </div>
+      )}
+
       {/* Auction header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -348,6 +359,21 @@ export default function AuctionOverviewPage() {
           ))}
         </div>
       </div>
+
+      {/* Cover Image */}
+      {['draft', 'configured'].includes(auction.status) && (
+        <div className="glass-card p-5 sm:p-6">
+          <ImageUploader
+            currentImageUrl={auction.coverImage}
+            onUpload={async (file) => {
+              const result = await uploadAuctionCover(auctionId, file);
+              setAuction(prev => prev ? { ...prev, coverImage: result.data.coverImage } : prev);
+              return result.data;
+            }}
+            label="Auction Cover Image"
+          />
+        </div>
+      )}
 
       {/* Admins */}
       <div className="glass-card p-5 sm:p-6">

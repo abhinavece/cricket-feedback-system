@@ -115,6 +115,12 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Serve locally uploaded images (development mode — IMAGE_STORAGE=local)
+app.use('/uploads/images', express.static(path.join(__dirname, 'uploads', 'images'), {
+  maxAge: '1y',
+  immutable: true,
+}));
+
 // View tracking middleware (before routes)
 app.use(trackHomepageView);
 

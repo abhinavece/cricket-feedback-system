@@ -36,9 +36,41 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - ✅ **Phase 7.5**: Admin should have functinality to do any change in player, team, auction like marking any player ineligible, removing already sold player to some other team at specific amount and purse value should be updated accordingly from to and from team.
 - ✅ **Phase 8**: Post-auction features (trading, finalize) — COMPLETED
 - ✅ **Phase 9**: Admin extended tools, analytics & export — COMPLETED
-- ⏳ **Phase 10**: Testing & edge cases
+- ⏳ **Phase 10**: Testing & edge cases - @auction-testing-architecture-282b68.md file has all the details
 - ✅ **Phase 11**: Pause/resume request system — COMPLETED
+- ✅ **Phase 12**: Image handling system (GCS upload, PlayerAvatar, TeamLogo, cover images) — COMPLETED
 
+
+### Phase 12 Deliverables (Completed)
+
+**Image Handling System** — GCS-backed image uploads with auto-resize, WebP conversion, thumbnails, and reusable avatar components
+
+- **Backend** (`services/imageUpload.js`):
+  - Google Cloud Storage upload with `sharp` auto-resize (800×800 max), WebP conversion, 64×64 thumbnail generation
+  - Image validation: min 200×200, max 2MB, JPEG/PNG/WebP only
+  - CDN-friendly caching headers (public, max-age=31536000, immutable)
+  - Old image deletion on replacement
+
+- **Upload Endpoints**:
+  - `POST /players/:id/upload-image` — Player photo upload
+  - `POST /teams/:id/upload-logo` — Team logo upload
+  - `POST /auctions/:id/upload-cover` — Auction cover image upload
+
+- **Model Changes**:
+  - `AuctionPlayer`: `imageThumbnailUrl`, `imageCropPosition` fields
+  - `AuctionTeam`: `logoThumbnail` field
+  - `Auction`: `coverImage` field
+
+- **Frontend Components**:
+  - `PlayerAvatar` — Size system (xs→3xl), role-based gradient fallback, initials, crop position, lazy loading
+  - `TeamLogo` — Size system (xs→xl), object-contain for logos, shortName/primaryColor fallback
+  - `ImageUploader` — Upload/URL tabs, drag-drop, crop position picker with presets, avatar preview
+
+- **Replaced raw `<img>` tags across 15+ files**: PlayerCard, TeamPanel, BidTicker, PlayerDetailModal, broadcast view, bid page squad list, public players/teams, admin players/teams/pool-order, live views
+
+- **Cover Image**: Hero banner on public auction page, OG image for social sharing, upload in admin overview
+
+- **Socket Optimization**: Team logos excluded from WebSocket state broadcasts, fetched via REST
 
 ### Phase 2 Deliverables (Completed)
 
@@ -282,6 +314,8 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - Organization & tournament linkage
 - Retention cost configuration
 - Multiple concurrent auctions
+- Bulk image upload for players
+- Import wizard image preview thumbnails
 
 ---
 

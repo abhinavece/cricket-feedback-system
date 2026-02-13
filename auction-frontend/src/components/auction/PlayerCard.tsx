@@ -4,13 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BiddingPlayer, PlayerFieldConfig } from '@/contexts/AuctionSocketContext';
 import { PLAYER_ROLES } from '@/lib/constants';
 import { Gavel, RotateCcw, ExternalLink } from 'lucide-react';
+import PlayerAvatar from './PlayerAvatar';
+import TeamLogo from './TeamLogo';
 
 interface PlayerCardProps {
   player: BiddingPlayer | null;
   currentBid: number;
   basePrice: number;
   status: string;
-  soldTeam?: { name: string; shortName: string; primaryColor: string } | null;
+  soldTeam?: { name: string; shortName: string; primaryColor: string; logo?: string } | null;
   compact?: boolean;
   playerFields?: PlayerFieldConfig[];
 }
@@ -152,17 +154,18 @@ export default function PlayerCard({ player, currentBid, basePrice, status, sold
               initial={isRevealed ? { scale: 0.5, opacity: 0 } : false}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1, type: 'spring', damping: 15 }}
-              className={`${compact ? 'w-16 h-16' : 'w-20 h-20 sm:w-24 sm:h-24'} rounded-2xl flex-shrink-0 relative`}
+              className={`${compact ? 'w-16 h-16' : 'w-20 h-20 sm:w-24 sm:h-24'} flex-shrink-0 relative`}
             >
-              <div className={`w-full h-full rounded-2xl bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border ${
-                isSold ? 'border-emerald-500/30' : isUnsold ? 'border-orange-500/30' : 'border-white/10'
-              } overflow-hidden`}>
-                {player.imageUrl ? (
-                  <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className={`${compact ? 'text-2xl' : 'text-3xl sm:text-4xl'}`}>{roleConfig.icon}</span>
-                )}
-              </div>
+              <PlayerAvatar
+                imageUrl={player.imageUrl}
+                name={player.name}
+                role={player.role}
+                size={compact ? 'xl' : '2xl'}
+                cropPosition={player.imageCropPosition}
+                className={`border ${
+                  isSold ? 'border-emerald-500/30' : isUnsold ? 'border-orange-500/30' : 'border-white/10'
+                }`}
+              />
               {/* Player number badge */}
               <div className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-lg bg-slate-900 border border-white/10 flex items-center justify-center">
                 <span className="text-[10px] font-bold text-slate-400">#{player.playerNumber}</span>
@@ -268,12 +271,13 @@ export default function PlayerCard({ player, currentBid, basePrice, status, sold
                   transition={{ delay: 0.2 }}
                   className="flex items-center gap-2.5 mt-3"
                 >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg"
-                    style={{ background: soldTeam.primaryColor, boxShadow: `0 4px 15px ${soldTeam.primaryColor}40` }}
-                  >
-                    {soldTeam.shortName}
-                  </div>
+                  <TeamLogo
+                    logo={soldTeam.logo}
+                    name={soldTeam.name}
+                    shortName={soldTeam.shortName}
+                    primaryColor={soldTeam.primaryColor}
+                    size="sm"
+                  />
                   <span className="text-sm font-semibold text-white">{soldTeam.name}</span>
                 </motion.div>
               )}

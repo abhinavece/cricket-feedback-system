@@ -17,6 +17,7 @@ export interface BiddingPlayer {
   role: string;
   playerNumber: number;
   imageUrl?: string;
+  imageCropPosition?: string;
   customFields?: Record<string, any>;
 }
 

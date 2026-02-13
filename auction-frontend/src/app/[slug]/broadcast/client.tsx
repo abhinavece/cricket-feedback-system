@@ -5,6 +5,8 @@ import { AuctionSocketProvider, useAuctionSocket, PlayerFieldConfig } from '@/co
 import { PLAYER_ROLES } from '@/lib/constants';
 import { Gavel, RotateCcw, Users, UserCheck, Clock } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
+import TeamLogo from '@/components/auction/TeamLogo';
 
 export function BroadcastView({ auctionId, slug, auctionName }: { auctionId: string; slug: string; auctionName: string }) {
   return (
@@ -195,12 +197,13 @@ function BroadcastContent({ auctionName }: { auctionName: string }) {
                             : 'bg-slate-800/20 border-white/5'
                         }`}
                       >
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
-                          style={{ background: team.primaryColor, boxShadow: isHighest ? `0 0 12px ${team.primaryColor}50` : 'none' }}
-                        >
-                          {team.shortName}
-                        </div>
+                        <TeamLogo
+                          logo={team.logo}
+                          name={team.name}
+                          shortName={team.shortName}
+                          primaryColor={team.primaryColor}
+                          size="sm"
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-white truncate">{team.name}</span>
@@ -322,13 +325,16 @@ function BroadcastPlayerCard({
             initial={isRevealed ? { scale: 0.5, opacity: 0 } : false}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', damping: 15 }}
-            className="w-28 h-28 rounded-2xl bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 flex-shrink-0 relative overflow-hidden"
+            className="w-28 h-28 flex-shrink-0 relative"
           >
-            {player.imageUrl ? (
-              <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-5xl">{roleConfig.icon}</span>
-            )}
+            <PlayerAvatar
+              imageUrl={player.imageUrl}
+              name={player.name}
+              role={player.role}
+              size="3xl"
+              cropPosition={player.imageCropPosition}
+              className="border border-white/10"
+            />
             <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-bl-lg bg-slate-900/90 border-l border-b border-white/10">
               <span className="text-[10px] font-bold text-slate-400">#{player.playerNumber}</span>
             </div>
@@ -410,12 +416,13 @@ function BroadcastPlayerCard({
             {/* Sold to team */}
             {isSold && soldTeam && (
               <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="flex items-center gap-3 mt-4">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg"
-                  style={{ background: soldTeam.primaryColor, boxShadow: `0 4px 15px ${soldTeam.primaryColor}50` }}
-                >
-                  {soldTeam.shortName}
-                </div>
+                <TeamLogo
+                  logo={soldTeam.logo}
+                  name={soldTeam.name}
+                  shortName={soldTeam.shortName}
+                  primaryColor={soldTeam.primaryColor}
+                  size="md"
+                />
                 <span className="text-base font-semibold text-white">{soldTeam.name}</span>
               </motion.div>
             )}
@@ -437,12 +444,13 @@ function BroadcastPlayerCard({
                     isLatest ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-slate-800/30'
                   }`}
                 >
-                  <div
-                    className="w-5 h-5 rounded flex items-center justify-center text-[7px] font-bold text-white"
-                    style={{ background: team?.primaryColor || '#64748b' }}
-                  >
-                    {team?.shortName?.charAt(0) || '?'}
-                  </div>
+                  <TeamLogo
+                    logo={team?.logo}
+                    name={team?.name || '?'}
+                    shortName={team?.shortName || '?'}
+                    primaryColor={team?.primaryColor || '#64748b'}
+                    size="xs"
+                  />
                   <span className={`text-xs font-bold tabular-nums ${isLatest ? 'text-amber-400' : 'text-slate-500'}`}>
                     {formatCurrency(bid.amount)}
                   </span>

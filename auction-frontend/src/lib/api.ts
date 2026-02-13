@@ -532,6 +532,67 @@ export async function getTeamPlayers(auctionId: string, teamToken: string, teamI
   return teamFetch(`${API_BASE}/api/v1/auctions/${auctionId}/trades/team-players/${teamId}`, teamToken);
 }
 
+// ============================================================
+// IMAGE UPLOAD APIs
+// ============================================================
+
+export async function uploadPlayerImage(auctionId: string, playerId: string, file: File) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/players/${playerId}/upload-image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `Upload failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function uploadTeamLogo(auctionId: string, teamId: string, file: File) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/teams/${teamId}/upload-logo`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `Upload failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function uploadAuctionCover(auctionId: string, file: File) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/upload-cover`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `Upload failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function importPlayersConfirm(auctionId: string, file: File, columnMapping: Record<string, string>) {
   const formData = new FormData();
   formData.append('file', file);

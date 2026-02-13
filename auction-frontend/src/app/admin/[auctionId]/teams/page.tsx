@@ -4,7 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   getAuctionTeamsAdmin, getAuctionAdmin, addTeam, deleteTeam, regenerateTeamAccess, adjustTeamPurse,
+  uploadTeamLogo,
 } from '@/lib/api';
+import TeamLogo from '@/components/auction/TeamLogo';
+import ImageUploader from '@/components/auction/ImageUploader';
 import {
   Loader2, Plus, Users, Copy, Link2, Trash2, RefreshCw, X,
   ChevronDown, ChevronUp, AlertTriangle, Check, Wallet,
@@ -149,12 +152,13 @@ export default function TeamsPage() {
                   {/* Team header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg"
-                        style={{ background: team.primaryColor }}
-                      >
-                        {team.shortName}
-                      </div>
+                      <TeamLogo
+                        logo={team.logo}
+                        name={team.name}
+                        shortName={team.shortName}
+                        primaryColor={team.primaryColor}
+                        size="md"
+                      />
                       <div>
                         <h3 className="text-base font-bold text-white">{team.name}</h3>
                         {team.owner?.name && (
@@ -240,9 +244,20 @@ export default function TeamsPage() {
                     )}
                   </div>
 
-                  {/* Expanded section — squad */}
+                  {/* Expanded section — logo upload + squad */}
                   {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-white/5 animate-fade-in">
+                    <div className="mt-4 pt-4 border-t border-white/5 animate-fade-in space-y-4">
+                      {/* Logo upload */}
+                      <ImageUploader
+                        currentImageUrl={team.logo}
+                        onUpload={async (file) => {
+                          const result = await uploadTeamLogo(auctionId, team._id, file);
+                          setTeams(prev => prev.map(t => t._id === team._id ? { ...t, logo: result.data.logo } : t));
+                          return result.data;
+                        }}
+                        label="Team Logo"
+                      />
+
                       {squadCount === 0 ? (
                         <p className="text-xs text-slate-500 text-center py-3">No players in squad yet</p>
                       ) : (
@@ -488,14 +503,28 @@ function AddTeamModal({ auctionId, onClose, onAdded }: {
         {createdTeam ? (
           <div className="p-5 space-y-4">
             <div className="text-center mb-4">
-              <div
-                className="w-16 h-16 rounded-xl flex items-center justify-center text-lg font-bold text-white mx-auto mb-3 shadow-lg"
-                style={{ background: createdTeam.primaryColor || '#14b8a6' }}
-              >
-                {createdTeam.shortName}
+              <div className="mx-auto mb-3 w-fit">
+                <TeamLogo
+                  logo={createdTeam.logo}
+                  name={createdTeam.name}
+                  shortName={createdTeam.shortName}
+                  primaryColor={createdTeam.primaryColor || '#14b8a6'}
+                  size="lg"
+                />
               </div>
               <h4 className="text-lg font-bold text-white">{createdTeam.name}</h4>
             </div>
+
+            {/* Logo upload — team now exists, so we can upload */}
+            <ImageUploader
+              currentImageUrl={createdTeam.logo}
+              onUpload={async (file: File) => {
+                const result = await uploadTeamLogo(auctionId, createdTeam._id, file);
+                setCreatedTeam((prev: any) => prev ? { ...prev, logo: result.data.logo } : prev);
+                return result.data;
+              }}
+              label="Team Logo"
+            />
 
             <div className="space-y-3 bg-slate-800/50 rounded-xl p-4">
               <div>

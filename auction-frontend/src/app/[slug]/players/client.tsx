@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PLAYER_ROLES } from '@/lib/constants';
 import PlayerDetailModal from '@/components/auction/PlayerDetailModal';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
 import {
   UserCheck, Users, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
   ExternalLink, Filter, ChevronDown,
@@ -242,13 +243,13 @@ export function PlayersClient({ players, auctionName, slug, config, playerFields
                 <div className="p-4">
                   <div className="flex items-start gap-3">
                     {/* Avatar */}
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 flex-shrink-0 overflow-hidden">
-                      {player.imageUrl ? (
-                        <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-lg">{rc.icon}</span>
-                      )}
-                    </div>
+                    <PlayerAvatar
+                      imageUrl={player.imageUrl}
+                      name={player.name}
+                      role={player.role}
+                      size="md"
+                      cropPosition={(player as any).imageCropPosition}
+                    />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">

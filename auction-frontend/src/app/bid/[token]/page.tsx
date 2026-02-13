@@ -10,6 +10,7 @@ import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
 import TradeProposalPanel from '@/components/auction/TradeProposalPanel';
 import PlayerDetailModal from '@/components/auction/PlayerDetailModal';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
 import { getTeamPlayers } from '@/lib/api';
 import { siteConfig, PLAYER_ROLES } from '@/lib/constants';
 import {
@@ -865,13 +866,13 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
                   })}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-800/30 border border-white/5 hover:border-white/10 hover:bg-white/[0.03] cursor-pointer transition-all"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 flex-shrink-0 overflow-hidden">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-sm">{rc.icon}</span>
-                    )}
-                  </div>
+                  <PlayerAvatar
+                    imageUrl={p.imageUrl}
+                    name={p.name}
+                    role={p.role}
+                    size="sm"
+                    cropPosition={(p as any).imageCropPosition}
+                  />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium text-white truncate block">{p.name}</span>
                     <span className={`text-[10px] ${rc.color}`}>{rc.label}</span>

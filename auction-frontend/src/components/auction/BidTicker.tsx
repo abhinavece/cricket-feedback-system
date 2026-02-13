@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { BidEntry, TeamInfo } from '@/contexts/AuctionSocketContext';
 import { TrendingUp } from 'lucide-react';
+import TeamLogo from './TeamLogo';
 
 interface BidTickerProps {
   bidHistory: BidEntry[];
@@ -52,12 +53,14 @@ export default function BidTicker({ bidHistory, teams, maxItems = 10 }: BidTicke
             >
               <div className="flex items-center gap-2.5">
                 <div className="relative">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0 ${isLatest ? 'ring-2 ring-amber-400/40' : ''}`}
-                    style={{ background: teamColor }}
-                  >
-                    {team?.shortName || '?'}
-                  </div>
+                  <TeamLogo
+                    logo={team?.logo}
+                    name={team?.name || 'Unknown'}
+                    shortName={team?.shortName || '?'}
+                    primaryColor={teamColor}
+                    size="sm"
+                    className={isLatest ? 'ring-2 ring-amber-400/40' : ''}
+                  />
                   {isLatest && (
                     <motion.div
                       initial={{ scale: 0 }}

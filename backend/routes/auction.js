@@ -12,12 +12,22 @@
 
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const { auth } = require('../middleware/auth');
 const { resolveAuctionAdmin, requireAuctionOwner } = require('../middleware/auctionAuth');
 const Auction = require('../models/Auction');
 const AuctionTeam = require('../models/AuctionTeam');
 const AuctionPlayer = require('../models/AuctionPlayer');
 const ActionEvent = require('../models/ActionEvent');
+
+const coverUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 // ============================================================
 // CREATE AUCTION
@@ -143,6 +153,41 @@ router.get('/', auth, async (req, res) => {
   } catch (error) {
     console.error('List auctions error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// UPLOAD COVER IMAGE
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/upload-cover
+ * Upload an auction cover image to GCS. Auto-resizes to 800x800 max, converts to WebP.
+ */
+router.post('/:auctionId/upload-cover', auth, resolveAuctionAdmin, coverUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No image file provided' });
+    }
+
+    const { uploadImage } = require('../services/imageUpload');
+    const gcsPath = `auctions/${req.auction._id}/cover`;
+    const { imageUrl } = await uploadImage(
+      req.file.buffer,
+      req.file.mimetype,
+      gcsPath,
+      req.auction.coverImage || undefined,
+    );
+
+    req.auction.coverImage = imageUrl;
+    await req.auction.save();
+
+    res.json({ success: true, data: { coverImage: imageUrl } });
+  } catch (error) {
+    console.error('Upload cover image error:', error);
+    res.status(error.message.includes('Invalid') || error.message.includes('too small') || error.message.includes('exceeds')
+      ? 400 : 500
+    ).json({ success: false, error: error.message });
   }
 });
 

@@ -175,7 +175,7 @@ function AdminLiveContent({ auctionId }: { auctionId: string }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-amber-300">
-                    {req.teamShortName} requests a pause
+                    {req.teamName} requests a pause
                   </p>
                   {req.reason && (
                     <p className="text-xs text-amber-400/70 mt-0.5 truncate">{req.reason}</p>
@@ -504,7 +504,7 @@ function AdminLiveContent({ auctionId }: { auctionId: string }) {
                   currentBid={bidding.currentBid}
                   basePrice={state.config.basePrice}
                   status={bidding.status}
-                  soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor } : null}
+                  soldTeam={currentTeam ? { name: currentTeam.name, shortName: currentTeam.shortName, primaryColor: currentTeam.primaryColor, logo: currentTeam.logo } : null}
                   playerFields={state.playerFields}
                 />
               </div>

@@ -59,7 +59,7 @@ echo "🌐 Deploying to Cloud Run..."
 gcloud run services update ${SERVICE_NAME} \
   --region=${REGION} \
   --image=${IMAGE} \
-  --set-env-vars="AI_SERVICE_URL=${AI_SERVICE_URL},FF_MULTI_TENANT=${FF_MULTI_TENANT},FF_TEAM_DISCOVERY=${FF_TEAM_DISCOVERY},FF_WHATSAPP_BYOT=${FF_WHATSAPP_BYOT}"
+  --set-env-vars="AI_SERVICE_URL=${AI_SERVICE_URL},FF_MULTI_TENANT=${FF_MULTI_TENANT},FF_TEAM_DISCOVERY=${FF_TEAM_DISCOVERY},FF_WHATSAPP_BYOT=${FF_WHATSAPP_BYOT},IMAGE_STORAGE=gcs,GCS_BUCKET_NAME=cricsmart-auction-images"
 
 echo "✅ Backend deployed successfully!"
 echo "   Service URL: https://${SERVICE_NAME}-795359678717.${REGION}.run.app"

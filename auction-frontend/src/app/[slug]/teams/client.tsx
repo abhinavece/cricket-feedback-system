@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PLAYER_ROLES } from '@/lib/constants';
 import PlayerDetailModal from '@/components/auction/PlayerDetailModal';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
 import {
   Users, Shield, Crown, UserCheck, X, TrendingUp, Wallet,
   IndianRupee, BarChart3,
@@ -376,13 +377,13 @@ function PlayerRow({ player, onClick, fieldLabelMap, cardFieldKeys }: {
     >
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {/* Avatar */}
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 flex-shrink-0 overflow-hidden">
-          {player.imageUrl ? (
-            <img src={player.imageUrl} alt={player.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-sm">{rc.icon}</span>
-          )}
-        </div>
+        <PlayerAvatar
+          imageUrl={player.imageUrl}
+          name={player.name}
+          role={player.role}
+          size="sm"
+          cropPosition={(player as any).imageCropPosition}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-medium text-white truncate">{player.name}</span>
