@@ -32,9 +32,12 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - ✅ **Phase 5.5**: UI overhaul — Framer Motion animations, premium design — COMPLETED
 - ✅ **Phase 6**: Admin power tools (undo, disqualify) — COMPLETED
 - ✅ **Phase 7**: Broadcast view + sold/unsold animations — COMPLETED
+- ✅ **Phase 7.5**: Admin should have functinality to do any change in player, team, auction like marking any player ineligible, removing already sold player to some other team at specific amount and purse value should be updated accordingly from to and from team.
 - ⏳ **Phase 8**: Post-auction features (trading, finalize)
 - ⏳ **Phase 9**: Analytics & export
 - ⏳ **Phase 10**: Testing & edge cases
+- ⏳ **Phase 11**: User can ask admin to pause and resume the auction.
+
 
 ### Phase 2 Deliverables (Completed)
 
