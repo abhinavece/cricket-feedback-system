@@ -3,11 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  getAuctionTeamsAdmin, getAuctionAdmin, addTeam, deleteTeam, regenerateTeamAccess,
+  getAuctionTeamsAdmin, getAuctionAdmin, addTeam, deleteTeam, regenerateTeamAccess, adjustTeamPurse,
 } from '@/lib/api';
 import {
   Loader2, Plus, Users, Copy, Link2, Trash2, RefreshCw, X,
-  ChevronDown, ChevronUp, AlertTriangle, Check,
+  ChevronDown, ChevronUp, AlertTriangle, Check, Wallet,
 } from 'lucide-react';
 import ConfirmModal from '@/components/auction/ConfirmModal';
 
@@ -38,6 +38,7 @@ export default function TeamsPage() {
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ open: boolean; type: string; teamId: string }>({ open: false, type: '', teamId: '' });
+  const [adjustPurseTeam, setAdjustPurseTeam] = useState<Team | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -215,6 +216,13 @@ export default function TeamsPage() {
                       )}
                     </button>
                     <button
+                      onClick={() => setAdjustPurseTeam(team)}
+                      className="btn-ghost text-xs p-2 border border-white/10 rounded-lg"
+                      title="Adjust purse"
+                    >
+                      <Wallet className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => setConfirmState({ open: true, type: 'regen', teamId: team._id })}
                       className="btn-ghost text-xs p-2 border border-white/10 rounded-lg"
                       title="Regenerate credentials"
@@ -294,6 +302,131 @@ export default function TeamsPage() {
         onConfirm={handleConfirmAction}
         onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
       />
+
+      {/* Adjust Purse Modal */}
+      {adjustPurseTeam && (
+        <AdjustPurseModal
+          auctionId={auctionId}
+          team={adjustPurseTeam}
+          onClose={() => setAdjustPurseTeam(null)}
+          onDone={() => { setAdjustPurseTeam(null); loadData(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Adjust Purse Modal
+// ============================================================
+
+function AdjustPurseModal({ auctionId, team, onClose, onDone }: {
+  auctionId: string;
+  team: Team;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const numAmount = Number(amount) || 0;
+  const newPurse = team.purseRemaining + numAmount;
+
+  const formatCurrency = (n: number) => {
+    if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+    return `₹${n.toLocaleString('en-IN')}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (numAmount === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await adjustTeamPurse(auctionId, team._id, { amount: numAmount, reason: reason.trim() || undefined });
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass-card w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <div>
+            <h3 className="text-lg font-bold text-white">Adjust Purse</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              <span className="inline-block w-3 h-3 rounded mr-1" style={{ background: team.primaryColor }} />
+              {team.name} · Current: {formatCurrency(team.purseRemaining)}
+            </p>
+          </div>
+          <button onClick={onClose} className="btn-ghost p-1.5"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              Amount (₹) — positive to add, negative to deduct
+            </label>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              className="input-field"
+              placeholder="e.g. 50000 or -25000"
+              autoFocus
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Reason (optional)</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              className="input-field"
+              placeholder="e.g. Penalty, Bonus, Correction..."
+            />
+          </div>
+
+          {numAmount !== 0 && (
+            <div className={`p-3 rounded-lg text-xs ${
+              newPurse < 0
+                ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                : numAmount > 0
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                  : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+            }`}>
+              {newPurse < 0 ? (
+                <span>Cannot deduct more than available purse.</span>
+              ) : (
+                <span>
+                  {formatCurrency(team.purseRemaining)} {numAmount > 0 ? '+' : '−'} {formatCurrency(Math.abs(numAmount))} = <strong>{formatCurrency(newPurse)}</strong>
+                </span>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">{error}</div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+            <button
+              type="submit"
+              disabled={submitting || numAmount === 0 || newPurse < 0}
+              className="btn-primary text-sm disabled:opacity-40"
+            >
+              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Adjusting...</> : <><Wallet className="w-4 h-4" /> Adjust Purse</>}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

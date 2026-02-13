@@ -803,6 +803,243 @@ router.patch('/:tradeId/admin-approve', auth, resolveAuctionAdmin, async (req, r
 });
 
 // ============================================================
+// ADMIN-INITIATED TRADE (bypasses bilateral flow)
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/trades/admin-initiate
+ * Admin creates AND executes a trade in one step.
+ * Bypasses propose→accept→approve flow. Works during trade_window, completed, or paused.
+ * Auth: Admin JWT
+ * Body: {
+ *   initiatorTeamId, counterpartyTeamId,
+ *   initiatorPlayerIds: [], counterpartyPlayerIds: [],
+ *   note?: string
+ * }
+ */
+router.post('/admin-initiate', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const { initiatorTeamId, counterpartyTeamId, initiatorPlayerIds, counterpartyPlayerIds, note } = req.body;
+    const auction = req.auction;
+
+    // Allow during trade_window, completed, or paused
+    if (!['trade_window', 'completed', 'paused'].includes(auction.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Admin trades are allowed during trade_window, completed, or paused. Current status: ${auction.status}`,
+      });
+    }
+
+    // Validate input
+    if (!initiatorTeamId || !counterpartyTeamId || !initiatorPlayerIds?.length || !counterpartyPlayerIds?.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'initiatorTeamId, counterpartyTeamId, initiatorPlayerIds[], and counterpartyPlayerIds[] are required',
+      });
+    }
+
+    if (initiatorTeamId === counterpartyTeamId) {
+      return res.status(400).json({ success: false, error: 'Cannot trade between the same team' });
+    }
+
+    // Validate teams
+    const initiatorTeam = await AuctionTeam.findOne({ _id: initiatorTeamId, auctionId: auction._id, isActive: true });
+    const counterpartyTeam = await AuctionTeam.findOne({ _id: counterpartyTeamId, auctionId: auction._id, isActive: true });
+    if (!initiatorTeam || !counterpartyTeam) {
+      return res.status(404).json({ success: false, error: 'One or both teams not found' });
+    }
+
+    // Validate players
+    const initPlayers = await AuctionPlayer.find({
+      _id: { $in: initiatorPlayerIds },
+      auctionId: auction._id,
+      soldTo: initiatorTeam._id,
+      status: 'sold',
+      isDisqualified: false,
+    }).lean();
+
+    const cpPlayers = await AuctionPlayer.find({
+      _id: { $in: counterpartyPlayerIds },
+      auctionId: auction._id,
+      soldTo: counterpartyTeam._id,
+      status: 'sold',
+      isDisqualified: false,
+    }).lean();
+
+    if (initPlayers.length !== initiatorPlayerIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'One or more initiator players are invalid (not sold to the team or disqualified)',
+      });
+    }
+    if (cpPlayers.length !== counterpartyPlayerIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'One or more counterparty players are invalid (not sold to the team or disqualified)',
+      });
+    }
+
+    // Check player locks
+    for (const p of [...initPlayers, ...cpPlayers]) {
+      const lock = await getPlayerLock(auction._id, p._id);
+      if (lock) {
+        return res.status(409).json({
+          success: false,
+          error: `Player "${p.name}" is in an active trade and cannot be included`,
+        });
+      }
+    }
+
+    // Build trade data
+    const initiatorMapped = initPlayers.map(p => ({
+      playerId: p._id, name: p.name, role: p.role, soldAmount: p.soldAmount || 0,
+    }));
+    const counterpartyMapped = cpPlayers.map(p => ({
+      playerId: p._id, name: p.name, role: p.role, soldAmount: p.soldAmount || 0,
+    }));
+    const settlement = calculateSettlement(initiatorMapped, counterpartyMapped);
+
+    // Execute the swap
+    const initPlayerIds2 = initPlayers.map(p => p._id);
+    const cpPlayerIds2 = cpPlayers.map(p => p._id);
+
+    await AuctionPlayer.updateMany(
+      { _id: { $in: initPlayerIds2 } },
+      { $set: { soldTo: counterpartyTeam._id } }
+    );
+    await AuctionPlayer.updateMany(
+      { _id: { $in: cpPlayerIds2 } },
+      { $set: { soldTo: initiatorTeam._id } }
+    );
+
+    // Update team player arrays
+    for (const ip of initPlayers) {
+      const idx = initiatorTeam.players.findIndex(p => p.playerId.equals(ip._id));
+      if (idx !== -1) initiatorTeam.players.splice(idx, 1);
+    }
+    for (const cp of cpPlayers) {
+      initiatorTeam.players.push({
+        playerId: cp._id, boughtAt: cp.soldAmount, round: cp.soldInRound, boughtTimestamp: new Date(),
+      });
+    }
+
+    for (const cp of cpPlayers) {
+      const idx = counterpartyTeam.players.findIndex(p => p.playerId.equals(cp._id));
+      if (idx !== -1) counterpartyTeam.players.splice(idx, 1);
+    }
+    for (const ip of initPlayers) {
+      counterpartyTeam.players.push({
+        playerId: ip._id, boughtAt: ip.soldAmount, round: ip.soldInRound, boughtTimestamp: new Date(),
+      });
+    }
+
+    // Purse settlement
+    let purseAdjusted = false;
+    const warnings = [];
+    if (auction.config.tradeSettlementEnabled !== false && settlement.settlementAmount > 0) {
+      const payingTeam = settlement.settlementDirection === 'initiator_pays' ? initiatorTeam : counterpartyTeam;
+      const receivingTeam = settlement.settlementDirection === 'initiator_pays' ? counterpartyTeam : initiatorTeam;
+
+      if (payingTeam.purseRemaining >= settlement.settlementAmount) {
+        payingTeam.purseRemaining -= settlement.settlementAmount;
+        receivingTeam.purseRemaining += settlement.settlementAmount;
+        purseAdjusted = true;
+      } else {
+        warnings.push(
+          `Purse settlement skipped: ${payingTeam.shortName} has ₹${payingTeam.purseRemaining} but settlement requires ₹${settlement.settlementAmount}`
+        );
+      }
+    }
+
+    await initiatorTeam.save();
+    await counterpartyTeam.save();
+
+    // Create trade record as executed
+    const initNames = initiatorMapped.map(p => p.name).join(', ');
+    const cpNames = counterpartyMapped.map(p => p.name).join(', ');
+    let announcement = `Admin trade: ${initiatorTeam.shortName} sends ${initNames} to ${counterpartyTeam.shortName} for ${cpNames}`;
+    if (purseAdjusted && settlement.settlementAmount > 0) {
+      const payer = settlement.settlementDirection === 'initiator_pays' ? initiatorTeam.shortName : counterpartyTeam.shortName;
+      const receiver = settlement.settlementDirection === 'initiator_pays' ? counterpartyTeam.shortName : initiatorTeam.shortName;
+      announcement += ` (Settlement: ₹${settlement.settlementAmount.toLocaleString('en-IN')} from ${payer} to ${receiver})`;
+    }
+
+    const trade = await AuctionTrade.create({
+      auctionId: auction._id,
+      initiatorTeamId: initiatorTeam._id,
+      counterpartyTeamId: counterpartyTeam._id,
+      initiatorPlayers: initiatorMapped,
+      counterpartyPlayers: counterpartyMapped,
+      ...settlement,
+      purseSettlementEnabled: auction.config.tradeSettlementEnabled !== false,
+      status: 'executed',
+      approvedBy: req.user._id,
+      executedAt: new Date(),
+      counterpartyAcceptedAt: new Date(),
+      adminNote: note || 'Admin-initiated trade',
+      publicAnnouncement: announcement,
+    });
+
+    // Log ActionEvent
+    const lastEvent = await ActionEvent.findOne({ auctionId: auction._id }).sort({ sequenceNumber: -1 });
+    const seq = (lastEvent?.sequenceNumber || 0) + 1;
+
+    await ActionEvent.create({
+      auctionId: auction._id,
+      sequenceNumber: seq,
+      type: 'TRADE_EXECUTED',
+      payload: {
+        tradeId: trade._id,
+        initiatorTeamId: initiatorTeam._id,
+        counterpartyTeamId: counterpartyTeam._id,
+        initPlayerIds: initPlayerIds2,
+        cpPlayerIds: cpPlayerIds2,
+        purseAdjusted,
+        settlementAmount: settlement.settlementAmount,
+        settlementDirection: settlement.settlementDirection,
+        adminInitiated: true,
+      },
+      reversalPayload: {
+        tradeId: trade._id,
+        initiatorTeamId: initiatorTeam._id,
+        counterpartyTeamId: counterpartyTeam._id,
+        initPlayerIds: cpPlayerIds2,
+        cpPlayerIds: initPlayerIds2,
+      },
+      performedBy: req.user._id,
+      isPublic: true,
+      publicMessage: announcement,
+    });
+
+    // Broadcast
+    const io = req.app.get('io');
+    if (io) {
+      const ns = io.of('/auction');
+      ns.to(`auction:${auction._id}`).emit('trade:executed', {
+        tradeId: trade._id,
+        initiatorTeam: { _id: initiatorTeam._id, name: initiatorTeam.name, shortName: initiatorTeam.shortName },
+        counterpartyTeam: { _id: counterpartyTeam._id, name: counterpartyTeam.name, shortName: counterpartyTeam.shortName },
+        initiatorPlayers: trade.initiatorPlayers,
+        counterpartyPlayers: trade.counterpartyPlayers,
+        announcement,
+        purseAdjusted,
+        adminInitiated: true,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: trade,
+      message: announcement,
+      warnings,
+    });
+  } catch (error) {
+    console.error('Admin-initiated trade error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // ADMIN REJECT
 // ============================================================
 

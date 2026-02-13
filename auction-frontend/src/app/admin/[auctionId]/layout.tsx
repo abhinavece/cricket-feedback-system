@@ -2,7 +2,7 @@
 
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCheck, Settings, ArrowLeft, Radio, ListChecks, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, Settings, ArrowLeft, Radio, ListChecks, ArrowLeftRight, History, ScrollText, GripVertical } from 'lucide-react';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, href: '' },
@@ -11,6 +11,9 @@ const TABS = [
   { id: 'players', label: 'Players', icon: UserCheck, href: '/players' },
   { id: 'fields', label: 'Player Fields', icon: ListChecks, href: '/fields' },
   { id: 'trades', label: 'Trades', icon: ArrowLeftRight, href: '/trades' },
+  { id: 'bids', label: 'Bid History', icon: History, href: '/bids' },
+  { id: 'audit', label: 'Audit Log', icon: ScrollText, href: '/audit' },
+  { id: 'pool-order', label: 'Pool Order', icon: GripVertical, href: '/pool-order' },
   { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 

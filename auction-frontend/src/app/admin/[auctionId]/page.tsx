@@ -5,13 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   getAuctionAdmin, configureAuction, goLiveAuction,
   pauseAuction, resumeAuction, completeAuction,
-  openTradeWindow, finalizeAuction,
+  openTradeWindow, finalizeAuction, exportAuctionResults, cloneAuction,
 } from '@/lib/api';
 import { AUCTION_STATUSES, PLAYER_ROLES } from '@/lib/constants';
 import {
   Loader2, Gavel, Users, UserCheck, IndianRupee, Clock,
   Play, Pause, Square, CheckCircle, AlertTriangle, Copy, ExternalLink,
-  Radio, ChevronRight, ArrowLeftRight, Lock, Timer,
+  Radio, ChevronRight, ArrowLeftRight, Lock, Timer, Download, CopyPlus,
 } from 'lucide-react';
 import Link from 'next/link';
 import ConfirmModal from '@/components/auction/ConfirmModal';
@@ -225,16 +225,45 @@ export default function AuctionOverviewPage() {
           )}
         </div>
 
-        {/* Public link */}
-        <button
-          onClick={copySlugUrl}
-          className="btn-ghost text-xs gap-1.5 border border-white/10 rounded-lg"
-          title="Copy public URL"
-        >
-          <Copy className="w-3.5 h-3.5" />
-          /{auction.slug}
-          <ExternalLink className="w-3 h-3" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Clone Auction */}
+          <button
+            onClick={async () => {
+              const name = prompt('Name for the cloned auction:', `${auction.name} (Copy)`);
+              if (name === null) return;
+              try {
+                const res = await cloneAuction(auctionId, { name: name || undefined });
+                router.push(`/admin/${res.data._id}`);
+              } catch (err: any) { alert(err.message); }
+            }}
+            className="btn-ghost text-xs gap-1.5 border border-white/10 rounded-lg"
+            title="Clone this auction"
+          >
+            <CopyPlus className="w-3.5 h-3.5" /> Clone
+          </button>
+          {/* Export Results */}
+          {!['draft', 'configured'].includes(auction.status) && (
+            <button
+              onClick={async () => {
+                try { await exportAuctionResults(auctionId); } catch (err: any) { alert(err.message); }
+              }}
+              className="btn-ghost text-xs gap-1.5 border border-white/10 rounded-lg"
+              title="Export results to Excel"
+            >
+              <Download className="w-3.5 h-3.5" /> Export
+            </button>
+          )}
+          {/* Public link */}
+          <button
+            onClick={copySlugUrl}
+            className="btn-ghost text-xs gap-1.5 border border-white/10 rounded-lg"
+            title="Copy public URL"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            /{auction.slug}
+            <ExternalLink className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       {/* Stats grid */}

@@ -233,6 +233,163 @@ export async function addPlayer(auctionId: string, data: {
   });
 }
 
+export async function updatePlayer(auctionId: string, playerId: string, data: {
+  name?: string;
+  role?: string;
+  imageUrl?: string;
+  customFields?: Record<string, any>;
+}) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function assignPlayer(auctionId: string, playerId: string, data: { teamId: string; amount: number }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}/assign`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function reassignPlayer(auctionId: string, playerId: string, data: { newTeamId: string; newAmount: number }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}/reassign`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function returnPlayerToPool(auctionId: string, playerId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}/return-to-pool`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+export async function deletePlayer(auctionId: string, playerId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+export async function reinstatePlayer(auctionId: string, playerId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}/reinstate`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+export async function markPlayerIneligible(auctionId: string, playerId: string, data: { reason?: string }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/${playerId}/mark-ineligible`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function adminInitiateTrade(auctionId: string, data: {
+  initiatorTeamId: string;
+  counterpartyTeamId: string;
+  initiatorPlayerIds: string[];
+  counterpartyPlayerIds: string[];
+  note?: string;
+}) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/trades/admin-initiate`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function cloneAuction(auctionId: string, data?: { name?: string }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/clone`, {
+    method: 'POST',
+    body: JSON.stringify(data || {}),
+    auth: true,
+  });
+}
+
+export async function getPoolOrder(auctionId: string) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/pool-order`, { auth: true });
+}
+
+export async function reorderPool(auctionId: string, playerIds: string[]) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ playerIds }),
+    auth: true,
+  });
+}
+
+export async function bulkPlayerAction(auctionId: string, data: { action: string; playerIds: string[]; reason?: string }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/players/bulk`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function getAuditLog(auctionId: string, params?: { type?: string; page?: number }) {
+  const query = new URLSearchParams();
+  if (params?.type) query.set('type', params.type);
+  if (params?.page) query.set('page', String(params.page));
+  const qs = query.toString();
+  return fetchApi(`/api/v1/auctions/${auctionId}/audit-log${qs ? `?${qs}` : ''}`, { auth: true });
+}
+
+export async function getBidHistory(auctionId: string, params?: { playerId?: string; teamId?: string; type?: string; page?: number }) {
+  const query = new URLSearchParams();
+  if (params?.playerId) query.set('playerId', params.playerId);
+  if (params?.teamId) query.set('teamId', params.teamId);
+  if (params?.type) query.set('type', params.type);
+  if (params?.page) query.set('page', String(params.page));
+  const qs = query.toString();
+  return fetchApi(`/api/v1/auctions/${auctionId}/bid-history${qs ? `?${qs}` : ''}`, { auth: true });
+}
+
+export async function voidBid(auctionId: string, logId: string, data: { reason?: string }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/bid-history/${logId}/void`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function exportAuctionResults(auctionId: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+  const res = await fetch(`${API_BASE}/api/v1/auctions/${auctionId}/export`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `Export failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const filenameMatch = disposition.match(/filename="(.+)"/);
+  const filename = filenameMatch ? filenameMatch[1] : 'auction-results.xlsx';
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function adjustTeamPurse(auctionId: string, teamId: string, data: { amount: number; reason?: string }) {
+  return fetchApi(`/api/v1/auctions/${auctionId}/teams/${teamId}/adjust-purse`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
 export async function importPlayersPreview(auctionId: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);

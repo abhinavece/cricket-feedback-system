@@ -7,14 +7,14 @@ import PlayerCard from '@/components/auction/PlayerCard';
 import Timer from '@/components/auction/Timer';
 import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, SkipForward, Square, Wifi, WifiOff,
   Users, UserCheck, Clock, Megaphone, AlertTriangle,
   Zap, Send, Undo2, ShieldBan, TrendingUp, BarChart3,
   CircleDot, Trophy, Rocket, MonitorPlay, ChevronRight,
-  Ban, ExternalLink,
+  Ban, ExternalLink, Hand, X, Check,
 } from 'lucide-react';
 
 function getStoredToken(): string | undefined {
@@ -48,13 +48,42 @@ export default function AdminLivePage() {
   );
 }
 
+interface PauseRequest {
+  id: number;
+  teamId: string;
+  teamName: string;
+  teamShortName: string;
+  reason: string;
+  timestamp: string;
+}
+
 function AdminLiveContent({ auctionId }: { auctionId: string }) {
-  const { state, connectionStatus, emit, announcements } = useAuctionSocket();
+  const { state, connectionStatus, emit, announcements, socket } = useAuctionSocket();
   const [loading, setLoading] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [showConfirm, setShowConfirm] = useState<string | null>(null);
   const [undoToast, setUndoToast] = useState<string | null>(null);
   const [disqualifyReason, setDisqualifyReason] = useState('');
+  const [pauseRequests, setPauseRequests] = useState<PauseRequest[]>([]);
+  const pauseReqIdRef = useRef(0);
+
+  // Listen for pause requests from teams
+  useEffect(() => {
+    if (!socket) return;
+    const onPauseRequest = (data: any) => {
+      const id = ++pauseReqIdRef.current;
+      setPauseRequests(prev => [...prev, {
+        id,
+        teamId: data.teamId,
+        teamName: data.teamName || 'Unknown Team',
+        teamShortName: data.teamShortName || '??',
+        reason: data.reason || '',
+        timestamp: data.timestamp || new Date().toISOString(),
+      }]);
+    };
+    socket.on('pause:request', onPauseRequest);
+    return () => { socket.off('pause:request', onPauseRequest); };
+  }, [socket]);
 
   const handleAction = useCallback((event: string, data?: any) => {
     setLoading(event);
@@ -68,6 +97,16 @@ function AdminLiveContent({ auctionId }: { auctionId: string }) {
       }
       setShowConfirm(null);
     });
+  }, [emit]);
+
+  const handleApprovePauseRequest = useCallback((req: PauseRequest) => {
+    handleAction('admin:pause', { reason: `Pause requested by ${req.teamShortName}${req.reason ? ': ' + req.reason : ''}` });
+    setPauseRequests(prev => prev.filter(r => r.id !== req.id));
+  }, [handleAction]);
+
+  const handleDismissPauseRequest = useCallback((req: PauseRequest) => {
+    emit('admin:dismiss_pause_request', { teamId: req.teamId, message: 'Your pause request was dismissed by the admin.' });
+    setPauseRequests(prev => prev.filter(r => r.id !== req.id));
   }, [emit]);
 
   if (!state) {
@@ -116,6 +155,52 @@ function AdminLiveContent({ auctionId }: { auctionId: string }) {
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* ─── Pause Request Notifications ─── */}
+      <AnimatePresence>
+        {pauseRequests.map(req => (
+          <motion.div
+            key={req.id}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-14 left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4"
+            style={{ top: `${56 + (pauseRequests.indexOf(req)) * 72}px` }}
+          >
+            <div className="px-4 py-3 rounded-xl bg-amber-500/15 border border-amber-500/25 shadow-xl backdrop-blur-xl">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Hand className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-300">
+                    {req.teamShortName} requests a pause
+                  </p>
+                  {req.reason && (
+                    <p className="text-xs text-amber-400/70 mt-0.5 truncate">{req.reason}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => handleApprovePauseRequest(req)}
+                    className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"
+                    title="Approve (pause auction)"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDismissPauseRequest(req)}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
       </AnimatePresence>
 
       {/* ─── Status Header ─── */}

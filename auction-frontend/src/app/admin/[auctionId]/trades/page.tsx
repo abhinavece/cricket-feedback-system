@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   getTrades, adminApproveTrade, adminRejectTrade, getAuctionAdmin,
+  getAuctionTeamsAdmin, adminInitiateTrade,
 } from '@/lib/api';
 import {
   Loader2, ArrowLeftRight, Check, X, Play, AlertTriangle,
   Clock, CheckCircle2, XCircle, MessageSquare, Ban,
-  RefreshCw, Gavel, Shield, IndianRupee,
+  RefreshCw, Gavel, Shield, IndianRupee, Plus,
 } from 'lucide-react';
 import ConfirmModal from '@/components/auction/ConfirmModal';
 
@@ -74,6 +75,7 @@ export default function AdminTradesPage() {
   const [rejectingTradeId, setRejectingTradeId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approveTradeId, setApproveTradeId] = useState<string | null>(null);
+  const [showInitiateModal, setShowInitiateModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -168,9 +170,17 @@ export default function AdminTradesPage() {
             Bilateral trade negotiation — teams agree, you approve & execute
           </p>
         </div>
-        <button onClick={loadData} className="btn-ghost text-sm gap-2">
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowInitiateModal(true)}
+            className="btn-primary text-sm gap-2"
+          >
+            <Plus className="w-4 h-4" /> New Trade
+          </button>
+          <button onClick={loadData} className="btn-ghost text-sm gap-2">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Trade Window Status Banner */}
@@ -254,6 +264,14 @@ export default function AdminTradesPage() {
         onConfirm={() => { if (approveTradeId) handleApproveExecute(approveTradeId); }}
         onCancel={() => setApproveTradeId(null)}
       />
+
+      {showInitiateModal && (
+        <AdminInitiateTradeModal
+          auctionId={auctionId}
+          onClose={() => setShowInitiateModal(false)}
+          onSuccess={() => { setShowInitiateModal(false); loadData(); }}
+        />
+      )}
     </div>
   );
 }
@@ -555,6 +573,297 @@ function AdminTradeCard({ trade, actionLoading, rejectingTradeId, rejectReason, 
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// Admin-Initiated Trade Modal
+// ============================================================
+
+interface TeamWithPlayers {
+  _id: string;
+  name: string;
+  shortName: string;
+  primaryColor?: string;
+  purseRemaining: number;
+  players: {
+    playerId: { _id: string; name: string; role: string; playerNumber: number } | string;
+    boughtAt: number;
+  }[];
+}
+
+function AdminInitiateTradeModal({ auctionId, onClose, onSuccess }: {
+  auctionId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [teams, setTeams] = useState<TeamWithPlayers[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [executing, setExecuting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [teamAId, setTeamAId] = useState('');
+  const [teamBId, setTeamBId] = useState('');
+  const [selectedA, setSelectedA] = useState<Set<string>>(new Set());
+  const [selectedB, setSelectedB] = useState<Set<string>>(new Set());
+  const [note, setNote] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getAuctionTeamsAdmin(auctionId);
+        setTeams(res.data || []);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [auctionId]);
+
+  const teamA = teams.find(t => t._id === teamAId);
+  const teamB = teams.find(t => t._id === teamBId);
+
+  const getSoldPlayers = (team?: TeamWithPlayers) => {
+    if (!team) return [];
+    return team.players
+      .filter(p => p.playerId && typeof p.playerId === 'object')
+      .map(p => {
+        const player = p.playerId as { _id: string; name: string; role: string; playerNumber: number };
+        return { _id: player._id, name: player.name, role: player.role, playerNumber: player.playerNumber, soldAmount: p.boughtAt };
+      });
+  };
+
+  const playersA = getSoldPlayers(teamA);
+  const playersB = getSoldPlayers(teamB);
+
+  const toggleA = (id: string) => {
+    const next = new Set(selectedA);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelectedA(next);
+  };
+  const toggleB = (id: string) => {
+    const next = new Set(selectedB);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelectedB(next);
+  };
+
+  // Settlement preview
+  const totalA = playersA.filter(p => selectedA.has(p._id)).reduce((s, p) => s + (p.soldAmount || 0), 0);
+  const totalB = playersB.filter(p => selectedB.has(p._id)).reduce((s, p) => s + (p.soldAmount || 0), 0);
+  const diff = Math.abs(totalA - totalB);
+  const direction = totalA < totalB ? 'Team A pays' : totalA > totalB ? 'Team B pays' : 'Even';
+
+  const canExecute = teamAId && teamBId && teamAId !== teamBId && selectedA.size > 0 && selectedB.size > 0;
+
+  const handleExecute = async () => {
+    if (!canExecute) return;
+    setExecuting(true);
+    setError(null);
+    try {
+      const res = await adminInitiateTrade(auctionId, {
+        initiatorTeamId: teamAId,
+        counterpartyTeamId: teamBId,
+        initiatorPlayerIds: Array.from(selectedA),
+        counterpartyPlayerIds: Array.from(selectedB),
+        note: note || undefined,
+      });
+      if (res.warnings?.length) {
+        alert('Trade executed with warnings:\n' + res.warnings.join('\n'));
+      }
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  // Reset selections when teams change
+  const handleTeamAChange = (id: string) => { setTeamAId(id); setSelectedA(new Set()); };
+  const handleTeamBChange = (id: string) => { setTeamBId(id); setSelectedB(new Set()); };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900 border border-white/10 shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-white/5 bg-slate-900/95 backdrop-blur-xl rounded-t-2xl">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-purple-400" />
+              Admin-Initiated Trade
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Select two teams and their players to swap</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Team Selectors */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Team A (sends)</label>
+                  <select
+                    value={teamAId}
+                    onChange={e => handleTeamAChange(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500/50"
+                  >
+                    <option value="">Select team...</option>
+                    {teams.filter(t => t._id !== teamBId).map(t => (
+                      <option key={t._id} value={t._id}>{t.name} ({t.shortName})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Team B (sends)</label>
+                  <select
+                    value={teamBId}
+                    onChange={e => handleTeamBChange(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500/50"
+                  >
+                    <option value="">Select team...</option>
+                    {teams.filter(t => t._id !== teamAId).map(t => (
+                      <option key={t._id} value={t._id}>{t.name} ({t.shortName})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Player Selection */}
+              {teamAId && teamBId && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Team A Players */}
+                  <div>
+                    <p className="text-xs font-semibold text-red-400 mb-2">
+                      {teamA?.shortName} sends ({selectedA.size} selected)
+                    </p>
+                    <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+                      {playersA.length === 0 ? (
+                        <p className="text-xs text-slate-500 py-4 text-center">No sold players</p>
+                      ) : playersA.map(p => (
+                        <label
+                          key={p._id}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                            selectedA.has(p._id)
+                              ? 'bg-red-500/15 border border-red-500/20'
+                              : 'bg-slate-800/30 border border-transparent hover:border-white/5'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedA.has(p._id)}
+                            onChange={() => toggleA(p._id)}
+                            className="w-3.5 h-3.5 rounded border-slate-600 text-red-500 focus:ring-0 focus:ring-offset-0 bg-transparent"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-white font-medium truncate block">{p.name}</span>
+                            <span className="text-[10px] text-slate-500">{p.role} · {formatCurrency(p.soldAmount)}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Team B Players */}
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-400 mb-2">
+                      {teamB?.shortName} sends ({selectedB.size} selected)
+                    </p>
+                    <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+                      {playersB.length === 0 ? (
+                        <p className="text-xs text-slate-500 py-4 text-center">No sold players</p>
+                      ) : playersB.map(p => (
+                        <label
+                          key={p._id}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                            selectedB.has(p._id)
+                              ? 'bg-emerald-500/15 border border-emerald-500/20'
+                              : 'bg-slate-800/30 border border-transparent hover:border-white/5'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedB.has(p._id)}
+                            onChange={() => toggleB(p._id)}
+                            className="w-3.5 h-3.5 rounded border-slate-600 text-emerald-500 focus:ring-0 focus:ring-offset-0 bg-transparent"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-white font-medium truncate block">{p.name}</span>
+                            <span className="text-[10px] text-slate-500">{p.role} · {formatCurrency(p.soldAmount)}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Settlement Preview */}
+              {selectedA.size > 0 && selectedB.size > 0 && (
+                <div className="p-3 rounded-xl bg-slate-800/50 border border-white/5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">
+                      {teamA?.shortName} value: <span className="text-red-400 font-semibold">{formatCurrency(totalA)}</span>
+                    </span>
+                    <span className="text-slate-400">
+                      {teamB?.shortName} value: <span className="text-emerald-400 font-semibold">{formatCurrency(totalB)}</span>
+                    </span>
+                  </div>
+                  {diff > 0 && (
+                    <p className="text-xs text-amber-400 mt-1.5 text-center">
+                      Settlement: {formatCurrency(diff)} ({direction})
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Note */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Admin Note (optional)</label>
+                <input
+                  type="text"
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="Reason for this admin-initiated trade..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800/50 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <p className="text-sm text-red-400 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 flex items-center justify-end gap-3 p-5 border-t border-white/5 bg-slate-900/95 backdrop-blur-xl rounded-b-2xl">
+          <button onClick={onClose} className="btn-ghost text-sm">Cancel</button>
+          <button
+            onClick={handleExecute}
+            disabled={!canExecute || executing}
+            className="btn-primary text-sm gap-2 disabled:opacity-40"
+          >
+            {executing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gavel className="w-4 h-4" />}
+            Execute Trade
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

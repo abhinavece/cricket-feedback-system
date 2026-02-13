@@ -873,6 +873,370 @@ router.post('/team-login', async (req, res) => {
 });
 
 // ============================================================
+// CLONE AUCTION
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/clone
+ * Clone an auction: copies config, display config, teams (without players/purse state), and all players (reset to pool).
+ * Creates a new draft auction with a new slug.
+ */
+router.post('/:auctionId/clone', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const source = req.auction;
+    const { name } = req.body;
+    const cloneName = name || `${source.name} (Copy)`;
+
+    // Generate unique slug
+    const slug = await generateUniqueSlug(cloneName);
+
+    // Create new auction
+    const newAuction = new Auction({
+      name: cloneName,
+      slug,
+      description: source.description || '',
+      status: 'draft',
+      config: {
+        basePrice: source.config.basePrice,
+        purseValue: source.config.purseValue,
+        bidIncrementTiers: source.config.bidIncrementTiers,
+        bidIncrementPreset: source.config.bidIncrementPreset,
+        timerDuration: source.config.timerDuration,
+        bidResetTimer: source.config.bidResetTimer,
+        goingOnceTimer: source.config.goingOnceTimer,
+        goingTwiceTimer: source.config.goingTwiceTimer,
+        minSquadSize: source.config.minSquadSize,
+        maxSquadSize: source.config.maxSquadSize,
+        maxRounds: source.config.maxRounds,
+        playerRevealDelay: source.config.playerRevealDelay,
+        retentionEnabled: source.config.retentionEnabled,
+        maxRetentions: source.config.maxRetentions,
+        retentionCost: source.config.retentionCost,
+        maxTradesPerTeam: source.config.maxTradesPerTeam,
+        tradeWindowHours: source.config.tradeWindowHours,
+        tradeSettlementEnabled: source.config.tradeSettlementEnabled,
+        maxUndoActions: source.config.maxUndoActions,
+      },
+      displayConfig: source.displayConfig ? {
+        playerFields: (source.displayConfig.playerFields || []).map(f => ({
+          key: f.key,
+          label: f.label,
+          type: f.type,
+          showOnCard: f.showOnCard,
+          showInList: f.showInList,
+          sortable: f.sortable,
+          order: f.order,
+        })),
+      } : {},
+      admins: [{ userId: req.user._id, role: 'owner', email: req.user.email }],
+      createdBy: req.user._id,
+      organizationId: source.organizationId || null,
+    });
+
+    await newAuction.save();
+
+    // Clone teams (reset purse, no players)
+    const sourceTeams = await AuctionTeam.find({ auctionId: source._id, isActive: true }).lean();
+    const teamBulk = sourceTeams.map(t => ({
+      auctionId: newAuction._id,
+      name: t.name,
+      shortName: t.shortName,
+      primaryColor: t.primaryColor,
+      logoUrl: t.logoUrl || '',
+      purseValue: source.config.purseValue,
+      purseRemaining: source.config.purseValue,
+      players: [],
+      retainedPlayers: [],
+      accessToken: require('crypto').randomBytes(32).toString('hex'),
+      isActive: true,
+    }));
+    if (teamBulk.length > 0) {
+      await AuctionTeam.insertMany(teamBulk);
+    }
+
+    // Clone players (reset to pool status)
+    const sourcePlayers = await AuctionPlayer.find({ auctionId: source._id, isDeleted: { $ne: true } }).lean();
+
+    // Get max playerNumber for numbering
+    let playerNum = 0;
+    const playerBulk = sourcePlayers.map(p => {
+      playerNum++;
+      return {
+        auctionId: newAuction._id,
+        playerNumber: playerNum,
+        name: p.name,
+        role: p.role,
+        imageUrl: p.imageUrl || '',
+        customFields: p.customFields || {},
+        status: 'pool',
+        soldTo: null,
+        soldAmount: null,
+        soldInRound: null,
+        importSource: 'manual',
+        isDisqualified: false,
+        isIneligible: false,
+        isDeleted: false,
+      };
+    });
+    if (playerBulk.length > 0) {
+      await AuctionPlayer.insertMany(playerBulk);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        _id: newAuction._id,
+        name: newAuction.name,
+        slug: newAuction.slug,
+        teamsCloned: teamBulk.length,
+        playersCloned: playerBulk.length,
+      },
+    });
+  } catch (error) {
+    console.error('Clone auction error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// AUDIT LOG VIEWER
+// ============================================================
+
+/**
+ * GET /api/v1/auctions/:auctionId/audit-log
+ * List action events with optional filters: type, page
+ */
+router.get('/:auctionId/audit-log', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const { type, page = 1, limit = 50 } = req.query;
+    const query = { auctionId: req.auction._id };
+    if (type) query.type = type;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [events, total] = await Promise.all([
+      ActionEvent.find(query)
+        .sort({ sequenceNumber: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .populate('performedBy', 'name email')
+        .lean(),
+      ActionEvent.countDocuments(query),
+    ]);
+
+    res.json({ success: true, data: events, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+  } catch (error) {
+    console.error('Audit log error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// BID HISTORY VIEWER
+// ============================================================
+
+const BidAuditLog = require('../models/BidAuditLog');
+
+/**
+ * GET /api/v1/auctions/:auctionId/bid-history
+ * List bid audit logs with optional filters: playerId, teamId, type
+ */
+router.get('/:auctionId/bid-history', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const { playerId, teamId, type, page = 1, limit = 50 } = req.query;
+    const query = { auctionId: req.auction._id };
+    if (playerId) query.playerId = playerId;
+    if (teamId) query.teamId = teamId;
+    if (type) query.type = type;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      BidAuditLog.find(query)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .populate('teamId', 'name shortName primaryColor')
+        .populate('playerId', 'name playerNumber role')
+        .lean(),
+      BidAuditLog.countDocuments(query),
+    ]);
+
+    res.json({ success: true, data: logs, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+  } catch (error) {
+    console.error('Bid history error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/auctions/:auctionId/bid-history/:logId/void
+ * Void an accepted bid (admin override). Does NOT reverse the sale — use return-to-pool for that.
+ * This just marks the log entry as voided for audit purposes.
+ */
+router.post('/:auctionId/bid-history/:logId/void', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const log = await BidAuditLog.findOne({ _id: req.params.logId, auctionId: req.auction._id });
+    if (!log) {
+      return res.status(404).json({ success: false, error: 'Bid log not found' });
+    }
+    if (log.type === 'bid_voided') {
+      return res.status(400).json({ success: false, error: 'Bid is already voided' });
+    }
+
+    log.type = 'bid_voided';
+    log.reason = reason || 'Voided by admin';
+    await log.save();
+
+    // Log action
+    await ActionEvent.create({
+      auctionId: req.auction._id,
+      sequenceNumber: await ActionEvent.getNextSequence(req.auction._id),
+      type: 'MANUAL_OVERRIDE',
+      payload: {
+        action: 'BID_VOIDED',
+        bidLogId: log._id,
+        playerId: log.playerId,
+        teamId: log.teamId,
+        amount: log.attemptedAmount,
+        reason: reason || '',
+      },
+      performedBy: req.user._id,
+      isPublic: false,
+    });
+
+    res.json({ success: true, data: log });
+  } catch (error) {
+    console.error('Void bid error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// EXPORT AUCTION RESULTS (XLSX)
+// ============================================================
+
+/**
+ * GET /api/v1/auctions/:auctionId/export
+ * Export auction results as XLSX with multiple sheets.
+ */
+router.get('/:auctionId/export', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const auction = req.auction;
+
+    // Fetch all data
+    const [teams, players] = await Promise.all([
+      AuctionTeam.find({ auctionId: auction._id, isActive: true }).lean(),
+      AuctionPlayer.find({ auctionId: auction._id, isDeleted: { $ne: true } }).populate('soldTo', 'name shortName').lean(),
+    ]);
+
+    // Get display config for custom field labels
+    const displayConfig = auction.displayConfig || {};
+    const playerFields = (displayConfig.playerFields || []).sort((a, b) => a.order - b.order);
+
+    // --- Sheet 1: All Players ---
+    const allPlayersData = players.map(p => {
+      const row = {
+        '#': p.playerNumber,
+        'Name': p.name,
+        'Role': p.role,
+        'Status': p.status,
+        'Sold To': p.soldTo?.name || '',
+        'Sold Amount': p.soldAmount || '',
+      };
+      // Add custom fields
+      for (const f of playerFields) {
+        const val = p.customFields instanceof Map ? p.customFields.get(f.key) : p.customFields?.[f.key];
+        row[f.label || f.key] = val ?? '';
+      }
+      return row;
+    });
+
+    // --- Sheet 2: Team Squads ---
+    const teamSquadData = [];
+    for (const team of teams) {
+      const teamPlayers = players.filter(p => p.soldTo && p.soldTo._id.toString() === team._id.toString());
+      if (teamPlayers.length === 0) {
+        teamSquadData.push({
+          'Team': team.name,
+          'Short Name': team.shortName,
+          'Player': '',
+          'Role': '',
+          'Amount': '',
+          'Purse Remaining': team.purseRemaining,
+          'Purse Total': team.purseValue,
+        });
+      } else {
+        teamPlayers.forEach((p, i) => {
+          teamSquadData.push({
+            'Team': i === 0 ? team.name : '',
+            'Short Name': i === 0 ? team.shortName : '',
+            'Player': p.name,
+            'Role': p.role,
+            'Amount': p.soldAmount || '',
+            'Purse Remaining': i === 0 ? team.purseRemaining : '',
+            'Purse Total': i === 0 ? team.purseValue : '',
+          });
+        });
+      }
+    }
+
+    // --- Sheet 3: Team Summary ---
+    const teamSummaryData = teams.map(t => {
+      const teamPlayers = players.filter(p => p.soldTo && p.soldTo._id.toString() === t._id.toString());
+      const totalSpent = teamPlayers.reduce((sum, p) => sum + (p.soldAmount || 0), 0);
+      return {
+        'Team': t.name,
+        'Short Name': t.shortName,
+        'Players Bought': teamPlayers.length,
+        'Total Spent': totalSpent,
+        'Purse Remaining': t.purseRemaining,
+        'Purse Total': t.purseValue,
+        'Retained': (t.retainedPlayers || []).length,
+      };
+    });
+
+    // --- Sheet 4: Unsold Players ---
+    const unsoldData = players
+      .filter(p => ['unsold', 'pool'].includes(p.status))
+      .map(p => ({
+        '#': p.playerNumber,
+        'Name': p.name,
+        'Role': p.role,
+        'Status': p.status,
+      }));
+
+    // Build workbook
+    const wb = XLSX.utils.book_new();
+
+    const ws1 = XLSX.utils.json_to_sheet(allPlayersData);
+    XLSX.utils.book_append_sheet(wb, ws1, 'All Players');
+
+    const ws2 = XLSX.utils.json_to_sheet(teamSquadData);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Team Squads');
+
+    const ws3 = XLSX.utils.json_to_sheet(teamSummaryData);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Team Summary');
+
+    if (unsoldData.length > 0) {
+      const ws4 = XLSX.utils.json_to_sheet(unsoldData);
+      XLSX.utils.book_append_sheet(wb, ws4, 'Unsold Players');
+    }
+
+    // Generate buffer
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const filename = `${auction.name.replace(/[^a-zA-Z0-9]/g, '-')}-results.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  } catch (error) {
+    console.error('Export auction error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // HELPERS
 // ============================================================
 

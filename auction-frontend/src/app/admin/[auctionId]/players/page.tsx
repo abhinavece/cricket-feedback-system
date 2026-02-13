@@ -3,15 +3,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  getAuctionPlayersAdmin, getAuctionAdmin, addPlayer,
-  importPlayersPreview, importPlayersConfirm, getDisplayConfig,
+  getAuctionPlayersAdmin, getAuctionAdmin, getAuctionTeamsAdmin, addPlayer, updatePlayer,
+  assignPlayer, reassignPlayer, returnPlayerToPool, deletePlayer, reinstatePlayer, markPlayerIneligible,
+  bulkPlayerAction, importPlayersPreview, importPlayersConfirm, getDisplayConfig,
 } from '@/lib/api';
 import { PLAYER_ROLES } from '@/lib/constants';
 import {
   Loader2, Plus, Search, Upload, X, UserCheck, Filter,
   FileSpreadsheet, ArrowRight, Check, AlertTriangle,
-  ArrowUpDown, ArrowUp, ArrowDown, Eye, ExternalLink,
+  ArrowUpDown, ArrowUp, ArrowDown, Eye, ExternalLink, Pencil, Save,
+  ArrowLeftRight, RotateCcw, UserPlus, Trash2, ShieldOff, ShieldCheck, CheckSquare,
 } from 'lucide-react';
+import ConfirmModal from '@/components/auction/ConfirmModal';
 
 interface PlayerField {
   key: string;
@@ -31,7 +34,7 @@ interface Player {
   status: string;
   imageUrl?: string;
   importSource: string;
-  soldTo?: { name: string; shortName: string; primaryColor: string };
+  soldTo?: { _id: string; name: string; shortName: string; primaryColor: string };
   soldAmount?: number;
   soldInRound?: number;
   isDisqualified: boolean;
@@ -55,6 +58,19 @@ export default function PlayersPage() {
   const [sortKey, setSortKey] = useState('playerNumber');
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [assigningPlayer, setAssigningPlayer] = useState<Player | null>(null);
+  const [teams, setTeams] = useState<{ _id: string; name: string; shortName: string; primaryColor: string; purseRemaining: number }[]>([]);
+  const [returnConfirm, setReturnConfirm] = useState<Player | null>(null);
+  const [returnLoading, setReturnLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<Player | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [ineligiblePlayer, setIneligiblePlayer] = useState<Player | null>(null);
+  const [reinstateConfirm, setReinstateConfirm] = useState<Player | null>(null);
+  const [reinstateLoading, setReinstateLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<string | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout>();
 
   const loadPlayers = useCallback(async (p = page) => {
@@ -89,7 +105,94 @@ export default function PlayersPage() {
     } catch {}
   }, [auctionId]);
 
-  useEffect(() => { loadAuctionStatus(); loadDisplayConfig(); }, [loadAuctionStatus, loadDisplayConfig]);
+  const loadTeams = useCallback(async () => {
+    try {
+      const res = await getAuctionTeamsAdmin(auctionId);
+      setTeams((res.data || []).map((t: any) => ({
+        _id: t._id,
+        name: t.name,
+        shortName: t.shortName,
+        primaryColor: t.primaryColor,
+        purseRemaining: t.purseRemaining,
+      })));
+    } catch {}
+  }, [auctionId]);
+
+  const handleReturnToPool = async (player: Player) => {
+    setReturnLoading(true);
+    try {
+      await returnPlayerToPool(auctionId, player._id);
+      setReturnConfirm(null);
+      loadPlayers();
+      loadTeams();
+    } catch (err: any) {
+      alert(err.message || 'Failed to return player to pool');
+    } finally {
+      setReturnLoading(false);
+    }
+  };
+
+  const handleDeletePlayer = async (player: Player) => {
+    setDeleteLoading(true);
+    try {
+      await deletePlayer(auctionId, player._id);
+      setDeleteConfirm(null);
+      loadPlayers();
+      loadTeams();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete player');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleReinstatePlayer = async (player: Player) => {
+    setReinstateLoading(true);
+    try {
+      await reinstatePlayer(auctionId, player._id);
+      setReinstateConfirm(null);
+      loadPlayers();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reinstate player');
+    } finally {
+      setReinstateLoading(false);
+    }
+  };
+
+  const handleBulkAction = async (action: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      await bulkPlayerAction(auctionId, { action, playerIds: Array.from(selectedIds) });
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      loadPlayers();
+      loadTeams();
+    } catch (err: any) {
+      alert(err.message || 'Bulk action failed');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === players.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(players.map(p => p._id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  useEffect(() => { loadAuctionStatus(); loadDisplayConfig(); loadTeams(); }, [loadAuctionStatus, loadDisplayConfig, loadTeams]);
   useEffect(() => { loadPlayers(); }, [loadPlayers]);
 
   const handleSort = (key: string) => {
@@ -129,6 +232,7 @@ export default function PlayersPage() {
       sold: 'bg-emerald-500/15 text-emerald-400',
       unsold: 'bg-orange-500/15 text-orange-400',
       disqualified: 'bg-red-500/15 text-red-400',
+      ineligible: 'bg-yellow-500/15 text-yellow-400',
     };
     return map[status] || 'bg-slate-500/15 text-slate-400';
   };
@@ -193,6 +297,7 @@ export default function PlayersPage() {
           <option value="sold">Sold</option>
           <option value="unsold">Unsold</option>
           <option value="disqualified">Disqualified</option>
+          <option value="ineligible">Ineligible</option>
         </select>
       </div>
 
@@ -225,6 +330,14 @@ export default function PlayersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5">
+                    <th className="w-10 px-2 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === players.length && players.length > 0}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-amber-500 focus:ring-amber-500/30"
+                      />
+                    </th>
                     <SortHeader label="#" sortKey="playerNumber" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="Player" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="Role" sortKey="role" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -241,6 +354,7 @@ export default function PlayersPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Status</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Sold To</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Amount</th>
+                    <th className="w-10 px-2 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,8 +364,16 @@ export default function PlayersPage() {
                       <tr
                         key={player._id}
                         onClick={() => setSelectedPlayer(player)}
-                        className="border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors cursor-pointer"
+                        className={`border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors cursor-pointer ${selectedIds.has(player._id) ? 'bg-amber-500/5' : ''}`}
                       >
+                        <td className="px-2 py-3" onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(player._id)}
+                            onChange={() => toggleSelect(player._id)}
+                            className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-amber-500 focus:ring-amber-500/30"
+                          />
+                        </td>
                         <td className="px-4 py-3 text-slate-500 font-mono text-xs">{player.playerNumber}</td>
                         <td className="px-4 py-3">
                           <span className="font-medium text-white">{player.name}</span>
@@ -293,6 +415,15 @@ export default function PlayersPage() {
                             <span className="text-slate-600">—</span>
                           )}
                         </td>
+                        <td className="px-2 py-3">
+                          <button
+                            onClick={e => { e.stopPropagation(); setEditingPlayer(player); }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                            title="Edit player"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -317,7 +448,15 @@ export default function PlayersPage() {
                       <span className="text-xs text-slate-500 font-mono">#{player.playerNumber}</span>
                       <span className="font-medium text-white">{player.name}</span>
                     </div>
-                    <span className={`badge text-[10px] ${statusBadge(player.status)}`}>{player.status}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={e => { e.stopPropagation(); setEditingPlayer(player); }}
+                        className="p-1 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <span className={`badge text-[10px] ${statusBadge(player.status)}`}>{player.status}</span>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className={`text-xs ${rc.color}`}>{rc.icon} {rc.label}</span>
@@ -395,10 +534,155 @@ export default function PlayersPage() {
           player={selectedPlayer}
           playerFields={playerFields}
           onClose={() => setSelectedPlayer(null)}
+          onEdit={(p) => { setSelectedPlayer(null); setEditingPlayer(p); }}
           formatCurrency={formatCurrency}
           roleConfig={roleConfig}
           statusBadge={statusBadge}
         />
+      )}
+
+      {/* Edit Player Modal */}
+      {editingPlayer && (
+        <EditPlayerModal
+          auctionId={auctionId}
+          player={editingPlayer}
+          playerFields={playerFields}
+          onClose={() => setEditingPlayer(null)}
+          onSaved={() => { setEditingPlayer(null); loadPlayers(); }}
+          onAssign={(p) => { setEditingPlayer(null); setAssigningPlayer(p); }}
+          onReturnToPool={(p) => { setEditingPlayer(null); setReturnConfirm(p); }}
+          onDelete={(p) => { setEditingPlayer(null); setDeleteConfirm(p); }}
+          onIneligible={(p) => { setEditingPlayer(null); setIneligiblePlayer(p); }}
+          onReinstate={(p) => { setEditingPlayer(null); setReinstateConfirm(p); }}
+        />
+      )}
+
+      {/* Assign / Reassign Player Modal */}
+      {assigningPlayer && (
+        <AssignPlayerModal
+          auctionId={auctionId}
+          player={assigningPlayer}
+          teams={teams}
+          onClose={() => setAssigningPlayer(null)}
+          onDone={() => { setAssigningPlayer(null); loadPlayers(); loadTeams(); }}
+        />
+      )}
+
+      {/* Mark Ineligible Modal */}
+      {ineligiblePlayer && (
+        <IneligibleModal
+          auctionId={auctionId}
+          player={ineligiblePlayer}
+          onClose={() => setIneligiblePlayer(null)}
+          onDone={() => { setIneligiblePlayer(null); loadPlayers(); loadTeams(); }}
+        />
+      )}
+
+      {/* Return to Pool Confirm */}
+      <ConfirmModal
+        open={!!returnConfirm}
+        title="Return Player to Pool"
+        message={returnConfirm ? `Return ${returnConfirm.name} to pool? ₹${(returnConfirm.soldAmount || 0).toLocaleString('en-IN')} will be refunded to ${returnConfirm.soldTo?.name || 'the team'}.` : ''}
+        variant="warning"
+        confirmLabel="Return to Pool"
+        loading={returnLoading}
+        onConfirm={() => returnConfirm && handleReturnToPool(returnConfirm)}
+        onCancel={() => setReturnConfirm(null)}
+      />
+
+      {/* Delete Player Confirm */}
+      <ConfirmModal
+        open={!!deleteConfirm}
+        title="Delete Player"
+        message={deleteConfirm ? `Permanently delete ${deleteConfirm.name}?${deleteConfirm.status === 'sold' ? ` ₹${(deleteConfirm.soldAmount || 0).toLocaleString('en-IN')} will be refunded to ${deleteConfirm.soldTo?.name || 'the team'}.` : ''} This cannot be undone.` : ''}
+        variant="danger"
+        confirmLabel="Delete Player"
+        loading={deleteLoading}
+        onConfirm={() => deleteConfirm && handleDeletePlayer(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+
+      {/* Reinstate Player Confirm */}
+      <ConfirmModal
+        open={!!reinstateConfirm}
+        title="Reinstate Player"
+        message={reinstateConfirm ? `Reinstate ${reinstateConfirm.name} back to the player pool?` : ''}
+        variant="info"
+        confirmLabel="Reinstate"
+        loading={reinstateLoading}
+        onConfirm={() => reinstateConfirm && handleReinstatePlayer(reinstateConfirm)}
+        onCancel={() => setReinstateConfirm(null)}
+      />
+
+      {/* Bulk Delete Confirm */}
+      <ConfirmModal
+        open={bulkAction === 'delete'}
+        title="Bulk Delete"
+        message={`Delete ${selectedIds.size} selected player(s)? Sold players will have their amounts refunded. This cannot be undone.`}
+        variant="danger"
+        confirmLabel={`Delete ${selectedIds.size} Player(s)`}
+        loading={bulkLoading}
+        onConfirm={() => handleBulkAction('delete')}
+        onCancel={() => setBulkAction(null)}
+      />
+
+      {/* Bulk Mark Ineligible Confirm */}
+      <ConfirmModal
+        open={bulkAction === 'mark-ineligible'}
+        title="Bulk Mark Ineligible"
+        message={`Mark ${selectedIds.size} selected player(s) as ineligible? Sold players will have their amounts refunded.`}
+        variant="warning"
+        confirmLabel={`Mark ${selectedIds.size} Ineligible`}
+        loading={bulkLoading}
+        onConfirm={() => handleBulkAction('mark-ineligible')}
+        onCancel={() => setBulkAction(null)}
+      />
+
+      {/* Bulk Return to Pool Confirm */}
+      <ConfirmModal
+        open={bulkAction === 'return-to-pool'}
+        title="Bulk Return to Pool"
+        message={`Return ${selectedIds.size} selected player(s) to the pool? Sold amounts will be refunded to their teams.`}
+        variant="warning"
+        confirmLabel={`Return ${selectedIds.size} to Pool`}
+        loading={bulkLoading}
+        onConfirm={() => handleBulkAction('return-to-pool')}
+        onCancel={() => setBulkAction(null)}
+      />
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-900/95 border border-white/10 backdrop-blur-xl shadow-2xl shadow-black/40">
+          <span className="text-sm font-semibold text-white">
+            <CheckSquare className="w-4 h-4 inline mr-1.5 text-amber-400" />
+            {selectedIds.size} selected
+          </span>
+          <div className="w-px h-6 bg-white/10" />
+          <button
+            onClick={() => setBulkAction('return-to-pool')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Return to Pool
+          </button>
+          <button
+            onClick={() => setBulkAction('mark-ineligible')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 transition-colors"
+          >
+            <ShieldOff className="w-3.5 h-3.5" /> Ineligible
+          </button>
+          <button
+            onClick={() => setBulkAction('delete')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -469,10 +753,11 @@ function FieldValue({ value, type }: { value: any; type: string }) {
 // Player Profile Modal
 // ============================================================
 
-function PlayerProfileModal({ player, playerFields, onClose, formatCurrency, roleConfig, statusBadge }: {
+function PlayerProfileModal({ player, playerFields, onClose, onEdit, formatCurrency, roleConfig, statusBadge }: {
   player: Player;
   playerFields: PlayerField[];
   onClose: () => void;
+  onEdit: (player: Player) => void;
   formatCurrency: (n: number) => string;
   roleConfig: (role: string) => { label: string; icon: string; color: string };
   statusBadge: (status: string) => string;
@@ -481,7 +766,7 @@ function PlayerProfileModal({ player, playerFields, onClose, formatCurrency, rol
   const allFields = [...playerFields].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="glass-card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-start gap-4 p-5 border-b border-white/5">
@@ -500,9 +785,18 @@ function PlayerProfileModal({ player, playerFields, onClose, formatCurrency, rol
             <h3 className="text-xl font-bold text-white truncate">{player.name}</h3>
             <span className={`text-xs font-medium ${rc.color}`}>{rc.icon} {rc.label}</span>
           </div>
-          <button onClick={onClose} className="btn-ghost p-1.5 flex-shrink-0">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => onEdit(player)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+              title="Edit player"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button onClick={onClose} className="btn-ghost p-1.5">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Sale info */}
@@ -603,7 +897,7 @@ function AddPlayerModal({ auctionId, onClose, onAdded }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="glass-card w-full max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-white/5">
           <h3 className="text-lg font-bold text-white">Add Player</h3>
@@ -653,6 +947,439 @@ function AddPlayerModal({ auctionId, onClose, onAdded }: {
             <button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button>
             <button type="submit" disabled={submitting || !form.name.trim()} className="btn-primary text-sm disabled:opacity-40">
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Adding...</> : <><Plus className="w-4 h-4" /> Add</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Edit Player Modal
+// ============================================================
+
+function EditPlayerModal({ auctionId, player, playerFields, onClose, onSaved, onAssign, onReturnToPool, onDelete, onIneligible, onReinstate }: {
+  auctionId: string;
+  player: Player;
+  playerFields: PlayerField[];
+  onClose: () => void;
+  onSaved: () => void;
+  onAssign: (player: Player) => void;
+  onReturnToPool: (player: Player) => void;
+  onDelete: (player: Player) => void;
+  onIneligible: (player: Player) => void;
+  onReinstate: (player: Player) => void;
+}) {
+  const [name, setName] = useState(player.name);
+  const [role, setRole] = useState(player.role);
+  const [imageUrl, setImageUrl] = useState(player.imageUrl || '');
+  const [customFields, setCustomFields] = useState<Record<string, any>>(() => {
+    const cf: Record<string, any> = {};
+    for (const f of playerFields) {
+      cf[f.key] = player.customFields?.[f.key] ?? '';
+    }
+    return cf;
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      // Build customFields — only include fields that changed
+      const updatedCustomFields: Record<string, any> = {};
+      for (const f of playerFields) {
+        const newVal = customFields[f.key];
+        const oldVal = player.customFields?.[f.key] ?? '';
+        if (String(newVal) !== String(oldVal)) {
+          updatedCustomFields[f.key] = f.type === 'number' && newVal !== '' ? Number(newVal) : newVal;
+        }
+      }
+
+      const payload: Record<string, any> = {};
+      if (name.trim() !== player.name) payload.name = name.trim();
+      if (role !== player.role) payload.role = role;
+      if (imageUrl.trim() !== (player.imageUrl || '')) payload.imageUrl = imageUrl.trim();
+      if (Object.keys(updatedCustomFields).length > 0) {
+        // Merge with existing customFields
+        payload.customFields = { ...(player.customFields || {}), ...updatedCustomFields };
+      }
+
+      if (Object.keys(payload).length === 0) {
+        onClose();
+        return;
+      }
+
+      await updatePlayer(auctionId, player._id, payload);
+      onSaved();
+    } catch (err: any) {
+      setError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  const allFields = [...playerFields].sort((a, b) => a.order - b.order);
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass-card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <div>
+            <h3 className="text-lg font-bold text-white">Edit Player</h3>
+            <p className="text-xs text-slate-500 mt-0.5">#{player.playerNumber} · {player.name}</p>
+          </div>
+          <button onClick={onClose} className="btn-ghost p-1.5"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Name *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="input-field"
+              autoFocus
+              required
+            />
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Role *</label>
+            <select value={role} onChange={e => setRole(e.target.value)} className="input-field">
+              {Object.entries(PLAYER_ROLES).map(([key, val]) => (
+                <option key={key} value={key}>{val.icon} {val.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Image URL</label>
+            <input
+              type="url"
+              value={imageUrl}
+              onChange={e => setImageUrl(e.target.value)}
+              placeholder="https://..."
+              className="input-field"
+            />
+          </div>
+
+          {/* Custom Fields */}
+          {allFields.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-white/5">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase">Player Stats</h4>
+              {allFields.map(f => (
+                <div key={f.key}>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">{f.label}</label>
+                  <input
+                    type={f.type === 'number' ? 'number' : 'text'}
+                    value={customFields[f.key] ?? ''}
+                    onChange={e => setCustomFields(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.label}
+                    className="input-field"
+                    step={f.type === 'number' ? 'any' : undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">{error}</div>
+          )}
+
+          {/* Admin Actions */}
+          <div className="pt-3 border-t border-white/5 space-y-2">
+            <h4 className="text-xs font-semibold text-slate-400 uppercase">Admin Actions</h4>
+            <div className="flex flex-wrap gap-2">
+              {['pool', 'unsold'].includes(player.status) && (
+                <button
+                  type="button"
+                  onClick={() => onAssign(player)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" /> Assign to Team
+                </button>
+              )}
+              {player.status === 'sold' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onAssign(player)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" /> Reassign to Team
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onReturnToPool(player)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Return to Pool
+                  </button>
+                </>
+              )}
+              {['disqualified', 'ineligible'].includes(player.status) && (
+                <button
+                  type="button"
+                  onClick={() => onReinstate(player)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" /> Reinstate
+                </button>
+              )}
+              {!['disqualified', 'ineligible'].includes(player.status) && (
+                <button
+                  type="button"
+                  onClick={() => onIneligible(player)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 transition-colors"
+                >
+                  <ShieldOff className="w-3.5 h-3.5" /> Mark Ineligible
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onDelete(player)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+            <button type="submit" disabled={submitting || !name.trim()} className="btn-primary text-sm disabled:opacity-40">
+              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Changes</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Assign / Reassign Player Modal
+// ============================================================
+
+function AssignPlayerModal({ auctionId, player, teams, onClose, onDone }: {
+  auctionId: string;
+  player: Player;
+  teams: { _id: string; name: string; shortName: string; primaryColor: string; purseRemaining: number }[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const isReassign = player.status === 'sold';
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [amount, setAmount] = useState<string>(isReassign ? String(player.soldAmount || 0) : '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filter out current team for reassign
+  const availableTeams = isReassign
+    ? teams.filter(t => t._id !== player.soldTo?._id)
+    : teams;
+
+  const selectedTeam = availableTeams.find(t => t._id === selectedTeamId);
+  const numAmount = Number(amount) || 0;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeamId || numAmount < 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (isReassign) {
+        await reassignPlayer(auctionId, player._id, { newTeamId: selectedTeamId, newAmount: numAmount });
+      } else {
+        await assignPlayer(auctionId, player._id, { teamId: selectedTeamId, amount: numAmount });
+      }
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  const formatCurrency = (n: number) => {
+    if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+    return `₹${n.toLocaleString('en-IN')}`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass-card w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <div>
+            <h3 className="text-lg font-bold text-white">
+              {isReassign ? 'Reassign Player' : 'Assign to Team'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              #{player.playerNumber} · {player.name}
+              {isReassign && player.soldTo && (
+                <span className="text-amber-400"> · Currently: {player.soldTo.name}</span>
+              )}
+            </p>
+          </div>
+          <button onClick={onClose} className="btn-ghost p-1.5"><X className="w-5 h-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Team Selection */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              {isReassign ? 'New Team' : 'Team'} *
+            </label>
+            <select
+              value={selectedTeamId}
+              onChange={e => setSelectedTeamId(e.target.value)}
+              className="input-field"
+              required
+            >
+              <option value="">— Select team —</option>
+              {availableTeams.map(t => (
+                <option key={t._id} value={t._id}>
+                  {t.name} ({t.shortName}) — Purse: {formatCurrency(t.purseRemaining)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Amount (₹) *</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              min="0"
+              step="1000"
+              className="input-field"
+              placeholder="Enter amount"
+              required
+            />
+          </div>
+
+          {/* Purse check */}
+          {selectedTeam && numAmount > 0 && (
+            <div className={`p-3 rounded-lg text-xs ${
+              numAmount > selectedTeam.purseRemaining
+                ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+            }`}>
+              {numAmount > selectedTeam.purseRemaining ? (
+                <span>⚠️ Insufficient purse! {selectedTeam.name} has {formatCurrency(selectedTeam.purseRemaining)} remaining.</span>
+              ) : (
+                <span>✓ {selectedTeam.name} purse after: {formatCurrency(selectedTeam.purseRemaining - numAmount)}</span>
+              )}
+            </div>
+          )}
+
+          {isReassign && player.soldTo && (
+            <div className="p-3 rounded-lg bg-slate-800/50 border border-white/5 text-xs text-slate-400">
+              <span className="text-white font-medium">{player.soldTo.name}</span> will be refunded{' '}
+              <span className="text-emerald-400 font-medium">{formatCurrency(player.soldAmount || 0)}</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">{error}</div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+            <button
+              type="submit"
+              disabled={submitting || !selectedTeamId || numAmount < 0 || (selectedTeam ? numAmount > selectedTeam.purseRemaining : false)}
+              className="btn-primary text-sm disabled:opacity-40"
+            >
+              {submitting ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+              ) : isReassign ? (
+                <><ArrowLeftRight className="w-4 h-4" /> Reassign</>
+              ) : (
+                <><UserPlus className="w-4 h-4" /> Assign</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Mark Ineligible Modal
+// ============================================================
+
+function IneligibleModal({ auctionId, player, onClose, onDone }: {
+  auctionId: string;
+  player: Player;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await markPlayerIneligible(auctionId, player._id, { reason: reason.trim() || undefined });
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass-card w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <div>
+            <h3 className="text-lg font-bold text-white">Mark Ineligible</h3>
+            <p className="text-xs text-slate-500 mt-0.5">#{player.playerNumber} · {player.name}</p>
+          </div>
+          <button onClick={onClose} className="btn-ghost p-1.5"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <p className="text-sm text-slate-300">
+            This player will be removed from the auction pool.
+            {player.status === 'sold' && (
+              <span className="text-amber-400"> The sold amount will be refunded to the team.</span>
+            )}
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Reason (optional)</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              className="input-field"
+              placeholder="e.g. Injury, pending verification, late arrival..."
+              autoFocus
+            />
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">{error}</div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+            <button type="submit" disabled={submitting} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-orange-600 hover:bg-orange-500 transition-colors disabled:opacity-40">
+              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : <><ShieldOff className="w-4 h-4" /> Mark Ineligible</>}
             </button>
           </div>
         </form>
@@ -737,7 +1464,7 @@ function ImportPlayersModal({ auctionId, onClose, onImported }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="glass-card w-full max-w-3xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-white/5">
           <h3 className="text-lg font-bold text-white">

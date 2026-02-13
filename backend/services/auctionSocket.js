@@ -171,7 +171,52 @@ function initAuctionSocket(io) {
       if (typeof callback === 'function') callback(result);
     });
 
+    // ---- TEAM: PAUSE REQUEST ----
+
+    socket.on('team:request_pause', async (data, callback) => {
+      if (role !== 'team' || !teamId) {
+        const msg = 'Only team members can request a pause';
+        if (typeof callback === 'function') return callback({ success: false, error: msg });
+        return;
+      }
+
+      const auction = await Auction.findById(auctionId);
+      if (!auction || auction.status !== 'live') {
+        const msg = 'Pause requests are only allowed during a live auction';
+        if (typeof callback === 'function') return callback({ success: false, error: msg });
+        return;
+      }
+
+      // Emit pause request to admin room
+      ns.to(`admin:${auctionId}`).emit('pause:request', {
+        teamId,
+        teamName: socket.teamName,
+        teamShortName: socket.teamShortName,
+        reason: data?.reason || '',
+        timestamp: new Date().toISOString(),
+      });
+
+      // Acknowledge to the requesting team
+      if (typeof callback === 'function') callback({ success: true, message: 'Pause request sent to admin' });
+    });
+
     // ---- ADMIN EVENTS ----
+
+    socket.on('admin:dismiss_pause_request', async (data, callback) => {
+      if (role !== 'admin') {
+        return typeof callback === 'function' && callback({ success: false, error: 'Admin only' });
+      }
+      if (!data?.teamId) {
+        return typeof callback === 'function' && callback({ success: false, error: 'teamId required' });
+      }
+
+      // Notify the requesting team that their pause request was dismissed
+      ns.to(`team:${data.teamId}`).emit('pause:request_dismissed', {
+        message: data.message || 'Your pause request was dismissed by the admin.',
+      });
+
+      if (typeof callback === 'function') callback({ success: true });
+    });
 
     socket.on('admin:start', async (callback) => {
       if (role !== 'admin') {

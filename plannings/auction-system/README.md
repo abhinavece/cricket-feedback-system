@@ -7,6 +7,7 @@ This folder contains all planning documents for the CricSmart Auction system.
 - `001-cricsmart-auctions-design.md` — Complete system design specification with all finalized decisions
 - `002-future-enhancements.md` — Future features roadmap (RTM, chat, YouTube API, etc.)
 - `003-implementation-architecture.md` — Auth isolation, SEO strategy, Next.js frontend, infra & deployment
+- `004-feature-details.md` — Comprehensive feature documentation for all implemented phases
 
 ## Overview
 
@@ -34,9 +35,9 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
 - ✅ **Phase 7**: Broadcast view + sold/unsold animations — COMPLETED
 - ✅ **Phase 7.5**: Admin should have functinality to do any change in player, team, auction like marking any player ineligible, removing already sold player to some other team at specific amount and purse value should be updated accordingly from to and from team.
 - ✅ **Phase 8**: Post-auction features (trading, finalize) — COMPLETED
-- ⏳ **Phase 9**: Analytics & export
+- ✅ **Phase 9**: Admin extended tools, analytics & export — COMPLETED
 - ⏳ **Phase 10**: Testing & edge cases
-- ⏳ **Phase 11**: User can ask admin to pause and resume the auction.
+- ✅ **Phase 11**: Pause/resume request system — COMPLETED
 
 
 ### Phase 2 Deliverables (Completed)
@@ -190,6 +191,52 @@ The CricSmart Auction system is a world-class online cricket auction platform fe
   - Financial settlement details (purse adjustments, who pays)
   - Trade window countdown for active windows
   - "Trades" nav item added to public auction layout for post-auction states
+
+### Phase 9 Deliverables (Completed)
+
+**Admin Extended Tools & Export** — 12 sub-phases (9A–9L)
+
+- **9A: Player Edit Modal** — Click-to-edit any player from admin players page (name, role, image, custom fields)
+- **9B: Admin Player Reassignment** — Assign unsold player to team, reassign sold player between teams, return to pool. All with purse adjustment + Socket.IO broadcast
+- **9D: Purse Adjustment** — Admin can increase/decrease team purse with reason (audit logged)
+- **9E: Soft Delete + Reinstate + Mark Ineligible** — Soft delete (isDeleted), reinstate (un-delete), mark ineligible with reason
+- **9F: Bid History Viewer + Void Bids** — `/admin/[auctionId]/bids` with search, filters (player/team/type), void bid with reason
+- **9G: Export Results to Excel** — `GET /export` returns multi-sheet XLSX (Summary, Teams, Sold/Unsold/All Players). Button on admin overview
+- **9H: Admin-Initiated Trade** — `POST /trades/admin-initiate` bypasses bilateral flow. Modal with team selectors, player checkboxes, settlement preview
+- **9I: Audit Log Viewer** — `/admin/[auctionId]/audit` timeline view of all ActionEvents with type filter
+- **9J: Bulk Player Operations** — Multi-select checkboxes + floating action bar (bulk delete, mark ineligible, return to pool) with ConfirmModal
+- **9K: Reorder Auction Pool** — `GET/PUT /players/pool-order` + `/admin/[auctionId]/pool-order` page with move/shuffle/save
+- **9L: Clone Auction** — `POST /clone` deep copies config, teams, players into new draft. Button on admin overview with name prompt
+
+**Admin Layout Tabs Added**: Player Fields, Trades, Bid History, Audit Log, Pool Order
+
+**API Additions**: updatePlayer, assignPlayer, reassignPlayer, returnPlayerToPool, reinstatePlayer, markPlayerIneligible, bulkPlayerAction, getAuditLog, getBidHistory, voidBid, exportAuctionResults, adjustTeamPurse, getPoolOrder, reorderPool, cloneAuction, adminInitiateTrade, getDisplayConfig, updateDisplayConfig
+
+**Dynamic Column Import Enhancement**: Auto-detect columns from Excel/CSV, toggleable skip chips, inferFieldType(), playerFields config with showOnCard/showInList/sortable, live card and broadcast card show custom fields
+
+### Phase 11 Deliverables (Completed)
+
+**Pause/Resume Request System** — Teams can request admin to pause the auction during live bidding
+
+- **Backend** (`services/auctionSocket.js`):
+  - `team:request_pause` socket event — Team sends pause request with optional reason, forwarded to admin room as `pause:request`
+  - `admin:dismiss_pause_request` socket event — Admin dismisses a request, team notified via `pause:request_dismissed`
+  - Only allowed during `live` auction status
+  - Rate-limiting by UI (one active request per team)
+
+- **Team Bid Page** (`bid/[token]/page.tsx`):
+  - Pause icon button in sticky header (visible during live/paused states)
+  - Request Pause modal with optional reason input
+  - Toast notifications for request sent / request dismissed feedback
+  - Auto-resets when auction is paused (request honored)
+  - Socket listener for `pause:request_dismissed` event
+
+- **Admin Live Page** (`admin/[auctionId]/live/page.tsx`):
+  - Real-time pause request notifications via `pause:request` socket event
+  - Floating notification banners with team name + reason
+  - ✅ Approve button — triggers `admin:pause` with reason citing requesting team
+  - ✕ Dismiss button — notifies team their request was dismissed
+  - Multiple concurrent requests supported (stacked notifications)
 
 ### Phase 1 Deliverables (Completed)
 

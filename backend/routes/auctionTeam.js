@@ -324,6 +324,73 @@ router.delete('/:teamId/retain/:retainedId', auth, resolveAuctionAdmin, async (r
 });
 
 // ============================================================
+// ADMIN: ADJUST TEAM PURSE
+// ============================================================
+
+/**
+ * POST /api/v1/auctions/:auctionId/teams/:teamId/adjust-purse
+ * Admin manually adjusts a team's purse (positive = add, negative = deduct).
+ */
+router.post('/:teamId/adjust-purse', auth, resolveAuctionAdmin, async (req, res) => {
+  try {
+    const { amount, reason } = req.body;
+    if (amount == null || amount === 0) {
+      return res.status(400).json({ success: false, error: 'amount is required and must be non-zero' });
+    }
+
+    const team = await AuctionTeam.findOne({
+      _id: req.params.teamId,
+      auctionId: req.auction._id,
+      isActive: true,
+    });
+    if (!team) {
+      return res.status(404).json({ success: false, error: 'Team not found' });
+    }
+
+    const newPurse = team.purseRemaining + amount;
+    if (newPurse < 0) {
+      return res.status(400).json({ success: false, error: `Cannot deduct ₹${Math.abs(amount).toLocaleString()}. Team only has ₹${team.purseRemaining.toLocaleString()} remaining.` });
+    }
+
+    const oldPurse = team.purseRemaining;
+    team.purseRemaining = newPurse;
+    await team.save();
+
+    // Log action
+    const ActionEvent = require('../models/ActionEvent');
+    await ActionEvent.create({
+      auctionId: req.auction._id,
+      sequenceNumber: await ActionEvent.getNextSequence(req.auction._id),
+      type: 'ADMIN_PURSE_ADJUSTED',
+      payload: {
+        teamId: team._id,
+        teamName: team.name,
+        amount,
+        oldPurse,
+        newPurse,
+        reason: reason || '',
+      },
+      performedBy: req.user._id,
+      isPublic: true,
+      publicMessage: `Admin ${amount > 0 ? 'added' : 'deducted'} ₹${Math.abs(amount).toLocaleString()} ${amount > 0 ? 'to' : 'from'} ${team.name}'s purse.${reason ? ` Reason: ${reason}` : ''}`,
+    });
+
+    // Broadcast via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      const engine = require('../services/auctionEngine');
+      const state = await engine.buildAuctionState(req.auction);
+      io.of('/auction').to(`auction:${req.auction._id}`).emit('auction:state', state);
+    }
+
+    res.json({ success: true, data: { teamId: team._id, oldPurse, newPurse, adjustment: amount } });
+  } catch (error) {
+    console.error('Adjust purse error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // DELETE TEAM (Soft delete)
 // ============================================================
 

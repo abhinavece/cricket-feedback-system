@@ -182,10 +182,52 @@ export default function TeamBidPage() {
 }
 
 function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: string; teamToken: string; auctionId: string }) {
-  const { state, connectionStatus, emit, announcements } = useAuctionSocket();
+  const { state, connectionStatus, emit, socket, announcements } = useAuctionSocket();
   const [bidLoading, setBidLoading] = useState(false);
   const [bidError, setBidError] = useState('');
   const [myPlayers, setMyPlayers] = useState<{ _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean; customFields?: Record<string, any>; imageUrl?: string }[]>([]);
+  const [pauseRequested, setPauseRequested] = useState(false);
+  const [pauseRequestMsg, setPauseRequestMsg] = useState<string | null>(null);
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [pauseReason, setPauseReason] = useState('');
+
+  // Listen for pause request dismissed
+  useEffect(() => {
+    if (!socket) return;
+    const onDismissed = (data: any) => {
+      setPauseRequestMsg(data.message || 'Your pause request was dismissed.');
+      setPauseRequested(false);
+      setTimeout(() => setPauseRequestMsg(null), 5000);
+    };
+    // Reset pause request state when auction pauses (request was honored)
+    const onStatusChange = (data: any) => {
+      if (data.status === 'paused') {
+        setPauseRequested(false);
+        setPauseRequestMsg(null);
+      }
+    };
+    socket.on('pause:request_dismissed', onDismissed);
+    socket.on('auction:status_change', onStatusChange);
+    return () => {
+      socket.off('pause:request_dismissed', onDismissed);
+      socket.off('auction:status_change', onStatusChange);
+    };
+  }, [socket]);
+
+  const handleRequestPause = useCallback(() => {
+    emit('team:request_pause', { reason: pauseReason || '' }, (res: any) => {
+      if (res?.success) {
+        setPauseRequested(true);
+        setShowPauseModal(false);
+        setPauseReason('');
+        setPauseRequestMsg('Pause request sent to admin');
+        setTimeout(() => setPauseRequestMsg(null), 4000);
+      } else {
+        setPauseRequestMsg(res?.error || 'Failed to send request');
+        setTimeout(() => setPauseRequestMsg(null), 4000);
+      }
+    });
+  }, [emit, pauseReason]);
 
   const handleBid = useCallback(() => {
     setBidLoading(true);
@@ -261,19 +303,35 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
                 </div>
               </div>
             </div>
-            {myTeam && (
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Purse</div>
-                  <div className="text-sm font-bold text-white tabular-nums">{formatCurrency(myTeam.purseRemaining)}</div>
-                </div>
-                <div className="w-px h-8 bg-white/5" />
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Max Bid</div>
-                  <div className="text-sm font-bold text-amber-400 tabular-nums">{formatCurrency(myTeam.maxBid)}</div>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {(isLive || isPaused) && (
+                <button
+                  onClick={() => setShowPauseModal(true)}
+                  disabled={pauseRequested}
+                  title={pauseRequested ? 'Pause request sent' : 'Request Pause'}
+                  className={`p-2 rounded-lg transition-all ${
+                    pauseRequested
+                      ? 'bg-amber-500/15 text-amber-400 cursor-not-allowed'
+                      : 'bg-slate-800/50 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 border border-white/5'
+                  }`}
+                >
+                  <Pause className="w-4 h-4" />
+                </button>
+              )}
+              {myTeam && (
+                <>
+                  <div className="text-right">
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider">Purse</div>
+                    <div className="text-sm font-bold text-white tabular-nums">{formatCurrency(myTeam.purseRemaining)}</div>
+                  </div>
+                  <div className="w-px h-8 bg-white/5" />
+                  <div className="text-right">
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider">Max Bid</div>
+                    <div className="text-sm font-bold text-amber-400 tabular-nums">{formatCurrency(myTeam.maxBid)}</div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           {/* Purse progress bar in header */}
           {myTeam && (
@@ -508,6 +566,65 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
           </div>
         )}
       </div>
+
+      {/* Pause Request Notification Toast */}
+      <AnimatePresence>
+        {pauseRequestMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/20 text-sm text-amber-300 flex items-center gap-2 shadow-xl"
+          >
+            <Pause className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{pauseRequestMsg}</span>
+            <button onClick={() => setPauseRequestMsg(null)} className="text-amber-400 hover:text-white text-xs ml-2">✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Request Pause Modal */}
+      {showPauseModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPauseModal(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full max-w-sm rounded-2xl bg-slate-900 border border-white/10 shadow-2xl p-6"
+          >
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
+                <Pause className="w-5 h-5 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Request Pause</h3>
+              <p className="text-xs text-slate-400 mt-1">Ask the admin to pause the auction</p>
+            </div>
+            <input
+              type="text"
+              value={pauseReason}
+              onChange={e => setPauseReason(e.target.value)}
+              placeholder="Reason (optional)"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 mb-4"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleRequestPause()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowPauseModal(false); setPauseReason(''); }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white bg-slate-800/50 border border-white/5 hover:border-white/10 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRequestPause}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all"
+              >
+                Send Request
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

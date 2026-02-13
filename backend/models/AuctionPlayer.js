@@ -89,7 +89,7 @@ const auctionPlayerSchema = new mongoose.Schema({
   // All players share auction-level base price (no per-player override)
   status: {
     type: String,
-    enum: ['pool', 'in_auction', 'sold', 'unsold', 'disqualified'],
+    enum: ['pool', 'in_auction', 'sold', 'unsold', 'disqualified', 'ineligible'],
     default: 'pool',
     index: true,
   },
@@ -159,6 +159,40 @@ const auctionPlayerSchema = new mongoose.Schema({
   disqualificationReason: {
     type: String,
     default: '',
+  },
+
+  // Ineligibility (soft block — injury, pending verification, etc.)
+  isIneligible: {
+    type: Boolean,
+    default: false,
+  },
+  ineligibleAt: {
+    type: Date,
+    default: null,
+  },
+  ineligibleBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  ineligibilityReason: {
+    type: String,
+    default: '',
+  },
+
+  // Soft delete
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
   },
 }, {
   timestamps: true,
