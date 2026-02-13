@@ -9,8 +9,9 @@ import Timer from '@/components/auction/Timer';
 import BidTicker from '@/components/auction/BidTicker';
 import TeamPanel from '@/components/auction/TeamPanel';
 import TradeProposalPanel from '@/components/auction/TradeProposalPanel';
+import PlayerDetailModal from '@/components/auction/PlayerDetailModal';
 import { getTeamPlayers } from '@/lib/api';
-import { siteConfig } from '@/lib/constants';
+import { siteConfig, PLAYER_ROLES } from '@/lib/constants';
 import {
   Wifi, WifiOff, IndianRupee, Users, UserCheck, Clock,
   Gavel, AlertTriangle, Trophy, Radio, ShieldCheck, Wallet,
@@ -183,7 +184,7 @@ function TeamBiddingContent({ teamName, teamToken, auctionId }: { teamName: stri
   const { state, connectionStatus, emit, announcements } = useAuctionSocket();
   const [bidLoading, setBidLoading] = useState(false);
   const [bidError, setBidError] = useState('');
-  const [myPlayers, setMyPlayers] = useState<{ _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean }[]>([]);
+  const [myPlayers, setMyPlayers] = useState<{ _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean; customFields?: Record<string, any>; imageUrl?: string }[]>([]);
 
   const handleBid = useCallback(() => {
     setBidLoading(true);
@@ -512,11 +513,19 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
   teamName: string;
   teamToken: string;
   auctionId: string;
-  myPlayers: { _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean }[];
+  myPlayers: { _id: string; name: string; role?: string; soldAmount?: number; isLocked?: boolean; customFields?: Record<string, any>; imageUrl?: string }[];
   setMyPlayers: (p: any[]) => void;
 }) {
   const [loadingPlayers, setLoadingPlayers] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const myTeam = state.myTeam;
+
+  const playerFields = state.playerFields || [];
+  const fieldLabelMap: Record<string, string> = {};
+  playerFields.forEach((f: any) => { fieldLabelMap[f.key] = f.label; });
+  const allFieldKeys = playerFields.length > 0
+    ? [...playerFields].sort((a: any, b: any) => a.order - b.order).map((f: any) => f.key)
+    : undefined;
 
   useEffect(() => {
     if (!myTeam?._id) return;
@@ -548,16 +557,46 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
             Your Squad ({myPlayers.length})
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {myPlayers.map(p => (
-              <div key={p._id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/30 border border-white/5">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-sm text-white flex-1 truncate">{p.name}</span>
-                {p.role && <span className="text-[10px] text-slate-500">{p.role}</span>}
-                {p.soldAmount && <span className="text-[10px] text-amber-400 tabular-nums">{formatCurrency(p.soldAmount)}</span>}
-              </div>
-            ))}
+            {myPlayers.map(p => {
+              const rc = PLAYER_ROLES[p.role as keyof typeof PLAYER_ROLES] || { label: p.role, icon: '🏏', color: 'text-slate-400' };
+              return (
+                <div
+                  key={p._id}
+                  onClick={() => setSelectedPlayer({
+                    ...p,
+                    status: 'sold',
+                    soldTo: myTeam ? { _id: myTeam._id, name: myTeam.name, shortName: myTeam.shortName, primaryColor: myTeam.primaryColor } : undefined,
+                  })}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-800/30 border border-white/5 hover:border-white/10 hover:bg-white/[0.03] cursor-pointer transition-all"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700/80 to-slate-800/80 flex items-center justify-center border border-white/10 flex-shrink-0 overflow-hidden">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm">{rc.icon}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-white truncate block">{p.name}</span>
+                    <span className={`text-[10px] ${rc.color}`}>{rc.label}</span>
+                  </div>
+                  {p.soldAmount ? <span className="text-[11px] font-semibold text-emerald-400 tabular-nums flex-shrink-0">{formatCurrency(p.soldAmount)}</span> : null}
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {/* Player Detail Modal */}
+      {selectedPlayer && (
+        <PlayerDetailModal
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          customFieldKeys={allFieldKeys}
+          fieldLabelMap={fieldLabelMap}
+          basePrice={state.config?.basePrice}
+        />
       )}
 
       {/* Trade Proposal Panel */}
