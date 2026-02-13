@@ -55,17 +55,22 @@ function BroadcastContent({ auctionName }: { auctionName: string }) {
     : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-hidden relative">
-      {/* Ambient background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-amber-500/[0.03] blur-[120px] rounded-full" />
-        {currentTeam && (
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] blur-[100px] rounded-full transition-all duration-1000"
-            style={{ background: `${currentTeam.primaryColor}10` }}
-          />
-        )}
-      </div>
+    <div className="min-h-screen bg-mesh-gradient overflow-hidden relative">
+      {/* Noise overlay */}
+      <div className="noise-overlay" />
+      
+      {/* Floating orbs for premium look */}
+      <div className="floating-orb floating-orb-amber w-[500px] h-[500px] top-[-10%] right-[-5%]" style={{ animationDelay: '0s' }} />
+      <div className="floating-orb floating-orb-purple w-[400px] h-[400px] bottom-[-10%] left-[-10%]" style={{ animationDelay: '4s' }} />
+      <div className="floating-orb floating-orb-cyan w-[350px] h-[350px] top-[30%] left-[60%]" style={{ animationDelay: '8s' }} />
+      
+      {/* Dynamic team color glow */}
+      {currentTeam && (
+        <div
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] blur-[120px] rounded-full transition-all duration-1000 pointer-events-none"
+          style={{ background: `${currentTeam.primaryColor}20` }}
+        />
+      )}
 
       {/* ─── Top Bar ─── */}
       <div className="relative z-10 px-8 py-4 flex items-center justify-between border-b border-white/5">
@@ -228,9 +233,9 @@ function BroadcastContent({ auctionName }: { auctionName: string }) {
       </div>
 
       {/* ─── Bottom Bar ─── */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/5 bg-slate-950/80 backdrop-blur-xl px-8 py-2">
-        <div className="flex items-center justify-between text-[11px] text-slate-600">
-          <span>CricSmart Auction</span>
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/5 bg-slate-900/90 backdrop-blur-xl px-8 py-2">
+        <div className="flex items-center justify-between text-[11px] text-slate-500">
+          <span className="font-medium">CricSmart Auction</span>
           <span>Powered by cricsmart.in</span>
         </div>
       </div>
@@ -271,61 +276,60 @@ function BroadcastPlayerCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ type: 'spring', damping: 20, stiffness: 180 }}
-      className={`relative overflow-hidden rounded-3xl border ${
-        isSold ? 'sold-glow border-emerald-500/30' :
-        isUnsold ? 'unsold-glow border-orange-500/30' :
+      className={`relative overflow-hidden rounded-2xl border ${
+        isSold ? 'sold-glow border-emerald-500/40' :
+        isUnsold ? 'unsold-glow border-orange-500/40' :
         'border-white/10'
-      } bg-slate-800/40 backdrop-blur-xl`}
+      } bg-slate-900/70 backdrop-blur-xl`}
     >
-      {/* Sold/Unsold banner */}
+      {/* Status banner - Sold/Unsold/Going */}
       <AnimatePresence>
         {isSold && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            className="bg-gradient-to-r from-emerald-600/25 via-emerald-500/15 to-emerald-600/25 border-b border-emerald-500/20 px-6 py-3 flex items-center justify-center gap-3"
+            className="bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-b border-emerald-500/30 px-6 py-2.5 flex items-center justify-center gap-3"
           >
-            <motion.div initial={{ rotate: -30, scale: 1.5 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: 'spring', damping: 8 }}>
-              <Gavel className="w-5 h-5 text-emerald-400" />
-            </motion.div>
-            <span className="text-lg font-bold uppercase tracking-[0.2em] text-emerald-400">Sold!</span>
+            <Gavel className="w-5 h-5 text-emerald-400" />
+            <span className="text-base font-bold uppercase tracking-[0.2em] text-emerald-400">SOLD</span>
           </motion.div>
         )}
         {isUnsold && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            className="bg-gradient-to-r from-orange-600/20 via-orange-500/10 to-orange-600/20 border-b border-orange-500/20 px-6 py-3 flex items-center justify-center gap-3"
+            className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 border-b border-orange-500/30 px-6 py-2.5 flex items-center justify-center gap-3"
           >
             <RotateCcw className="w-5 h-5 text-orange-400" />
-            <span className="text-lg font-bold uppercase tracking-[0.2em] text-orange-400">Unsold</span>
+            <span className="text-base font-bold uppercase tracking-[0.2em] text-orange-400">UNSOLD</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Going once/twice banner */}
       {(status === 'going_once' || status === 'going_twice') && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className={`px-6 py-2.5 text-center font-bold uppercase tracking-[0.25em] text-sm border-b ${
-            status === 'going_twice' ? 'bg-red-500/15 border-red-500/20 text-red-400' : 'bg-amber-500/15 border-amber-500/20 text-amber-400'
+          className={`px-6 py-2 text-center font-bold uppercase tracking-[0.2em] text-sm border-b ${
+            status === 'going_twice' ? 'bg-red-500/20 border-red-500/30 text-red-400' : 'bg-amber-500/20 border-amber-500/30 text-amber-400'
           }`}
         >
-          <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 0.7, repeat: Infinity }}>
+          <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 0.6, repeat: Infinity }}>
             {status === 'going_twice' ? '⚡ GOING TWICE ⚡' : '🔨 GOING ONCE'}
           </motion.span>
         </motion.div>
       )}
 
-      <div className="p-8">
-        <div className="flex items-start gap-6">
-          {/* Avatar */}
+      {/* Main content - horizontal layout */}
+      <div className="p-6">
+        {/* Top row: Avatar + Name + Role + Bid */}
+        <div className="flex items-center gap-5 mb-5">
+          {/* Large Avatar */}
           <motion.div
             initial={isRevealed ? { scale: 0.5, opacity: 0 } : false}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', damping: 15 }}
-            className="w-28 h-28 flex-shrink-0 relative"
+            className="relative flex-shrink-0"
           >
             <PlayerAvatar
               imageUrl={player.imageUrl}
@@ -333,115 +337,113 @@ function BroadcastPlayerCard({
               role={player.role}
               size="3xl"
               cropPosition={player.imageCropPosition}
-              className="border border-white/10"
+              className="border-2 border-white/20 shadow-2xl"
             />
-            <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-bl-lg bg-slate-900/90 border-l border-b border-white/10">
-              <span className="text-[10px] font-bold text-slate-400">#{player.playerNumber}</span>
+            <div className="absolute -top-1 -left-1 px-2 py-0.5 rounded-br-lg bg-slate-900 border-r border-b border-white/10">
+              <span className="text-xs font-bold text-slate-300">#{player.playerNumber}</span>
             </div>
           </motion.div>
 
-          {/* Info */}
+          {/* Name + Role */}
           <div className="flex-1 min-w-0">
-            <motion.div initial={isRevealed ? { x: -15, opacity: 0 } : false} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold ${roleConfig.color} bg-white/5 border border-white/5`}>
+            <motion.div initial={isRevealed ? { x: -10, opacity: 0 } : false} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-semibold ${roleConfig.color} bg-white/10 border border-white/10`}>
                 {roleConfig.icon} {roleConfig.label}
               </span>
             </motion.div>
 
             <motion.h2
-              initial={isRevealed ? { x: -15, opacity: 0 } : false}
+              initial={isRevealed ? { x: -10, opacity: 0 } : false}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl font-extrabold text-white mt-2 mb-2 truncate"
+              className="text-3xl font-extrabold text-white mt-1.5 truncate"
             >
               {player.name}
             </motion.h2>
+          </div>
 
-            {/* Custom fields grid */}
-            {cardFields.length > 0 && (
-              <motion.div
-                initial={isRevealed ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.22 }}
-                className="grid grid-cols-3 gap-x-5 gap-y-1 mb-3 max-h-24 overflow-y-auto"
-              >
-                {cardFields.map(f => {
-                  const val = player.customFields?.[f.key];
-                  if (val === undefined || val === null || val === '') return null;
-                  return (
-                    <div key={f.key} className="text-xs truncate">
-                      <span className="text-slate-500">{f.label}: </span>
-                      <span className="text-slate-200 font-semibold">{String(val)}</span>
-                    </div>
-                  );
-                })}
-              </motion.div>
-            )}
-
-            {/* Bid amount */}
-            {!isRevealed && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                <div className="text-[11px] text-slate-500 uppercase tracking-wider font-medium mb-1">
-                  {isSold ? 'Sold For' : hasBids ? 'Current Bid' : 'Base Price'}
-                </div>
-                <div className="flex items-baseline gap-4">
-                  <motion.span
-                    key={currentBid}
-                    initial={{ scale: 1.2, opacity: 0.5 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className={`text-5xl font-extrabold ${isSold ? 'text-emerald-400' : 'gradient-text-gold'}`}
-                  >
-                    {formatCurrency(currentBid || basePrice)}
-                  </motion.span>
-                  {hasBids && multiplier > 1 && (
-                    <span className={`text-sm font-bold px-3 py-1 rounded-lg ${
-                      multiplier >= 5 ? 'bg-red-500/20 text-red-400' :
-                      multiplier >= 3 ? 'bg-amber-500/20 text-amber-400' :
-                      'bg-slate-700/50 text-slate-400'
-                    }`}>
-                      {multiplier.toFixed(1)}×
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {isRevealed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">Base Price</span>
-                <span className="text-2xl font-bold text-amber-400">{formatCurrency(basePrice)}</span>
-              </motion.div>
-            )}
-
-            {/* Sold to team */}
-            {isSold && soldTeam && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="flex items-center gap-3 mt-4">
-                <TeamLogo
-                  logo={soldTeam.logo}
-                  name={soldTeam.name}
-                  shortName={soldTeam.shortName}
-                  primaryColor={soldTeam.primaryColor}
-                  size="md"
-                />
-                <span className="text-base font-semibold text-white">{soldTeam.name}</span>
-              </motion.div>
+          {/* Bid amount - right side */}
+          <div className="flex-shrink-0 text-right">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-0.5">
+              {isSold ? 'SOLD FOR' : isUnsold ? 'BASE PRICE' : hasBids ? 'CURRENT BID' : 'BASE PRICE'}
+            </div>
+            <motion.div
+              key={currentBid}
+              initial={{ scale: 1.1, opacity: 0.5 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`text-4xl font-extrabold tabular-nums ${
+                isSold ? 'text-emerald-400' : isUnsold ? 'text-orange-400' : 'gradient-text-gold'
+              }`}
+            >
+              {formatCurrency(currentBid || basePrice)}
+            </motion.div>
+            {hasBids && multiplier > 1 && (
+              <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded ${
+                multiplier >= 5 ? 'bg-red-500/30 text-red-400' :
+                multiplier >= 3 ? 'bg-amber-500/30 text-amber-400' :
+                'bg-slate-700/50 text-slate-400'
+              }`}>
+                {multiplier.toFixed(1)}× base
+              </span>
             )}
           </div>
         </div>
 
-        {/* Bid history strip */}
-        {bidHistory.length > 0 && !isRevealed && (
-          <div className="mt-6 flex items-center gap-2 overflow-x-auto">
-            {[...bidHistory].reverse().slice(0, 6).map((bid: any, idx: number) => {
+        {/* Stats grid - NO SCROLL, all visible */}
+        {cardFields.length > 0 && (
+          <motion.div
+            initial={isRevealed ? { opacity: 0, y: 10 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="grid grid-cols-4 gap-2 mb-4"
+          >
+            {cardFields.slice(0, 12).map(f => {
+              const val = player.customFields?.[f.key];
+              if (val === undefined || val === null || val === '') return null;
+              return (
+                <div key={f.key} className="bg-slate-800/80 rounded-lg px-3 py-2 border border-white/5">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium truncate">{f.label}</div>
+                  <div className="text-base text-white font-bold truncate">{String(val)}</div>
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+
+        {/* Sold to team */}
+        {isSold && soldTeam && (
+          <motion.div 
+            initial={{ opacity: 0, y: 5 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.3 }} 
+            className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+          >
+            <TeamLogo
+              logo={soldTeam.logo}
+              name={soldTeam.name}
+              shortName={soldTeam.shortName}
+              primaryColor={soldTeam.primaryColor}
+              size="md"
+            />
+            <div>
+              <div className="text-[10px] text-emerald-400/70 uppercase tracking-wider">Sold To</div>
+              <span className="text-lg font-bold text-white">{soldTeam.name}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Bid history - compact horizontal strip */}
+        {bidHistory.length > 0 && !isRevealed && !isSold && !isUnsold && (
+          <div className="flex items-center gap-2 pt-4 border-t border-white/5">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Bids:</span>
+            {[...bidHistory].reverse().slice(0, 5).map((bid: any, idx: number) => {
               const team = teams.find((t: any) => t._id === bid.teamId);
               const isLatest = idx === 0;
               return (
-                <motion.div
+                <div
                   key={`${bid.teamId}-${bid.amount}-${idx}`}
-                  initial={isLatest ? { scale: 0.8, opacity: 0 } : false}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl flex-shrink-0 ${
-                    isLatest ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-slate-800/30'
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${
+                    isLatest ? 'bg-amber-500/15 border border-amber-500/20' : 'bg-slate-800/50'
                   }`}
                 >
                   <TeamLogo
@@ -454,7 +456,7 @@ function BroadcastPlayerCard({
                   <span className={`text-xs font-bold tabular-nums ${isLatest ? 'text-amber-400' : 'text-slate-500'}`}>
                     {formatCurrency(bid.amount)}
                   </span>
-                </motion.div>
+                </div>
               );
             })}
           </div>

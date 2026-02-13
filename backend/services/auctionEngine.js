@@ -106,6 +106,7 @@ async function buildAuctionState(auction) {
       goingOnceTimer: auction.config.goingOnceTimer,
       goingTwiceTimer: auction.config.goingTwiceTimer,
       playerRevealDelay: auction.config.playerRevealDelay,
+      bidIncrementTiers: auction.config.bidIncrementTiers || [],
     },
     bidding: auction.currentBiddingState ? {
       status: auction.currentBiddingState.status,

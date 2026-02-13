@@ -918,7 +918,17 @@ function PostAuctionView({ state, teamName, teamToken, auctionId, myPlayers, set
 }
 
 function getIncrement(currentBid: number, config: any): number {
-  if (currentBid < 100000) return 10000;
-  if (currentBid < 500000) return 25000;
-  return 50000;
+  const tiers = config?.bidIncrementTiers;
+  if (!tiers || tiers.length === 0) {
+    // Fallback defaults if no tiers configured
+    if (currentBid < 100000) return 10000;
+    if (currentBid < 500000) return 25000;
+    return 50000;
+  }
+  for (const tier of tiers) {
+    if (tier.upTo === null || currentBid < tier.upTo) {
+      return tier.increment;
+    }
+  }
+  return tiers[tiers.length - 1].increment;
 }

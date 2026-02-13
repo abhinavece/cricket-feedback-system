@@ -58,6 +58,11 @@ export interface MyTeamInfo {
   canBid: boolean;
 }
 
+export interface BidIncrementTier {
+  upTo: number | null;
+  increment: number;
+}
+
 export interface AuctionConfig {
   basePrice: number;
   purseValue: number;
@@ -69,6 +74,7 @@ export interface AuctionConfig {
   goingOnceTimer: number;
   goingTwiceTimer: number;
   playerRevealDelay: number;
+  bidIncrementTiers: BidIncrementTier[];
 }
 
 export interface PlayerFieldConfig {

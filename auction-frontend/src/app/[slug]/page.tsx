@@ -189,10 +189,9 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
             className="block mb-10 group"
           >
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/10 to-amber-500/10 border border-red-500/20 p-5 sm:p-6 backdrop-blur-xl">
-              {/* Animated border */}
-              <div className="absolute inset-0 rounded-2xl animated-border" />
-              {/* Glow */}
-              <div className="absolute top-0 left-1/4 w-48 h-24 bg-red-500/20 rounded-full blur-3xl" />
+              {/* Subtle corner glow */}
+              <div className="absolute -top-12 -left-12 w-32 h-32 bg-red-500/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
               
               <div className="relative flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -239,8 +238,6 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                   href={`/${params.slug}/teams`}
                   className="group relative overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-xl border border-white/[0.06] hover:border-white/15 transition-all duration-300 hover:shadow-lg"
                 >
-                  {/* Team color accent */}
-                  <div className="h-1 w-full" style={{ background: team.primaryColor }} />
                   
                   {/* Hover glow */}
                   <div 
@@ -249,6 +246,11 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                   />
                   
                   <div className="relative p-3">
+                    {/* Team color indicator dot */}
+                    <div 
+                      className="absolute top-3 right-3 w-2 h-2 rounded-full"
+                      style={{ background: team.primaryColor }}
+                    />
                     <div className="flex items-center gap-2.5 mb-2.5">
                       <TeamLogo
                         logo={team.logo}
