@@ -97,7 +97,7 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Hero section */}
         <div className="relative mb-10">
           {/* Cover image banner */}
@@ -147,40 +147,36 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
               )}
             </div>
 
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Stats grid - Premium compact cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <StatCard
-                icon={<Users className="w-5 h-5 text-blue-400" />}
+                icon={<Users className="w-4 h-4 text-blue-400" />}
                 value={String(teamCount)}
                 label="Teams"
-                gradient="from-blue-500/20 to-cyan-500/20"
-                border="border-blue-500/20"
+                color="blue"
                 href={`/${params.slug}/teams`}
               />
               <StatCard
-                icon={<UserCheck className="w-5 h-5 text-emerald-400" />}
+                icon={<UserCheck className="w-4 h-4 text-emerald-400" />}
                 value={String(totalPlayers)}
                 label="Players"
                 sub={soldCount > 0 ? `${soldCount} sold` : undefined}
-                gradient="from-emerald-500/20 to-teal-500/20"
-                border="border-emerald-500/20"
+                color="emerald"
                 href={`/${params.slug}/players`}
               />
               <StatCard
-                icon={<IndianRupee className="w-5 h-5 text-amber-400" />}
+                icon={<IndianRupee className="w-4 h-4 text-amber-400" />}
                 value={formatCurrency(auction.config.purseValue)}
                 label="Team Purse"
                 sub={`Base: ${formatCurrency(auction.config.basePrice)}`}
-                gradient="from-amber-500/20 to-orange-500/20"
-                border="border-amber-500/20"
+                color="amber"
               />
               <StatCard
-                icon={<Target className="w-5 h-5 text-purple-400" />}
+                icon={<Target className="w-4 h-4 text-purple-400" />}
                 value={`${auction.config.minSquadSize}–${auction.config.maxSquadSize}`}
                 label="Squad Size"
                 sub={auction.currentRound ? `Round ${auction.currentRound}` : undefined}
-                gradient="from-purple-500/20 to-pink-500/20"
-                border="border-purple-500/20"
+                color="purple"
               />
             </div>
           </div>
@@ -192,21 +188,29 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
             href={`/${params.slug}/live`}
             className="block mb-10 group"
           >
-            <div className="glass-card p-6 sm:p-8 animated-border overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-orange-500/5 to-amber-500/5" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/10 to-amber-500/10 border border-red-500/20 p-5 sm:p-6 backdrop-blur-xl">
+              {/* Animated border */}
+              <div className="absolute inset-0 rounded-2xl animated-border" />
+              {/* Glow */}
+              <div className="absolute top-0 left-1/4 w-48 h-24 bg-red-500/20 rounded-full blur-3xl" />
+              
               <div className="relative flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-red-500/20 flex items-center justify-center">
-                    <Eye className="w-7 h-7 text-red-400" />
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                      <Eye className="w-6 h-6 text-red-400" />
+                    </div>
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
                   </div>
                   <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Auction is LIVE</h3>
-                    <p className="text-sm text-slate-400">Watch the bidding action in real-time</p>
+                    <h3 className="text-base sm:text-lg font-bold text-white">Auction is LIVE</h3>
+                    <p className="text-xs sm:text-sm text-slate-400">Watch real-time bidding</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-amber-400 font-semibold group-hover:translate-x-1 transition-transform">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-400 font-semibold text-sm group-hover:bg-amber-500/20 transition-all">
                   <span className="hidden sm:inline">Watch Now</span>
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             </div>
@@ -228,59 +232,53 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {auction.teams.map((team: any) => (
                 <Link
                   key={team._id}
                   href={`/${params.slug}/teams`}
-                  className="group relative overflow-hidden rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/5 hover:border-white/15 transition-all duration-300 hover:shadow-xl hover:shadow-black/20"
+                  className="group relative overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-xl border border-white/[0.06] hover:border-white/15 transition-all duration-300 hover:shadow-lg"
                 >
-                  {/* Gradient top bar */}
-                  <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${team.primaryColor}, ${team.primaryColor}88)` }} />
+                  {/* Team color accent */}
+                  <div className="h-1 w-full" style={{ background: team.primaryColor }} />
                   
-                  {/* Subtle glow effect */}
+                  {/* Hover glow */}
                   <div 
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-16 opacity-20 blur-2xl pointer-events-none"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 opacity-0 group-hover:opacity-30 blur-2xl transition-opacity pointer-events-none"
                     style={{ background: team.primaryColor }}
                   />
                   
-                  <div className="relative p-5">
-                    <div className="flex items-center gap-4 mb-4">
+                  <div className="relative p-3">
+                    <div className="flex items-center gap-2.5 mb-2.5">
                       <TeamLogo
                         logo={team.logo}
                         name={team.name}
                         primaryColor={team.primaryColor}
-                        size="md"
+                        size="sm"
                       />
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-bold text-white truncate group-hover:text-amber-400 transition-colors">
+                        <h3 className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition-colors">
                           {team.name}
                         </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {team.squadSize || 0} player{(team.squadSize || 0) !== 1 ? 's' : ''}
+                        <p className="text-[10px] text-slate-500">
+                          {team.squadSize || 0} players
                         </p>
                       </div>
                     </div>
 
-                    {/* Purse section */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-base font-bold text-white">{formatCurrency(team.purseRemaining)}</span>
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">remaining</span>
-                      </div>
-                      <div className="h-2 bg-slate-800/80 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${team.purseValue > 0 ? (team.purseRemaining / team.purseValue) * 100 : 100}%`,
-                            background: `linear-gradient(90deg, ${team.primaryColor}, ${team.primaryColor}cc)`,
-                          }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-600">
-                        <span>{Math.round(team.purseValue > 0 ? (team.purseRemaining / team.purseValue) * 100 : 100)}% left</span>
-                        <span>of {formatCurrency(team.purseValue)}</span>
-                      </div>
+                    {/* Compact purse display */}
+                    <div className="flex items-center justify-between text-[10px] mb-1.5">
+                      <span className="text-xs font-bold text-white">{formatCurrency(team.purseRemaining)}</span>
+                      <span className="text-slate-500">{Math.round(team.purseValue > 0 ? (team.purseRemaining / team.purseValue) * 100 : 100)}%</span>
+                    </div>
+                    <div className="h-1 bg-slate-800/80 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${team.purseValue > 0 ? (team.purseRemaining / team.purseValue) * 100 : 100}%`,
+                          background: team.primaryColor,
+                        }}
+                      />
                     </div>
                   </div>
                 </Link>
@@ -289,41 +287,32 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
           </section>
         )}
 
-        {/* Player breakdown */}
+        {/* Player breakdown - Compact stats */}
         {totalPlayers > 0 && (
           <section className="mb-10">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-5">
-              <UserCheck className="w-5 h-5 text-emerald-400" /> Player Pool
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+              <UserCheck className="w-4 h-4 text-emerald-400" /> Player Pool
             </h2>
-            <div className="glass-card p-5 sm:p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { key: 'pool', label: 'In Pool', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: '🎯' },
-                  { key: 'sold', label: 'Sold', color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: '✅' },
-                  { key: 'unsold', label: 'Unsold', color: 'text-orange-400', bg: 'bg-orange-500/10', icon: '↩️' },
-                  { key: 'disqualified', label: 'Disqualified', color: 'text-red-400', bg: 'bg-red-500/10', icon: '❌' },
-                ].map(item => {
-                  const count = auction.playerStats?.[item.key] || 0;
-                  const pct = totalPlayers > 0 ? Math.round((count / totalPlayers) * 100) : 0;
-                  return (
-                    <div key={item.key} className={`relative p-4 rounded-xl ${item.bg} overflow-hidden`}>
-                      <div className="relative">
-                        <div className={`text-3xl font-bold ${item.color} mb-1`}>{count}</div>
-                        <div className="text-xs text-slate-400">{item.label}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">{pct}%</div>
-                      </div>
-                      {/* Background progress fill */}
-                      <div
-                        className="absolute bottom-0 left-0 h-1 rounded-full opacity-50"
-                        style={{
-                          width: `${pct}%`,
-                          background: `var(--tw-gradient-from, currentColor)`,
-                        }}
-                      />
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { key: 'pool', label: 'Pool', color: 'text-blue-400', border: 'border-blue-500/20', bg: 'from-blue-500/10' },
+                { key: 'sold', label: 'Sold', color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'from-emerald-500/10' },
+                { key: 'unsold', label: 'Unsold', color: 'text-orange-400', border: 'border-orange-500/20', bg: 'from-orange-500/10' },
+                { key: 'disqualified', label: 'DQ', color: 'text-red-400', border: 'border-red-500/20', bg: 'from-red-500/10' },
+              ].map(item => {
+                const count = auction.playerStats?.[item.key] || 0;
+                const pct = totalPlayers > 0 ? Math.round((count / totalPlayers) * 100) : 0;
+                return (
+                  <div key={item.key} className={`relative p-3 rounded-xl bg-gradient-to-br ${item.bg} to-transparent border ${item.border} backdrop-blur-sm overflow-hidden`}>
+                    <div className={`text-xl sm:text-2xl font-bold ${item.color} mb-0.5`}>{count}</div>
+                    <div className="text-[10px] text-slate-400">{item.label}</div>
+                    {/* Progress indicator */}
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800">
+                      <div className={`h-full ${item.color.replace('text-', 'bg-')}`} style={{ width: `${pct}%` }} />
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
@@ -345,8 +334,8 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
               )}
             </div>
 
-            <div className="space-y-2">
-              {auction.topSoldPlayers.slice(0, 5).map((player: any, idx: number) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {auction.topSoldPlayers.slice(0, 6).map((player: any, idx: number) => {
                 const roleConfig = PLAYER_ROLES[player.role as keyof typeof PLAYER_ROLES] || { label: player.role, icon: '🏏', color: 'text-slate-400' };
                 const isTop3 = idx < 3;
                 const medals = ['🥇', '🥈', '🥉'];
@@ -354,45 +343,47 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
                 return (
                   <div
                     key={player._id}
-                    className={`glass-card p-4 flex items-center gap-4 ${isTop3 ? 'border-amber-500/10' : ''}`}
+                    className={`relative overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-xl border transition-all hover:border-white/15 p-3 ${
+                      isTop3 ? 'border-amber-500/20' : 'border-white/[0.06]'
+                    }`}
                   >
-                    {/* Rank */}
-                    <div className="w-8 text-center flex-shrink-0">
-                      {isTop3 ? (
-                        <span className="text-lg">{medals[idx]}</span>
-                      ) : (
-                        <span className="text-sm font-bold text-slate-500">#{idx + 1}</span>
-                      )}
-                    </div>
-
-                    {/* Player info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white truncate">{player.name}</span>
-                        <span className={`text-xs ${roleConfig.color}`}>{roleConfig.icon} {roleConfig.label}</span>
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        #{player.playerNumber} · Round {player.soldInRound || 1}
-                      </div>
-                    </div>
-
-                    {/* Sold to */}
-                    {player.soldTo && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <TeamLogo
-                          logo={player.soldTo.logo}
-                          name={player.soldTo.name}
-                          primaryColor={player.soldTo.primaryColor}
-                          size="xs"
-                        />
-                        <span className="text-xs text-slate-400 hidden sm:inline">{player.soldTo.name}</span>
-                      </div>
+                    {/* Top 3 glow */}
+                    {isTop3 && (
+                      <div className="absolute top-0 left-0 w-20 h-10 bg-amber-500/10 rounded-full blur-xl" />
                     )}
+                    
+                    <div className="relative flex items-center gap-3">
+                      {/* Rank badge */}
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        isTop3 ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800/50 text-slate-500'
+                      }`}>
+                        {isTop3 ? medals[idx] : idx + 1}
+                      </div>
 
-                    {/* Amount */}
-                    <div className="flex-shrink-0 text-right">
-                      <div className="font-bold gradient-text-amber text-base sm:text-lg">
-                        {formatCurrency(player.soldAmount)}
+                      {/* Player info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-white truncate">{player.name}</span>
+                          <span className={`text-[10px] ${roleConfig.color}`}>{roleConfig.icon}</span>
+                        </div>
+                        {player.soldTo && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <TeamLogo
+                              logo={player.soldTo.logo}
+                              name={player.soldTo.name}
+                              primaryColor={player.soldTo.primaryColor}
+                              size="xs"
+                            />
+                            <span className="text-[10px] text-slate-500 truncate">{player.soldTo.name}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Amount */}
+                      <div className="flex-shrink-0">
+                        <div className="text-sm font-bold gradient-text-gold">
+                          {formatCurrency(player.soldAmount)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -515,37 +506,44 @@ export default async function AuctionDetailPage({ params }: { params: { slug: st
   );
 }
 
-function StatCard({ icon, value, label, sub, gradient, border, href }: {
+function StatCard({ icon, value, label, sub, color, href }: {
   icon: React.ReactNode;
   value: string;
   label: string;
   sub?: string;
-  gradient: string;
-  border: string;
+  color: 'blue' | 'emerald' | 'amber' | 'purple';
   href?: string;
 }) {
+  const colorMap = {
+    blue: { border: 'border-blue-500/20', bg: 'from-blue-500/10' },
+    emerald: { border: 'border-emerald-500/20', bg: 'from-emerald-500/10' },
+    amber: { border: 'border-amber-500/20', bg: 'from-amber-500/10' },
+    purple: { border: 'border-purple-500/20', bg: 'from-purple-500/10' },
+  };
+  const c = colorMap[color];
+
   const content = (
-    <>
-      <div className="flex items-center gap-2 mb-2">
+    <div className="relative">
+      <div className="flex items-center gap-1.5 mb-1.5">
         {icon}
-        <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">{label}</span>
+        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">{label}</span>
         {href && <ArrowRight className="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />}
       </div>
-      <div className="text-2xl sm:text-3xl font-bold text-white">{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
-    </>
+      <div className="text-xl sm:text-2xl font-bold text-white">{value}</div>
+      {sub && <div className="text-[10px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
   );
 
   if (href) {
     return (
-      <Link href={href} className={`glass-card p-4 sm:p-5 border ${border} bg-gradient-to-br ${gradient} group hover:border-white/20 transition-all cursor-pointer`}>
+      <Link href={href} className={`relative overflow-hidden rounded-xl p-3 sm:p-4 border ${c.border} bg-gradient-to-br ${c.bg} to-transparent backdrop-blur-sm group hover:border-white/20 transition-all cursor-pointer`}>
         {content}
       </Link>
     );
   }
 
   return (
-    <div className={`glass-card p-4 sm:p-5 border ${border} bg-gradient-to-br ${gradient}`}>
+    <div className={`relative overflow-hidden rounded-xl p-3 sm:p-4 border ${c.border} bg-gradient-to-br ${c.bg} to-transparent backdrop-blur-sm`}>
       {content}
     </div>
   );
@@ -560,17 +558,27 @@ function QuickLinkCard({ href, icon, title, description, gradient, pulse }: {
   pulse?: boolean;
 }) {
   return (
-    <Link href={href} className="glass-card-hover p-5 sm:p-6 group block">
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-4`}>
-        {icon}
-      </div>
-      <h3 className="text-base font-bold text-white mb-1 group-hover:text-amber-400 transition-colors flex items-center gap-2">
-        {title}
-        {pulse && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
-      </h3>
-      <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
-      <div className="flex items-center gap-1 mt-3 text-sm text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">
-        View <ArrowRight className="w-3.5 h-3.5" />
+    <Link href={href} className="group relative overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-xl border border-white/[0.06] hover:border-white/15 p-4 transition-all">
+      {/* Hover glow */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-amber-500/5 via-transparent to-transparent" />
+      
+      <div className="relative flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors flex items-center gap-2">
+            {title}
+            {pulse && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{description}</p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" />
       </div>
     </Link>
   );

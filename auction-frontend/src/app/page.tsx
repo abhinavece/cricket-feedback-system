@@ -55,17 +55,19 @@ const stats = [
 
 export default function HomePage() {
   return (
-    <div className="relative bg-mesh-gradient min-h-screen">
-      {/* Noise overlay for premium texture */}
+    <div className="relative min-h-screen bg-mesh-gradient-vibrant overflow-hidden">
+      {/* Noise overlay */}
       <div className="noise-overlay" />
       
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-aurora">
-        {/* Floating orbs */}
-        <div className="floating-orb floating-orb-amber w-[500px] h-[500px] top-[-10%] left-[10%]" style={{ animationDelay: '0s' }} />
-        <div className="floating-orb floating-orb-purple w-[400px] h-[400px] top-[20%] right-[5%]" style={{ animationDelay: '5s' }} />
-        <div className="floating-orb floating-orb-cyan w-[300px] h-[300px] bottom-[10%] left-[20%]" style={{ animationDelay: '10s' }} />
-        
+      {/* More vibrant floating orbs */}
+      <div className="floating-orb floating-orb-amber w-[600px] h-[600px] top-[-15%] right-[-10%]" style={{ animationDelay: '0s' }} />
+      <div className="floating-orb floating-orb-purple w-[500px] h-[500px] top-[25%] left-[-15%]" style={{ animationDelay: '4s' }} />
+      <div className="floating-orb floating-orb-cyan w-[550px] h-[550px] bottom-[-15%] right-[15%]" style={{ animationDelay: '8s' }} />
+      <div className="floating-orb floating-orb-emerald w-[400px] h-[400px] bottom-[15%] left-[5%]" style={{ animationDelay: '12s' }} />
+      <div className="floating-orb floating-orb-rose w-[300px] h-[300px] top-[50%] right-[40%]" style={{ animationDelay: '16s' }} />
+      
+      {/* Hero section */}
+      <section className="relative bg-aurora">
         {/* Grid pattern overlay */}
         <div className="absolute inset-0 bg-grid-pattern opacity-30" />
 

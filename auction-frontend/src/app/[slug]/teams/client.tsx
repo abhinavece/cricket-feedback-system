@@ -60,30 +60,29 @@ export function TeamsClient({ teams, auctionName, config, playerFields = [] }: {
   }, [teams, playerFields]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-400" /> Teams
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-1 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-400" /> Teams
           </h2>
-          <p className="text-slate-400 text-sm">
-            {teams.length} team{teams.length !== 1 ? 's' : ''} in {auctionName}
+          <p className="text-slate-500 text-sm">
+            {teams.length} team{teams.length !== 1 ? 's' : ''} competing
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Sort:</span>
+        <div className="flex items-center gap-1.5">
           {(['spent', 'remaining', 'squad'] as const).map(key => (
             <button
               key={key}
               onClick={() => setSortBy(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all border ${
                 sortBy === key
                   ? 'bg-amber-500/15 text-amber-400 border-amber-500/20'
-                  : 'bg-slate-800/30 text-slate-500 border-white/5 hover:border-white/10'
+                  : 'bg-slate-900/50 text-slate-500 border-white/[0.06] hover:border-white/10'
               }`}
             >
-              {key === 'spent' ? 'Most Spent' : key === 'remaining' ? 'Most Purse' : 'Squad Size'}
+              {key === 'spent' ? 'Spent' : key === 'remaining' ? 'Purse' : 'Squad'}
             </button>
           ))}
         </div>
@@ -150,51 +149,63 @@ function TeamCard({ team, config, onClick }: {
 
   return (
     <div
-      className="glass-card-hover overflow-hidden cursor-pointer transition-all"
+      className="group relative overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-xl border border-white/[0.06] hover:border-white/15 cursor-pointer transition-all duration-300"
       onClick={onClick}
     >
+      {/* Team color accent */}
       <div className="h-1" style={{ background: team.primaryColor }} />
-      <div className="p-4">
-        <div className="flex items-center gap-3 mb-3">
+      
+      {/* Hover glow */}
+      <div 
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 opacity-0 group-hover:opacity-30 blur-2xl transition-opacity pointer-events-none"
+        style={{ background: team.primaryColor }}
+      />
+      
+      <div className="relative p-3">
+        <div className="flex items-center gap-2.5 mb-3">
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg flex-shrink-0"
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-lg flex-shrink-0"
             style={{ background: team.primaryColor }}
           >
-            {team.shortName}
+            {team.logo ? (
+              <img src={team.logo} alt={team.name} className="w-full h-full object-contain rounded-lg" />
+            ) : (
+              <Shield className="w-5 h-5 text-white/80" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-white truncate">{team.name}</h3>
-            <div className="flex items-center gap-2 text-[10px] text-slate-500">
-              <span>{totalPlayers} player{totalPlayers !== 1 ? 's' : ''}</span>
+            <h3 className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition-colors">{team.name}</h3>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <span>{totalPlayers} players</span>
               <span>·</span>
-              <span>{slotsLeft} slot{slotsLeft !== 1 ? 's' : ''} left</span>
+              <span>{slotsLeft} slots left</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="p-2 rounded-lg bg-slate-800/40 text-center">
-            <div className="text-xs font-bold text-white tabular-nums">{formatCurrency(spent)}</div>
-            <div className="text-[9px] text-slate-500 uppercase">Spent</div>
+        {/* Compact stats row */}
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <div className="flex-1 p-1.5 rounded-lg bg-slate-800/40 text-center">
+            <div className="text-[10px] font-bold text-white tabular-nums">{formatCurrency(spent)}</div>
+            <div className="text-[8px] text-slate-600">Spent</div>
           </div>
-          <div className="p-2 rounded-lg bg-slate-800/40 text-center">
-            <div className="text-xs font-bold text-emerald-400 tabular-nums">{formatCurrency(team.purseRemaining)}</div>
-            <div className="text-[9px] text-slate-500 uppercase">Remaining</div>
+          <div className="flex-1 p-1.5 rounded-lg bg-slate-800/40 text-center">
+            <div className="text-[10px] font-bold text-emerald-400 tabular-nums">{formatCurrency(team.purseRemaining)}</div>
+            <div className="text-[8px] text-slate-600">Left</div>
           </div>
-          <div className="p-2 rounded-lg bg-slate-800/40 text-center">
-            <div className="text-xs font-bold text-amber-400 tabular-nums">{boughtCount}</div>
-            <div className="text-[9px] text-slate-500 uppercase">Bought</div>
+          <div className="flex-1 p-1.5 rounded-lg bg-slate-800/40 text-center">
+            <div className="text-[10px] font-bold text-amber-400 tabular-nums">{boughtCount}</div>
+            <div className="text-[8px] text-slate-600">Bought</div>
           </div>
         </div>
 
-        <div>
-          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${spentPct}%`, background: team.primaryColor }} />
-          </div>
-          <div className="flex justify-between text-[9px] text-slate-600 mt-1">
-            <span>{Math.round(spentPct)}% utilized</span>
-            <span>{formatCurrency(team.purseValue)}</span>
-          </div>
+        {/* Progress bar */}
+        <div className="h-1 bg-slate-800/80 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${spentPct}%`, background: team.primaryColor }} />
+        </div>
+        <div className="flex justify-between text-[8px] text-slate-600 mt-1">
+          <span>{Math.round(spentPct)}% utilized</span>
+          <span>of {formatCurrency(team.purseValue)}</span>
         </div>
       </div>
     </div>

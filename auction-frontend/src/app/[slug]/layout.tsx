@@ -40,9 +40,17 @@ export default async function AuctionPublicLayout({
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen bg-mesh-gradient">
+      {/* Noise overlay */}
+      <div className="noise-overlay" />
+      
+      {/* Floating orbs */}
+      <div className="floating-orb floating-orb-amber w-[350px] h-[350px] top-[20%] right-[5%]" style={{ animationDelay: '0s' }} />
+      <div className="floating-orb floating-orb-purple w-[280px] h-[280px] top-[60%] left-[3%]" style={{ animationDelay: '8s' }} />
+      <div className="floating-orb floating-orb-cyan w-[300px] h-[300px] bottom-[5%] right-[15%]" style={{ animationDelay: '16s' }} />
+      
       {/* Auction header bar */}
-      <div className="border-b border-white/5 bg-slate-900/80 backdrop-blur-xl sticky top-16 z-30">
+      <div className="relative border-b border-white/5 bg-slate-900/80 backdrop-blur-xl sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between py-3 sm:py-4">
             <div className="flex items-center gap-3 min-w-0">
@@ -95,7 +103,9 @@ export default async function AuctionPublicLayout({
         </div>
       </div>
 
-      {children}
+      <div className="relative">
+        {children}
+      </div>
     </div>
   );
 }

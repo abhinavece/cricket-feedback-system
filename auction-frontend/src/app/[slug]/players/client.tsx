@@ -128,31 +128,31 @@ export function PlayersClient({ players, auctionName, slug, config, playerFields
   const cardFieldKeys = useMemo(() => configuredFields.filter(f => f.showOnCard).map(f => f.key), [configuredFields]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 flex items-center gap-2">
-          <UserCheck className="w-6 h-6 text-emerald-400" /> Players
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-1 flex items-center gap-2">
+          <UserCheck className="w-5 h-5 text-emerald-400" /> Players
         </h2>
-        <p className="text-slate-400 text-sm">
-          {players.length} player{players.length !== 1 ? 's' : ''} in {auctionName}
+        <p className="text-slate-500 text-sm">
+          {players.length} player{players.length !== 1 ? 's' : ''} in the pool
         </p>
       </div>
 
       {/* Status filter pills */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-1.5 mb-4">
         {STATUS_FILTERS.map(f => (
           <button
             key={f.key}
             onClick={() => setStatusFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all border ${
               statusFilter === f.key
                 ? `${f.bg} ${f.color} border-current/20`
-                : 'bg-slate-800/30 text-slate-500 border-white/5 hover:border-white/10'
+                : 'bg-slate-900/50 text-slate-500 border-white/[0.06] hover:border-white/10'
             }`}
           >
             {f.label}
-            <span className="ml-1.5 opacity-60">{statusCounts[f.key] || 0}</span>
+            <span className="ml-1 opacity-60 tabular-nums">{statusCounts[f.key] || 0}</span>
           </button>
         ))}
       </div>
@@ -231,65 +231,70 @@ export function PlayersClient({ players, auctionName, slug, config, playerFields
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => setSelectedPlayer(player)}
-                className={`glass-card-hover cursor-pointer overflow-hidden transition-all ${
-                  isSold ? 'border-emerald-500/10' : isUnsold ? 'border-orange-500/10' : ''
+                className={`group relative overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-xl border cursor-pointer transition-all duration-300 hover:shadow-lg ${
+                  isSold ? 'border-emerald-500/20 hover:border-emerald-500/30' : isUnsold ? 'border-orange-500/20 hover:border-orange-500/30' : 'border-white/[0.06] hover:border-white/15'
                 }`}
               >
-                {/* Status bar */}
+                {/* Status accent bar */}
                 <div className={`h-0.5 ${
                   isSold ? 'bg-emerald-500' : isUnsold ? 'bg-orange-500' : 'bg-blue-500/40'
                 }`} />
+                
+                {/* Hover glow */}
+                <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-20 h-10 opacity-0 group-hover:opacity-30 blur-xl transition-opacity pointer-events-none ${
+                  isSold ? 'bg-emerald-500' : isUnsold ? 'bg-orange-500' : 'bg-blue-500'
+                }`} />
 
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
+                <div className="relative p-3">
+                  <div className="flex items-start gap-2.5">
                     {/* Avatar */}
                     <PlayerAvatar
                       imageUrl={player.imageUrl}
                       name={player.name}
                       role={player.role}
-                      size="md"
+                      size="sm"
                       cropPosition={(player as any).imageCropPosition}
                     />
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs text-slate-600 font-mono">#{player.playerNumber}</span>
-                        <span className={`text-[10px] font-semibold ${rc.color}`}>{rc.label}</span>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] text-slate-600 font-mono">#{player.playerNumber}</span>
+                        <span className={`text-[9px] font-semibold ${rc.color}`}>{rc.label}</span>
                       </div>
-                      <h4 className="text-sm font-bold text-white truncate">{player.name}</h4>
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition-colors">{player.name}</h4>
 
                       {/* Status + sold info */}
                       {isSold && player.soldTo && (
                         <div className="flex items-center gap-1.5 mt-1">
                           <span
-                            className="w-4 h-4 rounded text-[7px] font-bold flex items-center justify-center text-white flex-shrink-0"
+                            className="w-3.5 h-3.5 rounded text-[6px] font-bold flex items-center justify-center text-white flex-shrink-0"
                             style={{ background: player.soldTo.primaryColor }}
                           >
                             {player.soldTo.shortName?.charAt(0)}
                           </span>
-                          <span className="text-[10px] text-slate-400 truncate">{player.soldTo.name}</span>
+                          <span className="text-[9px] text-slate-500 truncate">{player.soldTo.name}</span>
                           <span className="text-[10px] font-bold text-emerald-400 ml-auto flex-shrink-0">
                             {formatCurrency(player.soldAmount!)}
                           </span>
                         </div>
                       )}
                       {isUnsold && (
-                        <span className="text-[10px] text-orange-400 mt-1 inline-block">Unsold</span>
+                        <span className="text-[9px] text-orange-400 mt-1 inline-block">Unsold</span>
                       )}
                       {player.status === 'pool' && (
-                        <span className="text-[10px] text-blue-400/60 mt-1 inline-block">In Pool</span>
+                        <span className="text-[9px] text-blue-400/60 mt-1 inline-block">In Pool</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Custom fields preview */}
+                  {/* Custom fields preview - more compact */}
                   {cardFieldKeys.length > 0 && player.customFields && (
-                    <div className="mt-2.5 pt-2.5 border-t border-white/5 grid grid-cols-3 gap-1.5">
-                      {cardFieldKeys.map(k => {
+                    <div className="mt-2 pt-2 border-t border-white/5 flex flex-wrap gap-x-3 gap-y-0.5">
+                      {cardFieldKeys.slice(0, 3).map(k => {
                         const val = player.customFields?.[k];
-                        if (val === undefined || val === null || val === '') return <div key={k} />;
+                        if (val === undefined || val === null || val === '') return null;
                         return (
-                          <div key={k} className="text-[10px] truncate">
+                          <div key={k} className="text-[9px]">
                             <span className="text-slate-600">{fieldLabelMap[k] || k}: </span>
                             <span className="text-slate-400 font-medium">{String(val)}</span>
                           </div>
