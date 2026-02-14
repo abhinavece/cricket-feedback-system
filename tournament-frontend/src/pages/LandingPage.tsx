@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Trophy,
   Users,
@@ -18,6 +18,10 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+
+interface LandingPageProps {
+  embedded?: boolean; // When true, shown within authenticated Layout (hides nav)
+}
 
 // ---------- Animated Background ----------
 const ParticleCanvas: React.FC = () => {
@@ -219,16 +223,17 @@ const testimonials = [
 ];
 
 // ---------- Main Landing Page ----------
-const LandingPage: React.FC = () => {
+const LandingPage: React.FC<LandingPageProps> = ({ embedded = false }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Only redirect to dashboard if not embedded (standalone landing page)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !embedded) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, embedded]);
 
   const handleGetStarted = () => {
     const siteUrl = import.meta.env.VITE_SITE_URL || 'https://cricsmart.in';
@@ -237,8 +242,9 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen text-white overflow-x-hidden bg-broadcast-900">
-      {/* ==================== NAV ==================== */}
+    <div className={`${embedded ? '' : 'min-h-screen'} text-white overflow-x-hidden bg-broadcast-900`}>
+      {/* ==================== NAV (hidden when embedded in Layout) ==================== */}
+      {!embedded && (
       <nav className="fixed top-0 left-0 right-0 z-50 bg-broadcast-900/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -296,6 +302,7 @@ const LandingPage: React.FC = () => {
           </div>
         )}
       </nav>
+      )}
 
       {/* ==================== HERO ==================== */}
       <section className="relative min-h-[90vh] sm:min-h-screen flex items-center pt-16">

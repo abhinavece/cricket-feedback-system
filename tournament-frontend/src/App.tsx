@@ -7,6 +7,7 @@ import TournamentOnboarding from './components/TournamentOnboarding';
 
 // Lazy load pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const ExplorePage = lazy(() => import('./pages/ExplorePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -48,14 +49,13 @@ const App: React.FC = () => {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        {/* Landing page for unauthenticated users */}
+        {/* Public routes - no auth required */}
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth-callback" element={<AuthCallbackPage />} />
-        
-        {/* Public tournament view - no auth required */}
         <Route path="/share/tournament/:token" element={<PublicTournamentView />} />
         
+        {/* Protected routes with Layout */}
         <Route
           path="/"
           element={
@@ -64,7 +64,16 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         >
+          {/* Dashboard as index */}
           <Route index element={<DashboardPage />} />
+          
+          {/* Home - Landing page within authenticated layout */}
+          <Route path="home" element={<LandingPage embedded />} />
+          
+          {/* Explore - Browse public tournaments */}
+          <Route path="explore" element={<ExplorePage />} />
+          
+          {/* Tournament management */}
           <Route path="tournament/:tournamentId/*" element={<TournamentPage />} />
         </Route>
 

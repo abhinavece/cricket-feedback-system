@@ -45,6 +45,88 @@ const upload = multer({
 });
 
 // ============================================
+// PUBLIC TOURNAMENT ENDPOINTS (No Auth Required)
+// ============================================
+
+/**
+ * GET /api/tournaments/public
+ * List all publicly accessible tournaments (no auth required)
+ * Returns tournaments with status 'published', 'ongoing', or 'completed' that have a public token
+ */
+router.get('/public', async (req, res) => {
+  try {
+    const { page = 1, limit = 50, status } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = Math.min(parseInt(limit), 100);
+
+    // Query for public tournaments (not deleted, not draft, has public token)
+    const query = {
+      isDeleted: false,
+      isActive: true,
+      status: { $in: ['published', 'ongoing', 'completed'] },
+      publicToken: { $exists: true, $ne: null },
+    };
+
+    // Optional status filter
+    if (status && ['published', 'ongoing', 'completed'].includes(status)) {
+      query.status = status;
+    }
+
+    const tournaments = await Tournament.find(query)
+      .select('name slug description status startDate endDate branding settings stats publicToken createdAt')
+      .sort({ status: 1, startDate: -1, createdAt: -1 }) // ongoing first, then by date
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
+      .lean();
+
+    // Get player and franchise counts
+    const tournamentIds = tournaments.map(t => t._id);
+    
+    const [entryCounts, franchiseCounts] = await Promise.all([
+      TournamentEntry.aggregate([
+        { $match: { tournamentId: { $in: tournamentIds }, isDeleted: false } },
+        { $group: { _id: '$tournamentId', count: { $sum: 1 } } }
+      ]),
+      Franchise.aggregate([
+        { $match: { tournamentId: { $in: tournamentIds }, isDeleted: false } },
+        { $group: { _id: '$tournamentId', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const entryCountMap = entryCounts.reduce((acc, { _id, count }) => {
+      acc[_id.toString()] = count;
+      return acc;
+    }, {});
+    const franchiseCountMap = franchiseCounts.reduce((acc, { _id, count }) => {
+      acc[_id.toString()] = count;
+      return acc;
+    }, {});
+
+    const tournamentsWithStats = tournaments.map(t => ({
+      ...t,
+      playerCount: entryCountMap[t._id.toString()] || 0,
+      franchiseCount: franchiseCountMap[t._id.toString()] || 0
+    }));
+
+    const total = await Tournament.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: tournamentsWithStats,
+      pagination: {
+        current: pageNum,
+        pages: Math.ceil(total / limitNum),
+        total,
+        hasMore: (pageNum * limitNum) < total
+      }
+    });
+  } catch (error) {
+    console.error('Error listing public tournaments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // TOURNAMENT CRUD OPERATIONS
 // ============================================
 

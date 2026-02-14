@@ -6,6 +6,8 @@ import {
   User,
   ChevronDown,
   LayoutDashboard,
+  Home,
+  Compass,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTournament } from '../contexts/TournamentContext';
@@ -28,8 +30,8 @@ const Layout: React.FC = () => {
       <header className="sticky top-0 z-50 bg-broadcast-800/95 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-14">
-            {/* Logo - Redirect to cricsmart.in */}
-            <a href="https://cricsmart.in" className="flex items-center gap-3 group cursor-pointer">
+            {/* Logo - Link to tournament homepage */}
+            <Link to="/" className="flex items-center gap-3 group cursor-pointer">
               <div className="relative w-9 h-9 group-hover:scale-110 transition-transform duration-300">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -37,14 +39,14 @@ const Layout: React.FC = () => {
                 </div>
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-display text-lg tracking-wide text-white group-hover:text-emerald-400 transition-colors">
+                <h1 className="font-display text-lg tracking-wide text-white group-hover:text-violet-400 transition-colors">
                   CricSmart
                 </h1>
-                <p className="text-[10px] font-heading uppercase tracking-widest text-emerald-400 -mt-1">
-                  AI Cricket Platform
+                <p className="text-[10px] font-heading uppercase tracking-widest text-violet-400 -mt-1">
+                  Tournaments
                 </p>
               </div>
-            </a>
+            </Link>
 
             {/* Center - Current tournament name */}
             {currentTournament && (
@@ -56,18 +58,45 @@ const Layout: React.FC = () => {
               </div>
             )}
 
+            {/* Center Navigation Links */}
+            <nav className="hidden md:flex items-center gap-1">
+              <Link
+                to="/home"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === '/home'
+                    ? 'text-violet-400 bg-violet-500/10'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                Home
+              </Link>
+              <Link
+                to="/explore"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === '/explore'
+                    ? 'text-violet-400 bg-violet-500/10'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Compass className="w-4 h-4" />
+                Explore
+              </Link>
+              <Link
+                to="/"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === '/' || location.pathname.startsWith('/tournament')
+                    ? 'text-violet-400 bg-violet-500/10'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+            </nav>
+
             {/* Right - User menu */}
             <div className="flex items-center gap-3">
-              {/* Dashboard link */}
-              {location.pathname !== '/' && (
-                <Link
-                  to="/"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span className="hidden sm:inline text-sm font-medium">Dashboard</span>
-                </Link>
-              )}
 
               {/* User dropdown */}
               <div className="relative">
@@ -125,7 +154,7 @@ const Layout: React.FC = () => {
       </main>
 
       {/* Footer accent line */}
-      <div className="fixed bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent-500/50 to-transparent pointer-events-none" />
+      <div className="fixed bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-violet-500/50 to-transparent pointer-events-none" />
     </div>
   );
 };
