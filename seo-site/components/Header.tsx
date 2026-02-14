@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle, Trophy, Gavel, Mail, Zap, Users } from 'lucide-react';
+import { Menu, X, LogIn, Compass, Info, Sparkles, Brain, BookOpen, Calculator, HelpCircle, Trophy, Gavel, Mail, Zap, Users, ChevronDown, Package } from 'lucide-react';
 import { siteConfig } from '@/lib/api';
 
 interface HeaderProps {
@@ -13,6 +13,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onLogin }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProductsOpen, setIsProductsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -53,10 +54,13 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
     }
   };
 
+  const productLinks = [
+    { label: 'CricSmart Teams', href: '/cricket-team-management', icon: <Users className="w-4 h-4" />, description: 'AI team management with WhatsApp' },
+    { label: 'CricSmart Tournament', href: '/cricket-tournament-management', icon: <Trophy className="w-4 h-4" />, description: 'Pro tournament organization' },
+    { label: 'CricSmart Auction', href: '/cricket-player-auction', icon: <Gavel className="w-4 h-4" />, description: 'IPL-style live bidding' },
+  ];
+
   const navLinks = [
-    { label: 'Features', href: '/features', icon: <Zap className="w-4 h-4" /> },
-    { label: 'Tournament', href: '/tournament', icon: <Trophy className="w-4 h-4" /> },
-    { label: 'Auction', href: '/auction', icon: <Gavel className="w-4 h-4" /> },
     { label: 'Tools', href: '/tools', icon: <Calculator className="w-4 h-4" /> },
     { label: 'Pricing', href: '/pricing', icon: <Sparkles className="w-4 h-4" /> },
     { label: 'About', href: '/about', icon: <Users className="w-4 h-4" /> },
@@ -107,6 +111,66 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
 
             {/* Desktop navigation */}
             <div className="hidden md:flex items-center gap-6">
+              {/* Products Dropdown */}
+              <div 
+                className="relative"
+                onMouseEnter={() => setIsProductsOpen(true)}
+                onMouseLeave={() => setIsProductsOpen(false)}
+              >
+                <button className="flex items-center gap-1 text-slate-300 hover:text-white transition-colors font-medium text-sm">
+                  Products
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isProductsOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {/* Dropdown Menu - Premium Design */}
+                <div className={`absolute top-full left-0 pt-3 transition-all duration-300 ${isProductsOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+                  <div className="bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/50 min-w-[320px] p-3 overflow-hidden">
+                    {/* Gradient accent at top */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-violet-500 to-amber-500" />
+                    
+                    <div className="space-y-1">
+                      {productLinks.map((product, index) => {
+                        const gradients = [
+                          'from-emerald-500/20 to-cyan-500/10',
+                          'from-violet-500/20 to-purple-500/10', 
+                          'from-amber-500/20 to-orange-500/10'
+                        ];
+                        const iconColors = ['text-emerald-400', 'text-violet-400', 'text-amber-400'];
+                        const hoverBorders = ['hover:border-emerald-500/40', 'hover:border-violet-500/40', 'hover:border-amber-500/40'];
+                        
+                        return (
+                          <Link
+                            key={product.label}
+                            href={product.href}
+                            className={`flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r ${gradients[index]} border border-transparent ${hoverBorders[index]} transition-all duration-200 group hover:scale-[1.02]`}
+                          >
+                            <div className={`w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center ${iconColors[index]} group-hover:scale-110 transition-transform`}>
+                              {product.icon}
+                            </div>
+                            <div className="flex-1">
+                              <div className={`font-semibold text-white group-hover:${iconColors[index]} transition-colors`}>
+                                {product.label}
+                              </div>
+                              <div className="text-xs text-slate-400 mt-0.5">{product.description}</div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="border-t border-slate-700/50 mt-3 pt-3">
+                      <Link
+                        href="/products"
+                        className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors text-sm text-slate-300 hover:text-white font-medium"
+                      >
+                        <Package className="w-4 h-4" />
+                        View All Products
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
@@ -175,6 +239,27 @@ const Header: React.FC<HeaderProps> = ({ onLogin }) => {
 
           {/* Drawer content */}
           <div className="p-4 space-y-2">
+            {/* Products Section */}
+            <div className="pb-2 mb-2 border-b border-white/10">
+              <div className="px-3 py-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                Products
+              </div>
+              {productLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+                >
+                  <span className="text-emerald-400">{link.icon}</span>
+                  <div>
+                    <div className="font-medium">{link.label}</div>
+                    <div className="text-xs text-slate-500">{link.description}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            
             {navLinks.map((link) => (
               <Link
                 key={link.label}

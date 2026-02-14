@@ -19,45 +19,61 @@ pathMatchers:
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-frontend
     routeRules:
       - matchRules:
-          - prefixMatch: /api/
+          - prefixMatch: /socket.io/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 1
       - matchRules:
-          - prefixMatch: /api
+          - prefixMatch: /api/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 2
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 3
   - name: homepage-paths
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-seo-site
     routeRules:
       - matchRules:
-          - prefixMatch: /api/
+          - prefixMatch: /socket.io/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 1
       - matchRules:
-          - prefixMatch: /api
+          - prefixMatch: /api/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 2
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 3
   - name: tournament-paths
-    # Tournament frontend for static files, SAME backend API for /api/*
+    # Tournament frontend for static files, SAME backend API for /api/* and /socket.io/*
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-tournament-frontend
     routeRules:
       - matchRules:
-          - prefixMatch: /api/
+          - prefixMatch: /socket.io/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 1
       - matchRules:
-          - prefixMatch: /api
+          - prefixMatch: /api/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 2
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 3
   - name: auction-paths
-    # Auction frontend for static files, SAME backend API for /api/*
+    # Auction frontend for static files, SAME backend API for /api/* and /socket.io/*
     defaultService: projects/cricsmart/global/backendServices/cricsmart-backend-auction-frontend
     routeRules:
       - matchRules:
-          - prefixMatch: /api/
+          - prefixMatch: /socket.io/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 1
       - matchRules:
-          - prefixMatch: /api
+          - prefixMatch: /api/
         service: projects/cricsmart/global/backendServices/cricsmart-backend-api
         priority: 2
+      - matchRules:
+          - prefixMatch: /api
+        service: projects/cricsmart/global/backendServices/cricsmart-backend-api
+        priority: 3

@@ -4,8 +4,8 @@ module.exports = {
   generateRobotsTxt: true,
   generateIndexSitemap: true,
   
-  // Exclude admin and API routes
-  exclude: ['/admin/*', '/api/*', '/_next/*', '/server-sitemap.xml', '/auth/callback'],
+  // Exclude admin, API, and auth routes (save crawl budget)
+  exclude: ['/admin/*', '/api/*', '/_next/*', '/server-sitemap.xml', '/auth/*'],
   
   // Robots.txt configuration
   robotsTxtOptions: {
@@ -13,7 +13,7 @@ module.exports = {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/_next/'],
+        disallow: ['/api/', '/admin/', '/_next/', '/auth/'],
       },
     ],
     additionalSitemaps: [
@@ -23,8 +23,8 @@ module.exports = {
   
   // Transform function for custom priority and changefreq
   transform: async (config, path) => {
-    // High priority for main pages
-    const highPriorityPaths = ['/', '/glossary', '/tools', '/grounds', '/faq', '/pricing', '/features', '/tournament', '/auction', '/contact'];
+    // High priority for main pages (using new keyword-rich URLs)
+    const highPriorityPaths = ['/', '/products', '/glossary', '/tools', '/grounds', '/faq', '/pricing', '/cricket-team-management', '/cricket-tournament-management', '/cricket-player-auction', '/contact'];
     const mediumPriorityPaths = ['/about', '/privacy', '/blog', '/learn', '/auth/login'];
     
     let priority = 0.7;

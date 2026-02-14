@@ -1,0 +1,16 @@
+# *
+User-agent: *
+Allow: /
+
+# *
+User-agent: *
+Disallow: /admin
+Disallow: /auth-callback
+Disallow: /bid
+
+# Host
+Host: http://localhost:3003
+
+# Sitemaps
+Sitemap: http://localhost:3003/sitemap.xml
+Sitemap: http://localhost:3003/server-sitemap.xml

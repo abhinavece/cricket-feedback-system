@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@types/nodemailer": "^7.0.9",
+    "framer-motion": "^12.34.0",
     "lucide-react": "^0.400.0",
     "next": "^14.2.0",
     "nodemailer": "^8.0.1",

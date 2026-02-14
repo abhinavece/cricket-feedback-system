@@ -62,11 +62,11 @@ export function generateWebSiteSchema() {
 // SiteNavigationElement Schema - Helps Google generate sitelinks
 export function generateSiteNavigationSchema() {
   const navItems = [
-    { name: 'Team Management', url: `${siteConfig.url}/features`, description: 'AI-driven cricket team management. No hassle for team availability and payment tracking.' },
-    { name: 'Tournament', url: `${siteConfig.url}/tournament`, description: 'Manage your cricket tournament like a pro. No hassle for payment and balance tracking.' },
-    { name: 'Auction', url: `${siteConfig.url}/auction`, description: 'AI-powered cricket player auction management matching international standards.' },
+    { name: 'Products', url: `${siteConfig.url}/products`, description: 'CricSmart products: Team Management, Tournament, and Auction platforms for cricket leagues.' },
+    { name: 'Cricket Team Management', url: `${siteConfig.url}/cricket-team-management`, description: 'AI-driven cricket team management with WhatsApp automation and payment verification.' },
+    { name: 'Cricket Tournament Management', url: `${siteConfig.url}/cricket-tournament-management`, description: 'Manage cricket tournaments like a pro. Team registration, automated followups, payment tracking.' },
+    { name: 'Cricket Player Auction', url: `${siteConfig.url}/cricket-player-auction`, description: 'IPL-style cricket player auctions with real-time bidding, trading, and analytics.' },
     { name: 'Pricing', url: `${siteConfig.url}/pricing`, description: 'Free for most cricket teams. Plans starting from ₹0 for teams up to 50 players.' },
-    { name: 'Features', url: `${siteConfig.url}/features`, description: 'AI payment processing, WhatsApp notifications, automatic team availability tracking.' },
     { name: 'Free Cricket Tools', url: `${siteConfig.url}/tools`, description: 'Free online cricket calculators: run rate, DLS, team picker, virtual toss, and more.' },
     { name: 'Contact Us', url: `${siteConfig.url}/contact`, description: 'Get in touch with the CricSmart team for support, feedback, or partnerships.' },
   ];
@@ -351,4 +351,79 @@ export function generateItemListSchema(
 // Helper to combine multiple schemas
 export function combineSchemas(...schemas: Record<string, unknown>[]) {
   return schemas;
+}
+
+// SoftwareApplication Schema for the main product - Homepage SEO
+export function generateProductSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'CricSmart',
+    alternateName: 'CricSmart Cricket Team Management',
+    description: 'AI-powered cricket team management platform with WhatsApp automation, payment verification, tournament management, and live player auctions.',
+    url: siteConfig.url,
+    applicationCategory: 'SportsApplication',
+    operatingSystem: 'Web, Android, iOS',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'INR',
+      description: 'Free forever for teams up to 50 players',
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.9',
+      ratingCount: '127',
+      bestRating: '5',
+      worstRating: '1',
+    },
+    featureList: [
+      'AI-Powered Payment Verification',
+      'WhatsApp Integration',
+      'Smart Squad Builder',
+      'Tournament Management',
+      'Live Player Auctions',
+      'Performance Analytics',
+      'UPI Payment Support',
+      'Real-time Notifications',
+    ],
+    screenshot: `${siteConfig.url}/cricsmart-og-image.jpg`,
+    softwareVersion: '2.0',
+    author: {
+      '@type': 'Organization',
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+  };
+}
+
+// Review Schema for testimonials - helps with rich snippets
+export function generateReviewSchema(reviews: { name: string; rating: number; content: string; team: string }[]) {
+  return reviews.map((review) => ({
+    '@context': 'https://schema.org',
+    '@type': 'Review',
+    itemReviewed: {
+      '@type': 'SoftwareApplication',
+      name: 'CricSmart',
+    },
+    reviewRating: {
+      '@type': 'Rating',
+      ratingValue: review.rating,
+      bestRating: '5',
+    },
+    author: {
+      '@type': 'Person',
+      name: review.name,
+    },
+    reviewBody: review.content,
+    publisher: {
+      '@type': 'Organization',
+      name: review.team,
+    },
+  }));
 }

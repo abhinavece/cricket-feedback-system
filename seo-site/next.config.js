@@ -73,6 +73,22 @@ const nextConfig = {
         destination: 'https://cricsmart.in/:path*',
         permanent: true,
       },
+      // 301 redirects for old product URLs (preserve backlinks)
+      {
+        source: '/features',
+        destination: '/cricket-team-management',
+        permanent: true,
+      },
+      {
+        source: '/tournament',
+        destination: '/cricket-tournament-management',
+        permanent: true,
+      },
+      {
+        source: '/auction',
+        destination: '/cricket-player-auction',
+        permanent: true,
+      },
     ];
   },
 };

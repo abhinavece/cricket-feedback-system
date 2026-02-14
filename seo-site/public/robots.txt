@@ -4,10 +4,11 @@ Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /_next/
+Disallow: /auth/
 
 # Host
-Host: https://cricsmart.in
+Host: http://localhost:3001
 
 # Sitemaps
-Sitemap: https://cricsmart.in/sitemap.xml
+Sitemap: http://localhost:3001/sitemap.xml
 Sitemap: https://cricsmart.in/server-sitemap.xml

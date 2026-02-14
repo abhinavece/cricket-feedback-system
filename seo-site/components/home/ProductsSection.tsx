@@ -15,7 +15,9 @@ const products = [
     borderHover: 'hover:border-emerald-500/40',
     iconBg: 'bg-emerald-500/10',
     iconColor: 'text-emerald-400',
-    href: '/features',
+    bgOverlay: 'from-emerald-500/10 via-cyan-500/5 to-transparent',
+    chipStyle: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
+    href: '/cricket-team-management',
     loginHref: '/auth/login?redirect=https%3A%2F%2Fapp.cricsmart.in&service=team',
     cta: 'Start Managing',
     highlights: ['AI Payment Verification', 'WhatsApp Automation', 'Smart Squad Builder', 'Match Analytics'],
@@ -30,7 +32,9 @@ const products = [
     borderHover: 'hover:border-violet-500/40',
     iconBg: 'bg-violet-500/10',
     iconColor: 'text-violet-400',
-    href: '/tournament',
+    bgOverlay: 'from-violet-500/12 via-purple-500/8 to-transparent',
+    chipStyle: 'bg-violet-500/10 border-violet-500/20 text-violet-300',
+    href: '/cricket-tournament-management',
     loginHref: '/auth/login?redirect=https%3A%2F%2Ftournament.cricsmart.in&service=tournament',
     cta: 'Create Tournament',
     highlights: ['Team Registration', 'Live Scoring', 'Payment Tracking', 'Leaderboards'],
@@ -45,7 +49,9 @@ const products = [
     borderHover: 'hover:border-amber-500/40',
     iconBg: 'bg-amber-500/10',
     iconColor: 'text-amber-400',
-    href: '/auction',
+    bgOverlay: 'from-amber-500/12 via-orange-500/8 to-transparent',
+    chipStyle: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
+    href: '/cricket-player-auction',
     loginHref: '/auth/login?redirect=https%3A%2F%2Fauction.cricsmart.in&service=auction',
     cta: 'Start Auction',
     highlights: ['AI Player Valuation', 'Live Bidding Room', 'Budget Management', 'Spectator Mode'],
@@ -83,48 +89,53 @@ const ProductsSection: React.FC = () => {
           {products.map((product) => (
             <div
               key={product.title}
-              className={`group relative bg-slate-800/30 backdrop-blur-sm border border-white/10 rounded-2xl p-6 lg:p-8 transition-all duration-300 hover:scale-[1.02] ${product.borderHover} hover:shadow-xl ${product.shadowColor}`}
+              className={`group relative overflow-hidden bg-slate-800/30 backdrop-blur-sm border border-white/10 rounded-2xl p-6 lg:p-8 transition-all duration-300 hover:scale-[1.02] ${product.borderHover} hover:shadow-xl ${product.shadowColor}`}
             >
-              {/* Icon */}
-              <div className={`w-14 h-14 ${product.iconBg} rounded-2xl flex items-center justify-center mb-5 ${product.iconColor} group-hover:scale-110 transition-transform`}>
-                <product.icon className="w-7 h-7" />
-              </div>
+              <div className={`absolute inset-0 bg-gradient-to-br ${product.bgOverlay} opacity-80`} />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
 
-              {/* Content */}
-              <h3 className="text-xl font-black text-white mb-1">{product.title}</h3>
-              <p className={`text-sm font-medium mb-3 bg-gradient-to-r ${product.gradient} bg-clip-text text-transparent`}>
-                {product.subtitle}
-              </p>
-              <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                {product.description}
-              </p>
+              <div className="relative">
+                {/* Icon */}
+                <div className={`w-14 h-14 ${product.iconBg} rounded-2xl flex items-center justify-center mb-5 ${product.iconColor} group-hover:scale-110 transition-transform`}>
+                  <product.icon className="w-7 h-7" />
+                </div>
 
-              {/* Highlights */}
-              <div className="space-y-2 mb-6">
-                {product.highlights.map((h) => (
-                  <div key={h} className="flex items-center gap-2 text-sm text-slate-300">
-                    <CheckCircle2 className={`w-4 h-4 ${product.iconColor} flex-shrink-0`} />
-                    {h}
-                  </div>
-                ))}
-              </div>
+                {/* Content */}
+                <h3 className="text-xl font-black text-white mb-1">{product.title}</h3>
+                <div className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium mb-3 ${product.chipStyle}`}>
+                  {product.subtitle}
+                </div>
+                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                  {product.description}
+                </p>
 
-              {/* CTA Buttons */}
-              <div className="flex flex-col gap-2 mt-auto">
-                <Link
-                  href={product.loginHref}
-                  className={`flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r ${product.gradient} text-white font-semibold rounded-xl transition-all hover:shadow-lg ${product.shadowColor} hover:scale-[1.01]`}
-                >
-                  {product.cta}
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  href={product.href}
-                  className="flex items-center justify-center gap-1 w-full py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-                >
-                  Learn More about {product.title}
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                {/* Highlights */}
+                <div className="space-y-2 mb-6">
+                  {product.highlights.map((h) => (
+                    <div key={h} className="flex items-center gap-2 text-sm text-slate-300">
+                      <CheckCircle2 className={`w-4 h-4 ${product.iconColor} flex-shrink-0`} />
+                      {h}
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA Buttons */}
+                <div className="flex flex-col gap-2 mt-auto">
+                  <Link
+                    href={product.loginHref}
+                    className={`flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r ${product.gradient} text-white font-semibold rounded-xl transition-all hover:shadow-lg ${product.shadowColor} hover:scale-[1.01]`}
+                  >
+                    {product.cta}
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href={product.href}
+                    className="flex items-center justify-center gap-1 w-full py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
+                  >
+                    Learn More about {product.title}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
