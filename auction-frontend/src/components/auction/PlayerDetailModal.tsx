@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PLAYER_ROLES } from '@/lib/constants';
 import { X, ExternalLink } from 'lucide-react';
@@ -57,7 +58,7 @@ export default function PlayerDetailModal({ player, onClose, customFieldKeys, fi
   // Derive custom field keys from player data if not provided
   const fieldKeys = customFieldKeys || (player.customFields ? Object.keys(player.customFields) : []);
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -167,4 +168,8 @@ export default function PlayerDetailModal({ player, onClose, customFieldKeys, fi
       </motion.div>
     </AnimatePresence>
   );
+
+  // Render via portal to escape parent stacking contexts
+  if (typeof window === 'undefined') return modalContent;
+  return createPortal(modalContent, document.body);
 }

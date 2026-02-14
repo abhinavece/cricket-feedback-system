@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 
@@ -65,7 +66,8 @@ export default function ConfirmModal({
 
   const v = VARIANTS[variant];
 
-  return (
+  // Use portal to escape parent stacking contexts (e.g., glass-card with backdrop-blur)
+  const modalContent = (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -134,4 +136,8 @@ export default function ConfirmModal({
       )}
     </AnimatePresence>
   );
+
+  // Render to document.body via portal (client-side only)
+  if (typeof window === 'undefined') return modalContent;
+  return createPortal(modalContent, document.body);
 }
