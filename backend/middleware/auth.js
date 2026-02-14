@@ -127,7 +127,25 @@ const auth = async (req, res, next) => {
 };
 
 /**
+ * Middleware: Require Platform Admin Role
+ * Use this for platform-level operations (user management, etc.)
+ * Checks User.platformRole field
+ */
+const requirePlatformAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (req.user.platformRole !== 'platform_admin') {
+    return res.status(403).json({ error: 'Platform admin privileges required' });
+  }
+  next();
+};
+
+/**
  * Middleware: Require Admin Role
+ * @deprecated Use requireOrgAdmin from tenantResolver.js for org-scoped checks,
+ * or requirePlatformAdmin for platform-level operations.
+ * This checks the legacy User.role field.
  */
 const requireAdmin = (req, res, next) => {
   if (!req.user) {
@@ -141,6 +159,8 @@ const requireAdmin = (req, res, next) => {
 
 /**
  * Middleware: Require Editor or Admin Role (blocks viewers)
+ * @deprecated Use requireOrgEditor from tenantResolver.js for org-scoped checks.
+ * This checks the legacy User.role field.
  */
 const requireEditor = (req, res, next) => {
   if (!req.user) {
@@ -152,4 +172,4 @@ const requireEditor = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, requireAdmin, requireEditor };
+module.exports = { auth, requireAdmin, requireEditor, requirePlatformAdmin };

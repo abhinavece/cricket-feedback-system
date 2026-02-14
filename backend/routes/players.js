@@ -291,7 +291,7 @@ router.get('/:id/feedback', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const playerId = req.params.id;
-    const userRole = req.organizationRole || req.user.role;
+    const userRole = req.organizationRole || 'viewer';
 
     // Find player within organization
     const player = await Player.findOne(tenantQuery(req, { _id: playerId }));

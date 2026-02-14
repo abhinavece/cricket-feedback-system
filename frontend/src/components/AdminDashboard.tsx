@@ -83,7 +83,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     message: '',
     onConfirm: () => {}
   });
-  const { user, isViewer } = useAuth();
+  const { user, isViewer, isAdmin } = useAuth();
 
   const fetchData = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
@@ -384,7 +384,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               Feedback
             </button>
-            {user?.role === 'admin' && (
+            {isAdmin() && (
               <button
                 onClick={() => { setActiveTab('whatsapp'); onTabChange?.('whatsapp'); }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -442,7 +442,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 setActiveTab(tab as typeof activeTab);
                 onTabChange?.(tab as typeof activeTab);
               })}
-              userRole={user?.role}
+              userRole={user?.organizationRole || user?.role}
               className="flex-shrink-0"
             />
           </nav>
@@ -462,7 +462,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </svg>
               <span className="hidden sm:inline">Feedback</span>
             </button>
-            {user?.role === 'admin' && (
+            {isAdmin() && (
               <button
                 onClick={() => setActiveTab('whatsapp')}
                 className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
@@ -503,7 +503,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </svg>
               <span className="hidden sm:inline">Pay</span>
             </button>
-            {user?.role === 'admin' && (
+            {isAdmin() && (
               <button
                 onClick={() => setActiveTab('users')}
                 className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
@@ -815,7 +815,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
           </>
         )}
-        {activeTab === 'whatsapp' && user?.role === 'admin' && (
+        {activeTab === 'whatsapp' && isAdmin() && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <WhatsAppMessagingTab />
           </Suspense>
@@ -840,7 +840,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <HistoryTab />
           </Suspense>
         )}
-        {activeTab === 'analytics' && user?.role === 'admin' && (
+        {activeTab === 'analytics' && isAdmin() && (
           <Suspense fallback={<TabLoadingSpinner />}>
             <WhatsAppAnalyticsTab />
           </Suspense>

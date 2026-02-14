@@ -258,9 +258,10 @@ router.get('/summary', auth, resolveTenant, async (req, res) => {
     const total = await Feedback.countDocuments(tenantQuery(req, { isDeleted: false }));
     const hasMore = (pageNum * limitNum) < total;
 
-    // Redact playerName for viewer role
-    console.log('[Feedback Summary] User:', req.user.email, 'Role:', req.user.role, '- Redacting:', req.user.role === 'viewer');
-    const redactedFeedback = redactFeedbackList(feedback, req.user.role);
+    // Redact playerName for viewer role - use organizationRole (set by resolveTenant middleware)
+    const userRole = req.organizationRole || 'viewer';
+    console.log('[Feedback Summary] User:', req.user.email, 'OrgRole:', userRole, '- Redacting:', userRole === 'viewer');
+    const redactedFeedback = redactFeedbackList(feedback, userRole);
 
     res.json({
       feedback: redactedFeedback,
@@ -299,8 +300,8 @@ router.get('/trash', auth, resolveTenant, async (req, res) => {
     const total = await Feedback.countDocuments(tenantQuery(req, { isDeleted: true }));
     const hasMore = (pageNum * limitNum) < total;
 
-    // Redact playerName for viewer role
-    const redactedFeedback = redactFeedbackList(deletedFeedback, req.user.role);
+    // Redact playerName for viewer role - use organizationRole (set by resolveTenant middleware)
+    const redactedFeedback = redactFeedbackList(deletedFeedback, req.organizationRole || 'viewer');
 
     res.json({
       feedback: redactedFeedback,
@@ -326,8 +327,8 @@ router.get('/:id', auth, resolveTenant, async (req, res) => {
       return res.status(404).json({ error: 'Feedback not found' });
     }
 
-    // Redact playerName for viewer role
-    const redactedFeedback = redactFeedbackItem(feedback, req.user.role);
+    // Redact playerName for viewer role - use organizationRole (set by resolveTenant middleware)
+    const redactedFeedback = redactFeedbackItem(feedback, req.organizationRole || 'viewer');
 
     res.json(redactedFeedback);
   } catch (error) {
@@ -357,8 +358,8 @@ router.get('/', auth, resolveTenant, async (req, res) => {
     const total = await Feedback.countDocuments(tenantQuery(req, { isDeleted: false }));
     const hasMore = (pageNum * limitNum) < total;
 
-    // Redact playerName for viewer role
-    const redactedFeedback = redactFeedbackList(feedback, req.user.role);
+    // Redact playerName for viewer role - use organizationRole (set by resolveTenant middleware)
+    const redactedFeedback = redactFeedbackList(feedback, req.organizationRole || 'viewer');
 
     res.json({
       feedback: redactedFeedback,

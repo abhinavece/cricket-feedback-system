@@ -7,7 +7,9 @@ interface User {
   email: string;
   name: string;
   avatar?: string;
-  role: 'viewer' | 'editor' | 'admin';
+  role: 'viewer' | 'editor' | 'admin'; // DEPRECATED - kept for backward compatibility
+  organizationRole?: 'viewer' | 'editor' | 'admin' | null; // NEW - user's role in active organization
+  platformRole?: 'user' | 'platform_admin'; // For platform-level operations
   lastLogin?: string;
   createdAt?: string;
   hasOrganizations?: boolean;
@@ -115,6 +117,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('authUser', JSON.stringify(updatedUser));
   };
 
+  // Get effective role: prefer organizationRole, fallback to legacy role
+  const getEffectiveRole = (): 'viewer' | 'editor' | 'admin' => {
+    return user?.organizationRole || user?.role || 'viewer';
+  };
+
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
 
@@ -124,19 +131,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       admin: ['submit_feedback', 'view_dashboard', 'edit_feedback', 'manage_users', 'delete_feedback'],
     };
 
-    return permissions[user.role]?.includes(permission) || false;
+    const effectiveRole = getEffectiveRole();
+    return permissions[effectiveRole]?.includes(permission) || false;
   };
 
   const canEdit = (): boolean => {
-    return user?.role === 'admin' || user?.role === 'editor';
+    const effectiveRole = getEffectiveRole();
+    return effectiveRole === 'admin' || effectiveRole === 'editor';
   };
 
   const isAdmin = (): boolean => {
-    return user?.role === 'admin';
+    const effectiveRole = getEffectiveRole();
+    return effectiveRole === 'admin';
   };
 
   const isViewer = (): boolean => {
-    return user?.role === 'viewer';
+    const effectiveRole = getEffectiveRole();
+    return effectiveRole === 'viewer';
   };
 
   const value: AuthContextType = {

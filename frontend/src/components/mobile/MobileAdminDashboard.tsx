@@ -54,7 +54,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(propActiveTab);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
-  const { user, hasPermission, logout } = useAuth();
+  const { user, hasPermission, logout, isViewer } = useAuth();
 
   useEffect(() => {
     setActiveTab(propActiveTab);
@@ -95,11 +95,11 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
   ];
 
   const visibleTabs = mainTabs;
-  const isViewer = user?.role === 'viewer';
+  const isViewerRole = isViewer(); // Used for conditional rendering
 
   const adminMenuItems = getMobileAdminMenuItems(
     (tab) => handleTabChange(tab as TabId),
-    user?.role
+    user?.organizationRole || user?.role
   );
 
   const handleLogout = () => {
@@ -124,7 +124,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
   }
 
   // Show profile setup for viewers without profile (except admins)
-  if (isViewer && profileComplete === false && activeTab !== 'settings') {
+  if (isViewer() && profileComplete === false && activeTab !== 'settings') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
         <Suspense fallback={<TabLoadingSpinner />}>
@@ -141,7 +141,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
   // Show contact page only for viewers trying to access admin-only tabs
   // Viewers CAN access: feedback, matches, payments, grounds, player-history, team, settings
   const viewerAccessibleTabs = ['feedback', 'matches', 'payments', 'grounds', 'player-history', 'team', 'settings'];
-  if (isViewer && !viewerAccessibleTabs.includes(activeTab)) {
+  if (isViewer() && !viewerAccessibleTabs.includes(activeTab)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
         <Suspense fallback={<TabLoadingSpinner />}>
@@ -200,7 +200,7 @@ const MobileAdminDashboard: React.FC<MobileAdminDashboardProps> = ({
           })}
           <AdminMenu
             items={adminMenuItems}
-            userRole={user?.role}
+            userRole={user?.organizationRole || user?.role}
             variant="mobile"
           />
         </div>

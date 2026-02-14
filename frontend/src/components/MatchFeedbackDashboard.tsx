@@ -67,7 +67,7 @@ interface MatchFeedbackDashboardProps {
 }
 
 const MatchFeedbackDashboard: React.FC<MatchFeedbackDashboardProps> = ({ matchId, matchOpponent }) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [feedbackLink, setFeedbackLink] = useState<FeedbackLinkInfo | null>(null);
@@ -177,12 +177,12 @@ const MatchFeedbackDashboard: React.FC<MatchFeedbackDashboardProps> = ({ matchId
     );
   }
 
-  const isAdmin = user?.role === 'admin';
+  const isAdminRole = isAdmin();
 
   return (
     <div className="space-y-4">
       {/* Feedback Link Section (Admin Only) */}
-      {isAdmin && (
+      {isAdminRole && (
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl p-4 border border-white/10">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -384,7 +384,7 @@ const MatchFeedbackDashboard: React.FC<MatchFeedbackDashboardProps> = ({ matchId
           <MessageSquare className="w-10 h-10 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400 mb-1">No feedback yet</p>
           <p className="text-xs text-slate-500">
-            {isAdmin
+            {isAdminRole
               ? 'Generate a feedback link and share it with players to collect feedback.'
               : 'Feedback will appear here once players submit their responses.'}
           </p>

@@ -67,8 +67,6 @@ router.post('/', auth, async (req, res) => {
     // Add user as owner of the organization
     req.user.addToOrganization(organization._id, 'owner');
     req.user.activeOrganizationId = organization._id;
-    // Update legacy role field to admin for backward compatibility
-    req.user.role = 'admin';
     await req.user.save();
 
     // Update organization stats

@@ -48,7 +48,7 @@ const PLAYER_ROLES = [
 ];
 
 const SettingsPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -301,7 +301,7 @@ const SettingsPage: React.FC = () => {
             <div className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-700/30 rounded-lg mb-6">
               <Shield className="w-4 h-4 text-emerald-400" />
               <span className="text-sm text-slate-300">Role:</span>
-              <span className="text-sm font-medium text-emerald-400 capitalize">{profile?.user?.role}</span>
+              <span className="text-sm font-medium text-emerald-400 capitalize">{(profile?.user as any)?.organizationRole || profile?.user?.role}</span>
             </div>
 
             <button
@@ -577,7 +577,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Developer Tools - Visible to all admins, but only master can edit */}
-      {(user?.role === 'admin') && (
+      {isAdmin() && (
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Developer Tools</h2>
           <DeveloperSettings isMasterDeveloper={isMasterDeveloper} />
@@ -585,7 +585,7 @@ const SettingsPage: React.FC = () => {
       )}
 
       {/* View Analytics - Admin only, at the bottom before deployment info */}
-      {(user?.role === 'admin') && (
+      {isAdmin() && (
         <div className="mt-8">
           <ViewAnalytics />
         </div>

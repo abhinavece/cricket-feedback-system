@@ -16,6 +16,7 @@ const TournamentEntry = require('../models/TournamentEntry');
 const Franchise = require('../models/Franchise');
 const { auth } = require('../middleware/auth');
 const { resolveTenant, requireOrgAdmin } = require('../middleware/tenantResolver');
+const { resolveTournamentAdminHybrid } = require('../middleware/tournamentAuth');
 const { tenantQuery, tenantCreate } = require('../utils/tenantQuery');
 const fileParserService = require('../services/fileParserService');
 
@@ -216,7 +217,15 @@ router.post('/', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
       settings: settings || {},
       publicToken,
       createdBy: req.user._id,
-      status: 'draft'
+      originalCreator: req.user._id,
+      status: 'draft',
+      // Add creator as tournament owner in admins[]
+      admins: [{
+        userId: req.user._id,
+        role: 'owner',
+        addedAt: new Date(),
+        addedBy: req.user._id,
+      }],
     }));
 
     await tournament.save();
@@ -238,17 +247,14 @@ router.post('/', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
  * PUT /api/tournaments/:id
  * Update tournament (admin only)
  */
-router.put('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.put('/:id', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
     }
 
-    const tournament = await Tournament.findOne(tenantQuery(req, {
-      _id: req.params.id,
-      isDeleted: false
-    }));
-
+    // Tournament already loaded by resolveTournamentAdminHybrid middleware
+    const tournament = req.tournament;
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
     }
@@ -287,16 +293,10 @@ router.put('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
  * POST /api/tournaments/:id/publish
  * Publish tournament and generate/return public link
  */
-router.post('/:id/publish', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/:id/publish', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ error: 'Invalid tournament ID' });
-    }
-
-    const tournament = await Tournament.findOne(tenantQuery(req, {
-      _id: req.params.id,
-      isDeleted: false
-    }));
+    // Tournament already loaded by resolveTournamentAdminHybrid middleware
+    const tournament = req.tournament;
 
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
@@ -332,7 +332,7 @@ router.post('/:id/publish', auth, resolveTenant, requireOrgAdmin, async (req, re
  * DELETE /api/tournaments/:id
  * Soft delete tournament (admin only)
  */
-router.delete('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -367,7 +367,7 @@ router.delete('/:id', auth, resolveTenant, requireOrgAdmin, async (req, res) => 
  * POST /api/tournaments/:id/regenerate-token
  * Regenerate public token (admin only)
  */
-router.post('/:id/regenerate-token', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/:id/regenerate-token', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     const tournament = await Tournament.findOne(tenantQuery(req, {
       _id: req.params.id,
@@ -496,7 +496,7 @@ router.get('/:id/entries', auth, resolveTenant, async (req, res) => {
  * POST /api/tournaments/:id/entries
  * Add single entry (admin only)
  */
-router.post('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/:id/entries', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -553,7 +553,7 @@ router.post('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, re
  * POST /api/tournaments/:id/entries/bulk/preview
  * Preview bulk upload (parse file and show mapping)
  */
-router.post('/:id/entries/bulk/preview', auth, resolveTenant, requireOrgAdmin, upload.single('file'), async (req, res) => {
+router.post('/:id/entries/bulk/preview', auth, resolveTournamentAdminHybrid, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -592,7 +592,7 @@ router.post('/:id/entries/bulk/preview', auth, resolveTenant, requireOrgAdmin, u
  * POST /api/tournaments/:id/entries/bulk
  * Bulk import entries from file (admin only)
  */
-router.post('/:id/entries/bulk', auth, resolveTenant, requireOrgAdmin, upload.single('file'), async (req, res) => {
+router.post('/:id/entries/bulk', auth, resolveTournamentAdminHybrid, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -726,7 +726,7 @@ router.post('/:id/entries/bulk', auth, resolveTenant, requireOrgAdmin, upload.si
  * PUT /api/tournaments/:id/entries/:entryId
  * Update entry (admin only)
  */
-router.put('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.put('/:id/entries/:entryId', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
         !mongoose.Types.ObjectId.isValid(req.params.entryId)) {
@@ -778,7 +778,7 @@ router.put('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, async 
  * DELETE /api/tournaments/:id/entries/:entryId
  * Soft delete entry (admin only)
  */
-router.delete('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id/entries/:entryId', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
         !mongoose.Types.ObjectId.isValid(req.params.entryId)) {
@@ -817,7 +817,7 @@ router.delete('/:id/entries/:entryId', auth, resolveTenant, requireOrgAdmin, asy
  * DELETE /api/tournaments/:id/entries
  * Bulk delete entries (admin only)
  */
-router.delete('/:id/entries', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id/entries', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     const { entryIds } = req.body;
 
@@ -920,7 +920,7 @@ router.get('/:id/franchises', auth, resolveTenant, async (req, res) => {
  * POST /api/tournaments/:id/franchises
  * Create a new franchise/team
  */
-router.post('/:id/franchises', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.post('/:id/franchises', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid tournament ID' });
@@ -984,7 +984,7 @@ router.post('/:id/franchises', auth, resolveTenant, requireOrgAdmin, async (req,
  * PUT /api/tournaments/:id/franchises/:franchiseId
  * Update franchise details
  */
-router.put('/:id/franchises/:franchiseId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.put('/:id/franchises/:franchiseId', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
         !mongoose.Types.ObjectId.isValid(req.params.franchiseId)) {
@@ -1039,7 +1039,7 @@ router.put('/:id/franchises/:franchiseId', auth, resolveTenant, requireOrgAdmin,
  * DELETE /api/tournaments/:id/franchises/:franchiseId
  * Soft delete franchise
  */
-router.delete('/:id/franchises/:franchiseId', auth, resolveTenant, requireOrgAdmin, async (req, res) => {
+router.delete('/:id/franchises/:franchiseId', auth, resolveTournamentAdminHybrid, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || 
         !mongoose.Types.ObjectId.isValid(req.params.franchiseId)) {

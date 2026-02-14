@@ -537,7 +537,7 @@ router.delete('/:groundId/reviews/:reviewId', auth, async (req, res) => {
 
     // Check ownership or admin
     const isOwner = review.reviewerId.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
+    const isAdmin = ['owner', 'admin'].includes(req.organizationRole);
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({

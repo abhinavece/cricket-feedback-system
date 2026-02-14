@@ -43,7 +43,7 @@ interface GroundsTabProps {
 }
 
 const GroundsTab: React.FC<GroundsTabProps> = ({ onOpenGround }) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [grounds, setGrounds] = useState<Ground[]>([]);
   const [cities, setCities] = useState<GroundCity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -256,7 +256,7 @@ const GroundsTab: React.FC<GroundsTabProps> = ({ onOpenGround }) => {
             <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
-          {user?.role === 'admin' && (
+          {isAdmin() && (
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-lg font-medium transition-all"
@@ -339,7 +339,7 @@ const GroundsTab: React.FC<GroundsTabProps> = ({ onOpenGround }) => {
               ? 'Try adjusting your search or filters'
               : 'Be the first to add a cricket ground!'}
           </p>
-          {user?.role === 'admin' && (
+          {isAdmin() && (
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg"

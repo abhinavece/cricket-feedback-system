@@ -9,7 +9,7 @@ const router = express.Router();
 
 /**
  * Helper: Ensure user has active organization set
- * Returns user and needsOnboarding flag
+ * Returns user, needsOnboarding flag, and organizationRole
  * 
  * NOTE: We no longer auto-migrate users to Mavericks XI. 
  * Users without organizations should go through the team selection onboarding flow.
@@ -21,12 +21,20 @@ async function ensureActiveOrganization(user) {
       user.activeOrganizationId = user.organizations[0].organizationId;
       await user.save();
     }
-    return { user, needsOnboarding: false };
+    
+    // Get user's role in their active organization
+    const activeMembership = user.organizations.find(
+      m => m.organizationId?.toString() === user.activeOrganizationId?.toString() && m.status === 'active'
+    );
+    // Map 'owner' to 'admin' for consistency in frontend checks
+    const organizationRole = activeMembership?.role === 'owner' ? 'admin' : activeMembership?.role || 'viewer';
+    
+    return { user, needsOnboarding: false, organizationRole };
   }
 
   // User has no organizations - they need to go through onboarding
   console.log(`[Auth] User ${user.email} has no organizations - needs onboarding`);
-  return { user, needsOnboarding: true };
+  return { user, needsOnboarding: true, organizationRole: null };
 }
 
 // Initialize Google OAuth client
@@ -82,15 +90,14 @@ router.post('/google', async (req, res) => {
     }
 
     // Ensure user has activeOrganizationId set if they have organizations
-    const { user: updatedUser, needsOnboarding } = await ensureActiveOrganization(user);
+    const { user: updatedUser, needsOnboarding, organizationRole } = await ensureActiveOrganization(user);
     user = updatedUser;
 
-    // Generate JWT token
+    // Generate JWT token (no longer includes role - loaded from DB on each request)
     const jwtToken = jwt.sign(
       { 
         userId: user._id,
         email: user.email,
-        role: user.role 
       },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
@@ -105,7 +112,9 @@ router.post('/google', async (req, res) => {
       email: user.email,
       name: user.name,
       avatar: user.avatar,
-      role: user.role,
+      role: user.role, // DEPRECATED - kept for backward compatibility
+      organizationRole, // NEW - user's role in their active organization
+      platformRole: user.platformRole, // For platform-level admin operations
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       hasOrganizations,
@@ -265,15 +274,14 @@ router.post('/google/mobile', async (req, res) => {
     }
 
     // Ensure user has activeOrganizationId set if they have organizations
-    const { user: updatedUser, needsOnboarding } = await ensureActiveOrganization(user);
+    const { user: updatedUser, needsOnboarding, organizationRole } = await ensureActiveOrganization(user);
     user = updatedUser;
 
-    // Generate JWT token with longer expiry for mobile
+    // Generate JWT token with longer expiry for mobile (no longer includes role)
     const jwtToken = jwt.sign(
       { 
         userId: user._id,
         email: user.email,
-        role: user.role 
       },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '30d' } // Longer expiry for mobile
@@ -288,7 +296,9 @@ router.post('/google/mobile', async (req, res) => {
       email: user.email,
       name: user.name,
       avatar: user.avatar,
-      role: user.role,
+      role: user.role, // DEPRECATED - kept for backward compatibility
+      organizationRole, // NEW - user's role in their active organization
+      platformRole: user.platformRole, // For platform-level admin operations
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       hasOrganizations,
@@ -329,7 +339,7 @@ router.get('/verify', async (req, res) => {
     }
 
     // Ensure user has activeOrganizationId set if they have organizations
-    const { user: updatedUser, needsOnboarding } = await ensureActiveOrganization(user);
+    const { user: updatedUser, needsOnboarding, organizationRole } = await ensureActiveOrganization(user);
     user = updatedUser;
 
     // Check if user has organizations
@@ -341,7 +351,9 @@ router.get('/verify', async (req, res) => {
       email: user.email,
       name: user.name,
       avatar: user.avatar,
-      role: user.role,
+      role: user.role, // DEPRECATED - kept for backward compatibility
+      organizationRole, // NEW - user's role in their active organization
+      platformRole: user.platformRole, // For platform-level admin operations
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       hasOrganizations,
@@ -373,8 +385,9 @@ router.get('/users', async (req, res) => {
     
     const requestingUser = await User.findById(decoded.userId);
     
-    if (!requestingUser || requestingUser.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Platform admin check - use platformRole instead of legacy role
+    if (!requestingUser || requestingUser.platformRole !== 'platform_admin') {
+      return res.status(403).json({ error: 'Platform admin access required' });
     }
 
     const users = await User.find().select('-googleId').sort({ createdAt: -1 });
@@ -385,7 +398,8 @@ router.get('/users', async (req, res) => {
       email: user.email,
       name: user.name,
       avatar: user.avatar,
-      role: user.role,
+      role: user.role, // DEPRECATED
+      platformRole: user.platformRole,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt
     }));
@@ -410,15 +424,20 @@ router.put('/users/:userId/role', async (req, res) => {
     
     const requestingUser = await User.findById(decoded.userId);
     
-    if (!requestingUser || requestingUser.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Platform admin check - use platformRole instead of legacy role
+    if (!requestingUser || requestingUser.platformRole !== 'platform_admin') {
+      return res.status(403).json({ error: 'Platform admin access required' });
     }
 
     const { userId } = req.params;
-    const { role } = req.body;
+    const { role, platformRole } = req.body;
 
-    if (!['viewer', 'editor', 'admin'].includes(role)) {
+    // Support both legacy role and new platformRole updates
+    if (role && !['viewer', 'editor', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
+    }
+    if (platformRole && !['user', 'platform_admin'].includes(platformRole)) {
+      return res.status(400).json({ error: 'Invalid platformRole' });
     }
 
     const user = await User.findById(userId);
@@ -432,7 +451,14 @@ router.put('/users/:userId/role', async (req, res) => {
       return res.status(400).json({ error: 'Cannot change your own role' });
     }
 
-    user.role = role;
+    // Update legacy role if provided (for backward compatibility)
+    if (role) {
+      user.role = role;
+    }
+    // Update platformRole if provided
+    if (platformRole) {
+      user.platformRole = platformRole;
+    }
     await user.save();
 
     res.json({
@@ -466,16 +492,19 @@ router.post('/make-admin', async (req, res) => {
       return res.status(404).json({ error: 'User not found with this email' });
     }
 
+    // Set both legacy role and platformRole for full admin access
     user.role = 'admin';
+    user.platformRole = 'platform_admin';
     await user.save();
 
     res.json({
-      message: 'User promoted to admin successfully',
+      message: 'User promoted to platform admin successfully',
       user: {
         id: user._id,
         email: user.email,
         name: user.name,
         role: user.role,
+        platformRole: user.platformRole,
       },
     });
   } catch (error) {

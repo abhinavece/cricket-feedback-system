@@ -386,7 +386,7 @@ router.get('/:id/feedback', auth, resolveTenant, async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const matchId = req.params.id;
-    const userRole = req.user.role;
+    const userRole = req.organizationRole || 'viewer';
 
     // Validate match exists within tenant
     const match = await Match.findOne(tenantQuery(req, { _id: matchId })).lean();
