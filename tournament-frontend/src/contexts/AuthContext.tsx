@@ -11,6 +11,8 @@ interface AuthContextType {
   loginDev: (email: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  needsOnboarding: boolean;
+  setNeedsOnboarding: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   // Verify token on mount
   useEffect(() => {
@@ -35,6 +38,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isValid = response.success ?? response.valid;
         if (isValid && userData) {
           setUser(userData);
+          // Check if user needs onboarding (no organizations)
+          const onboarding = userData.needsOnboarding ?? !userData.hasOrganizations;
+          setNeedsOnboarding(onboarding);
         } else {
           localStorage.removeItem('tournament_token');
         }
@@ -58,6 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token && userData) {
         localStorage.setItem('tournament_token', token);
         setUser(userData);
+        const onboarding = userData.needsOnboarding ?? !userData.hasOrganizations;
+        setNeedsOnboarding(onboarding);
       } else {
         throw new Error(response.error || 'Login failed');
       }
@@ -77,6 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.success && response.data) {
         localStorage.setItem('tournament_token', response.data.token);
         setUser(response.data.user);
+        const onboarding = response.data.user?.needsOnboarding ?? !response.data.user?.hasOrganizations;
+        setNeedsOnboarding(onboarding);
       } else {
         throw new Error(response.error || 'Dev login failed');
       }
@@ -99,6 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginDev,
         logout,
         isAuthenticated: !!user,
+        needsOnboarding,
+        setNeedsOnboarding,
       }}
     >
       {children}

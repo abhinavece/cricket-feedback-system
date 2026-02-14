@@ -61,6 +61,29 @@ export const authApi = {
   },
 };
 
+// ============ ORGANIZATIONS ============
+export const organizationApi = {
+  create: async (data: { name: string; description?: string }) => {
+    const res = await api.post<ApiResponse<any>>('/organizations', data);
+    return res.data;
+  },
+
+  list: async () => {
+    const res = await api.get<ApiResponse<any[]>>('/organizations');
+    return res.data;
+  },
+
+  getCurrent: async () => {
+    const res = await api.get<ApiResponse<any>>('/organizations/current');
+    return res.data;
+  },
+
+  joinWithCode: async (code: string) => {
+    const res = await api.post<ApiResponse<any>>(`/organizations/join/${code}`);
+    return res.data;
+  },
+};
+
 // ============ TOURNAMENTS ============
 export const tournamentApi = {
   list: async (page = 1, limit = 20) => {

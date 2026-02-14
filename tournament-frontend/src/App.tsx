@@ -1,8 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import LoadingScreen from './components/LoadingScreen';
+import TournamentOnboarding from './components/TournamentOnboarding';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -13,7 +14,13 @@ const PublicTournamentView = lazy(() => import('./pages/PublicTournamentView'));
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, needsOnboarding, setNeedsOnboarding } = useAuth();
+
+  const handleOnboardingComplete = useCallback(() => {
+    setNeedsOnboarding(false);
+    // Force reload to re-verify auth and get updated org data
+    window.location.href = '/';
+  }, [setNeedsOnboarding]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -21,6 +28,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (needsOnboarding) {
+    return <TournamentOnboarding onComplete={handleOnboardingComplete} />;
   }
 
   return <>{children}</>;

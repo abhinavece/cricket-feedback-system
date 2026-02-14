@@ -112,6 +112,15 @@ function LoginPageContent() {
   // Validate redirect URL
   const redirectUrl = isAllowedRedirect(redirectParam) ? redirectParam : getDefaultRedirect();
 
+  // If already authenticated and no explicit redirect, go to dashboard
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const hasExplicitRedirect = searchParams.get('redirect');
+    if (token && !hasExplicitRedirect) {
+      window.location.href = '/dashboard';
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     setIsVisible(true);
   }, []);
@@ -225,7 +234,9 @@ function LoginPageContent() {
 
         if (isSameDomain) {
           // Same-domain redirect: use /auth/callback with ?next param
-          const nextPath = targetUrl.pathname !== '/' ? targetUrl.pathname : '/';
+          // If no explicit redirect was provided, send to dashboard after login
+          const hasExplicitRedirect = searchParams.get('redirect');
+          const nextPath = !hasExplicitRedirect ? '/dashboard' : (targetUrl.pathname !== '/' ? targetUrl.pathname : '/dashboard');
           const callbackParams = new URLSearchParams({
             token: data.token,
             user: userEncoded,

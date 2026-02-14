@@ -30,7 +30,7 @@ const DashboardPage: React.FC = () => {
     queryKey: ['tournaments'],
     queryFn: () => tournamentApi.list(),
     retry: (failureCount, error: any) => {
-      // Don't retry on NO_ORGANIZATION – backend will auto-create org on next request after fix
+      // Don't retry on NO_ORGANIZATION – user needs to go through onboarding
       if (error?.response?.data?.code === 'NO_ORGANIZATION') return false;
       return failureCount < 2;
     },
@@ -91,15 +91,15 @@ const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* No organization – backend should auto-create; offer retry */}
+      {/* No organization – redirect to onboarding */}
       {noOrgError && (
         <div className="glass-panel p-6 text-center">
-          <p className="text-slate-300 mb-2">Setting up your tournament workspace…</p>
+          <p className="text-slate-300 mb-2">No tournament organization found</p>
           <p className="text-sm text-slate-500 mb-4">
-            You’re not in an organization yet. Refresh or retry to create one automatically.
+            You need to create or join a tournament organization first.
           </p>
-          <button onClick={() => refetch()} className="btn-primary">
-            Retry
+          <button onClick={() => window.location.reload()} className="btn-primary">
+            Set Up Now
           </button>
         </div>
       )}

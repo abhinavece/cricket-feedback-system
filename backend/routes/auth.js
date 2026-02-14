@@ -534,6 +534,60 @@ router.put('/profile', async (req, res) => {
   }
 });
 
+// Get user's product/resource counts across all CricSmart products
+router.get('/me/products', auth, async (req, res) => {
+  try {
+    const Auction = require('../models/Auction');
+    const Tournament = require('../models/Tournament');
+    const Organization = require('../models/Organization');
+
+    // Count resources the user has access to
+    const [auctionCount, orgIds] = await Promise.all([
+      Auction.countDocuments({
+        'admins.userId': req.user._id,
+        isDeleted: false,
+      }),
+      Promise.resolve(
+        (req.user.organizations || [])
+          .filter(m => m.status === 'active')
+          .map(m => m.organizationId)
+      ),
+    ]);
+
+    // Get org details to separate teams vs tournament orgs
+    const organizations = orgIds.length > 0
+      ? await Organization.find({ _id: { $in: orgIds }, isActive: true, isDeleted: false })
+          .select('name slug description')
+          .lean()
+      : [];
+
+    // Count tournaments across all user's orgs
+    const tournamentCount = orgIds.length > 0
+      ? await Tournament.countDocuments({
+          organizationId: { $in: orgIds },
+          isDeleted: false,
+        })
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        teams: organizations.length,
+        tournaments: tournamentCount,
+        auctions: auctionCount,
+        organizations: organizations.map(o => ({
+          _id: o._id,
+          name: o.name,
+          slug: o.slug,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('Get user products error:', error);
+    res.status(500).json({ error: 'Failed to get user products' });
+  }
+});
+
 // Get feature flags for current user
 router.get('/feature-flags', auth, async (req, res) => {
   try {

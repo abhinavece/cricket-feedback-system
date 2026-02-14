@@ -95,11 +95,16 @@ export interface TournamentFeedback {
 // User
 export interface User {
   _id: string;
+  id?: string;
   email: string;
   name: string;
   picture?: string;
+  avatar?: string;
   role: 'viewer' | 'editor' | 'admin' | 'tournament_admin';
   organizationId?: string;
+  activeOrganizationId?: string;
+  hasOrganizations?: boolean;
+  needsOnboarding?: boolean;
 }
 
 // API Response types
