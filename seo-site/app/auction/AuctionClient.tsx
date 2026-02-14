@@ -89,7 +89,7 @@ const AUCTION_LOGIN_URL = '/auth/login?redirect=https%3A%2F%2Fauction.cricsmart.
 
 export default function AuctionClient() {
   return (
-    <div className="pt-20">
+    <div>
       {/* Header */}
       <section className="relative py-16">
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900" />

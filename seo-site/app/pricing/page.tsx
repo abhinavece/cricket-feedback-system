@@ -237,7 +237,7 @@ export default function PricingPage() {
     <>
       <SchemaScript schema={[webPageSchema, pricingFaqSchema]} />
 
-      <div className="pt-20">
+      <div>
         {/* Header */}
         <section className="relative py-16">
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900" />

@@ -181,7 +181,7 @@ export default function AuctionFeaturesClient() {
   const heroInView = useInView(heroRef, { once: true });
 
   return (
-    <div className="pt-20">
+    <div>
       {/* Hero Section */}
       <section ref={heroRef} className="relative py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900" />
