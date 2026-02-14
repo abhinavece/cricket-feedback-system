@@ -6,6 +6,7 @@ import LoadingScreen from './components/LoadingScreen';
 import TournamentOnboarding from './components/TournamentOnboarding';
 
 // Lazy load pages
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -27,7 +28,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/landing" replace />;
   }
 
   if (needsOnboarding) {
@@ -47,6 +48,8 @@ const App: React.FC = () => {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
+        {/* Landing page for unauthenticated users */}
+        <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth-callback" element={<AuthCallbackPage />} />
         
